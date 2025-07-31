@@ -11,6 +11,9 @@ local class, state = Hekili.Class, Hekili.State
 local floor = math.floor
 local strformat = string.format
 
+-- Define FindUnitBuffByID and FindUnitDebuffByID from the namespace
+local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+
 -- Create frame for deferred loading and combat log events
 local bmCombatLogFrame = CreateFrame("Frame")
 
@@ -285,7 +288,7 @@ local function RegisterBrewmasterSpec()
             gcd = "spell",
             toggle = "buffs",
             startsCombat = false,
-            handler = function() state.applyBuff("player", "legacy_of_the_emperor", 3600) end,
+            handler = function() applyBuff("legacy_of_the_emperor", 3600) end,
             generate = function(t) end
         },
         chi_burst = {
@@ -297,7 +300,7 @@ local function RegisterBrewmasterSpec()
             spendType = "chi",
             talent = "chi_burst",
             startsCombat = true,
-            handler = function() state.spend(2, "chi") end,
+            handler = function() spend(2, "chi") end,
             generate = function(t) end
         },
         zen_sphere = {
@@ -307,7 +310,7 @@ local function RegisterBrewmasterSpec()
             gcd = "spell",
             talent = "zen_sphere",
             startsCombat = true,
-            handler = function() state.applyBuff("player", "zen_sphere", 16) end,
+            handler = function() applyBuff("zen_sphere", 16) end,
             generate = function(t) end
         },
         invoke_xuen = {
@@ -329,7 +332,7 @@ local function RegisterBrewmasterSpec()
             talent = "dampen_harm",
             toggle = "defensives",
             startsCombat = false,
-            handler = function() state.applyBuff("player", "dampen_harm", 10) end,
+            handler = function() applyBuff("dampen_harm", 10) end,
             generate = function(t) end
         },
         diffuse_magic = {
@@ -340,7 +343,7 @@ local function RegisterBrewmasterSpec()
             talent = "diffuse_magic",
             toggle = "defensives",
             startsCombat = false,
-            handler = function() state.applyBuff("player", "diffuse_magic", 6) end,
+            handler = function() applyBuff("diffuse_magic", 6) end,
             generate = function(t) end
         },
         chi_wave = {
@@ -361,7 +364,7 @@ local function RegisterBrewmasterSpec()
             startsCombat = false,
             handler = function()
                 state.elusive_brew_manual_stacks = 0
-                state.applyBuff("player", "elusive_brew", 6)
+                applyBuff("elusive_brew", 6)
             end,
             generate = function(t) end
         },
@@ -374,9 +377,9 @@ local function RegisterBrewmasterSpec()
             spendType = "energy",
             startsCombat = true,
             handler = function()
-                state.gain(1, "chi")
+                gain(1, "chi")
                 if state.talent.power_strikes.enabled and math.random() <= 0.2 then
-                    state.gain(1, "chi")
+                    gain(1, "chi")
                 end
             end,
             generate = function(t) end
@@ -390,8 +393,8 @@ local function RegisterBrewmasterSpec()
             spendType = "energy",
             startsCombat = true,
             handler = function()
-                state.gain(2, "chi")
-                state.applyDebuff("target", "breath_of_fire_dot", 8)
+                gain(2, "chi")
+                applyDebuff("target", "breath_of_fire_dot", 8)
             end,
             generate = function(t) end
         },
@@ -415,7 +418,7 @@ local function RegisterBrewmasterSpec()
             spendType = "chi",
             startsCombat = true,
             handler = function()
-                state.applyBuff("player", "shuffle", 6)
+                applyBuff("shuffle", 6)
             end,
             generate = function(t) end
         },
@@ -428,9 +431,9 @@ local function RegisterBrewmasterSpec()
             spendType = "chi",
             startsCombat = false,
             handler = function()
-                state.removeDebuff("player", "heavy_stagger")
-                state.removeDebuff("player", "moderate_stagger")
-                state.removeDebuff("player", "light_stagger")
+                removeDebuff("heavy_stagger")
+                removeDebuff("moderate_stagger")
+                removeDebuff("light_stagger")
             end,
             generate = function(t) end
         },
@@ -443,7 +446,7 @@ local function RegisterBrewmasterSpec()
             spendType = "chi",
             startsCombat = false,
             handler = function()
-                state.applyBuff("player", "guard", 30)
+                applyBuff("guard", 30)
             end,
             generate = function(t) end
         },
@@ -456,7 +459,7 @@ local function RegisterBrewmasterSpec()
             spendType = "chi",
             startsCombat = true,
             handler = function()
-                state.applyDebuff("target", "breath_of_fire_dot", 8)
+                applyDebuff("target", "breath_of_fire_dot", 8)
             end,
             generate = function(t) end
         },
@@ -470,8 +473,8 @@ local function RegisterBrewmasterSpec()
             talent = "rushing_jade_wind",
             startsCombat = true,
             handler = function()
-                state.spend(1, "chi")
-                state.applyBuff("player", "rushing_jade_wind", 6)
+                spend(1, "chi")
+                applyBuff("rushing_jade_wind", 6)
             end,
             generate = function(t) end
         },
@@ -483,7 +486,7 @@ local function RegisterBrewmasterSpec()
             toggle = "defensives",
             startsCombat = false,
             handler = function()
-                state.applyBuff("player", "fortifying_brew", 15)
+                applyBuff("fortifying_brew", 15)
             end,
             generate = function(t) end
         },
@@ -495,7 +498,7 @@ local function RegisterBrewmasterSpec()
             talent = "chi_brew",
             startsCombat = false,
             handler = function()
-                state.gain(2, "chi")
+                gain(2, "chi") -- This is the correct function call
             end,
             generate = function(t) end
         },
@@ -508,7 +511,7 @@ local function RegisterBrewmasterSpec()
             spendType = "chi",
             startsCombat = true,
             handler = function()
-                state.spend(1, "chi")
+                spend(1, "chi")
             end,
             generate = function(t) end
         },
@@ -521,7 +524,7 @@ local function RegisterBrewmasterSpec()
             spendType = "energy",
             startsCombat = true,
             handler = function()
-                state.gain(1, "chi")
+                gain(1, "chi")
             end,
             generate = function(t) end
         },
@@ -540,13 +543,14 @@ local function RegisterBrewmasterSpec()
     bmCombatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     bmCombatLogFrame:SetScript("OnEvent", function(self, event, ...)
         local timestamp, subevent, _, sourceGUID, _, _, _, destGUID, _, _, _, spellID, _, _, amount, critical = ...
+		local playerGUID = UnitGUID("player")
 
         -- Build stacks on crits
-        if subevent == "SPELL_DAMAGE" and sourceGUID == state.GUID and critical and (spellID == 100780 or spellID == 115072 or spellID == 121253) then
+        if subevent == "SPELL_DAMAGE" and sourceGUID == playerGUID and critical and (spellID == 100780 or spellID == 115072 or spellID == 121253) then
             state.elusive_brew_manual_stacks = math.min((state.elusive_brew_manual_stacks or 0) + 1, 15)
 
         -- Reset stacks on Elusive Brew cast
-        elseif subevent == "SPELL_CAST_SUCCESS" and sourceGUID == state.GUID and spellID == 115308 then
+        elseif subevent == "SPELL_CAST_SUCCESS" and sourceGUID == playerGUID and spellID == 115308 then
             state.elusive_brew_manual_stacks = 0
         end
     end)
