@@ -90,6 +90,22 @@ local function RegisterBrewmasterSpec()
 
     -- Auras for Brewmaster Monk
     spec:RegisterAuras({
+        tiger_power = { 
+            id = 125359, -- This is the Spell ID for the Tiger Power buff
+            duration = 20, 
+            max_stack = 1, 
+            emulated = true,
+            generate = function(t)
+                -- Find the buff on the player by its ID
+                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 125359)
+                if name then
+                    -- If the buff exists, update its state
+                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
+                end
+                -- If the buff doesn't exist, reset its state
+                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
+            end
+        },
         elusive_brew_stacks = {
             id = 128944, -- This is the Spell ID for the stacks buff itself
             duration = 30,
@@ -449,7 +465,9 @@ local function RegisterBrewmasterSpec()
             spend = 25,
             spendType = "energy",
             startsCombat = true,
-            handler = function() end,
+            handler = function()
+                applyBuff("tiger_power", 20)
+            end,
             generate = function(t) end
         },
         blackout_kick = {
