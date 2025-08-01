@@ -1,5 +1,5 @@
 -- MonkBrewmaster.lua July 2025
--- by Smufrik, Tacodilla 
+-- by Smufrik, Tacodilla , Uilyam
 
 local addon, ns = ...
 local _, playerClass = UnitClass('player')
@@ -107,13 +107,13 @@ local function RegisterBrewmasterSpec()
             end
         },
         elusive_brew_stacks = {
-            id = 128944, -- This is the Spell ID for the stacks buff itself
+            id = 128939, -- This is the Spell ID for the stacks buff itself
             duration = 30,
             max_stack = 15,
             emulated = true,
             generate = function(t)
                 -- Find the buff on the player by its ID
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 128944)
+                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 128939)
                 if name then
                     -- If the buff exists, update its state
                     t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
@@ -317,6 +317,14 @@ local function RegisterBrewmasterSpec()
 
     -- Abilities for Brewmaster Monk
     spec:RegisterAbilities({
+        auto_attack = {
+            id  = 6603,
+            cast     = 0,
+            cooldown = 0,
+            gcd      = "spell",
+            handler  = function()
+        end,
+     },
         expel_harm = {
             id = 115072,
             cast = 0,
