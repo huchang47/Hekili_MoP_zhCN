@@ -317,6 +317,14 @@ local function RegisterBrewmasterSpec()
 
     -- Abilities for Brewmaster Monk
     spec:RegisterAbilities({
+        auto_attack = {
+            id  = 6603,
+            cast     = 0,
+            cooldown = 0,
+            gcd      = "spell",
+            handler  = function()
+        end,
+     },
         expel_harm = {
             id = 115072,
             cast = 0,
