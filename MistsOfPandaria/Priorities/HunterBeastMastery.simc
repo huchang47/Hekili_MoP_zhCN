@@ -21,10 +21,10 @@ actions+=/call_action_list,name=opener,if=time<10
 actions+=/call_action_list,name=cooldowns
 actions+=/call_action_list,name=focus_fire_management
 actions+=/call_action_list,name=burst,if=buff.bestial_wrath.up
-actions+=/call_action_list,name=core_rotation
 
 # Situational action lists
 actions+=/call_action_list,name=aoe,if=active_enemies>=2
+actions+=/call_action_list,name=core_rotation,if=active_enemies<2
 actions+=/call_action_list,name=movement,if=movement.distance>=5
 actions+=/call_action_list,name=defensive,if=incoming_damage_5s>health.max*0.3
 actions+=/call_action_list,name=pet_management
@@ -117,26 +117,23 @@ actions.core_rotation+=/cobra_shot,if=should_cobra_shot
 actions.core_rotation+=/steady_shot,if=should_steady_shot
 
 # MULTI-TARGET ROTATION (AoE) - Includes target switching
-# 2 Enemies: Maintain single target rotation + Multi-Shot for Beast Cleave, maintain Serpent Sting on both targets
+# 5+ Enemies: Multi-Shot spam has highest priority (as per guide)
+# 2-4 Enemies: Standard rotation with Beast Cleave maintenance
 actions.aoe+=/kill_shot,if=target.health_pct<=20
 actions.aoe+=/kill_command,if=pet.alive&!buff.bestial_wrath.up&active_enemies<5
 actions.aoe+=/serpent_sting,cycle_targets=1,if=!debuff.serpent_sting.up&target.time_to_die>10&active_enemies=2
-actions.aoe+=/serpent_sting,if=!debuff.serpent_sting.up&active_enemies>=3
-actions.aoe+=/multi_shot,if=(active_enemies=2|(active_enemies>=3&active_enemies<=4))&should_maintain_beast_cleave&focus>=40
-actions.aoe+=/multi_shot,if=focus>=40&active_enemies>=5
+actions.aoe+=/serpent_sting,if=!debuff.serpent_sting.up&active_enemies>=3&active_enemies<=4
+actions.aoe+=/multi_shot,if=(active_enemies=2|(active_enemies>=3&active_enemies<=4))&should_maintain_beast_cleave&focus>=40|focus>=40&active_enemies>=5
 actions.aoe+=/glaive_toss,if=talent.glaive_toss.enabled&focus>=15&active_enemies>=5
 actions.aoe+=/barrage,if=talent.barrage.enabled&focus>=60&active_enemies>=5
 actions.aoe+=/explosive_trap,if=active_enemies>=5&!debuff.explosive_trap.up&target.time_to_die>20
-actions.aoe+=/cobra_shot,if=debuff.serpent_sting.remains<6&active_enemies<5
 actions.aoe+=/arcane_shot,if=focus>=79&active_enemies<5
-actions.aoe+=/cobra_shot,if=should_cobra_shot&active_enemies<5
-actions.aoe+=/cobra_shot,if=active_enemies>=5
-actions.aoe+=/steady_shot,if=should_steady_shot&active_enemies<5
-actions.aoe+=/steady_shot,if=active_enemies>=5
+actions.aoe+=/cobra_shot,if=should_cobra_shot&active_enemies<5|active_enemies>=5
+
+actions.aoe+=/steady_shot,if=should_steady_shot&active_enemies<5|active_enemies>=5
 # Target switching
 actions.aoe+=/hunters_mark,cycle_targets=1,if=debuff.hunters_mark.down&target.time_to_die>30
 actions.aoe+=/serpent_sting,cycle_targets=1,if=!debuff.serpent_sting.up&target.time_to_die>10&active_enemies<=4
-actions.aoe+=/multi_shot,if=active_enemies>=3&should_maintain_beast_cleave&focus>=40
 
 # Movement and utility
 actions.movement+=/aspect_of_the_cheetah,if=!combat&!buff.aspect_of_the_cheetah.up
