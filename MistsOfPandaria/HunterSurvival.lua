@@ -448,7 +448,9 @@ spec:RegisterAuras( {
 
     -- Lock and Load state tracking
     spec:RegisterStateExpr( "lock_and_load_shots", function()
-        if state.buff.lock_and_load.up then
+        -- More defensive approach to check Lock and Load buff
+        local lock_and_load = state.buff and state.buff.lock_and_load
+        if lock_and_load and lock_and_load.up then
             return 3
         end
         return 0
