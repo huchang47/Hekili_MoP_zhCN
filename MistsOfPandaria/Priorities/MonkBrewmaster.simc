@@ -1,5 +1,7 @@
 # Monk: Brewmaster
-# Unified Priority by Smufrik, Tacodilla
+#Smufrik, Tacodilla
+
+# July 2025 - DEFENSIVES FIXED
 
 # PRECOMBAT
 actions.precombat+=/legacy_of_the_emperor,if=!buff.stats.up
@@ -35,7 +37,7 @@ actions+=/blackout_kick,if=buff.shuffle.remains<3&chi.current>=2
 # AoE Abilities (2+ Targets)
 actions+=/rushing_jade_wind,if=talent.rushing_jade_wind.enabled&chi.current>=3&active_enemies>=2
 actions+=/breath_of_fire,if=chi.current>=2&active_enemies>=2
-actions+=/spinning_crane_kick,if=active_enemies>=4&chi.current>=2&buff.rushing_jade_wind.down
+actions+=/spinning_crane_kick,if=active_enemies>=3&chi.current>=2&buff.rushing_jade_wind.down
 
 # Single Target Abilities (1 Target) / Talent Spenders
 actions+=/blackout_kick,if=chi.current>=chi.max-1&active_enemies=1
