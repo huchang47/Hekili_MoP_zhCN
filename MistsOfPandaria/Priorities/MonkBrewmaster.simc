@@ -1,47 +1,47 @@
 # Monk: Brewmaster
+# Unified Priority by Smufrik, Tacodilla
 
 # PRECOMBAT
-# Applies long-term buffs and prepares for the pull.
 actions.precombat+=/legacy_of_the_emperor,if=!buff.stats.up
+actions.precombat+=/potion,name=virmen_bite
 
-# INTERRUPTS
-# Interrupts enemy casts.
-actions.interrupts+=/spear_hand_strike,if=target.casting
+# UNIFIED ROTATION
+# Interrupts -> Defensives -> Cooldowns -> AoE / ST Rotation
+actions+=/spear_hand_strike,if=target.casting&toggle.interrupts
 
-# DEFENSIVES
-# Reactive abilities used for survival.
-actions.defensives+=/purifying_brew,if=(stagger_level="moderate"|stagger_level="heavy")&chi>=1
-actions.defensives+=/guard,if=health.percent<=50&chi>=2
-actions.defensives+=/elusive_brew,if=elusive_brew_stacks>=8
-actions.defensives+=/fortifying_brew,if=health.percent<=30
-actions.defensives+=/dampen_harm,if=talent.dampen_harm.enabled&health.percent<=60
-actions.defensives+=/diffuse_magic,if=talent.diffuse_magic.enabled&incoming_magic_damage_5s>0
+# --- Defensives ---
+actions+=/expel_harm,if=health.percent<=90
+actions+=/purifying_brew,if=stagger_level>=settings.purify_level&chi.current>=1&toggle.defensives
+actions+=/guard,if=health.percent<=settings.guard_health_threshold&chi.current>=2&toggle.defensives
+actions+=/elusive_brew,if=elusive_brew_stacks>=settings.elusive_brew_threshold&toggle.defensives
+actions+=/fortifying_brew,if=health.percent<=settings.fortify_health_pct&toggle.defensives
+actions+=/dampen_harm,if=talent.dampen_harm.enabled&health.percent<=60&toggle.defensives
+actions+=/diffuse_magic,if=talent.diffuse_magic.enabled&toggle.defensives
 
-# COOLDOWNS
-# Major offensive and resource cooldowns.
-actions.cooldowns+=/use_items
-actions.cooldowns+=/invoke_xuen,if=talent.invoke_xuen.enabled
-actions.cooldowns+=/energizing_brew,if=energy.current<=40&chi.current<=1
-actions.cooldowns+=/chi_brew,if=talent.chi_brew.enabled&chi.current<=chi.max-2
+# --- Cooldowns ---
+actions+=/use_items,if=toggle.cooldowns
+actions+=/invoke_xuen,if=talent.invoke_xuen.enabled&toggle.cooldowns
+actions+=/chi_brew,if=talent.chi_brew.enabled&chi.current<=chi.max-2&toggle.cooldowns
+actions+=/blood_fury,if=toggle.cooldowns
+actions+=/berserking,if=toggle.cooldowns
 
-# AOE ROTATION
-# This list is used automatically in AoE situations.
-actions.aoe+=/keg_smash
-actions.aoe+=/rushing_jade_wind,if=talent.rushing_jade_wind.enabled&chi>=3
-actions.aoe+=/breath_of_fire,if=chi>=2
-actions.aoe+=/spinning_crane_kick,if=active_enemies>=4&chi>=2&!talent.rushing_jade_wind.enabled
-actions.aoe+=/blackout_kick,if=buff.shuffle.remains<3&chi>=2
-actions.aoe+=/chi_burst,if=talent.chi_burst.enabled
-actions.aoe+=/expel_harm,if=health.percent<=90&chi<chi.max-1
-actions.aoe+=/jab,if=chi<chi.max-1
-actions.aoe+=/tiger_palm
-
-# SINGLE TARGET ROTATION (DEFAULT)
-# The addon uses this 'actions' list for its main recommendation.
-actions+=/blackout_kick,if=buff.shuffle.remains<3&chi>=2
+# --- CORE ROTATION ---
+# Core abilities used in both ST and AoE
 actions+=/keg_smash
-actions+=/expel_harm,if=health.percent<=90&chi<chi.max-1
-actions+=/blackout_kick,if=chi>=chi.max-1
-actions+=/jab,if=chi<chi.max-1
-actions+=/chi_burst,if=talent.chi_burst.enabled
+actions+=/blackout_kick,if=buff.shuffle.remains<3&chi.current>=2
+
+# AoE Abilities (2+ Targets)
+actions+=/rushing_jade_wind,if=talent.rushing_jade_wind.enabled&chi.current>=3&active_enemies>=2
+actions+=/breath_of_fire,if=chi.current>=2&active_enemies>=2
+actions+=/spinning_crane_kick,if=active_enemies>=4&chi.current>=2&buff.rushing_jade_wind.down
+
+# Single Target Abilities (1 Target) / Talent Spenders
+actions+=/blackout_kick,if=chi.current>=chi.max-1&active_enemies=1
+actions+=/chi_wave,if=talent.chi_wave.enabled
+actions+=/chi_burst,if=talent.chi_burst.enabled&chi.current>=2
+actions+=/zen_sphere,if=talent.zen_sphere.enabled
+
+# Universal Filler/Generator
+actions+=/expel_harm,if=energy.current>80&chi.current<chi.max-1
+actions+=/jab,if=chi.current<chi.max-1
 actions+=/tiger_palm
