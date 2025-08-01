@@ -6,6 +6,7 @@
 # PRECOMBAT
 actions.precombat+=/legacy_of_the_emperor,if=!buff.stats.up
 actions.precombat+=/potion,name=virmen_bite
+actions+=/call_action_list,name=defensives
 
 # --- DEFENSIVES ---
 # This list is used by the Defensives display and respects the toggle.
@@ -21,6 +22,9 @@ actions.defensives+=/zen_sphere,if=talent.zen_sphere.enabled&toggle.defensives
 # UNIFIED ROTATION
 # Interrupts -> Cooldowns -> AoE / ST Rotation
 actions+=/spear_hand_strike,if=target.casting&toggle.interrupts
+
+#AOE call
+actions+=/call_action_list,name=aoe,if=active_enemies>=2
 
 # --- Cooldowns ---
 actions+=/use_items,if=toggle.cooldowns
