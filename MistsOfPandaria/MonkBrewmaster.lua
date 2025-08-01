@@ -162,12 +162,12 @@ local function RegisterBrewmasterSpec()
             end
         },
         fortifying_brew = { 
-            id = 115203, 
+            id = 120954, 
             duration = 15, 
             max_stack = 1, 
             emulated = true,
             generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115203)
+                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 120954)
                 if name then
                     t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
                 end
