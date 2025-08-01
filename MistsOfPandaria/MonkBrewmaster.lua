@@ -90,6 +90,22 @@ local function RegisterBrewmasterSpec()
 
     -- Auras for Brewmaster Monk
     spec:RegisterAuras({
+        elusive_brew_stacks = {
+            id = 128944, -- This is the Spell ID for the stacks buff itself
+            duration = 30,
+            max_stack = 15,
+            emulated = true,
+            generate = function(t)
+                -- Find the buff on the player by its ID
+                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 128944)
+                if name then
+                    -- If the buff exists, update its state
+                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
+                end
+                -- If the buff doesn't exist, reset its state
+                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
+            end
+        },
         legacy_of_the_emperor = { 
             id = 115921, 
             duration = 3600, 
@@ -249,14 +265,27 @@ local function RegisterBrewmasterSpec()
                 end
                 t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
             end
+        },
+        rushing_jade_wind = { 
+            id = 116847, 
+            duration = 6, 
+            max_stack = 1, 
+            emulated = true,
+            generate = function(t)
+                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 116847)
+                if name then
+                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
+                end
+                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
+            end
         }
     })
 
     -- State Expressions
-    state.elusive_brew_manual_stacks = 0
 
     spec:RegisterStateExpr("elusive_brew_stacks", function()
-        return state.elusive_brew_manual_stacks or 0
+        -- This now points directly to the stack count of our new aura
+        return state.buff.elusive_brew_stacks.count
     end)
 
     spec:RegisterStateExpr("stagger_level", function()
@@ -272,6 +301,20 @@ local function RegisterBrewmasterSpec()
 
     -- Abilities for Brewmaster Monk
     spec:RegisterAbilities({
+        expel_harm = {
+            id = 115072,
+            cast = 0,
+            cooldown = 15,
+            gcd = "spell",
+            spend = 40,
+            spendType = "energy",
+            startsCombat = true,
+            handler = function()
+                gain(1, "chi")
+                gain(0.05 * health.max, "health") -- ADDED: Simulates the self-heal
+            end,
+            generate = function(t) end
+        },
         spear_hand_strike = {
             id = 116705,
             cast = 0,
@@ -502,16 +545,16 @@ local function RegisterBrewmasterSpec()
             end,
             generate = function(t) end
         },
-        spinning_crane_kick = {
+       spinning_crane_kick = {
             id = 101546,
             cast = 0,
             cooldown = 0,
             gcd = "spell",
-            spend = 1,
+            spend = 2, -- CORRECTED from 1
             spendType = "chi",
             startsCombat = true,
             handler = function()
-                spend(1, "chi")
+                spend(2, "chi") -- CORRECTED from 1
             end,
             generate = function(t) end
         },
@@ -539,21 +582,32 @@ local function RegisterBrewmasterSpec()
         }
     })
 
-    -- Register combat log event for Elusive Brew stacks
-    bmCombatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-    bmCombatLogFrame:SetScript("OnEvent", function(self, event, ...)
-        local timestamp, subevent, _, sourceGUID, _, _, _, destGUID, _, _, _, spellID, _, _, amount, critical = ...
-		local playerGUID = UnitGUID("player")
+bmCombatLogFrame:RegisterEvent("UNIT_POWER_UPDATE")
 
-        -- Build stacks on crits
-        if subevent == "SPELL_DAMAGE" and sourceGUID == playerGUID and critical and (spellID == 100780 or spellID == 115072 or spellID == 121253) then
-            state.elusive_brew_manual_stacks = math.min((state.elusive_brew_manual_stacks or 0) + 1, 15)
+bmCombatLogFrame:SetScript("OnEvent", function(self, event, ...)
+    if event == "UNIT_POWER_UPDATE" then
+        local unit, powerTypeString = ...
 
-        -- Reset stacks on Elusive Brew cast
-        elseif subevent == "SPELL_CAST_SUCCESS" and sourceGUID == playerGUID and spellID == 115308 then
-            state.elusive_brew_manual_stacks = 0
+        -- Only update for the player and if the Brewmaster spec is active
+        if unit == "player" and state.spec.id == 268 then
+            if powerTypeString == "CHI" then
+                local currentChi = UnitPower(unit, 12)
+                if state.chi.current ~= currentChi then
+                    state.chi.current = currentChi
+                    state.chi.actual = currentChi
+                    Hekili:ForceUpdate(event) -- Force a display refresh
+                end
+            elseif powerTypeString == "ENERGY" then
+                local currentEnergy = UnitPower(unit, 3)
+                if state.energy.current ~= currentEnergy then
+                    state.energy.current = currentEnergy
+                    state.energy.actual = currentEnergy
+                    Hekili:ForceUpdate(event) -- Force a display refresh
+                end
+            end
         end
-    end)
+    end
+end)
 
     -- Options
     spec:RegisterOptions({
@@ -581,7 +635,7 @@ local function RegisterBrewmasterSpec()
         width = "full"
     })
 
-    spec:RegisterPack("Brewmaster", 20250728, [[Hekili:1I12YTTnq0VfpDg7hAIQS8TKowEgNe1uNjrkJPs7BKeIeKerKeSaGYr5b(T3fauKGxDSt7dXrCbWzxS7zxSa2NAV22YhjW2lNnD2ftVA2RMm7SPtp9kBlX(mSTvgYBlke(rkkb(lcjfTpMI8LlLtZzEGyBRn5KyXDP2B6I3SlE9SxbZnd7bIVe(zeX3hRNlM7zBToIWlCL)dv4wQXcxAa8TNGqtlCJjCbmCaLv4(N4TKyYeWqy0asmO(FPW9t00T)EH7By4hsqCbMv8bq6kwikL8DSpGEQGw4YXzigyF9JS16xu4ElDb833sPX(0hs5WVrPW6FhoaNYj7W8jfFqb(NVFXBx9P3C7A1x3MLftWasX00WxcgqsH7M8GaqYgmGoOsCkiMKgw46rt2GeaqARGpjJH1Y(15)wmoe5T3Hg4iIWo4KmmJYEbjy(rs8MWfibFsEw)loJkL9cz0A(oclbN6SHa73puA03TC9I7V)lFETL6ZVWL(MhIWGNa0gmU0gz5zsFIGgggJ1bgCkAtm23WKjvZeuleCrmNiWt5WfmYwS0EfiwiwmXdIhYD9bt4Dl(JflTU7VwOnH7Xse3jdjBG4Qq5eZv2LkILZ2PgLKcBsL3ZhLaeedtXVk2i9a5msWEyIoBaYG0oapwyiM5eJ3HJVzohlK2d43uZul(yViYnZpDamdZrmFjuryuSiAces8GO511yPMHJEyiUXW8iGaPrD2aOIJZL)SYon)gCJqEa3WABmALggaAGWjA5fg00lN7bJpZtmaOGFpd4triwIo8gdanXq6KswYXT11LthcssqaeRDGakXZeut5vWEGcOf7O5boxWVzAf56TRw9X3T6VxQ5wFc9vzEnnOuLL5YGVtv4sMiwMMBWMQKb2N0gG0NeE)dts3r3ID(woo1W4nKEW07F54umlK8DZOKs0(jE5mMYZD(ujhQ(7t7hjyovquAfhev59AGJ8Je03E5S(XBtmL67eKZ2pW4yghZ2AMwF7QfqY8Q13U(Uvl7uCjjpwqYKvt0vfK16L1eHAxCP1wRgefdkylo0HdvYJApalNhjDyFf5JDEGK6BSL7mM5E)M5N1glW9GagpuPnGWuLSANVQNhpJKMkb2JHsXoBjEBLtwx3YbczjqrRBMFEz6(Xh9y2thdjgs2P5IkO1v6JG)gJNWWjisk)6Z6uorVA83YWXvPLTZ9ETIbD9Ha(PTx9xrBk35dphbrw)mdfNugSTUB57)ieVxF79VFX6wX96JZvhPKXiji2E4Gui1hb8GMh(wh6F(oIEjmpFptFgIsJ9o1rDGL5MpG2HBLBkf1Hp0WxBB9aIj5DCzlsYJatYGA1LnRCs9bWNilP9p5ahgY340ezDUCbnbA0be4bhlhQAB5JKuyOtH(K(skpptcMCchIgN05u8tu96CxYHzEzR(MGHTTu)s1iPo8c)CPQXYYnN9BST8yezVpizJIDdOfUxx4EwH7XsJLu4EZ8c3zqZMkvblXmwO7zKrY0Jnir8PYcTfqZPsR(GwRiuMBeysNn4wRj)c2uW241tR3wxR(FjbPW9LqCOwx18uPgoFqnu5DgaNMEkaQlghQHTiGulx)LdU(byY1iCyejmxz6ynj4MEwHSJ(YozhNdDKU16QwHRXU3ENBrz6EvH)VUNGXveEw3pOItA4f03dZO1(6nVU3FTNeQB3NpSHJO5j2pPJR7lnPhJTdDz4teBK8Fwn(DwX45G9w)OXX8JNH18mDnuN3QYK6ZJKUMX3t1wqpnqmE25pDvYrZD)VQq1v)KvxE1pyzHQopFukDD7)pLE)RnIQ(9)HyZ90OFnugdooLTzl)6OX5vrJMYndfnV8W406bUtq)kXmOnRzb9dA6cZix9LfADu5LnMv1vg6eFRVs4419BCrEDcqVxMVzoIHpR5Bd0I7y8Uep)hLyCEtFjEpYtimy(UA6pcZQ7dk0YR1)JkyqYmgFCg2OBTUpXqTkA9ufJxxC43Cq5N6ZiUCATUmw3pu3n9(meknn0tra(3cxtnAIGMTx33(4S9MpFM5HjT6sVfp24j(E6VVNYeLrNCrKSZP1ipAzyryB)Vd]])
+    spec:RegisterPack("Brewmaster", 20250728, [[Hekili:LI12UTnoq0VLIcySfT21xAttwehG0w3DDaAYIAV7JsIwIYI16gOOsQ3h03(od1nszk50Up00ijY5CMHZm8mXAM1wRnEeb16(5tN)(PFyXSjZNU4dZUYAJ4yk1AtkX9azp8lXKi4NFKtFkIKjOC8thdtiEOjYsY5UWNT2SlNfkwhBTZSDVewBk1fE9fWVgW88OLRLM5ATzBalRWb)hPWPc5cNeF4zxbljUWjKLjGp7NWlC(t6bwiBI1g5lLEc1NgNXEKIpDV05OXKDHupRpATP0gWR(rkn0oGWJkXLZsl)W4XJlC(8QVS6(nR)NvBkCKVOKuigLulpJ6v4S7yHJiay3NBWSWXJLLgsocucmkeJyeWhPKqrWKukeGIbtC9YcNRMw4mc2FY(9H0jkSwabMoSU1szcY(9uUDi9rAyHZnGHYOcblEF2K0CoZ)y9NaB7gWM4MZ5smXLoRhiBclLMaSM9o4qgPYIEPIjNQHl7ZjCp7YLylc40SGKqpZSA(5yL0yizExVKHgMJBssBBii5EiRt0rBf6mAaOv3fYG3)RfoGCvbE2ufqsDfNd4QDOEuCrVyliHaMt8irP0yzw9KQ1jHXe1UOV0VggOyne9pCw0z((qDHDezpZvd)HarDtimxEoy(xGtzPbuoTgJwR1(nWuczVasEOyOgbqNichCYypiTHZoq70p4VVF9xwV6ZfoF7HT3UD9d3x4SogyeppfBcn(McNpLajsjpfx94TjRkCEBHZMTWMseKs7O6h89uXexOdkC6QgGyng2utGAgJHlWwrzM6CPYLXJ1GTed36fmCXDvWMf)yYbQ9pYPXMorBnwd7u2XWvSviaDdKj4AMxRfbMTIViI8dWP60UWadQT4WLR9V)DHjjE2(58JNPORFlq5zu(b401uHJHdTh(2k1eSQtsoCZczhC9MGrBUZHbxaUlreuMFbPTYeUwSpq3BNb3ohmCX0UCF)jzbWpbxGtJimmL56cNf90Jwn(aDxtYf2hyUhquUQNevEEwa2)67epQ9tSyVo(USq52wh83M)A4Mwz1r2RmKQCI96pNbPCPNGKb6FtJPrsqkDgG1ZM2BWPNBOmBQ24cNsGE7j(2(mzdO7N1TPtleMS17g66r5b2PramZtTzglogxGlNetBoGM1xRe9Js9thOsgsVRpq0pOMv)6xj70TvE(azKW9fEqU)GXs1s5zgJROqfjTpB7jSu)jYJgUjO(ls788AcLZZedNrnVttgChsa62M5SQm)7yWJ5zeqN2xyHHu(B)dW95ercxtvd8U9hvirHZLtn0HStuvYP(BCn8EBi)3j7Kgs2)Q(LcgQ(mLegPAC5LTPCQBs0oYGx3gs3tCpIfjGWzBkOWGJUSwW5RjXh(9cN2XmkCG4Lpdpw(lolbCKJLIV3eL7d3z)gmf0nXdIKWmd)13w9Ph(6hVDRQp)IQkiqAOiBsEQPlylNU5rgpcKrSd2PIU4e5)lk9u8OdFSAUM5Wumpr4yHhK6VokfKUHCDrNrwMuChgLs8zHGPFzHZPo6DV8NYxVtUHghU4Us8GrbQplE9Y3AmK)gM)YxOfrmV5sh)nyOzPsKPczJdlHF4xyEPw8B1jceOTecPSUs2RxE10rNiUShdPpAdAmTzPUzPX5OgPuSCZYzpB0KJSyIXNzcjD8M)SXtDofewdZdP4HMNf6zdwNztg0npDYNNnmkdGGq0)qoJ6I(fp)0cTbquHX00mMSAzn7jtjGV9xyqHgwcu7KrtkPN60dJozYb1kt9HbunDZmest2riR6cvKZReCmmwWOHSsTKCft0v3VAI)1lRUsA88bnBRs9Z5gTkYnVsLyMbT44h)PKJRcDJGCDMRi8cPKj94xVOt3GkEoOUzvuorUOs8VxX06yUyKU6mjlu8dnnVO570)AWDBqUkAIU75DDBkoGw4Qq0)dXRdEmPrK6K0zD8YLZ6M7Jkr7K7RkB9Ksfuyz3Afv5PNKxyS1w7FnefBD6F(K6wy9ljvLF63hRlq9MlNQvg3eGunaiRStK086uvAsYfbOmru5t1O9clR)7d]])
 end
 
 -- Deferred loading mechanism
