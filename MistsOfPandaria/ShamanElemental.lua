@@ -55,7 +55,7 @@ spec:RegisterResource( 0, { -- Mana = 0 in MoP
         interval = 45, -- Thunderstorm cooldown
         value = function()
             -- Thunderstorm restores 8% mana in MoP for Elemental
-            return state.last_ability == "thunderstorm" and state.mana.max * 0.08 or 0
+            return (state.last_ability and state.last_ability == "thunderstorm") and state.mana.max * 0.08 or 0
         end,
     },
     
@@ -79,7 +79,7 @@ spec:RegisterResource( 0, { -- Mana = 0 in MoP
         end,
         interval = 1,
         value = function()
-            if state.talent.telluric_currents.enabled and state.last_ability == "lightning_bolt" and state.target.health.pct < 25 then
+            if state.talent.telluric_currents.enabled and (state.last_ability and state.last_ability == "lightning_bolt") and state.target.health.pct < 25 then
                 -- Telluric Currents returns 40% of Lightning Bolt cost as mana
                 return state.mana.max * 0.024 -- 6% spell cost * 40% return
             end

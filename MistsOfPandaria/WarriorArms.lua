@@ -160,7 +160,7 @@ spec:RegisterResource( 1, {
         end,
         interval = 6, -- Mortal Strike cooldown
         value = function()
-            return state.last_ability == "mortal_strike" and 10 or 0
+            return (state.last_ability and state.last_ability == "mortal_strike") and 10 or 0
         end,
     },
     
@@ -200,7 +200,7 @@ spec:RegisterResource( 1, {
         end,
         interval = 20, -- Charge cooldown
         value = function()
-            return state.last_ability == "charge" and state.talent.juggernaut.enabled and 15 or 0
+            return (state.last_ability and state.last_ability == "charge") and state.talent.juggernaut.enabled and 15 or 0
         end,
     },
     
@@ -211,7 +211,7 @@ spec:RegisterResource( 1, {
         end,
         interval = 1,
         value = function()
-            local last_victory = state.last_ability == "victory_rush" or state.last_ability == "impending_victory"
+            local last_victory = (state.last_ability and state.last_ability == "victory_rush") or (state.last_ability and state.last_ability == "impending_victory")
             return last_victory and 5 or 0 -- 5 rage from Victory Rush abilities
         end,
     },

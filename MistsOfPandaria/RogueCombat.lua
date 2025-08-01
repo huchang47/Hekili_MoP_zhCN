@@ -177,12 +177,12 @@ spec:RegisterResource( 4, { -- Combo Points = 4 in MoP
     -- Marked for Death instant combo points (if talented)
     marked_for_death_generation = {
         last = function ()
-            return state.last_cast_time.marked_for_death or 0
+            return (state.last_cast_time and state.last_cast_time.marked_for_death) or 0
         end,
         interval = 1,
         value = function()
             -- Marked for Death instantly generates 5 combo points
-            return state.last_ability == "marked_for_death" and 5 or 0
+            return (state.last_ability and state.last_ability == "marked_for_death") and 5 or 0
         end,
     },
 }, {

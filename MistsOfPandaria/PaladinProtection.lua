@@ -66,7 +66,7 @@ spec:RegisterResource( 9, { -- Holy Power with Protection-specific mechanics
         end,
         interval = 1,
         value = function()
-            if state.talent.shield_of_vengeance.enabled and state.last_ability == "word_of_glory" then
+            if state.talent.shield_of_vengeance.enabled and (state.last_ability and state.last_ability == "word_of_glory") then
                 return 0 -- Shield of Vengeance procs from Holy Power consumption
             end
             return 0
@@ -80,7 +80,7 @@ spec:RegisterResource( 9, { -- Holy Power with Protection-specific mechanics
         end,
         interval = 1,
         value = function()
-            if state.talent.eternal_flame.enabled and state.last_ability == "word_of_glory" then
+            if state.talent.eternal_flame.enabled and (state.last_ability and state.last_ability == "word_of_glory") then
                 return 0 -- Eternal Flame effectiveness scales with Holy Power spent
             end
             return 0

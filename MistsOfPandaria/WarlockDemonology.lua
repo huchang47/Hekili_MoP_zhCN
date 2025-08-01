@@ -34,7 +34,7 @@ spec:RegisterResource( 0, { -- Mana = 0 in MoP
         interval = 1.5, -- Life Tap GCD
         value = function()
             -- Life Tap converts health to mana (30% max mana in MoP)
-            return state.last_ability == "life_tap" and state.mana.max * 0.30 or 0
+            return (state.last_ability and state.last_ability == "life_tap") and state.mana.max * 0.30 or 0
         end,
     },
     
@@ -61,7 +61,7 @@ spec:RegisterResource( 0, { -- Mana = 0 in MoP
         interval = 1.5, -- Dark Pact GCD
         value = function()
             -- Dark Pact converts demon health to mana
-            return state.last_ability == "dark_pact" and state.mana.max * 0.25 or 0
+            return (state.last_ability and state.last_ability == "dark_pact") and state.mana.max * 0.25 or 0
         end,
     },
 }, {
@@ -94,7 +94,7 @@ spec:RegisterResource( 7, { -- Soul Shards = 7 in MoP
         interval = 1,
         value = function()
             -- Soul Burn converts shard for enhanced abilities
-            return state.last_ability == "soul_burn" and -1 or 0 -- Consumes 1 shard
+            return (state.last_ability and state.last_ability == "soul_burn") and -1 or 0 -- Consumes 1 shard
         end,
     },
     
@@ -106,7 +106,7 @@ spec:RegisterResource( 7, { -- Soul Shards = 7 in MoP
         interval = 1,
         value = function()
             -- Shadowburn generates shard if target dies within 5 seconds
-            if state.last_ability == "shadowburn" and state.target.time_to_die < 5 then
+            if (state.last_ability and state.last_ability == "shadowburn") and state.target.time_to_die < 5 then
                 return 1 -- Generates 1 shard
             end
             return 0
@@ -135,7 +135,7 @@ spec:RegisterResource( 15, { -- Demonic Fury = 15 in MoP
         interval = 1,
         value = function()
             -- Shadow Bolt generates 40 Demonic Fury
-            return state.last_ability == "shadow_bolt" and 40 or 0
+            return (state.last_ability and state.last_ability == "shadow_bolt") and 40 or 0
         end,
     },
     
@@ -147,7 +147,7 @@ spec:RegisterResource( 15, { -- Demonic Fury = 15 in MoP
         interval = 1,
         value = function()
             -- Soul Fire generates 25 Demonic Fury
-            return state.last_ability == "soul_fire" and 25 or 0
+            return (state.last_ability and state.last_ability == "soul_fire") and 25 or 0
         end,
     },
     
@@ -159,7 +159,7 @@ spec:RegisterResource( 15, { -- Demonic Fury = 15 in MoP
         interval = 1,
         value = function()
             -- Life Tap generates 50 Demonic Fury
-            return state.last_ability == "life_tap" and 50 or 0
+            return (state.last_ability and state.last_ability == "life_tap") and 50 or 0
         end,
     },
     
@@ -171,7 +171,7 @@ spec:RegisterResource( 15, { -- Demonic Fury = 15 in MoP
         interval = 1,
         value = function()
             -- Hand of Gul'dan generates 60 Demonic Fury
-            return state.last_ability == "hand_of_guldan" and 60 or 0
+            return (state.last_ability and state.last_ability == "hand_of_guldan") and 60 or 0
         end,
     },
     
@@ -183,7 +183,7 @@ spec:RegisterResource( 15, { -- Demonic Fury = 15 in MoP
         interval = 1,
         value = function()
             -- Metamorphosis consumes 1000 Demonic Fury
-            return state.last_ability == "metamorphosis" and -1000 or 0
+            return (state.last_ability and state.last_ability == "metamorphosis") and -1000 or 0
         end,
     },
     
@@ -195,7 +195,7 @@ spec:RegisterResource( 15, { -- Demonic Fury = 15 in MoP
         interval = 1,
         value = function()
             -- Hand of Gul'dan in Metamorphosis consumes 200 Demonic Fury
-            return state.last_ability == "meta_hand_of_guldan" and -200 or 0
+            return (state.last_ability and state.last_ability == "meta_hand_of_guldan") and -200 or 0
         end,
     },
     
@@ -207,7 +207,7 @@ spec:RegisterResource( 15, { -- Demonic Fury = 15 in MoP
         interval = 1,
         value = function()
             -- Touch of Chaos consumes 100 Demonic Fury
-            return state.last_ability == "touch_of_chaos" and -100 or 0
+            return (state.last_ability and state.last_ability == "touch_of_chaos") and -100 or 0
         end,
     },
 }, {

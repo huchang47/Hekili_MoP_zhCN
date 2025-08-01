@@ -169,7 +169,7 @@ spec:RegisterResource( 0, {
         interval = 1.5, -- Life Tap GCD
         value = function()
             -- Life Tap converts health to mana (30% max mana in MoP)
-            return state.last_ability == "life_tap" and state.mana.max * 0.30 or 0
+            return (state.last_ability and state.last_ability == "life_tap") and state.mana.max * 0.30 or 0
         end,
     },
     
@@ -181,7 +181,7 @@ spec:RegisterResource( 0, {
         interval = 1.5, -- Dark Pact GCD
         value = function()
             -- Dark Pact converts demon health to mana
-            return state.last_ability == "dark_pact" and state.mana.max * 0.25 or 0
+            return (state.last_ability and state.last_ability == "dark_pact") and state.mana.max * 0.25 or 0
         end,
     },
 }, {
@@ -233,7 +233,7 @@ spec:RegisterResource( 14, {
         interval = 1,
         value = function()
             -- Conflagrate generates 0.2 Burning Embers
-            return state.last_ability == "conflagrate" and 0.2 or 0
+            return (state.last_ability and state.last_ability == "conflagrate") and 0.2 or 0
         end,
     },
     
@@ -245,7 +245,7 @@ spec:RegisterResource( 14, {
         interval = 1,
         value = function()
             -- Incinerate generates 0.1 Burning Ember per cast
-            return state.last_ability == "incinerate" and 0.1 or 0
+            return (state.last_ability and state.last_ability == "incinerate") and 0.1 or 0
         end,
     },
     
@@ -257,7 +257,7 @@ spec:RegisterResource( 14, {
         interval = 1,
         value = function()
             -- Chaos Bolt consumes 4 Burning Embers
-            return state.last_ability == "chaos_bolt" and -4 or 0
+            return (state.last_ability and state.last_ability == "chaos_bolt") and -4 or 0
         end,
     },
     
@@ -269,7 +269,7 @@ spec:RegisterResource( 14, {
         interval = 1,
         value = function()
             -- Ember Tap consumes 1 Burning Ember
-            return state.last_ability == "ember_tap" and -1 or 0
+            return (state.last_ability and state.last_ability == "ember_tap") and -1 or 0
         end,
     },
 }, {

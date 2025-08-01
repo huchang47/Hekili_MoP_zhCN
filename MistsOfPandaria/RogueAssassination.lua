@@ -136,10 +136,9 @@ spec:RegisterResource( 4, { -- Combo Points = 4 in MoP
         interval = 1,
         value = function()
             -- Seal Fate: Critical strikes with abilities that generate combo points have a 50% chance to generate an extra combo point
-            if state.last_ability_crit and (state.last_ability == "mutilate" or state.last_ability == "backstab" or state.last_ability == "dispatch") then
-                return math.random() <= 0.5 and 1 or 0 -- 50% chance for extra combo point
-            end
-            return 0
+            -- Completely rewritten to avoid state variable issues - use a simple random proc system
+            -- This simulates the Seal Fate proc without relying on problematic state variables
+            return math.random() <= 0.05 and 1 or 0 -- 5% chance per second (simplified proc system)
         end,
     },
     
@@ -152,7 +151,7 @@ spec:RegisterResource( 4, { -- Combo Points = 4 in MoP
         interval = 1,
         value = function()
             -- Anticipation allows storing combo points beyond the 5-point limit
-            if state.talent.anticipation.enabled and state.combo_points.current >= 5 then
+            if state.talent.anticipation.enabled and (state.combo_points.current or 0) >= 5 then
                 return 1 -- Store excess combo points as Anticipation stacks
             end
             return 0
@@ -332,7 +331,7 @@ spec:RegisterAuras({
     -- Bleed effects
     rupture = {
         id = 1943,
-        duration = function() return 8 + (4 * combo_points.current) end, -- MoP Classic: 8s base + 4s per combo point
+        duration = function() return 8 + (4 * (combo_points.current or 0)) end, -- MoP Classic: 8s base + 4s per combo point
         tick_time = 2, -- Ticks every 2 seconds
         max_stack = 1
     },
@@ -346,7 +345,7 @@ spec:RegisterAuras({
     -- Buffs
     slice_and_dice = {
         id = 5171,
-        duration = function() return 6 + (6 * combo_points.current) end, -- MoP Classic: 6s base + 6s per combo point
+        duration = function() return 6 + (6 * (combo_points.current or 0)) end, -- MoP Classic: 6s base + 6s per combo point
         max_stack = 1
     },
     stealth = {
@@ -378,6 +377,20 @@ spec:RegisterAuras({
         copy = "vendetta" -- Allows both buff and debuff tracking
     },
     
+    -- Revealing Strike (Combat spec ability, but referenced in imported rotations)
+    revealing_strike = {
+        id = 84617,
+        duration = 15,
+        max_stack = 1
+    },
+    
+    -- Deep Insight (Combat spec buff, but referenced in imported rotations)
+    deep_insight = {
+        id = 84747,
+        duration = 15,
+        max_stack = 1
+    },
+    
     -- Venom Rush talent buff
     venom_rush = {
         id = 152152,
@@ -387,14 +400,14 @@ spec:RegisterAuras({
     -- shadow_clone removed - not available in MoP Classic
     envenom = {
         id = 32645,
-        duration = function() return combo_points.current end,
+        duration = function() return combo_points.current or 0 end,
         max_stack = 1
     },
     
     -- Stun effects
     kidney_shot = {
         id = 408,
-        duration = function() return 1 + combo_points.current end, -- MoP Classic: 1s base + 1s per combo point
+        duration = function() return 1 + (combo_points.current or 0) end, -- MoP Classic: 1s base + 1s per combo point
         max_stack = 1
     },
     cheap_shot = {
@@ -420,11 +433,6 @@ spec:RegisterAuras({
     evasion = {
         id = 5277,
         duration = 15,
-        max_stack = 1
-    },
-    cloak_of_shadows = {
-        id = 31224,
-        duration = 5,
         max_stack = 1
     },
     feint = {
@@ -475,27 +483,68 @@ spec:RegisterAuras({
         max_stack = 1
     },
     
-
+    -- MoP Trinket auras
+    vial_of_shadows = {
+        id = 79734, -- Vial of Shadows proc aura
+        duration = 15,
+        max_stack = 1
+    },
     
-    -- Missing auras for MoP abilities
+    -- Shadow Dance (for compatibility with imported rotations)
+    shadow_dance = {
+        id = 185313, -- Shadow Dance spell ID
+        duration = 8,
+        max_stack = 1
+    },
+    
+    -- Anticipation (Level 90 talent)
+    anticipation = {
+        id = 114015,
+        duration = 3600,
+        max_stack = 5
+    },
+    
+    -- Jade Serpent Potion
+    jade_serpent_potion = {
+        id = 76089,
+        duration = 25,
+        max_stack = 1
+    },
+    
+    -- Tricks of the Trade
+    tricks_of_the_trade = {
+        id = 57934,
+        duration = 6,
+        max_stack = 1
+    },
+    
+    -- Blindside - Proc buff that allows Dispatch usage
+    blindside = {
+        id = 121153, -- MoP Blindside proc ID
+        duration = 10,
+        max_stack = 1
+    },
+    
+    -- Shadow Blades - Major DPS cooldown buff
     shadow_blades = {
         id = 121471,
         duration = 12,
         max_stack = 1
     },
     
-    crimson_tempest = {
-        id = 121411,
-        duration = function() return 2 + (2 * combo_points.current) end,
-        tick_time = 2,
+    -- Cloak of Shadows - Defensive buff
+    cloak_of_shadows = {
+        id = 31224,
+        duration = 5,
         max_stack = 1
     },
     
-    -- MoP Trinket auras
-    vial_of_shadows = {
-        id = 79734, -- Vial of Shadows proc aura
-        duration = 15,
-        max_stack = 1
+    -- Crimson Tempest debuff
+    crimson_tempest = {
+        id = 121411,
+        duration = function() return 2 + (2 * (combo_points.current or 0)) end, -- 2s base + 2s per combo point
+        max_stack = 1,
+        tick_time = 2 -- Ticks every 2 seconds
     },
 })
 
@@ -557,7 +606,7 @@ spec:RegisterHook("runHandler", function(action, pool)
     
     -- Handle Overkill buff from stealth abilities
     if action == "ambush" or action == "garrote" or action == "cheap_shot" then
-        if stealthed.all then
+        if stealthed_all then
             applyBuff("overkill", 20) -- 20-second energy regeneration bonus
         end
     end
@@ -606,7 +655,7 @@ spec:RegisterAbilities({
             gain(2, "combo_points")
             
             -- Seal Fate proc chance on crit (50% chance for extra combo point)
-            if crit_chance > math.random() then
+            if (state.crit_chance or 0) > math.random() then
                 state.last_ability_crit = true
                 if math.random() <= 0.5 then
                     gain(1, "combo_points")
@@ -622,6 +671,11 @@ spec:RegisterAbilities({
             if buff.instant_poison.up then
                 -- Instant poison does immediate damage
                 applyDebuff("target", "instant_poison_dot", 8)
+            end
+            
+            -- Blindside proc chance (MoP: 30% chance on poison application)
+            if (buff.deadly_poison.up or buff.instant_poison.up) and math.random() <= 0.30 then
+                applyBuff("blindside", 10) -- 10 second duration
             end
             
             -- Track last ability for Seal Fate
@@ -673,7 +727,7 @@ spec:RegisterAbilities({
             gain(1, "combo_points")
             
             -- Seal Fate proc chance on crit (50% chance for extra combo point)
-            if crit_chance > math.random() then
+            if (state.crit_chance or 0) > math.random() then
                 state.last_ability_crit = true
                 if math.random() <= 0.5 then
                     gain(1, "combo_points")
@@ -714,19 +768,19 @@ spec:RegisterAbilities({
         
         startsCombat = true,
         
-        usable = function() 
-            return combo_points.current > 0 or target.health.pct < 35, "requires combo points or target below 35% health"
+                usable = function()
+            return (combo_points.current or 0) > 0 or target.health.pct < 35, "requires combo points or target below 35% health"
         end,
         
         handler = function()
-            local cp = combo_points.current
+            local cp = combo_points.current or 0
             
             -- Dispatch can be used as a combo point generator when target is below 35% health
             if target.health.pct < 35 and cp == 0 then
                 gain(1, "combo_points")
                 
                 -- Seal Fate proc chance on crit
-                if crit_chance > math.random() then
+                if (state.crit_chance or 0) > math.random() then
                     state.last_ability_crit = true
                     if math.random() <= 0.5 then
                         gain(1, "combo_points")
@@ -797,10 +851,10 @@ spec:RegisterAbilities({
         
         startsCombat = true,
         
-        usable = function() return combo_points.current > 0 end,
+        usable = function() return (combo_points.current or 0) > 0 end,
         
         handler = function()
-            local cp = combo_points.current
+            local cp = combo_points.current or 0
             -- Envenom duration = combo points spent
             applyBuff("envenom", cp)
             spend(cp, "combo_points")
@@ -821,10 +875,10 @@ spec:RegisterAbilities({
         
         startsCombat = true,
         
-        usable = function() return combo_points.current > 0 end,
+        usable = function() return (combo_points.current or 0) > 0 end,
         
         handler = function()
-            local cp = combo_points.current
+            local cp = combo_points.current or 0
             -- MoP Classic: 8 seconds base + 4 seconds per combo point
             applyDebuff("target", "rupture", 8 + (4 * cp))
             spend(cp, "combo_points")
@@ -845,10 +899,10 @@ spec:RegisterAbilities({
         
         startsCombat = false,
         
-        usable = function() return combo_points.current > 0 end,
+        usable = function() return (combo_points.current or 0) > 0 end,
         
         handler = function()
-            local cp = combo_points.current
+            local cp = combo_points.current or 0
             -- MoP Classic: 6 seconds base + 6 seconds per combo point
             applyBuff("slice_and_dice", 6 + (6 * cp))
             spend(cp, "combo_points")
@@ -870,10 +924,10 @@ eviscerate = {
     
     startsCombat = true,
     
-    usable = function() return combo_points.current > 0 end,
+    usable = function() return (combo_points.current or 0) > 0 end,
     
     handler = function()
-        local cp = combo_points.current
+        local cp = combo_points.current or 0
         -- Eviscerate: Damage scales with combo points
         spend(cp, "combo_points")
         
@@ -893,10 +947,10 @@ kidney_shot = {
     
     startsCombat = true,
     
-    usable = function() return combo_points.current > 0 end,
+    usable = function() return (combo_points.current or 0) > 0 end,
     
     handler = function()
-        local cp = combo_points.current
+        local cp = combo_points.current or 0
         -- MoP Classic: 1 second base + 1 second per combo point (max 6 seconds)
         applyDebuff("target", "kidney_shot", 1 + cp)
         spend(cp, "combo_points")
@@ -993,7 +1047,7 @@ kidney_shot = {
         
         startsCombat = true,
         
-        usable = function() return stealthed.all, "requires stealth" end,
+        usable = function() return stealthed_all, "requires stealth" end,
         
         handler = function()
             -- Cheap Shot generates 2 combo points and stuns for 4 seconds
@@ -1043,7 +1097,7 @@ kidney_shot = {
         
         startsCombat = true,
         
-        usable = function() return stealthed.all and behind_target end,
+        usable = function() return stealthed_all and behind_target end,
         
         handler = function()
             applyDebuff("target", "garrote")
@@ -1073,14 +1127,14 @@ kidney_shot = {
         
         startsCombat = true,
         
-        usable = function() return stealthed.all, "requires stealth" end,
+        usable = function() return stealthed_all, "requires stealth" end,
         
         handler = function()
             -- Ambush generates 2 combo points
             gain(2, "combo_points")
             
             -- Seal Fate proc chance on crit (50% chance for extra combo point)
-            if crit_chance > math.random() then
+            if (state.crit_chance or 0) > math.random() then
                 state.last_ability_crit = true
                 if math.random() <= 0.5 then
                     gain(1, "combo_points")
@@ -1322,6 +1376,58 @@ kidney_shot = {
         end,
     },
     
+    -- Jade Serpent Potion
+    jade_serpent_potion = {
+        id = 76089,
+        cast = 0,
+        cooldown = 0,
+        gcd = "off",
+        
+        startsCombat = false,
+        
+        usable = function() return not combat and not buff.jade_serpent_potion.up end,
+        
+        handler = function()
+            applyBuff("jade_serpent_potion", 25)
+        end,
+    },
+    
+    -- Tricks of the Trade
+    tricks_of_the_trade = {
+        id = 57934,
+        cast = 0,
+        cooldown = 30,
+        gcd = "off",
+        
+        startsCombat = false,
+        
+        handler = function()
+            applyBuff("tricks_of_the_trade")
+        end,
+    },
+    
+    -- Apply Poison (generic poison application)
+    apply_poison = {
+        id = 2823, -- Deadly Poison spell ID (updated for MoP)
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        
+        startsCombat = false,
+        
+        usable = function()
+            -- Check if deadly poison is missing (for SimC lethal=deadly,nonlethal=crippling)
+            return not buff.deadly_poison.up, "deadly poison already applied"
+        end,
+        
+        handler = function()
+            -- Apply deadly poison as lethal and crippling poison as nonlethal
+            -- This matches the SimC priority: apply_poison,lethal=deadly,nonlethal=crippling
+            applyBuff("deadly_poison", 3600)
+            applyBuff("crippling_poison", 3600)
+        end,
+    },
+    
     -- Shiv - applies poison and removes buff
     shiv = {
         id = 5938,
@@ -1380,6 +1486,108 @@ kidney_shot = {
             removeDebuff("target", "magic")
         end,
     },
+    
+    -- Crimson Tempest - AoE finisher
+    crimson_tempest = {
+        id = 121411, -- MoP Crimson Tempest spell ID
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        school = "physical",
+        
+        spend = function() 
+            local cost = 35 -- Base energy cost
+            
+            -- Shadow Focus reduces cost while stealthed
+            if talent.shadow_focus.enabled and (buff.stealth.up or buff.vanish.up) then
+                cost = cost * 0.25
+            end
+            
+            return cost
+        end,
+        spendType = "energy",
+        
+        startsCombat = true,
+        
+        usable = function() return combo_points.current and combo_points.current > 0, "requires combo points" end,
+        
+        handler = function()
+            local cp = combo_points.current or 0
+            -- Crimson Tempest duration: 2s base + 2s per combo point
+            applyDebuff("target", "crimson_tempest", 2 + (2 * cp))
+            spend(cp, "combo_points")
+        end,
+    },
+    
+    -- Shadow Blades - Major DPS cooldown
+    shadow_blades = {
+        id = 121471, -- MoP Shadow Blades spell ID
+        cast = 0,
+        cooldown = 180, -- 3 minute cooldown
+        gcd = "off",
+        school = "shadow",
+        
+        startsCombat = false,
+        
+        handler = function()
+            applyBuff("shadow_blades", 12) -- 12 second duration
+        end,
+    },
+    
+    -- Cloak of Shadows - Defensive cooldown
+    cloak_of_shadows = {
+        id = 31224,
+        cast = 0,
+        cooldown = 120, -- 2 minute cooldown in MoP
+        gcd = "off",
+        school = "physical",
+        
+        startsCombat = false,
+        
+        handler = function()
+            applyBuff("cloak_of_shadows", 5) -- 5 second duration
+            -- Removes all magical debuffs
+            removeDebuff("player", "magic")
+        end,
+    },
+    
+    -- Marked for Death - Combo point generator
+    marked_for_death = {
+        id = 137619, -- MoP Marked for Death spell ID
+        cast = 0,
+        cooldown = 60, -- 1 minute cooldown
+        gcd = "off",
+        school = "physical",
+        
+        startsCombat = false,
+        
+        usable = function() return combo_points.current == 0, "only usable at 0 combo points" end,
+        
+        handler = function()
+            gain(5, "combo_points") -- Instantly grants 5 combo points
+        end,
+    },
+    
+    -- Preparation - Resets cooldowns
+    preparation = {
+        id = 14185,
+        cast = 0,
+        cooldown = 300, -- 5 minute cooldown in MoP
+        gcd = "off",
+        school = "physical",
+        
+        startsCombat = false,
+        
+        handler = function()
+            -- Reset specific cooldowns
+            setCooldown("vanish", 0)
+            setCooldown("sprint", 0)
+            setCooldown("evasion", 0)
+            setCooldown("kidney_shot", 0)
+            setCooldown("blind", 0)
+            setCooldown("dismantle", 0)
+        end,
+    },
 })
 
 -- State expressions
@@ -1391,12 +1599,10 @@ spec:RegisterStateExpr("poisoned", function()
     return debuff.deadly_poison_dot.up or debuff.wound_poison.up
 end)
 
--- Proper stealthed state table for MoP compatibility
-spec:RegisterStateTable("stealthed", {
-    rogue = function() return buff.stealth.up end,
-    mantle = function() return false end, -- Not available in MoP
-    all = function() return buff.stealth.up or buff.vanish.up or buff.shadow_dance.up end,
-})
+-- Proper stealthed state expressions for MoP compatibility
+spec:RegisterStateExpr("stealthed_rogue", function() return buff.stealth.up end)
+spec:RegisterStateExpr("stealthed_mantle", function() return false end) -- Not available in MoP
+spec:RegisterStateExpr("stealthed_all", function() return buff.stealth.up or buff.vanish.up or buff.shadow_dance.up end)
 
 -- Add anticipation_charges for compatibility (not used in MoP but referenced in imported rotations)
 spec:RegisterStateExpr("anticipation_charges", function()
@@ -1452,5 +1658,12 @@ spec:RegisterSetting( "allow_shadowstep", true, {
     type = "toggle",
     width = "full"
 } )
+
+spec:RegisterSetting( "use_tricks_of_the_trade", true, {
+    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 57934 ) ), -- Tricks of the Trade
+    desc = "If checked, Tricks of the Trade will be recommended based on the Assassination Rogue priority. If unchecked, it will not be recommended automatically.",
+    type = "toggle",
+    width = "full"
+} )
 -- Pack (rotation logic would go here)
-spec:RegisterPack("Assassination", 20250710, [[Hekili:nJX(pUnn4)wonPQBJJqV0R3yJ2kbmqStIjeD8tiAIBIBJP5LID6Osv5VD((SZl78O9gieAANsT)8373BUFZh3S2NiOB(G9u75tF99tTSV)HP2Z2SwCkLUzDkX7azp8rmjc(lHZbO5c8ItHjeFeb8K8mp4YnR3MZcfVpEZ2EX605aSPup445VzZ6aMVpvblL7Tz9hdy8cx8)Kc3s6w4MSd(TNGLex4gY4c46DjzfU)e9alKzTzT8qKnqIJ8ZhKsfnMSnK6V57aMw(CGmmEkr4fOiyglvD83HVRWnlrquhaxjOzmcaxIWYNstDyXC2(aHvgnIaFx4UQWDAH7KcxeKm6rkjKfV3HlYyhO6GTracSbl1qcVKOTjoPjSyu0wu4(qH75ZfU3w4kiH0yHfjwW8yPsMZQehss35PZLh3gEhVas2EQ66zfUVSrBeLlyHOrcyVz))J9Qnwa79WGS3nfUBZ3TZ6ijMXdSYtlPCsOFYNIRoUT54XPn0inJMsYuwDb8pWVyhjpumMtejABo30f6Nb03VhexaEgIaQVfjmCCpbFQuuqbNggIa4qJZGGaqSAOppGDCCtMavPOFReDEeUa8m1WXbM3HX1RcwevQUM1sDb(2Eh4oj7CabYrKr8LopZhqt5bsSJ6hoyqQku1rLiXZNJV9XR0XBP075ZYXB1sPt7GEE496UEz5XdY37yOhfY6VEqwxA)CuMbU1osmQYoeZowro7RJwKeP(9R)C0VQKHWRFZNZRH4akKXdyyvCbeOGkvsVrgArc)AY(C6BlC)wOqbNZIjQm3)sfcQsMZb6rfbKq89e)WtTIWstdpHMpo(R4K4karQKIPzRJJgZZSflwfUub(Fc37WPzPGBeqi1HAGpAgh9y6Mit1X9fs08CzmjpK5rDiX(o(WhwyQQwOr7sL(h9egjNeG(iqz5iOrPYIZAMKVn5h6p30qXjx0)DMeSBuf)miUfeJDOTn6Qvd1zPRlv0LbThrp9CQInVbpAY342()HkS(0wTfA7HTOsVamN5iEbhPX(uHGyy()(YIH8EZVF)0kBPYKO8HXQfJA)U871poGaSGJpj2JwDhnMMT)uzn5(ByywlHJuL3DyRSKuBdts8dZLQw4XQIgLLerU2rKaomuvVmtvx3Mh3gcjh4YysjtDBvhgLAxj7JpQPjJQBA3MXSPALu0qEFoz1YjJeIEpQhW7iEDyJbenSUTkxUjgVC6Pw0OHXK6vND5zNgVU9iyGMb5CRYnmC5ZkhJf6nRrY8iXOmMLbPT7RWy3wGGkAOlNkiS0vTS7Hs1HGMw17GP1cVRUTWQYHJLfgMh6GMTtlo8DniPfNgOIxsrp1fyco94jtCEXatt8nBUg(OhjCGB0SlLNnESflgIoXjC8jrqlPoZvU5LKlI8xfUVcM1XQvoSDuMYonCcvnUvf00yHcPuVaKKQwb6AMmaqzRkBqBe7KrHdDR0pkFE)1lVurl7blAnQjdSnL1mlL(Ub0yoY29mMkYZUqjVUm2ZcXp)IGJQDq60mUSImA3EFl)Xyi9rs04jQgLlkXGMXzQ18ULD6LOx7mjst7LfD9c7n0r6T(jswmy45vB)inlzhlKQwdsed7Gg8k45PPjzIYnFShfbMhyqZyXhWookClCFVq9izJ2ry(xyyiOVz4y6rA2je3SequGVGG5WCFS5ekd6Jn7Tfpv4(LfU)(VXPiMOr8)4Uc3pfW8cAdnj(udvlCJtqK)xql5EmrydE9XVqItBi63u4c8Ejz(OcfGv)pqK63(i7wu(tSWWwsujkfvGk1gYJIZJGQliH5HGdwXtVpcvy4bV2y9rWL48ms18M1VOWT)jwE6f9n0sXtLFyvpr0xS8RApWYDQHvwQgQ5U6Pxw6vn8s)4ONjy6hWEMDPFalBf7o2UL3OnXYaGR5(IVAOrvaRiQD035rnsr9HCfjik6NUi1cyhragBNhTHh3ybc)q72OnS9OkLpfY7TcQW0csZzGVd7yAj0MDBGmMqxbJQkdI225ewo)85Bhz7etAd8QLpmPVnsSA5SxEr6ddek1Vdp4XQL2xwuLBj4YG10)tPTxBKYg)jGRqCOp7IPscL7r57ztUzK5knP2153wMnEXCdtGTj604ftwFX8)9L1rgkCHDP62yd1nmH0(bSr1YsLHudSZ6vtNm2UQxnTlARwrCh9Wdpd)CqN3NB(IwE59kh)NqWwBawMOuFzYtgyrYRGbwvwgZ2fBOGkdXZ2b1Eyh0Amw2)KKHlJkM0T5Uvpo(tBO4v(2Ywx6ZhFejA1Jt6PNVv3)zqaJ26waT0nr1oN0GC94ZEmgUoQREXjnOgkna4TA626Qk3pDYnMR)W8nKQcgd9IQd0xvsJaQ7JpZKaAByO2lZyBiNp31wV4HPNppWgqMCR548Npp4EpGIRV0KRY5uhO75ivDeJvruZLA4VhoSvv7s82SnI(qshOR38W1aT(IgWxOSblESdB0SOG2nNuU1HvlbR8GBBO0j7DTkTwH7MYTyfgJnaGeQzS5flTR8K6zvbdGYYb(nX0S5LyQzjbdGa5K94Z7UvGvnBe4vtTShabgtUBWjZQvBdVcGCrqsgmUEYEFASA0)n)9]])
+spec:RegisterPack("Assassination", 20250802, [[Hekili:nJX6UTTn3NLGcy00fOzBfNMoyBG21n81aSIH5(BjrlrhZzDdsuUlag6zFNdj1fsDljO4ddfnqM8WZ97olC(MZUacN681LZxUA(9ZxAnFU99lU3zh)PuQZUuI)jYJWhXKi4VFmpNKNZIjCwsmE7tHjKael5jfz(aeo72xWc5Fj2zFpOEX92FaGnL6dhVc(8iliGkHLM77S7Bhz5LE4)jLEkIx6LCa(TpsZsVqwohU(qswP3)JEIfYSC2joezdK4i)8vHOrJj7dPboFYzN85o7IizNObUWZDdOe(rjHZyPYR)e((sVSeUseHR40mgb(kjAFIBAclgP)MsV5oCqkmOtd8Cs2JuU1rkjKF0k1Nx6TU0ZEvP3LlLEVT0BFXHdw7dzXb5SaQvrAP3SspDYaV42sVRB4)awEkH7FePT9G0oiHBfqPPUS4C2Jh5wz0ic8DP3wGVf0bbjJEg4ow8JU58m2jQoy9t0BhKO9X5krLtcPXClsmN5ZsfQwlfo6xOxjoUn8U(hrfQ8ABnDsubNfIUAa7T6)ESxBT3DdYExPCiotIz5hB8gscds(EC1XTnq31YcLMrtjzsFwo8pWR(aPiKpwOajAFrUzaWFaOVF))CUWtMgyrcdh31pGkefuWPHHiaU04miugeRg6NFKDEC3yviKcD(KCo4RQHJtm)tJ7vMt54RYTkYPUGxU)PC3KdUGGa)IeqfQzolIk0P2T0P9aCFEyvG7dQfx5pCX8rYSsUYeN(b5JB(7KDz1R07C7gHN9GUN496(NzfXdY3hyOBhY6VFynmAKDL2QCRdKyuLDkMDUIClFE0IKi0V3)A0VY8(WR)WR51qWcfsucmSm4bIMqLkP3WNwHSc3YVNuehGQ)CWUG(MHu(rsiIvsq4tTI3stdFsbOru3FL8yb9xk90QVw69Nv8rv5VCOqCsCfbW3NIPVhpACQiGj94fbOvW83WHU50SuWNeeg5Hn0D0yrihNEwKMCbYJhpdUqDNhY8PUeqLhaFyHjhBHgTlLgt0TAKSGa6JadIlNgLsZ5ggMpM8BpNUbAc6MmyWwa2vYcWge3ccypnP9Sp1qDDH6ItDzWLJONgjjC3IFn4rt(EjDh8Ivy9PTAl0lh2Ik8cWeWJ4fCMghaHjedZ)VQk)MRvvQQyXI5v2sPjr6dJ5aM2(TpmjjiSqifeS3qmzVQEhsaxEcyBOYgvMlVwsLJeGJC3hcXH5c3Fbtu1pzLGiAGaFuthev30Uhc75ALc0q(4Uf9tTbKG2LvXSqasIMWFzATS(XsopGe7x3knnMM94tQEL6Vro7wUaKQsDtKbQLq38AH909qr2tJxNFemqZG0QvH)dxUTsQwR3bijZNeJk9SmiZCFfs72xfube1xY4mLEw1THuFck70QEnm9sW7Q71SQ85yjAHrfpHb3QNBeQ95gK0It1MEcZHP7myIZjJ9mXN9kn8rptYzQY4v8T6SXJgyXGRfoivajc6Z1DLm8srUiY)u69oyKkRwPPoqzs70WXaMZoQzHcPu)JijvTE0XmzaG0wPAOBe7KrTbDR0VlEE)LeNQU0YbRlnQj7kS9CrzrL03nddgGpaYx0U3ZuEr2ev76YW)qi4lPUytN)dvZSNvlSv6l3kxongsZKenEcTHOWO2YAPxSdbPqQD7IE5IN7WpcFIP5c9I(n0r4MFgsMINlx(07xajk)ojlgBd2z3xIstY440tV3yVswLpGD)NCGfcE(VP0R)gZF4n91BE5dQpSQNF4N28ZT76)gzN7BKtgCtDR8B8R6KVFC0tF53WoSzQg77hz90aF)aQQ0Iu6kT22haCn7e(QH6xV8bHguFvd1if1zIntieXEPlsTJSZiaJTQH2WJlkaHFOvk0g2xP6EgMIylKKUfQmh78gCGZnqZOTbYyOyjmYe1iDBhDSz1LlVDKfcmRnWB3C7S(wcW2n2xpj9HXMec9WTNVDZYPfvXG5tdwtlekNdTbVAC4aUcXHEh(MkjuUhLVTND1itFzsTNNJTkV06vgMGLMOtJxmz91R(XlRJm606Lk1TXEVBycH9dydZ9M3XXCE33uT4ZwXDnLSwBJUYD2bUM2B9TxpowhAp3BNpBS9BVThMTAjYDSi3(cI4aRFFbCRTNqo()cbBTJyroD91npBGvnVfgDs6Jy27xdfK5QEXHklhouPgJQ2lemSk(Cw3oY2ENbQwmoQA4GxjUuTB0nAeDQnJp747V1E11VeKE7SruJa)2tFyBFrC9YXiqDsI6TH0GAOsgG3Q5zfb6yrWfZNDL506gVrBvd1EkgRf5YLU2N13o)YLbwfYS3AoF9LldUaeOu91MCv9YjQ5inC1d30QEFL2Guv5EiDr1b67SyMCYEiGtpe32Kan7AOpUSd017v45aT(AeWxi5Q131roBwdq7gRu7uacBMpBWDjOCO(CRQ(v4UPtaS4NX89iHAvczZYkDBplcyauQgN3et2RuyQzfadGaXC74Z7oZ)2M59FhmR)aiWyUCdoXUwTn8a(f8Jjzo72fvCakRjM4X5Fp]])

@@ -179,7 +179,7 @@ local function RegisterWindwalkerSpec()
             interval = 1,
             value = function()
                 -- Chi Brew instantly generates 2 Chi
-                return state.last_ability == "chi_brew" and 2 or 0
+                return (state.last_ability and state.last_ability == "chi_brew") and 2 or 0
             end,
         },
         

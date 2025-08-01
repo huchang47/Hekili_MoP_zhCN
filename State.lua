@@ -753,6 +753,7 @@ state.unpack = unpack
 
 state.safenum = function( val )
     if type( val ) == "number" then return val end
+    if val == nil then return 0 end
     return val == true and 1 or 0
 end
 
@@ -1473,7 +1474,7 @@ do
             -- Adjust timeout based on rune cooldowns and regen models for Frost DK
             timeout = max( timeout, 0.01 + state.runes.expiry[ 6 ] - state.query_time )
         elseif state.spec.assassination then
-            timeout = max( timeout, 0.01 + state.energy.max / max( 0.001, state.energy.regen_combined ) )
+            timeout = max( timeout, 0.01 + state.energy.max / max( 0.001, state.energy.regen_combined or 0 ) )
         end
 
         timeout = timeout + state.gcd.remains
@@ -1988,6 +1989,7 @@ do
         crit = 1,
             attack_crit = 1,
             spell_crit = 1,
+            crit_chance = 1,
         haste = 1,
             spell_haste = 1,
         melee_haste = 1,
@@ -2005,6 +2007,8 @@ do
         -- Spec State Expressions (probably redundant here).
         effective_combo_points = 1,
         prowling = 1,
+        threat = 1,
+        anticipation_charges = 0,
 
         -- Real incoming damage/healing information (handled by autoReset metatable).
         -- incoming_damage = 1,
@@ -6696,6 +6700,7 @@ do
             if res then
                 res.actual = UnitPower( "player", power.type )
                 res.max = UnitPowerMax( "player", power.type )
+                res.current = res.actual or 0  -- Ensure current is always initialized
 
                 if res.max > 0 then foundResource = true end
 

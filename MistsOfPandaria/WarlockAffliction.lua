@@ -186,7 +186,7 @@ spec:RegisterResource( 0, {
         interval = 1.5, -- Life Tap GCD
         value = function()
             -- Life Tap converts health to mana (30% max mana in MoP)
-            return state.last_ability == "life_tap" and state.mana.max * 0.30 or 0
+            return (state.last_ability and state.last_ability == "life_tap") and state.mana.max * 0.30 or 0
         end,
     },
     
@@ -198,7 +198,7 @@ spec:RegisterResource( 0, {
         interval = 1.5, -- Dark Pact GCD
         value = function()
             -- Dark Pact converts demon health to mana
-            return state.last_ability == "dark_pact" and state.mana.max * 0.25 or 0
+            return (state.last_ability and state.last_ability == "dark_pact") and state.mana.max * 0.25 or 0
         end,
     },
 }, {
@@ -247,7 +247,7 @@ spec:RegisterResource( 7, {
         interval = 1,
         value = function()
             -- Drain Soul generates 1 Soul Shard when target dies
-            return state.last_ability == "drain_soul" and state.target_died and 1 or 0
+            return (state.last_ability and state.last_ability == "drain_soul") and state.target_died and 1 or 0
         end,
     },
     
@@ -259,7 +259,7 @@ spec:RegisterResource( 7, {
         interval = 1,
         value = function()
             -- Haunt generates 1 Soul Shard when it fades
-            return state.last_ability == "haunt" and 1 or 0
+            return (state.last_ability and state.last_ability == "haunt") and 1 or 0
         end,
     },
 }, {

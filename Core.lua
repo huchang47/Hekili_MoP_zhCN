@@ -1720,7 +1720,7 @@ function Hekili.Update()
             if class.file == "DEATHKNIGHT" then
                 defaultMax = max( defaultMax, 0.01 + 20 * state.haste )
             elseif state.spec.assassination then
-                defaultMax = max( state.delayMax, 0.01 + state.energy.max / state.energy.regen_combined )
+                defaultMax = max( state.delayMax, 0.01 + state.energy.max / (state.energy.regen_combined or 0.001) )
             end
 
             for i = 1, numRecs do
@@ -1741,7 +1741,7 @@ function Hekili.Update()
                 if class.file == "DEATHKNIGHT" then
                     defaultMax = max( defaultMax, 0.01 + 20 * state.haste )
                 elseif state.spec.assassination then
-                    defaultMax = max( state.delayMax, 0.01 + state.energy.max / state.energy.regen_combined )
+                    defaultMax = max( state.delayMax, 0.01 + state.energy.max / (state.energy.regen_combined or 0.001) )
                 end
 
                 state.delay = 0
@@ -1960,7 +1960,7 @@ function Hekili.Update()
                         state:SetConstraint( 0, max( state.delayMax, 0.01 + 20 * state.haste ) )
                     elseif state.spec.assassination then
                         -- Cap recommend generation above worst-case energy generation.
-                        state:SetConstraint( 0, max( state.delayMax, 0.01 + state.energy.max / state.energy.regen_combined ) )
+                        state:SetConstraint( 0, max( state.delayMax, 0.01 + state.energy.max / (state.energy.regen_combined or 0.001) ) )
                     end
 
                     if hadProj and debug then Hekili:Debug( "[ ** ] No recommendation before queued event(s), checking recommendations after %.2f.", state.offset ) end

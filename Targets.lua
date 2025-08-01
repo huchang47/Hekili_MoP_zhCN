@@ -168,6 +168,29 @@ do
         end
     end
 
+    -- New function: Get pet's detection range based on current pet ability
+    function Hekili:GetPetDetectionRange()
+        if petSlot == 0 then return 0 end
+        
+        local spells = petSpells[ myClass ]
+        if not spells then return 0 end
+        
+        -- Return the range for the current pet ability
+        return spells[ petAction ] or 0
+    end
+
+    -- New function: Check if target is within pet's detection range
+    function Hekili:IsTargetInPetDetectionRange( unit )
+        if not UnitExists( "pet" ) then return false end
+        if UnitIsDead( "pet" ) then return false end
+        
+        local petRange = self:GetPetDetectionRange()
+        if petRange == 0 then return false end
+        
+        -- Check if unit is within pet's detection range
+        return self:TargetIsNearPet( unit )
+    end
+
     function Hekili:PetBasedTargetDetectionIsReady( skipRange )
         if petSlot == 0 then return false, "No suitable pet ability found on pet action bar or player action bars." end
         if not UnitExists( "pet" ) then return false, "No active pet." end
@@ -268,12 +291,16 @@ ns.RegisterEvent( "NAME_PLATE_UNIT_ADDED", function( event, unit )
 
     if UnitIsFriend( "player", unit ) then
         npGUIDs[ unit ] = nil
-        npUnits[ id ] = nil
+        if id then
+            npUnits[ id ] = nil
+        end
         return
     end
 
-    npGUIDs[ unit ] = id
-    npUnits[ id ]   = unit
+    if id then
+        npGUIDs[ unit ] = id
+        npUnits[ id ]   = unit
+    end
 end )
 
 ns.RegisterEvent( "NAME_PLATE_UNIT_REMOVED", function( event, unit )
@@ -282,8 +309,8 @@ ns.RegisterEvent( "NAME_PLATE_UNIT_REMOVED", function( event, unit )
 
     npGUIDs[ unit ] = nil
 
-    if npUnits[ id ] and npUnits[ id ] == unit then npUnits[ id ] = nil end
-    if npUnits[ storedGUID ] and npUnits[ storedGUID ] == unit then npUnits[ storedGUID ] = nil end
+    if id and npUnits[ id ] and npUnits[ id ] == unit then npUnits[ id ] = nil end
+    if storedGUID and npUnits[ storedGUID ] and npUnits[ storedGUID ] == unit then npUnits[ storedGUID ] = nil end
 end )
 
 ns.RegisterEvent( "UNIT_FLAGS", function( event, unit )
@@ -294,7 +321,9 @@ ns.RegisterEvent( "UNIT_FLAGS", function( event, unit )
         ns.eliminateUnit( id )
 
         npGUIDs[ unit ] = nil
-        npUnits[ id ]   = nil
+        if id then
+            npUnits[ id ]   = nil
+        end
     end
 end )
 
@@ -402,8 +431,8 @@ do
         
         for _, unit in ipairs(unitsToCheck) do
             if UnitExists(unit) and not UnitIsDead(unit) and UnitCanAttack("player", unit) then
-                -- Kontrollera om target är inom pet range
-                if Hekili:TargetIsNearPet(unit) then
+                -- Kontrollera om target är inom pet detection range (baserat på pet's position och ability)
+                if Hekili:IsTargetInPetDetectionRange(unit) then
                     count = count + 1
                     targets[UnitGUID(unit)] = true
                 end
@@ -421,8 +450,8 @@ do
                 local unit = Hekili:GetUnitByGUID(guid)
                 if unit and not UnitIsUnit(unit, "target") and not UnitIsUnit(unit, "focus") then
                     if UnitExists(unit) and not UnitIsDead(unit) and UnitCanAttack("player", unit) then
-                        -- Kontrollera om target är inom pet range
-                        if Hekili:TargetIsNearPet(unit) then
+                        -- Kontrollera om target är inom pet detection range (baserat på pet's position och ability)
+                        if Hekili:IsTargetInPetDetectionRange(unit) then
                             count = count + 1
                             targets[guid] = true
                         end
@@ -472,7 +501,8 @@ do
                 end
                 
                 if debugging then 
-                    details = format( "%s\nPet-based detection without nameplates: %d targets", details, petCount )
+                    local petRange = Hekili:GetPetDetectionRange()
+                    details = format( "%s\nPet-based detection without nameplates: %d targets (range: %d yards)", details, petCount, petRange )
                 end
             elseif checkPets or checkPlates then
                 -- Ursprunglig nameplate-baserad logik
@@ -509,10 +539,12 @@ do
                             end
 
                             if not excluded and checkPets then
-                                excluded = not Hekili:TargetIsNearPet( unit )
+                                -- Use new pet detection range filtering based on pet's position and ability
+                                excluded = not Hekili:IsTargetInPetDetectionRange( unit )
 
                                 if debugging and excluded then
-                                    details = format( "%s\n    - Excluded by pet range.", details )
+                                    local petRange = Hekili:GetPetDetectionRange()
+                                    details = format( "%s\n    - Excluded by pet detection range (%d yards).", details, petRange )
                                 end
                             end
 

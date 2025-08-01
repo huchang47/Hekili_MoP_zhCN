@@ -160,12 +160,12 @@ spec:RegisterResource( 4, { -- Combo Points = 4 in MoP
     -- Premeditation combo point generation (Subtlety opener)
     premeditation = {
         last = function ()
-            return state.last_cast_time.premeditation or 0
+            return (state.last_cast_time and state.last_cast_time.premeditation) or 0
         end,
         interval = 1,
         value = function()
             -- Premeditation generates 2 combo points when opening from stealth
-            if state.last_ability == "premeditation" and (state.buff.stealth.up or state.buff.vanish.up) then
+            if (state.last_ability and state.last_ability == "premeditation") and (state.buff.stealth.up or state.buff.vanish.up) then
                 return 2
             end
             return 0
@@ -539,7 +539,7 @@ spec:RegisterAbilities( {
     spendType = "energy",
 
     startsCombat = true,
-    usable = function () return stealthed.all, "requires stealth" end,
+    usable = function () return stealthed_all, "requires stealth" end,
 
     handler = function ()
       gain( 2 + ( talent.initiative.enabled and talent.initiative.rank or 0 ), "combo_points" )
@@ -642,7 +642,7 @@ spec:RegisterAbilities( {
 
     usable = function ()
       if boss then return false, "cheap_shot assumed unusable in boss fights" end
-      return stealthed.all, "not stealthed"
+      return stealthed_all, "not stealthed"
     end,
 
     handler = function ()
@@ -700,6 +700,11 @@ spec:RegisterAbilities( {
     end
   }
 } )
+
+-- Proper stealthed state expressions for MoP compatibility
+spec:RegisterStateExpr("stealthed_rogue", function() return buff.stealth.up end)
+spec:RegisterStateExpr("stealthed_mantle", function() return false end) -- Not available in MoP
+spec:RegisterStateExpr("stealthed_all", function() return buff.stealth.up or buff.vanish.up or buff.shadow_dance.up end)
 
 spec:RegisterOptions( {
   enabled = true,

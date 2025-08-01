@@ -41,12 +41,12 @@ spec:RegisterResource( 1, { -- Rage with Fury-specific enhancements
     -- Bloodthirst rage generation (Fury signature ability)
     bloodthirst_regen = {
         last = function ()
-            return state.last_cast_time.bloodthirst or 0
+            return (state.last_cast_time and state.last_cast_time.bloodthirst) or 0
         end,
         interval = 3, -- Bloodthirst cooldown
         value = function()
             -- Bloodthirst generates rage on crit in Fury
-            return state.last_ability == "bloodthirst" and 5 or 0
+            return (state.last_ability and state.last_ability == "bloodthirst") and 5 or 0
         end,
     },
     
