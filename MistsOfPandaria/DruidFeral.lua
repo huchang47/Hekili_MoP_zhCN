@@ -172,7 +172,14 @@ spec:RegisterAuras( {
     },
 
     savage_roar = {
-        id = 127568,
+        id = function()
+            -- Check if player has Glyph of Savagery
+            if IsSpellKnown(127568) then
+                return 127568 -- Glyphed version
+            else
+                return 52610 -- Unglyphed version
+            end
+        end,
         duration = function() return 12 + (combo_points.current * 6) end, -- MoP: 12s + 6s per combo point
         max_stack = 1,
     },
@@ -774,7 +781,16 @@ end )
 spec:RegisterAbilities( {
     -- Debug ability that should always be available for testing
     savage_roar = {
-        id = 52610,
+        id = function()
+            -- Check if player has Glyph of Savagery
+            -- In MoP, Glyph of Savagery changes Savage Roar spell ID
+            -- Spell ID 127568 is the glyphed version, 52610 is the unglyphed version
+            if IsSpellKnown(127568) then
+                return 127568 -- Glyphed version
+            else
+                return 52610 -- Unglyphed version
+            end
+        end,
         cast = 0,
         cooldown = 0,
         gcd = "totem",
@@ -783,7 +799,9 @@ spec:RegisterAbilities( {
         spendType = "energy",
         startsCombat = true,
         form = "cat_form",
-        usable = function() return combo_points.current > 0 and buff.cat_form.up end,
+        usable = function() 
+            return combo_points.current > 0 and buff.cat_form.up and energy.current >= 25
+        end,
         handler = function()
             applyBuff("savage_roar")
             spend(combo_points.current, "combo_points")
