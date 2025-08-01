@@ -306,13 +306,13 @@ local function RegisterBrewmasterSpec()
 
     spec:RegisterStateExpr("stagger_level", function()
         if state.buff.heavy_stagger and state.buff.heavy_stagger.up then
-            return "heavy"
+            return 3 -- Heavy
         elseif state.buff.moderate_stagger and state.buff.moderate_stagger.up then
-            return "moderate"
+            return 2 -- Moderate
         elseif state.buff.light_stagger and state.buff.light_stagger.up then
-            return "light"
+            return 1 -- Light
         end
-        return "none"
+        return 0 -- None
     end)
 
     -- Abilities for Brewmaster Monk
@@ -325,20 +325,6 @@ local function RegisterBrewmasterSpec()
             handler  = function()
         end,
      },
-        expel_harm = {
-            id = 115072,
-            cast = 0,
-            cooldown = 15,
-            gcd = "spell",
-            spend = 40,
-            spendType = "energy",
-            startsCombat = true,
-            handler = function()
-                gain(1, "chi")
-                gain(0.05 * health.max, "health") -- ADDED: Simulates the self-heal
-            end,
-            generate = function(t) end
-        },
         spear_hand_strike = {
             id = 116705,
             cast = 0,
@@ -430,7 +416,6 @@ local function RegisterBrewmasterSpec()
             gcd = "off",
             startsCombat = false,
             handler = function()
-                state.elusive_brew_manual_stacks = 0
                 applyBuff("elusive_brew", 6)
             end,
             generate = function(t) end
@@ -562,7 +547,8 @@ local function RegisterBrewmasterSpec()
         chi_brew = {
             id = 115399,
             cast = 0,
-            cooldown = 90,
+            cooldown = 45,
+            charges = 2,
             gcd = "off",
             talent = "chi_brew",
             startsCombat = false,
@@ -576,11 +562,11 @@ local function RegisterBrewmasterSpec()
             cast = 0,
             cooldown = 0,
             gcd = "spell",
-            spend = 2, -- CORRECTED from 1
+            spend = 2, 
             spendType = "chi",
             startsCombat = true,
             handler = function()
-                spend(2, "chi") -- CORRECTED from 1
+                spend(2, "chi") 
             end,
             generate = function(t) end
         },
@@ -660,8 +646,37 @@ end)
         type = "toggle",
         width = "full"
     })
+    -- Settings for Defensive Thresholds
+    spec:RegisterSetting("purify_level", 2, {
+        name = "Purify Stagger At",
+        desc = "The stagger level at which Purifying Brew will be recommended.",
+        type = "select",
+        values = { [1] = "Light", [2] = "Moderate", [3] = "Heavy" },
+        width = "full"
+    })
 
-    spec:RegisterPack("Brewmaster", 20250728, [[Hekili:TIvxZTjou0FlD2zYSDAJR)ijnDN4mtsQZSUtxNob39rabimQgqmcrs9(a)23ReyqaciP7(qYylKUNZ9kDp6ymNzU10WdXXMBMpD(5t)4IztMpBX5ZMzAWpKGnnsqU7r7GpeJIG)Fld)CekLJz52BXPCXeoesrEIaLsZyUWKmnCYiH81XMo6I(zNDgm3eSlm8fxAAeq88WfZfN6AASnGKMBl(dLBxIFUn1h(UlNqJZTdjPC4X(uGf)jEpjKmbicJ6tcb4)TC7)IgV)pYTvy7xGr)EmXNG9YT)gJqze(HCBh4pJOmFgz)7Hmc5s9iHHO8VixW3EC1Dp8x3EZ28VuaD6Keg2Lg5G4VB5hcX7qUhSO(w8aSfokbZOS3t8x(gNmF)jPCepDswI(fNqfJ9ErzD5teweo2YHWXLiF6PNMB)5v3VAJX6)ELrXaIhuuCefGIsuwQiHePbWbyjyFCCk5jm8ipsAsicEckgMcdlk5IYMCIC6UDH4j1CZRALa5W)mbhAfGyrI0jaJc5btG0ZfhZVA5NMEs5YRxupbkjJr8pqI3z5a7fIGbvLD7WmRq8t4WRxMI5C4XqTroZIHpXnGmXnJXa4UE5SxmA7YqmpDmUcf5mSkEmSRbfLaAOxt8M)IXdhMj(yvUvS5EI6Wwq(6UpvjrB80Ak8sXeo0ZBvs7nBlN7X8nXL)IHXdbhNJRocWrHqONOm6eCmYje7DsB0V4LF6WJ47dhGTIq7iUQWOoEfqV0O(padttcWmSsiRhCO4vitSz99Rx95C7hFy7nBx)Wg5ORJbzewwIOd60RZTVJc7A0NJl)6n0v52Faet2cRJcD(cHQJ8dif08HyqHl2doraQnLCJTdZN4csuW(1rcrQrsrmqfpHwqDOfvkq5ikvgYIy4wnBLjsIFIUhB9ZmCSsLrz02LgTrb6vQo5vgIJdvTEL(PRwk(se6NNoFWW6esPEw(zSdJLgoywkMThQy6NPsn7HhxPSnwjIEhLbsGih4IdobxPIsGRwCO8GIDrPQPyBvb694DwPWnkbnzo0HtZ4w7jU7fuQq9pa(pqmgocrItVArlrMsEkp3Ctnt(95VtCpK4Cr6BvrHLLgiA6)bYdB9mj2tP(35z62iUE5IteHdKEWX4ianjluYdggbQeW1z(KIENwYIdU60esCSGeUmumUQw0EnN1wRvwS6MaI9YYsKb8Kq8XQsZQ1SJd)wz33wz9awcOs5bhtgCBQbroEiDwRSC5S2N9Fg9eU1zFXqhl5DAvYyP829kIX0Vhnx987TF)(7bZm3SEZ2vBUzZDWrLtYTVF9x)6Qh7idWjIRvtqHrvNblhI(mMvDo8c1108EEiLz7ouXLlN2OpUQcPgGFGCAvkVAHEszA8eSHadRAgCXSpo9CtJNrmXrNutJ1rjWDwIMXfTS7bwvmnKFs6zTs0g(2gPn2YYP5TMgUG5omJGaVLnUCk3(QL52FAQSm2r(30OaqiuvLLcpPmssXd0Al7)BpzMCOe1Bg1W)uU91qcP1dLmhv2xkM6SXs9Mg2euzXRQ4oItl9SA(ySsgmbzoRxYu49sgin(VAvO07bBmwOUkbzo)xRY01v2ya3YZNa7l6f7(TQjHrh1Uy0ocLOjq)JJIUohCJcI6IeWC5yW01v3yyuVcaaUuibLfYhwfPPpnviQ9QvdrhRETer66V8xXC5WQeTDfvZUk3I6K2AAYC4U)(TpQwG0WaLvmClDpUl7QHiodxE9eq8w6jAyWXioCtC)RV2R6iTI9hHkpS6AN0SXOXj7RZgBn2vMyhUftNlwOulVzwRiUA9rXQLaLpn2ECVoy1JvbfA6uRdl6eZwf2bTEly9SP9FBJ(RWgHrnDylHOFrhDX6SHU)CaN0QItDSPl5r)sjDqtTtBM20wy0OVtdn3d(p4Txs7rLNABpVPiG4jY48YeHuTTpAtq1kKa0VmtFo1L9AxuhpvR0Dfig9Nkizr)svn9(djtU9Lt1O02A7xRNzbs97qOD8wuhd4xtixSuusxExhq5L3vVp1HV((nL9ghFHS1Xw7BWTv5T77s(18IKRFhY6UWU4LQR86FvmItlVLxMPOmEGGzIaxEZf308F)d]])
+    spec:RegisterSetting("guard_health_threshold", 50, {
+        name = "Guard Health Threshold (%)",
+        desc = "Guard will be recommended when your health drops below this percentage.",
+        type = "range", min = 10, max = 90, step = 5,
+        width = "full"
+    })
+
+    spec:RegisterSetting("elusive_brew_threshold", 8, {
+        name = "Elusive Brew Stacks Threshold",
+        desc = "Elusive Brew will be recommended when you have at least this many stacks.",
+        type = "range", min = 1, max = 15, step = 1,
+        width = "full"
+    })
+
+    spec:RegisterSetting("fortify_health_pct", 30, {
+        name = "Fortifying Brew Health Threshold (%)",
+        desc = "Fortifying Brew will be recommended when your health drops below this percentage.",
+        type = "range", min = 10, max = 50, step = 5,
+        width = "full"
+    })
+
+    spec:RegisterPack("Brewmaster", 20250728, [[Hekili:TIvBVTjsq4FlvvY6QATRFPnn9KDKCAD05OwNtXUNUpbSgwmBnVPLLK67d8B)Mzbdl4fSBV7dnna7oppZSZm78eJrgBmw7qeuJvJho(9dVE4ObJE3WrVBIXAXHyQX6yI9EYo4xcjbWpVLtFoGKiOC8th8JioOjsIs52WNnwVnL5lwgASvVDhdRnMAdV(QRnw7XCCO5RLMyBSEJhljZc)hjZQa5mRix4zBblkmZYNLiGp7gXZS(d6EMpBGXA5lLEc1LgMWEIIpTs6C0qYwFQJXTgRZTb8QFet9n9i8GCC5S48p0VF)mRpV4UfRwV8VwSoZs(ICsHyKtT0eQtM12dzwcpGDFUeZmlhwsSpb(cjewcNIUksx5cfr725tb6cacXpgb8FkXx4niMcbVqW8tNLz9XHzw9kxTIhjGGwdpQYsjcYUDuUPp9jQFM1nGHsOcblCxYG4uoZ9WXpb222JnWoLZLyIlDulqwgYYnbynZTqcasLjTsfDovjx2Ls4oM5lXu4bHiViFh9SA85yL0yizExRKXokylrine1pf3V0dmH4L9(KgbQAROo56GfQ7cjZ7)1ImqkTapMkInX2IZbCXoupvUQvSfeFaZboKGyAOm5FqX6KWOJAx1wMyjduSgI(hol6mxxO8XmGSJzxd)UarDtimxFoy(hGtjXEuo9sXOAhaaczJesQVORUi2eFFZ8hmXMd5THmZBt2Dz7rtaThiCi6f6a5JC2EAJ(rFB1Y7wU4Zzwp(WM5Bw(WQmRLHGRYtJXUk9VjZ6trqgA0ZHfpopArM1BZSwVb2uKGuqvLaeFhvmWg6GdPnQrfwPH7U6g5oKStdPbmArb04lmQqIO6QwpUx8qgGjirxBzvhTF)A(uUdyFCbDxdwKIWcFkAp18hP0qD5ivgRKDk74IQ0G2zYYYAMVwpoSgdFra5hGt1OFNggC0INPuR19V1pkYX0nLF4mvrTBbkpHY3dPoOf(ydlO5q7HhxOM9wCsYHBdjBH7UfYuO8luzWT7BJeE5jVYlqHS5kS3t3zMaJE4HqpAyRSFBQR7Gep4NGpWPbegMZmnZAsl3YOgGGlfIsfM7z27LW0wXppnXd77(DId18zwOtdVxwhoVYf)TXVggKqw8L8knjlNyV2ZAqoN7k6lfrA3(CcTCj7zQQHSocCNuKRPlt2IC1OFUoeTf7LVwEIDAeaZ9u7vYcdXfyZjH0QtO2AMu)SS(Pduldj4hpqQFqn64RFLSr6g55dKtc3Z5az)DglvlMhPnUIZAjP9zBqHf7ptEQ8gS6TbWViTZL1gkLNi6oJACJ2m4oKa0SrZXvjy44MXeFTdrF73U7UmRVoF5QnlwnF1Nwir9ULF5llE8Kg4YZ)c7f9mLxRQ9kjlAVzfeA57oO4mzwxputV2gNoAvdGi1SPwlh3y)KkB8DYw598YUs6IqvguoErmNMpyAxdy4t3rSpGfDG8btkmPfpI3iy)1OW9)oeUlvLLzDFQpiabvDj9uv5m3T8VXPj(Zhx8Ph(6TZ3O6DVOOoegmwKminw3Cl53I)eJhaJlTf2PIaHi5)lY9VNGkf8XCXFFymi17zchlFHcOLbXWGRyI4Kg66gKDpgBICz(GPFjKaDI7D)lxhK6cZk9gS20oYH57tYUhE)f455lR09ZUphDqH0XZJxp7TAd7VH5o7f1Ip63CEy4nyGAMsCQCXWsAoHu(IRgySGLA1IIF4)z5Ov(rffawwvvGUED1btN9XH9ozy6wmuDLJOXQjv9MzALP2tPy7MzJUy0Kkc1X4ZiaToEJVy8u1(HWMNi0tJutfhvVmZlgZgY(60Bpvu5fdJI2oeI21p2Rj6xD5zh102PcJoHIxSvRuZPyYtffQZEYsSt1DHV9xq6LAD)jI9Y5MQESENOftsO5pawgBBC(2iGcl0S1h7asOvBQuxjLQnlfGjPwdvaQlurlKsewJMQEDzLJ6zumrtrtQ1LtNvCdE)XDA2kzoNZnQKZOFLkXmnczWp(tPLrf6s1m1zUYmRiL0PLz6KgnRk4zNsour5KjTvI)TQdPoMt6PjdtXpQjxq2xSE71o3TMj91Lt3mm0RdzefHO)dZ935XunICmjDudVC2OM5(4q8nY9vN4)KsfCM8M1kQt2RpV4YMhxfSQbxlZb1mD(0Ru3t95fQpu(nxpSwDCzes1aWi0ncLtNONuWqNPcpCuyCaWI)GicdJ)9]])
 end
 
 -- Deferred loading mechanism
