@@ -370,7 +370,7 @@ spec:RegisterAuras( {
     },
     -- Defile the targeted ground, dealing Shadow damage to all enemies over $d. While you remain within your Defile, your Scourge Strike will hit multiple enemies near the target. If any enemies are standing in the Defile, it grows in size and deals increasing damage every sec.
     defile = {
-        id = 152280,
+        id = 43265, -- In MoP, Defile uses the same spell ID as Death and Decay
         duration = 30,
         tick_time = 1,
         max_stack = 1
@@ -606,7 +606,7 @@ local aura_removals = {
 
 local dnd_damage_ids = {
     [43265] = "death_and_decay",
-    [152280] = "defile"
+    [43265] = "defile"
 }
 
 local last_dnd_tick, dnd_spell = 0, "death_and_decay"
@@ -969,8 +969,7 @@ spec:RegisterAbilities( {
         cooldown = 600,
         gcd = "spell",
 
-        spend = 3,
-        spendType = "runes",
+        spend_runes = {1, 1, 1}, -- 1 Blood, 1 Frost, 1 Unholy
 
         talent = "army_of_the_dead",
         startsCombat = false,
@@ -1045,14 +1044,15 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 2,
-        spendType = "runes",
+        spend_runes = {0, 1, 1}, -- 0 Blood, 1 Frost, 1 Unholy
+
+        gain = 10,
+        gainType = "runicpower",
 
         startsCombat = true,
 
         handler = function ()
             applyDebuff( "target", "festering_wound", nil, math.min( 6, debuff.festering_wound.stack + 2 ) )
-            gain( 10, "runic_power" )
         end,
     },
 
@@ -1060,11 +1060,8 @@ spec:RegisterAbilities( {
     outbreak = {
         id = 77575,
         cast = 0,
-        cooldown = 0,
+        cooldown = function() return spec.blood and 30 or 60 end,
         gcd = "spell",
-
-        spend = 1,
-        spendType = "runes",
 
         startsCombat = true,
 
@@ -1081,8 +1078,10 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
+
+        gain = 10,
+        gainType = "runicpower",
 
         startsCombat = true,
 
@@ -1131,8 +1130,7 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
 
         talent = "unholy_blight",
         startsCombat = true,
@@ -1151,8 +1149,7 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {0, 1, 0}, -- 0 Blood, 1 Frost, 0 Unholy
 
         startsCombat = true,
 
@@ -1224,8 +1221,7 @@ spec:RegisterAbilities( {
         cooldown = 30,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
 
         startsCombat = true,
         notalent = "defile",
@@ -1270,8 +1266,7 @@ spec:RegisterAbilities( {
         cooldown = 60,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
 
         startsCombat = false,
 
@@ -1352,13 +1347,12 @@ spec:RegisterAbilities( {
 
     -- Defile the targeted ground, dealing Shadow damage over time. While you remain within your Defile, your Scourge Strike will hit multiple enemies near the target. If any enemies are standing in the Defile, it grows in size and deals increasing damage every sec.
     defile = {
-        id = 152280,
+        id = 43265, -- In MoP, Defile uses the same spell ID as Death and Decay
         cast = 0,
         cooldown = 30,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
 
         talent = "defile",
         startsCombat = true,
@@ -1381,8 +1375,7 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {0, 1, 0}, -- 0 Blood, 1 Frost, 0 Unholy
 
         startsCombat = true,
 
@@ -1451,8 +1444,7 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
 
         talent = "necrotic_strike",
         startsCombat = true,
@@ -1469,8 +1461,7 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {0, 1, 0}, -- 0 Blood, 1 Frost, 0 Unholy
 
         startsCombat = false,
 
@@ -1486,8 +1477,7 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
 
         startsCombat = true,
 
@@ -1557,8 +1547,7 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
 
         startsCombat = true,
         
@@ -1576,8 +1565,7 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = 1,
-        spendType = "runes",
+        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
 
         talent = "soul_reaper",
         startsCombat = true,
@@ -1605,6 +1593,37 @@ spec:RegisterAbilities( {
             interrupt()
             applyDebuff( "target", "strangulate" )
         end
+    },
+
+    -- Blood Boil: Deals damage to nearby enemies and spreads diseases
+    blood_boil = {
+        id = 48721,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
+
+        startsCombat = true,
+
+        handler = function ()
+            -- Blood Boil base functionality for MoP
+            -- Spreads diseases to nearby enemies
+        end,
+    },
+
+    -- Horn of Winter: Increases Attack Power and Strength
+    horn_of_winter = {
+        id = 57330,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        startsCombat = false,
+
+        handler = function ()
+            applyBuff( "horn_of_winter" )
+        end,
     },
 
 
@@ -1655,8 +1674,154 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 0,
         copy = "wound_spender_stub"
+    },
+
+    control_undead = {
+        id = 111673,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        
+        startsCombat = true,
+        
+        handler = function ()
+            -- Control Undead: Take control of an undead target
+        end,
     }
 } )
+
+-- Register runes state table
+spec:RegisterStateTable( "runes", {
+    blood = { count = 2, cooldown_remains = 0, last_spent = 0 },
+    frost = { count = 2, cooldown_remains = 0, last_spent = 0 },
+    unholy = { count = 2, cooldown_remains = 0, last_spent = 0 },
+    death = { count = 0, cooldown_remains = 0, last_spent = 0 }
+} )
+
+-- Rune spending function for array format
+spec:RegisterStateFunction( "spend_runes", function( rune_array )
+    local now = GetTime()
+    local base_recharge = 10 -- Base rune recharge time in seconds
+    
+    if type(rune_array) == "table" then
+        local blood_cost, frost_cost, unholy_cost = rune_array[1], rune_array[2], rune_array[3]
+        
+        -- Spend Blood runes
+        if blood_cost and blood_cost > 0 then
+            if state.runes.blood.count >= blood_cost then
+                state.runes.blood.count = state.runes.blood.count - blood_cost
+                state.runes.blood.last_spent = now
+            elseif state.runes.death.count >= blood_cost then
+                state.runes.death.count = state.runes.death.count - blood_cost
+                state.runes.death.last_spent = now
+            end
+        end
+        
+        -- Spend Frost runes
+        if frost_cost and frost_cost > 0 then
+            if state.runes.frost.count >= frost_cost then
+                state.runes.frost.count = state.runes.frost.count - frost_cost
+                state.runes.frost.last_spent = now
+            elseif state.runes.death.count >= frost_cost then
+                state.runes.death.count = state.runes.death.count - frost_cost
+                state.runes.death.last_spent = now
+            end
+        end
+        
+        -- Spend Unholy runes
+        if unholy_cost and unholy_cost > 0 then
+            if state.runes.unholy.count >= unholy_cost then
+                state.runes.unholy.count = state.runes.unholy.count - unholy_cost
+                state.runes.unholy.last_spent = now
+            elseif state.runes.death.count >= unholy_cost then
+                state.runes.death.count = state.runes.death.count - unholy_cost
+                state.runes.death.last_spent = now
+            end
+        end
+    else
+        -- Legacy support for single rune type spending
+        local rune_type, amount = rune_array, 1
+        
+        if rune_type == "blood" and state.runes.blood.count >= amount then
+            state.runes.blood.count = state.runes.blood.count - amount
+            state.runes.blood.last_spent = now
+        elseif rune_type == "frost" and state.runes.frost.count >= amount then
+            state.runes.frost.count = state.runes.frost.count - amount
+            state.runes.frost.last_spent = now
+        elseif rune_type == "unholy" and state.runes.unholy.count >= amount then
+            state.runes.unholy.count = state.runes.unholy.count - amount
+            state.runes.unholy.last_spent = now
+        elseif rune_type == "death" and state.runes.death.count >= amount then
+            state.runes.death.count = state.runes.death.count - amount
+            state.runes.death.last_spent = now
+        end
+    end
+    
+    -- Calculate cooldown remains for all runes
+    local haste_multiplier = 1.0
+    if buff.unholy_presence.up then
+        haste_multiplier = haste_multiplier * 1.15
+    end
+    if buff.runic_corruption.up then
+        haste_multiplier = haste_multiplier * 1.5
+    end
+    
+    local recharge_time = base_recharge / haste_multiplier
+    
+    -- Update cooldown remains for each rune type
+    for rune_type, rune_data in pairs(state.runes) do
+        if rune_data.last_spent > 0 then
+            local time_since_spent = now - rune_data.last_spent
+            local cooldown_remaining = recharge_time - time_since_spent
+            rune_data.cooldown_remains = math.max(0, cooldown_remaining)
+        else
+            rune_data.cooldown_remains = 0
+        end
+    end
+end )
+
+-- Expose individual rune types for APL compatibility
+spec:RegisterStateExpr( "blood", function() return state.runes.blood end )
+spec:RegisterStateExpr( "frost", function() return state.runes.frost end )
+spec:RegisterStateExpr( "unholy", function() return state.runes.unholy end )
+spec:RegisterStateExpr( "death", function() return state.runes.death end )
+
+-- Expose disease state for APL compatibility
+spec:RegisterStateExpr( "disease", function() 
+    local frost_fever_remains = debuff.frost_fever.remains or 0
+    local blood_plague_remains = debuff.blood_plague.remains or 0
+    
+    local min_remains = 0
+    if frost_fever_remains > 0 and blood_plague_remains > 0 then
+        min_remains = math.min(frost_fever_remains, blood_plague_remains)
+    elseif frost_fever_remains > 0 then
+        min_remains = frost_fever_remains
+    elseif blood_plague_remains > 0 then
+        min_remains = blood_plague_remains
+    end
+    
+    return {
+        min_remains = min_remains
+    }
+end )
+
+-- Expose disease min remains (legacy)
+spec:RegisterStateExpr( "disease_min_remains", function()
+    local frost_fever_remains = debuff.frost_fever.remains or 0
+    local blood_plague_remains = debuff.blood_plague.remains or 0
+    
+    if frost_fever_remains > 0 and blood_plague_remains > 0 then
+        return math.min(frost_fever_remains, blood_plague_remains)
+    elseif frost_fever_remains > 0 then
+        return frost_fever_remains
+    elseif blood_plague_remains > 0 then
+        return blood_plague_remains
+    else
+        return 0
+    end
+end )
+
+
 
 spec:RegisterRanges( "festering_strike", "mind_freeze", "death_coil" )
 
@@ -1681,15 +1846,15 @@ spec:RegisterOptions( {
 } )
 
 spec:RegisterSetting( "dnd_while_moving", true, {
-    name = strformat( "Allow %s while moving", Hekili:GetSpellLinkWithTexture( spec.abilities.death_and_decay.id ) ),
-    desc = strformat( "If checked, then allow recommending %s while the player is moving otherwise only recommend it if the player is standing still.", Hekili:GetSpellLinkWithTexture( spec.abilities.death_and_decay.id ) ),
+    name = strformat( "Allow %s while moving", Hekili:GetSpellLinkWithTexture( 43265 ) ),
+    desc = strformat( "If checked, then allow recommending %s while the player is moving otherwise only recommend it if the player is standing still.", Hekili:GetSpellLinkWithTexture( 43265 ) ),
     type = "toggle",
     width = "full",
 } )
 
 spec:RegisterSetting( "dps_shell", false, {
-    name = strformat( "Use %s Offensively", Hekili:GetSpellLinkWithTexture( spec.abilities.antimagic_shell.id ) ),
-    desc = strformat( "If checked, %s will not be on the Defensives toggle by default.", Hekili:GetSpellLinkWithTexture( spec.abilities.antimagic_shell.id ) ),
+    name = strformat( "Use %s Offensively", Hekili:GetSpellLinkWithTexture( 48707 ) ),
+    desc = strformat( "If checked, %s will not be on the Defensives toggle by default.", Hekili:GetSpellLinkWithTexture( 48707 ) ),
     type = "toggle",
     width = "full",
 } )
@@ -1720,14 +1885,14 @@ spec:RegisterSetting( "pl_macro", nil, {
 } )
 
 spec:RegisterSetting( "it_macro", nil, {
-    name = strformat( "%s Macro", Hekili:GetSpellLinkWithTexture( spec.abilities.icy_touch.id ) ),
+    name = strformat( "%s Macro", Hekili:GetSpellLinkWithTexture( 45477 ) ),
     desc = strformat( "Using a mouseover macro makes it easier to apply %s and %s to other enemies without retargeting.",
-        Hekili:GetSpellLinkWithTexture( spec.abilities.icy_touch.id ), Hekili:GetSpellLinkWithTexture( spec.auras.frost_fever.id ) ),
+        Hekili:GetSpellLinkWithTexture( 45477 ), Hekili:GetSpellLinkWithTexture( 59921 ) ),
     type = "input",
     width = "full",
     multiline = true,
-    get = function() return "#showtooltip\n/use [@mouseover,harm,nodead][] " .. class.abilities.icy_touch.name end,
+    get = function() return "#showtooltip\n/use [@mouseover,harm,nodead][] Icy Touch" end,
     set = function() end,
 } )
 
-spec:RegisterPack( "Unholy", 20250715, [[Hekili:S3ZEVnoUX)zjO48gVpCSKtYT31ydS9A7V2dfTfnTO)rrJSITCS6kl5QhBUCiqF2)XHuIIuA4djBVpUUOO7TRf1WzgoVj5O7CU7VF3TR9ZdU7p7o19QPxoB6eNRH)3D3M)0(G7UDV)Q37)a5Ve7VJ8N)J4Tjrpb)8trj(RHxplPiDf5rBZZ3N99xCXdH5BlUFYQKDxKfURiYppmjEvQ)MC4FV6I7U9(IWO8)y8D3Jp3xsG5(GvKF(kxcydxVoGn2GSv3Dlm23m9Y3mB63xU82KIOYL)Ta)9bPL)y5pw)q3RGhgU7hkxM9u8QFD5YnH)u5Y39x(DIJY5sYO(THz5HXpueMTLmG7t2rgBk8NVlD3tsJ2vcM3DBe5nZOCa)yVnK3NagY)8ptzQbX(3hfS(UFZD3Uknmpin0hOa)8TEVpo8HT5t83L55FFws69EeSFvqCE5YfLlNwUCu5Y0I4WvE7tEKqxlVPC5LtV7w)vaNK8FJZd35)a55zBdIIUlNWPuoL3xSzZKW4nrH032lzJhzkttECsX(gq(ysr8ApcxpEDqkaWzkb4zLlPWKrl(KxBDWk)NiGJI41p(d(72hMc4yEA47dKMn)4N8whVgMNl1J4zfWIV36KKD1tqUFeHvnb(PG1E3tKoiS9jvGOC5ZptwEcY9UpjUiBs(Jp66D5(v03KcXGSSG4vbaFiFBG39rjjR9(VfbbXt8Z925)teeMiYNjoxBsdI)5qy2GrNVnmnlVzgTKOz8RvjH0fSRus35(PpeKpzBGFu(2j7xrKkUzE5YzxvHr0Nseac8Yt8whgqfAUQzEiQJrEPuncyIU24cP9i93QewNxUCDafABcYGFl(bpQm1ek3KGJajuU8nLl3tqFFIAwym1WWeyQ(qaL4wLKeTo5rYVTpzLF0t7ZcMKgSZpmoJsLFWNmzKjN(CpcpGmnLlhZw0nslDKXFRg9uD0Yn6jLMzS59zOdzsZjpnjWJiHsqnT2kAHbzREIiVkrqiGVJHaLJvsIJkL)HWOaYsDCoX0cHyeLV5lmTgdFXHWsUQwtqbZts7Im9pTIakM4CgWhqm6ydYlzsDdDQikQvWTC58AdQALTiO)dRwpHGF4iwBRu4IuDfGwTfGpyRjKyYjpnjk6E)yYYFuL9xSjRTPbeDrzTyUAXEcncCjjNheANjx6fehSlmGrU83jyF4AYpVQHLX8(eWC7GJIAnQyeD0m3GLU2yBl8PMDu)YygMA7OHg6qA4E2V(V(dbVpmk8FtCXt8UqKW34dRlGQDrgzEU3pd(1KyI5wIDwYFMuUKiBqeI2ciA2Rj)02qcQr))KHTYhEVNskkxU1hmMXiiINOh93tgdxx6(I8jtM4t8N8IQNUNAdJZaGPI8JrpvU83xl1xU8FcYzzt6HB4ZPQIvA23xKsJXb88hK12ZLb1FW2QbLmW4otmHVObV1MIiWteJP5XyLK1q3YLVKRVzn8FlBKTfoiEfCyIi(HR9c(aqj(Rj8QgDBYl7yymlOMVa4BGTwh8rWMqq(vGrYerxqDnmgZ7YNa14ZRiM2rrzblhrp0I3QAHAmUvJV7JSvJpHKpMrkNPFsLiWxtCuhaIbeqbroKaqmWwVHYvRdUOFRBkOAvrAO0HUYOlrapjgVvRj52LeGfHx9ujBV1(OpbHSlL1iaJzEmJz40RQfLcA28E(zz(fr5I4agSRvQmJFUwh14mUzxdUHuytrDEQ6OaJyMKdbRDq24UipC17PEUHhYNT2JQfJqWUXA)03tIx0poBts6oA2f6ZwEDcGGPfaM6TpY)HIaks0q58q0XgAAajh3STaG7g(qLuY9ruLoj6w)ieLbqOOg6FC3jL4RolWtm7kSjwZOeN8UdRzQBy6jf53tsC(96ccVj7bRK1QcCfs(TVrsJRDZXJgAXlkC39vMDIciHFQpVYZ0iTQWOsh1gSCOKvwegHOkC7aZ1w6kB8awnDH72NM8HaGGQ9LwpVQkMHAlh9VscQ1lTHgo7qidvcQ683IsGWcBn6iGY7zw3zruzSUiUc1IPtTli6wRYTtn4WPct57Jxlj10ialCCxDvXqyJQfIYz1rol)GuFLni)qkf37Vb5BKkPOvARh9cnRQaW0F)HWn511WLW2I8Fsa7zwRSOqX1ErsYZjtsEsXQTcMRyJHx7Hz1AhueGPeVIqHf0YkWZSqrXNLu6jHx82PcQkyuJi1EskATUQK)yyCCLwhXHOhtCczUe8Vzf2kgG1mvM0mSNaDTmRtVTEzrlFwqwaBiICnw1bq0DexVmPBXl2Os1IHU)aNzwI6iUfcgtgW6YVQT0(NB9QJjYxoifTqJhtQQcXxh5VwxIZP1NASgpAM2xf9XujLFrF32KrwMoN(nUrZMVir59y)xSjQPk0Mz6GybhtbJl(OYxIbJgCB)UYzNjzUsDzTmWzLkNDhUtNYfzn7rbIwvwcwocG8U(ane4UyvxwJm5OkzfqA7HTeBjsIkgYrOsEkjJ5GzdKrPN4sR70bxjy4LnMJTHiCout)oUF8OWwL3rZoSjLwBp2amEkZTCkyQedcoC3LKsInlm)PUUzvenPyuozfeNue7ne6x69bmytAswU3gcJkTtboGNZcmbd9qQhXPViiKL3R)KwkewrVuuOn1bKyYNRGBzrlW0SbBwRzgj3r5D6nol4A1LBsXegOrDZX1uzvGDSNUhAwyX8OTJ9k3vaDbb32KHnBr0zg3NqbPmnBLO5Q43g7g0l9ssiLtUSrWbB3Du5U3CwHnww2r(TvaLUJyFaNzGN3OquHgcoPDgMUIr82SN34EdAEct2E8WeamP4WrwAOStMwZhBPhTWg3FVSoqQ(vjFdY8)pNim9r(ehB(z5mhJfrzTtiXI4I7mYM645mTNsN6KbxCsKbhQayJfwX9T8ZIt4JPjtBTnW0o4pSBC89RoS4oJ6JXMbx7uKT7V7M8ITKQ6ayOFNOngYboH0ojqvlPQ2Ty9rwWzgz0WPP1MR2AGPkR8wBs7cnDJQAxyr(khqsvhcPXTl8sXqbhaz62ygsv(D9JnyoZltCGEmzcjV1Zu1uukq803AkUEp2S5EMmOQ05o3qgDu3zMsPBqz1XG19GXaYKYhXN200mVa8Y6tuGn(FmjlocpdUwrKGKbxNFVP0xDmljoSUS5wfusAJQSrZFCvOAgnVBuZZC6IW24r8Se)(GCu76ChrpL6hb(vHqEwt0n3L21ZpzLEhysIeHr94L2WVZrJ5)kf26ieOJrk8Y28Dff9L(S0DpPTiF6L3fw0aavf(hjAJ1TuEOhEuOaySkuWUmskzGAsRg2qRvBdstkYyM53fssIlTvbSqyCo4SuUtYr2wNhA411KGk0rtT6QeTCq1BREONJhiPNjPGEOLUezswxKshxvonF7S6jSZy3NgMqq3NQ5y0vv2ZMK7oPXWx9ewlg1mMT(zE1JR2GomkT4f4EVLi(iM0prrnkjxGFQX5z1yC1YZD)yWZDhkp3Tfp3XcEUJ98C3HWZD1LneMC(zOR2sSDrcesqMB6yQKJmt7qOgOmUddFT)oF4iUFQK1LnPMvSBhXHZdeF6jpff0BdQJS0(S9ZQntPTXkjAhTdafdcQEBs6hi1hyLBtDpSJYpM8BR9G0L41HICy2EqTHhdpbV68Hu7t3C2poxHzpvv9eWSNIPB7Qq329OOBJaL(PBFmSP(PrwZ(z1MP8R629bn)Yx32fR2D162W75T1hU2DTpilA9DRv)3OAMeDAjCWCfRhoodaFSz6KpSrhuqJl4vVVFkM2iT3Nu7mcSrAZG0Q5qx2PybelT8PxirR6als4ALIgbE(HSrXPRrxvsLVJQ36h)cWVv5YFOsMjZQ600SdNFkozodVuVhUC)nSZwJvO5xRtlDudVoTF9q7uXL7NzwRnSztinh)I72ZtWJQI8Eco(odPmSRd2qvQRTdZJpjmEThrUj4NdezuiMUs2tmXhK38Q1Cq4Vfve0DhqH89PdZJvEpbonMXL(pblAnbIxomeJkANaomAowWIIlM29TR0TkZYTrusw2uRu8kxvrUEbrWbqCkN6NHjqBMPzARdxO6mrBLxWkRLQ3sEBO6BAcpuYqu9afngGxYzaxRqcPZHKETVwNse93Xynh67k3SD1l1kvah7Gg5oHBffsPcmVmxX5ok9TM29BRztLX0UhYAKmGQq5Wn6LnfCvO8aKPDam7XQw8HxxarPnRIvH5CzoUiCtSIAU3H1dgri0vcvHxcSEVo4d(eXizxATplrvx7B08rPruH5RPs7KR62RlNyLinlUDbd0WjZWlDp2bgXWYjhe(XuoM3Uw3HEk6O5YqjIzYwaD4IlUyhUeZQge(7RSB19vIYb6VZyVuG3lr0u2QeG2waBxoSiGCXZQhJpjgsyyuPgyrUtSKTLaKw66CcJY1EPjQTw06ysvp2BH)9kaenSvI1)ip2)WdA2FSw(NWYEvMJSPw7D28yp7sZS6uUABwZL3DbRotFcbrLUco4A5Ka2jykfUQZfQoJnM48MI0NM0S9pVIQFdI1s63IzMORquNBv95GrAv1VUEA7TZUBbhg15jnEiMBMuRnLHKx9inhDblHCNqa5hyjLxeytjbBCMBelAgcvKq9DZKlsqsTlifWJF5lsOMupurc9q(uksOAMfej4dHksOoHtkaRcSfUjXXpKVf9uBJE2F4Xbi(uXi3WQkc)LApTMErHR3hTwazE)NI1pSR2uO27aRZB)fLSTZBpe5xhvDQTJImQZBf8yrIRcQIuKh4QKUmP(8eRaDQwbahInbkdpRtAbYpMYM748CFreR4EoQVBR12j3eMgqnU(lEZKQP0HlLzbGpncGAN4gbc(iOsdQVIWiPv5uZYvA(ulowFj(4wR9FGM8rku4xAvUu1h62NW(VYBebjmDqQbDBiWyXoDnVFKffP8fn7vWSPmmr544qMl)1Bb7ztpePxP3gP6kJ6(OoVVfYQZyBiJ6etoxi79D78HZoPY9QZU6HJDECndBfYrMirORxiAdwENgP0U6uJe3FWo7Ott5bf7cwif7xrcDC7XkKpKzqkk0OfKVWUl1zNcO0V2u4gm9t1SWxwfpNnN8LFxXMwIS5J7UTidQ6YgVhwTUARrC10)8eVeF9QZ8pttk1inQFDn2f9sukyuZ6FXdQ6oL0DPgWjTTZ5bIwUdgTOOK6a5ga(mC0rOzzayL6O6ggw5mmSQgD02qD)yIr092sDP3osRhSMBimvQ9OHQHi7)QQBMj5ZYHFKFueBOoCKriE11jgrbvGkA6()aHO29KAc5CnbWYt)T7f(u(D12dJjJQv78MEsZVIBsEaYwat(666VFe5LS(YaWlv7QtnV8mLSRJjssrp1(EWudPyxfB2IMELHGZ8x)Ke5Ea9BorTg7cjuoXiIFsRzM9Gr0P081FpEawVAFUMMXJw96RATJa2O2BRsSXO58bGqaYq(P9PbKa0U3V75KGfqjnsAb0nx9vRQta4naNEgRR2nR(FiiYLp70qGDGyALTOMhgMnr517QzFJADyabuQxhBczuYvhk52tuYTbLuCQhmTzKnexDLjKIsXgEfgBDdugcGijcHzydil8H4aUYj9qY)K8EAkmEGifWVURY6qUxYoaMVYakQAyyik7cKttwwXPqWw2URE2Uo5bmrhDSD3EY2DnX21JCi8tmuu1WmW275jPOR0(ws4mEvuupL31U17d8mb0ipyaXmzHOVNjaBrmhp23WUgu6d6oB(NRTwfJkrpl8n1g9BWpqwndyon7AHqlXIOyyZhgKApXJ7PReHZQ2KR4RlSpTeTtdQNlmUMxyAFPOSBHX1eJ6iVWyC(gYcJ9QlDxyAN0ypxyQV4xTsZwRAJXLUg6c)sH1iq25I4kvMofW)CtRhxy4M8oMAJg2IZjDSQlh3dFKiWdKO1pIgRKIZz9HksMmcJ(qe9SjkQUs)TXucYz606YNoMw3Uwqa1IbgJWXkgr7ysvtMogzeo9Gr4GWiCvYi06lPZbiYsvdfxnY(OHG9CrH4oKgKGDlEGoAlNLa(N8(2Oy)sdV6iC2WNdTiT(1G(mqCl(mJ4QxPog9)nfN)BD1GRYrQM2q4qo864RzFA)wsIJtd(Jhj(kNQRHQPvUb15(gspLZ09OaB1uOsUOgM6tlO7a63DkTfO8BzNjUUP7lHcjEP(wjfqQ(kqO4kVPsdjx4O0(1w10X4(b)1w1KifqfT6vRAQZZX6MmNzi3bSO(f1NQoh4NB6uimYWPTHlB17JaJ2OT18UlyNVjb5EJsLJSxiFyhgiROfK3T6Q6lKDTfy3aoUqwHFk6AgTqqfcjNazGxvVhD6LegOjSbkRRvVQkPCKdILPfGpgTJm92vCnxZHwvi7lf7kU)cYUcgT85KDfm87Zb7kUFXyxbtVQh2vCnAx5u0Y94p)R9bpZt55woRJ(AVYYu45Dj(pd7vwNI(GNvkCFT509vfU(t5F5RW9zyZPRxaaZXOcayF7OBKHjqUks9oIlhR(ktmYqKqCKW421rMYVBQA(wNb2r1Y6a60wRlBHNrGnsBj6SAoufeVU2ux9LaqtLpL7Ckwurx5(TXiX6Bl(HShRQYw064q(Q0RCVwawxNcUYo6VIFmpr6fFAkPxRogN18JBQt7qjPuTkRPD2yvh1AKDT9MRXxcuvXb1KTs65mBijT2d09Cjxak2Lc1N73p2DgVZmVjNChQN6EJNMTirwa1IV8smsxkcRtFp3JxQMr2hCN1MrTmEToxLbEBBut0(n(eTsbs4JRoU8TfF9SKS5YXJgIs8ZwIHpVLvDnbfF4Xv0Ikv)vfxTXEB3G2Aa35tNS6tQGSe4dPu7NykQQV)mkcqceWu5cU(zDJUvynHDRKWSbB9gKlR(w3ARWREeBNT4obL(IwRXUPjFCxkOvkGQnnQlA08k2x7stFO0vF0bqMlnciQvCmWHvXXS9tzEFByzQPbQklXrqg80)S7u3RMEPlXP(J(PW14Lq9)9TejSWD7tsjAQeZOLlFrvSYzVGyCj4)wesVz)zjWg26xKNqm0c)arXl(HGSjL)4FkeSan77HR)FmzYOpUgktKRohbM5jcpnVZJp35NgBbqBNCccGrgYje4NiW(XbNVubyD0V415Xs4QAGAexrhYje4NiW(XbNV6Okt0cNpUa3cWEawlU(OYFpPa3cWEaAEF7rfxpPa3iyhMGML48WaUrWomwHL48WaUrWomwHL48WaUrWIu1pD8cHXyfwpuWBeWifHuh)OV49qbpbWL)isaHInX0xCKckCiYdFCIf6Kei7X11)jf4wa2dW1Kkh)onFLTWqsHN9PaCdtK6KcCla7biVQkSexn8vx181psGByc8NuGBbypaTjl8C1dC9KcCJGDyQbwIZdd4gb7WyfwIZdd4gb7WyfwIZdd4Qc8G3zqEXrjQd5lHPcvnHhBv0g6Uf4itH2bBLxDx9urNhBjq7bvyyWw507KX20oHs9Hc8PP9qSh4yDVc85qXiTCQ2NMSI1FY2NPlXevJ7ipnGyMx)b)xx(1U8RoIPEW46JIQ2jupJdDi2dCRyC6gPLtLDc0Qh3rEA0Q381L)bU8RoyQEW46JbN3(XEL67mhUyVQw1jg8Nma)PhV7XcCFKOAnHj7dyOugj84ycqvDaphDUYtv5iDK638n8FcP7(mF6ZpxbxnD1hBNaDTZN5thtMkl5yu27rNtCQzehB(axMXzQ5eY6vTGBjtE0H)PdYFoG5MfDhKP)2ZOztdU9qHaHypUMg0pb2Rsyd)9OZjo1mIJnFOrOXrBHeQNxebtDvEujupO6zQbxhMY6Pg(2azGGPNHR6pplky1ThJTyUTWxvnH0aAOXzHzXI9Z2bfhCO40xOyEbYIOep6W3giBEbcFm2I52c)ElaCCw6oiXOoU4otzqFAm5JBt75NptHDjIvw1q7CDwe(gn326XV8CNjx9kfQLKNI8UqZae)jnnbqaUVscTao7BATEn(BCMoD84XlegjwmQi8xveGJrcWrjb4OHaCAraUseqTK0N5scx85RKWfwjj0La(SrsOIaeS(6Eum(OckwAiS8h)J09VcEx47yb7yzxUe6O(W2tb96(KnHq)X8x9RkxUnpFF23FXfpeMVT4EYcWUlYc3ver5WRs93Kd)7vxaFBKcZZUiFBWJ(PpsgDy8fVJc7)A1D5(pbZWf0JBo7J2Hh72lmbaq5pcZ2)ypd9x7NtivakLlVnC3pqi53TpnmQCPRlCtBDVI2UqV0D9QRNndikgzKnHVDCVA(fn99F8N3(wm(A5U8)Cx8xRw441q30AEl96xtfrM3SOikZ1exSUmM7ZS6IoRUkMvDbJ3NzTrh71j7Nt7VQDOB1Z0lDAuk7UFgDEkwfvFP70x30QufMv0cB)6vjXRdP5Myd(1Avsc7A9m0MbFpyKUgzK6wYezvDlWDNN2dgPIDiaHrQd)Aj4PGrQe36dJu0(CBwPRif60tHH(GeUhcsC80nbFyTNEhXPF6KReqGEuGYrnCSJAzySeUwx1HJ3c6HYlvxrNrnl8NgE5rQswhl5Y6o6I1kghsOZkJCEiboFyzqHu7JJwSZTcDwzouhwkuijVF0cEUvSZYjrzJ4LI(g0rqkR7tQfnKX2fZLjgHOrjy7UW41EBsdc(5aXFwMie(QLwH4vOT8DuFUJAqiC9O1bIf6aXEExBwgeZKm4jW8WSsvDE5U5QrkUvOWlmI)MYTJH63EXvQrZM7EQmwEUgSzbFTuGibZcTTkpE05k7VZMq6BCNos(AzxnGrTxgF(5QjjnHygn2lpPyf8bXwflRyp)nqVJTlMF5BWVY2elCs3xA1llf71XY7C)HL59OThJg(fE37GGlca8Mzt1OGuDdWBRwFE9kOiJK7Du8hhDgol)5Nr(Y4twjhdoayGjChjy4peaxG(6Bk9OZBTK6YNu4XqCSRd(GpzXHApLojb3m75NrU88p)mZ0AX61e8ADsYokA1y(PrGx1AxTqGGjZUSq)ykQ7rsEp3AZJ0PtZhrX6zw982U3BuBt5vQ5UVQMZtSBg)ZHKNrNY8THPz5VKZxKOOX8xABr8dmMd7fQ1j36NEFi8i6QdHnpcHVpMvhIFWpkQC57QkncTWfIuy7VhHnC4kxbzVM9vmKWld3W1oKB07MbikWotf0a8(V5Vk0pscx9txb9AI8KucZmhGGOshXKfv00v8vylWBksFcg(5u2uZVXdH4vZwmxsEUsVEeIqorfGRR2QjQ98ZC7ekAVAlUguhrBRuJW7CS3mxnsZuc704lgH3vW0dPwoxN7osXh0wc9dD(TrYgJ1aBP1JG0SGuamcRh8F7lP1dmKEyRh4q64SEGbBX1dA7(jZ7)uS(HDv6u0xSYRFDqYGdDotMzYEh8Mvg8f(foX1T3Zun42Gw9li5cWNy2gAbtrEGfgQ0JZB)mwkX5T9vAaEJdDv35Tigm3xq8fcCSoqNWuaBM1blSyUuCmn)mH(fH7MW0aQQEJsm)N(cshgdN77IMgaDORLkbTKbv)hObZKcnkTURXZDgDUcfA0j9kiQHYL3sIWa2vLFOI1l5gEFc83WKNCgDORIuCfV1ZnA20fZv(8kOuT8zTCWSP9DbN)gDsqzu7Fw4DuSedjkq3SOSGYL34xUCBAWM5VOENQE8XhN8yYJBH2sjD7Q2hefn3z60RNEbvd9nHXBkGUn0lw8xznBQ)y1pCZf(lkx(42WOEa5l)o3PxFbBb6n1lqVyX)x1FJbZWSYLf7FD5sFYF5Xai6s4Vz7C4(TxD939Dx0KN6lw8o(FNndWLrJTHz2c0RNDfHLaYfVrwU4fl(TKFSC5Fx6xRiKn2pbwI12coRy0evWYLXj5LvnjpIcjvyPrtmm(djVNO)9teVVXepJG2rDAUePbVAPdf6QigIhHzX(M5UUnvyOL(BDojT3bsEDI70Z(6ONyq9b8lEMEGzT(UZBhRMsotfPOXQKAOP)LW49Mmr(kNPl4JbBT3tEzN7YORVOzAn1cLOb3tvvsL)RBFknCZ)MUZ1nfjvO2FcvJwOCEJH7v6oif5Hekili:nRvBpUTns4Fllkoh7EjowAxNnPyTbAVEan7DxqrDUVkjAjABHvw0NevxShm0V9oKuVqsrklTXO31IKytY5foZ8mZqA6549vVnrik27lUlCxU4ENLZDDDCDx6TH(YjS3MtOWNq7HpKIoc)DXHYakoNYM4LeckIXGCsrwimP3MTfXj0pN6TTdxx46(XfFWBdQGEGK5TzZXIDzXp5T5qCuewqbop0BZxpeNxgW(dQmOs6LbKDW3dPXK0YGK4Ckm9oswzWVGFkojEoOozKDXjGs8DLb)mgrb98FKgV)a9hkd(3PhijVu(y5JFhm7VMHdjh3IOLb)iNJ5LpkyD(8t1Z9xx9Eqnt9j78FooLIZEB8Uv3STy3U5QJpV4KzYl4c1hgkhNgInVOmuCo2pcJImppk74lmzrpuVkXE4NX7qfjg2banhJtJ83LHX)xS8WOuA8r0(4q)8d4KK3gHGVHx5SG9FSDxiHKerEoDU2kNNHpIItZxTqMDfGEhtXhFllUyfnlo9jm1HXhUrkcL9KpndLMdUPJigvYwkBmWDemyBcHaB0ISxgdr4SCC2tXP7hbrOSquk2NsYYWPugHzfPG55e5zC2d3VyYa5Zjc7tJqWvXqBtybYm6OOeqdMRm(CCkABcoAY0icD(Umso1Fh(3HqZkh3d3E(mBkHb7ucAFbUDUznXuqOikhWAO0iaLGHOR)fkfIrocIuwRAdA5GIty689hifjZzl53vc6ecZpbJdpiP)Yd3Q(tTRKtSU1MD(80MixsbDBgg9uZ0oZMjRo1ZZuLP30rC04qwKX5Z3OlUQzMnPruMCE1s11GjihIWFcZny2KRmvXHVaXBfcRMn1rMGiwop)qsCIw856pT48zE8wEbltRFeHCeuvGuf67UFKNgsXN4deDsKjKIY2dU9dyuc9W8tH03D73pTZG)LQrG0jm0JFumE2dRUD5GSIRVRoW8hj)DJj6e2WTvBzrWNpofFmgNVEL7KUXtv2TortnU3P8LVYfcQeFYzcykXcUmVwT9BJ(M11haWhaCeIEXSwjWURCQ3DBabNGF3x5MQYGFJq7y8bvWx8nFwTprgtebBsa3DrcZ5c0x4B6YIhUBOA2CfozogQ3KDmBPDULhcTvSxg5uz6yENAR4eUnFLZm78zh0UcgkVSxItvU5j8GGvU2jwe(qrNKYE1mwtQl(oumC4bgPZZPqNlRxTS2DVOhRMcY9ci1byLAbxQHJnaRE0fR2Q1le2Q(i2EkO7hmvvMytrl1g7HK8aQy8kJ6m5noGaA8Jt3vKZya33kb0U6bn25C3Es16e5ITOQZr8roT(S0C(pdj4fy26W2jcKsL3NfglLtUBgbiPeRKhefb9IdD9YyL1SW92mtJxwD6g)7RuM2BXqNHQvxgBPeDUPHf1N2AUoNomQN60kY6v2kqNDV5zUgb3c(9Thsl4ZidK928mklf8u5SJCcD9gd0NrRow5BuGjVPmid)FkIZWqJX5KJSEKlOeW6Zga2FP7X5ZlF8FgNct5WpXzEXjg)ylqONatn47EtdzUwjtn4OLIBTsHEA8wAUZknn(W2fV0(oPjeRD1Fy0BG7FfBGpokD6tJA1olg3YT7PnymDS7GvJTLiXUh2q0oJoEK8ossc5zwsiimndLxgaReghoXnWIyGCkBz18I1zyzW2cA96sjCyqrQYQJIylocrrBHtj(dqHGG3bKjbXRgYygk(mQ7ZQb1QUwpABckwjhdiua1FTWLT1ogcC00QT7OAtKoeqOwzIHafTbUSdh7nnKDmPjiGD0OP9TD0Oj8IDWOv8IDx8)hJxmJkUy8FK4kaVwyaPBnCiGaT7iCi(yLg5gKFU9IMgKpw(wLguE36RdAqzCvUhhjkSdMBUdhPvpUsQoVsqSJDuS0f5OT()gjfAGLVAcmlNL5Ii638NY99aHYuYGf27)gfw7MFCjXCUupfkzV)tpbJ9QVxoLsZV8W1kPITe12HKA)QjdPcRPSe2bL6)Ik)pXj1jL)JF(yTMENQmyMzVn5NWHEFXDPR3g(GSF1nObi4F(c)NWR6yxE)K3MWSywRZiVnwVN5GjG61ZHV5lO)dGxg8a4taLGRQEBABkYJck6RtNSD48(f2TVEHz4G7TsPf8ZKYDCtE1uAaDzXdlDPvfsykldwbGMwUP2bhJdFqryDr0Ac8ERcu6O0LbRHQZlkdoFMf3A6sa03GHv79pkRosMfvT4tw1cB3sa3py5Mca1fSsl1Llqntwolg2wgIBUFbxm3ujPo3JqReuNIlg7GljxPqaC9t678ylX3BfHH2qb5agEL7BOFyDVxSz)Hn9cnL2rUIOKPq2pPiwbSr8BRl((S(cITJlBnvUAMk3wgQFfanGWRDigFjYUtlXC2H1Jdn9bR85s3CphcVOpBU9mbv281AHNQm0Kn)JddPTMH0STLVyQHEUVF1Ir90tNOkrRdFaqefLSNCk2)za4rm3zLL2rXFdbS2YjAhAFvZjAhxFLZjwDc3MSH1eiDuvTsq6wGAk0oTQrmNLx9sT2kEUmEBeVxgt53epqQ6xctRWBhza5WlozkpNcRD7WA3rW6lKfZcHArCShDt)PYggZAEmoJOlM2W3bjd13Ut)j0gedfpINbLvZEZ1t72)Pwwmw93(7hwP8RIOUq2ma2R)MDAzu7PPgwcmtpLN6T40lVfm0iU(MSPxeRpZh(sD4lvYKiRzxi)4uEUq7hxGPa3y9idCbpMIusi46TYfYS2J21zd3w62XE)s23nT8R5(R48YEIJRZHmCg5HECSNVOZDfXp0nel9984idt)(MrLUojUF9bi9)TlhH)DTs)asx3gxPTN8raeRFfoIs9UYjlg7jzRdlNkxhUTZ(2Xen23Z7CsckotVuq95JDSNn0(oZ85H1pDnRWU9SzM4UKdq7jqjU)eFrbv2nOWyU9KC6m)HbZB1d0X7NP5618698DJVRm(lNol(KysZV(5M2J0QyuFtBAORBLxQunb1vPCPi63SM6AR)FV)i]] )
+spec:RegisterPack( "Unholy", 20250803, [[Hekili:TMv3UTnUs4NLGfWWUBRQLCst6b2(IfNl22fO34U3kjAjklHO)GevdYbg6z)mK0sIKIuwonTiT2KC(Hd)Mz(iJRT7pDpeIiy3F4S25H1pTEJ1AB7hDEY9a51sS7HsuWZOtWhYrzW)(V5XfPVsh(10cuiv86IMQayk3dhBssjFl39OwDA)f3dOgsCrL7Hdznrvjp7EiojmeZLaxh4E4NXj1T(0FqT(xSDRFre89assrERFAsnbMoQOQ1)VXpNKMy5EGni1zqfy4)(bBFHZrhtXHU)L7HGQecUkbbMPGyDmTOi0RmfDQbBrscEoj)uR)IwFckfNtSAyBsVJPjNIjwxudBbbffPHfVKRSKkCgkjh8QTT(BaNG5QqqcxtsancrhcemEB(0OjNLX282nwuvrnXlc)lCv3CdwHl5XIKuQvU3OvQXeciyTvyEO3lXGJ5Lv8lyKHW55ZT(316ZhEWcHyej2dbIfIdqVsnZdgnd)yO1FxRV9GkQdai5jSxnbWySWXxyyJolGQE2JuHYRbqugIp4G6HL)Ordw1KNe4vw8cgGF7B9)6A(g5ytuKvDdfm7fwuKbNsG5u3vbxIBpj6ocHuzV4Rg9Il4uUKeuPegL5k8PcIrqCWQMajsG7crPhuTlin1w2RN3wgWCpUMzM7UyjiFo3RiY7LKCqaRMYblipfZmMtmfok5gG5FcFNHl5FFWe4mMJ5boj27fmQegKa)9qnaQaqhHgaitxsGTn0akSOz6tdBMmTwyh5WrjlB9frS8uokYO77RMceBoNEiu5OeQCguyeuGawE(jbvAob(3aIXwI4XPbmN506BlB6lg1tF5ALIkd1q3l5EJJ5MReCjMVxbEkRqDX8NMxM2EAMMPT8vlnOdoRTrMUfk1Hz4aFgPiso5e1u4hWXiqCVK8OMAQUUGHaeZ9gvP5S4FdaRPAIMtTFxRjAoV(DUMyioc1KounStGSeiXiQcJ)FyLwqQrGojq5KKm0jiguhJtt1MZPSMbuvV3pqsOS(YI6SfuTnJr70En9p6k)15lqIv(ZyI9SkPtpk4mz7fttzqfv782uTZmkYzsrYaYOMQxNUs38ugUQgxXi0nFsodO7zzduvacGDKIQkiDC66DZsHLfDDAVArpZ82xoMARsroA75PPAl1DwYuxPyhuvOetSofx0KArvWVWdkQcLuJHUsWDPMv9nUN5LIXbXQBXLxFlOHJV6MSNQsFMCrd5i0b(zPLAZwQqir0ZUs5ZLSsLMVjYLRgy42imdFl9Weib1TvUsH3j8UrB4Ho72MPtzE3mOVKGxH8MMlrpZfoEFUdI9nENiBZ1l4KSTIXOusSvza0r6tmS0hy4int)5(rHEe0QfEHjy256wO7WMhUHZ39s0fQHCmpyFxEP3Q5Ip8erpCoolbxZzc4iwS4wVKChSCPyB6bI)dJzp0k3QBp6nolCLAxGUBDBBUqO5n1O7DSuS)78UKUKpP5E6oMRbQZXeo2aiTh)ZE0NYH)GoE8UP0N0HQCZLgvv(2zRB5BjYijvwHdkYoI0EPrdS4ypEvvsjFY)l)gD)toT3W)P1V7nZKQgyGNyhNlL(mGtvZEAh5CYnIlvOtI8QUxCvOQSxPMKeRBTSiaGPP8X7F(oO85lOQCksX9W3aYLvek04EL3KZQ97qaTehac(Gdnqwebqk3d)rRV(qs735kO2QpO)N7(SCq5Jjr7UtFWsV4krm9lAiwPFE1Ou737xhmRaFzXHvi8(rof2DCgS09X1OgVB9cZuIfTud48awk7Juu8UoMSutmbLQRQaNBqbd8sVfH65FEdcjtOKkOq)VTpUEXm1dNh5nyyjkEu5MIL5ILgOvTDZ5ZMiLTDZkzG1aSKb7vznkTDeyBj4C6OhUy5sZEWcJ(9QZNxAKc4w7vReDNU5PUYY7m1(8857m08C1I50TFRJMqaN)flGzSTTGu9SS6LqxVCbbgOnPa(2)11NpRN0LK8J3pItlWyHFoQqw6tB(WYrd(5XSNwTD3MhMvuC)9YOUb2fuhqUz6(DolgJEUeLgHD6pmxYw(ohacX)K9c98Day2QXb7Ewf6DiEgiOZLxLbdG44dOMPjtkGxheyAOZG3FvbLOrmwfBfd4wslwp(yYQu0WNzTj)eMufDjArpl6dCSW8o7vM1J6lxYCj(H6c2r(ohZc3)mAcvMg9WClm8OC739q3j86jIAszLxjlCgrPR9uX7NWxmgR2VMhRMsyZLxEC2sD9h9DwfgGUbVruNUtdDVURqU07oOXSMhZOuHcXvjyQQrnpXQqQ2AEXUDxo9PW4bvbfzO9U6)T1sLZyb2jPCm9Vm6TBEJ20mxbvfk344w7sOQnnL(NF5DvLzSmO9iZor7zjp7nYayuSs)mVh4EU((9r7C9CJyC2DhD))p]] )

@@ -133,7 +133,13 @@
         "shadow_orb",
         "combo_points",
         "reduceCooldown",
-        "UnitDebuff"
+        "UnitDebuff",
+        "GetPlayerAuraBySpellID",
+        "GetUnitAura",
+        "removeStack",
+        "active_dot",
+        "runes",
+        "spend"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.runtime.builtin": {

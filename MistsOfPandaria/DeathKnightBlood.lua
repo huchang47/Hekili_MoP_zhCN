@@ -1213,8 +1213,10 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
         
-        spend = function() return glyph.death_strike.enabled and 32 or 40 end,
-        spendType = "runicpower",
+        spend_runes = {0, 1, 1}, -- 0 Blood, 1 Frost, 1 Unholy
+        
+        gain = 20,
+        gainType = "runicpower",
         
         startsCombat = true,
         
@@ -1239,15 +1241,14 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
         
-        spend = 1,
-        spendType = "death_runes", -- Heart Strike uses Death Runes in MoP
+        spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
+        
+        gain = 10,
+        gainType = "runicpower",
         
         startsCombat = true,
         
-        usable = function() return runes.death.count > 0 or runes.blood.count > 0 end,
-        
         handler = function ()
-            gain(10, "runicpower")
             -- Heart Strike hits multiple targets and spreads diseases
             if active_enemies > 1 then
                 -- Spread diseases to nearby enemies
@@ -1601,18 +1602,49 @@ do
     } )
     
     -- Rune regeneration mechanics for MoP
-    spec:RegisterStateFunction( "spend_runes", function( rune_type, amount )
-        amount = amount or 1
-        
-        if rune_type == "blood" and runes.blood.count >= amount then
-            runes.blood.count = runes.blood.count - amount
-            -- Start rune cooldown
-        elseif rune_type == "frost" and runes.frost.count >= amount then
-            runes.frost.count = runes.frost.count - amount
-        elseif rune_type == "unholy" and runes.unholy.count >= amount then
-            runes.unholy.count = runes.unholy.count - amount
-        elseif rune_type == "death" and runes.death.count >= amount then
-            runes.death.count = runes.death.count - amount
+    spec:RegisterStateFunction( "spend_runes", function( rune_array )
+        if type(rune_array) == "table" then
+            local blood_cost, frost_cost, unholy_cost = rune_array[1], rune_array[2], rune_array[3]
+            
+            -- Spend Blood runes
+            if blood_cost and blood_cost > 0 then
+                if runes.blood.count >= blood_cost then
+                    runes.blood.count = runes.blood.count - blood_cost
+                elseif runes.death.count >= blood_cost then
+                    runes.death.count = runes.death.count - blood_cost
+                end
+            end
+            
+            -- Spend Frost runes
+            if frost_cost and frost_cost > 0 then
+                if runes.frost.count >= frost_cost then
+                    runes.frost.count = runes.frost.count - frost_cost
+                elseif runes.death.count >= frost_cost then
+                    runes.death.count = runes.death.count - frost_cost
+                end
+            end
+            
+            -- Spend Unholy runes
+            if unholy_cost and unholy_cost > 0 then
+                if runes.unholy.count >= unholy_cost then
+                    runes.unholy.count = runes.unholy.count - unholy_cost
+                elseif runes.death.count >= unholy_cost then
+                    runes.death.count = runes.death.count - unholy_cost
+                end
+            end
+        else
+            -- Legacy support for single rune type spending
+            local rune_type, amount = rune_array, 1
+            
+            if rune_type == "blood" and runes.blood.count >= amount then
+                runes.blood.count = runes.blood.count - amount
+            elseif rune_type == "frost" and runes.frost.count >= amount then
+                runes.frost.count = runes.frost.count - amount
+            elseif rune_type == "unholy" and runes.unholy.count >= amount then
+                runes.unholy.count = runes.unholy.count - amount
+            elseif rune_type == "death" and runes.death.count >= amount then
+                runes.death.count = runes.death.count - amount
+            end
         end
         
         -- Handle Runic Empowerment and Runic Corruption procs
@@ -1691,6 +1723,5 @@ spec:RegisterStateExpr( "death_strike_heal", function()
 end )
 
 -- Register default pack for MoP Blood Death Knight
-spec:RegisterPack( "Blood", 20250515, [[Hekili:T3vBVTTnu4FlXnHr9LsojdlJE7Kf7K3KRLvAm7njb5L0Svtla8Xk20IDngN7ob6IPvo9CTCgbb9DZJdAtP8dOn3zoIHy(MWDc)a5EtbWaVdFz6QvBB5Q(HaNUFxdH8c)y)QvNRCyPKU2k9yQ1qkE5nE)waT58Pw(aFm0P)MM]]  )
+spec:RegisterPack( "Blood", 20250803, [[Hekili:9EvBpUPrq4FlNIKVK0ukGTVEjY2sn6(qZ1MOk5KVcSgwSxzGLcl31RcXV9oZYB7IHZo6IQIsYDSZlp7SZ8mZ4y58vNTbeb15l2M2lnV1CUHP5CZfoBfpLsD2Ms8ps2d)qcjg(3DrCEi(1NI4Kau5CErMpCcCwbls8PeNDJAX53cYMs9HpV00z7bwqaTwwAUVZ2VEGLx5H)Lu5140kpEi87(cgpPYlILlGJd5zvE)o9ilIz4Sv(r5DGgskIeWp(f5DQwlNTXSKa3Wmk9Fbmsti7IOboF0raWafR)lB9ZycAgJ4SLL4Zb927gqIby4UeC7M1vEhOKiXbJyY)u592kptJ5MvEZQ8858Oa(JjgKebd0G57MFGgfzKrJjSeqBqzZEmnqmemZF5G5MLvELLDhK6lQ8wv5TuXXbuI4GBUiJDKIEDXKEDxryOXoEcfGiJgfyuKkVQYVhqs8reLvaN)iLKYtmW7VYnml(jxEOR4a1fCAa6SL)4UIVUYtqY2tfgqGK6k4UbmQ82UWShMdH)BuceNEdqiEZlhIlg)vy(YEN)ajoLLbV(yXKm08RVC)oFC)AR86Z8P74fy5aptWefbYCGBF5(2EcFRCNLbAbjf947V8So9SkLtq7yzoTHWiReewY8HWmEUq53lsoWJEQ(d92NgNYFKMnmRWYAGFALhQJsosfwQEUJlq)vUNkaDPzD8Qt2XkO0vOL)TZLiUgYGnax2))JlBjUMMmtqIOjcdPRX0bJgPukALh5FalVnYfqJG6KoR6cBOYx7TfHR2Jl(b1xxTY(o)kH50SFxv5fWBHzAezFbfyA8pcXIAp0iG0ZUH0hOzTN37mEHyxgLCu6RPj)AiYoHVyW1DZWR7MtUUBgEDHwZrUaesPzsqmn92ZCH7nx93vAFynnV1LeGy(pbu3f(hK2AAEiu(hOU0eAmJ2WbzpSPgb41cO(KNKg79QJaO11BWmattHCgVwhQ2XzY232dPioHkAJgtd8ANjuIK22QawX2dG70vwx1u)CGNLGDEFKLaNi77H5iJDMALScvTUus3oDLcWmaujsAt5D82tM2WVoejG8Nmk0qzhPFiTr4Ug4D50HzS06dVdTyL3FKW2Fq8HkVpwhBX)8TuCMt4x(mbkfSV9DyVpSX0ffK6Mhu)jaqConXFywZCnjvAkPl2cvXYiS8MzH0KsgzEKKLaLg54yWWCmmOpuMOzu3RBMS96kVm6FxWYWlzopgKJui4X13AGWmzpn3O6()KLahTeIoFljVifTekq7u0xpcN(1DQDZKQP32OxJBNuJ2w(9Y((jLvji2lUT50Y3vHOiU1KIRwUPOG93N9NpT91YNqvKVJH8Oi(JYMgKImcuPbLjW3lYrTzGMcuSwZG7YGjOIw5s4YKayKnvPdcqHHSDYoso9dv3x59ZGA9rWMVmYdnCY9JKH1vy(9LJ9mX7tIhnHWZeWBR361y6y(GuMQ7)uCRm2dwAeogkeleaSC2UnUieYdq6iEilcQTFvL30el3)QNHBbDlibiYF1gcR8(nPRZRUVgd5gDH3FA9VOhzEhlC9vtqBpQ66HPjKrntymb6PIAr)D1umNIDqALfOv)8GDyXBYP7lSzD)UcVfxxE25wvETPQtu7CFrE4MLLL9tsTAPM1gUukAXrwuC2ZUJRg8ovMlgLV(0fyxTWC2i45nQUuNg(I82c9ycmzPI9oDNWlYMZ1TPTwCUL4)ISK9alPHoLaXOpwdFqgzboPEySAL1m50OW)xpW8klvvbozxymH43H7ZSUDnlu7ZS50klZYYlzJjqWZ6q7F4oSUahRRFaOt)mtW2tQPgjyBL7aQaOlcsTHmpjevALocNMhZP2EB2eBUTzTL5Sx3e9llBc)LLTXFTm721LKCItTmsz5vtSwHQPu27Pg2d2WcQbAG1MwyTPdwB0HL2sppl20lRAwTPtJZa5blXGQr8vxazZA7Pygp99chC5SMqDOOUQKnwJBnnfV0EyLLpZAhRwE69XVb3kBvSb2OaNr25)(]]  )
 
--- Register pack selector for Blood

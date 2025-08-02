@@ -730,24 +730,21 @@ spec:RegisterAuras( {
 } )
 
 -- Frost DK core abilities
-spec:RegisterAbilities( {    obliterate = {
+spec:RegisterAbilities( {
+    obliterate = {
         id = 49020,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
         
-        spend = 2, -- Consumes 1 Frost and 1 Unholy rune (or 2 Death runes)
-        spendType = "death_runes", -- Uses any available runes
+        spend_runes = {0, 1, 1}, -- 0 Blood, 1 Frost, 1 Unholy
+        
+        gain = 15,
+        gainType = "runicpower",
         
         startsCombat = true,
         
-        usable = function() 
-            return (runes.frost.count > 0 and runes.unholy.count > 0) or runes.death.count >= 2
-        end,
-        
         handler = function ()
-            gain(15, "runicpower")
-            
             -- Rime proc chance (15% base, increased by talent)
             local rime_chance = talent.rime.enabled and 0.45 or 0.15
             if math.random() < rime_chance then
@@ -807,49 +804,25 @@ spec:RegisterAbilities( {    obliterate = {
       howling_blast = {
         id = 49184,
         cast = 0,
-        cooldown = 0,
+        cooldown = 8,
         gcd = "spell",
         
-        spend = function()
-            if buff.rime.up or buff.freezing_fog.up then return 0 end
-            return 1
-        end,
-        spendType = function()
-            if buff.rime.up or buff.freezing_fog.up then return nil end
-            return "frost_runes"
-        end,
+        spend_runes = {0, 1, 0}, -- 0 Blood, 1 Frost, 0 Unholy
+        
+        gain = function() return 15 + (2.5 * talent.chill_of_the_grave.rank) end,
+        gainType = "runicpower",
         
         startsCombat = true,
         
-        usable = function()
-            return buff.rime.up or buff.freezing_fog.up or runes.frost.count > 0 or runes.death.count > 0
-        end,
-        
         handler = function ()
-            -- Remove Rime/Freezing Fog buff if used
-            if buff.rime.up then
-                removeBuff("rime")
-            elseif buff.freezing_fog.up then
                 removeBuff("freezing_fog")
-            end
+            removeStack("killing_machine")
             
-            -- Apply Frost Fever to primary target
-            applyDebuff("target", "frost_fever")
-            
-            -- Howling Blast hits all enemies in area and applies Frost Fever
-            if active_enemies > 1 then
-                -- Apply Frost Fever to all nearby enemies
-                gain(5, "runicpower") -- Bonus RP for multi-target
-            end
-            
-            gain(10, "runicpower")
-            
-            -- Glyph of Howling Blast: additional damage to primary target
             if glyph.howling_blast.enabled then
-                -- Primary target takes additional damage
+            applyDebuff("target", "frost_fever")
+                active_dot.frost_fever = active_enemies
             end
         end,
-    },
       pillar_of_frost = {
         id = 51271,
         cast = 0,
@@ -895,7 +868,8 @@ spec:RegisterAbilities( {    obliterate = {
             if glyph.icy_touch.enabled then
                 -- Frost Fever will deal 20% more damage
             end
-        end,    },
+        end,
+    },
     
     chains_of_ice = {
         id = 45524,
@@ -1200,48 +1174,50 @@ spec:RegisterAbilities( {    obliterate = {
             gain(25, "runicpower")
         end,
     },
+    }
 } )
 
--- Add state handlers for Death Knight rune system
-do
-    local runes = {}
-    
-    spec:RegisterStateExpr( "rune", function ()
-        return runes
-    end )
-    
-    -- Blood Runes
-    spec:RegisterStateExpr( "blood_runes", function ()
-        return state.runes.blood
-    end )
-    
-    -- Frost Runes
-    spec:RegisterStateExpr( "frost_runes", function ()
-        return state.runes.frost
-    end )
-    
-    -- Unholy Runes
-    spec:RegisterStateExpr( "unholy_runes", function ()
-        return state.runes.unholy
-    end )
-    
-    -- Death Runes
-    spec:RegisterStateExpr( "death_runes", function ()
-        return state.runes.death
-    end )
-      -- Initialize the rune tracking system for MoP Frost
-    spec:RegisterStateTable( "runes", {
-        blood = { count = 2, actual = 2, max = 2, cooldown = 10, recharge_time = 10 },
-        frost = { count = 2, actual = 2, max = 2, cooldown = 10, recharge_time = 10 },
-        unholy = { count = 2, actual = 2, max = 2, cooldown = 10, recharge_time = 10 },
-        death = { count = 0, actual = 0, max = 6, cooldown = 10, recharge_time = 10 }, -- Death runes created from conversions
-    } )
-    
-    -- Frost-specific rune mechanics
-    spec:RegisterStateFunction( "spend_runes", function( rune_type, amount )
-        amount = amount or 1
+-- Register runes state table
+spec:RegisterStateTable( "runes", {
+    blood = { count = 2 },
+    frost = { count = 2 },
+    unholy = { count = 2 },
+    death = { count = 0 }
+} )
+spec:RegisterStateFunction( "spend_runes", function( rune_array )
+    if type(rune_array) == "table" then
+        local blood_cost, frost_cost, unholy_cost = rune_array[1], rune_array[2], rune_array[3]
         
-        -- Handle multi-rune abilities like Obliterate (Frost + Unholy)
+        -- Spend Blood runes
+        if blood_cost and blood_cost > 0 then
+            if runes.blood.count >= blood_cost then
+                runes.blood.count = runes.blood.count - blood_cost
+            elseif runes.death.count >= blood_cost then
+                runes.death.count = runes.death.count - blood_cost
+            end
+        end
+        
+        -- Spend Frost runes
+        if frost_cost and frost_cost > 0 then
+            if runes.frost.count >= frost_cost then
+                runes.frost.count = runes.frost.count - frost_cost
+            elseif runes.death.count >= frost_cost then
+                runes.death.count = runes.death.count - frost_cost
+            end
+        end
+        
+        -- Spend Unholy runes
+        if unholy_cost and unholy_cost > 0 then
+            if runes.unholy.count >= unholy_cost then
+                runes.unholy.count = runes.unholy.count - unholy_cost
+            elseif runes.death.count >= unholy_cost then
+                runes.death.count = runes.death.count - unholy_cost
+            end
+        end
+    else
+        -- Legacy support for single rune type spending
+        local rune_type, amount = rune_array, 1
+        
         if rune_type == "obliterate" then
             if runes.frost.count > 0 and runes.unholy.count > 0 then
                 runes.frost.count = runes.frost.count - 1
@@ -1264,85 +1240,47 @@ do
         elseif rune_type == "death" and runes.death.count >= amount then
             runes.death.count = runes.death.count - amount
         end
-        
-        -- Handle Runic Empowerment and Runic Corruption procs
-        if talent.runic_empowerment.enabled then
-            -- 45% chance to refresh a random rune when spending RP
-            if math.random() < 0.45 then
-                applyBuff("runic_empowerment")
-                -- Refresh a random depleted rune
-            end
-        end
-        
-        if talent.runic_corruption.enabled then
-            -- 45% chance to increase rune regeneration by 100% for 3 seconds
-            if math.random() < 0.45 then
-                applyBuff("runic_corruption")
-            end
-        end
-    end )
-    
-    -- Auto-attack handler for Killing Machine procs
-    spec:RegisterStateFunction( "auto_attack", function()
-        if talent.killing_machine.enabled then
-            -- 15% chance per auto attack to proc Killing Machine
-            if math.random() < 0.15 then
-                applyBuff("killing_machine")
-            end
-        end
-    end )
-    
-    -- Add function to check runic power generation
-    spec:RegisterStateFunction( "gain_runic_power", function( amount )
-        -- Logic to gain runic power
-        gain( amount, "runicpower" )
-    end )
-end
-
--- State Expressions for Frost Death Knight
-spec:RegisterStateExpr( "km_up", function()
-    return buff.killing_machine.up
-end )
-
-spec:RegisterStateExpr( "rime_react", function()
-    return buff.rime.up or buff.freezing_fog.up
-end )
-
-spec:RegisterStateExpr( "diseases_up", function()
-    return debuff.frost_fever.up and debuff.blood_plague.up
-end )
-
-spec:RegisterStateExpr( "frost_runes_available", function()
-    return runes.frost.count + runes.death.count
-end )
-
-spec:RegisterStateExpr( "unholy_runes_available", function()
-    return runes.unholy.count + runes.death.count
-end )
-
-spec:RegisterStateExpr( "can_obliterate", function()
-    return (runes.frost.count > 0 and runes.unholy.count > 0) or runes.death.count >= 2
-end )
-
-spec:RegisterStateExpr( "runic_power_deficit", function()
-    return runic_power.max - runic_power.current
-end )
-
--- Two-handed vs dual-wield logic
-spec:RegisterStateExpr( "is_dual_wielding", function()
-    return not talent.might_of_the_frozen_wastes.enabled -- Simplified check
-end )
-
-spec:RegisterStateExpr( "weapon_dps_modifier", function()
-    if talent.might_of_the_frozen_wastes.enabled then
-        return 1.25 -- 25% more damage with 2H in Frost Presence
-    elseif talent.threat_of_thassarian.enabled then
-        return 1.0 -- Base damage but with off-hand procs
     end
-    return 1.0
 end )
+    
+spec:RegisterRanges( "obliterate", "frost_strike", "howling_blast" )
 
--- Register default pack for MoP Frost Death Knight
-spec:RegisterPack( "Frost", 20250515, [[Hekili:T3vBVTTnu4FlXnHr9LsojdlJE7Kf7K3KRLvAm7njb5L0Svtla8Xk20IDngN7ob6IPvo9CTCgbb9D74Xtx83u5dx4CvNBYZkeeZwyXJdNpV39NvoT82e)6J65pZE3EGNUNUp(4yTxY1VU)mEzZNF)wwc5yF)SGp2VyFk3fzLyKD(0W6Zw(aFW0P)MM]]  )
+spec:RegisterOptions( {
+    enabled = true,
 
--- Register pack selector for Frost
+    aoe = 2,
+
+    nameplates = true,
+    nameplateRange = 10,
+    rangeFilter = false,
+
+    damage = true,
+    damageExpiration = 8,
+
+    cycle = true,
+    cycleDebuff = "frost_fever",
+
+    potion = "tempered_potion",
+
+    package = "Frost",
+} )
+
+spec:RegisterSetting( "dps_shell", false, {
+    name = strformat( "Use %s Offensively", Hekili:GetSpellLinkWithTexture( 48707 ) ),
+    desc = strformat( "If checked, %s will not be on the Defensives toggle by default.", Hekili:GetSpellLinkWithTexture( 48707 ) ),
+    type = "toggle",
+    width = "full",
+} )
+
+spec:RegisterSetting( "it_macro", nil, {
+    name = strformat( "%s Macro", Hekili:GetSpellLinkWithTexture( 45477 ) ),
+    desc = strformat( "Using a mouseover macro makes it easier to apply %s and %s to other enemies without retargeting.",
+        Hekili:GetSpellLinkWithTexture( 45477 ), Hekili:GetSpellLinkWithTexture( 59921 ) ),
+    type = "input",
+    width = "full",
+    multiline = true,
+    get = function() return "#showtooltip\n/use [@mouseover,harm,nodead][] Icy Touch" end,
+    set = function() end,
+} )
+
+spec:RegisterPack( "Frost", 20250803, [[Hekili:TRvBpUnUr4FlghQp7RjkI27U3MdRxG2E4qY22db1PTFts0Y0RewjrxjQySfg63EhsQxiLeLSYUhAlqcqYQLICMHZmppZiY4GC(SZ29ygX5xxzV6A7BTxBzBV69xHC2YE(iXz7rS)t4hHhsWXW)EiLrYy8HFoII3ZxEgnp1hELZ2D5HrSpM4SRxzU(gyUhj(WWxdIpiC)EICUKmFNTFoimRWJ)xCHxPwl8OhGF3Nfstk8IcZyWRpqtl8(a5PWOqlNTIbf7cYbCEedE8xf7k5QC2ghMS39qkH8VbBKKG3fr278hDyGzWNwZi1RaNWcJXpg67MfqIIC26NgYiPHy4jknAp9uIvR5yLsIXHjG1TPWZMV9JfonKn)pCLTw1MoggfHtDPhadJYDNA21vTSRg1Vl)WbRwl2k)yJG3frPWUnp9zUGU(fiisAgj9PWKh5c6gJcknpb8bhPNiqq5Ucpydx4nVWBufGt9XjexgnnLKW4k5hneoyPHjpryOlY(LzP1lbe7Tdl2vtxSR4I99gDjZG0xcZ6XaAEKfxBFH0O1uCygXDpbGoGqq2gLcdhb(fR8KaA0ZU7IcFmGzvotHhErH3EkZsyJUhiFHK2KecbI1fENplNImP4ye(XCs75SSX00uLW6qgToq5Z6r4SqFEkJu1Z6AG1VxrT0C2Uuc(jHgBdj18QMuNcUsmUBgeOEIie46XeypMxJ8c9FgYqZ9deYYmUSmyvQ(icXpODSAX4XI5Jgrxk9SGSQjIQCFAtfjM6YoogHLj2lMPgy40hH0xGEJJoD3hcSW3bSA3CHaBsSGnWfygiUNi4JWGCnAMd5ly4hWWwStu3aCYEycnaM8ex5ZUCQEjHVRepUsUxAtCOfJ)QfoIlCM4NvLugYFfqWrSaRJ(ScV3kcw)Giq1ZRFx9OAo5Ls)86RBSpO0AKleDpss7RGvNeqz2fdFul7teYKVYpGRyRmguFTW7EqDxxLGkMGS(LmlteAvhqsqunYY2vDa1wxOZCrhOSDeGXCJX(bHjCmaM7taBqRuc30wz3OcjOObypsnYuWXkfDJicONeAExeoJnC5XoMYTdykMtSNv67BSgjihkbGZiwqNjU1O27HqXa2Q5CCzfgxscjoKKv65AKeuQHf4c59qrhF8Z9vruX3vNdSsyPnPaYFxjdqrfuOKbiaEhFdwy8LMKoycIwo4a1v7iKRgi0I06KuzFQ3W2aLTA3FKQ2cOPjCo0tHjmjaFGYvtcDmqPkny(8wOC9qS9yK6mbf83yh))n2XE1Ij88V5SKV0OZLtlyMe91IM2m160PPntK(Aqtpaf5eepYO4ntjyw8Ol36nd2BepAmR3S4Nap8G1pEnAtr2R(4fHU8psFKIqMHjtIecDj9z8Que6ykXNgVdZ6Rwef(2KmIIdU6lc4pfLtehkvuKRSOtMLM)xjpItai(aclOMN4mRsdpkL4pZbVfE)5e(xo)tfE)I8qDafv(TekF7XGfQQAyupOO95vDJxANSKmiaoKmsIF7uKr)a2jYbloVhdCTAjTkN6HUfDJ6SWPXpZ3ASG(MRisFcNMabNm(XfcnfeczePSYJe87xf89q1aY)kpmLB5z0yyk4CgngqlWaGXN8ijZQ4H)cu1dSDiu9NOjW3zlEn9ihwbwc)yita51P5K3U(hw0zWFx3UvwE3M1xd2cJEXs5DMKsT1UgS2)Esw(r(wMBVs3gObvGxZ8VY48BOqAM91tu6)OX5RHFAwW7NK5GSN20rtB6RM20NQRhz23BW7Gm7)71IUzafOYpOSeZrS2Bcb06ankIEsCyD48umGjaQxy88m(A54dgFAvcHFWjCMcw18sOcCzEI2S3VNp59ygEh0A1pv8G4ZbA1pA5O8IJWJp0dsh9nK(fH0nKTnvW(qzB9QGBNw2SzWUb81RgC3iA5YJb)VpAP8MXMgKXSdO1H)(FfFqlBWWgVUVWPT1NE6Yyzlv9JXxrXdFmUAAxP7o4Ma0guod0JZ2TX5hGKmE7T0dH8(v)UcVEB1Kl0VdE5NprF7heTzw49P0qk0Eh0e9)OSF3SIhKklZQ2X8738UQ2HFdVv1nnDQ(gr3XBgO54nO5QnfxzfFQs4fE)bP(6xX6oZ3eEyZS(B(T)LR7z7Fo1DKYLUPECNBO)27q29l1MUz7)9T7JTYX8ZsCyx3cSgLBPwD4wxZ8BK3R8g51kZ3uJDH0BSvfxhytZRAU5yUynClpAlO(gIVWfOFJV8fP85KGZ2E(fieGmXfi4JlZwlVN3l0c6DXRUWf3e1fPQTVIxn9OEtQkPE9EzUZxy4s)UB95ZMUYW7wVSoRsEmvfE)vCcKBedkcyv4KO)nI8)AgaKeYs4eZk2y19gYnVfZmD1QNppZWLKUulVs9ExfUhJxnSYQQVD16v0JE6rnIBXuXT231UoFXcZ(U5g94lpFEHXRw9o0sTDDpNhH0QA3F3DBUzGK7YW4N2QqARM3PFhLYC3vI9Fp3T5ORej929U0Uvr(fnAcGKheRYXURSD)k7DULSFre23V565ledVX(8zHdM)Ge1TXEzlDP2ixnhqVhn(CfIQ73SYULGA65CyXmI(1uYTTvYl2Zm8EqRWE92O58jN3ZPHFF7OxRdXMlgj5y1XEdkEyFNi4TAUm2TAEzO7RArOjSi0u0eAmZBWa7vt1ZB0I6iN2TtPwETJAh0i7KEyGQReSv6qSRCi21KA54O3(pdjrDPsq)gsLGEvamxgvc61IkbnTKHE1RrkK(f(SjcYrthKJgd61hk61j(nSN(IbPitOo00qDJR1o24erDIJi35)m]]  )
