@@ -59,7 +59,7 @@ actions.opener+=/explosive_shot,if=focus>=40
 # LOCK AND LOAD BURST PHASE - Based on official guide
 # Lock and Load gives 3 free Explosive Shot casts (no focus cost, no cooldown)
 # Fire Explosive Shots one after the other when proc is active
-actions.lock_and_load_burst+=/explosive_shot,if=buff.lock_and_load.up&lock_and_load_shots>0
+actions.lock_and_load_burst+=/explosive_shot,if=buff.lock_and_load.up
 # Kill Shot takes priority even during Lock and Load
 actions.lock_and_load_burst+=/kill_shot,if=target.health.pct<=20
 # If at max focus during Lock and Load, cast Arcane Shot to prevent capping
@@ -114,7 +114,7 @@ actions.aoe+=/explosive_trap,if=active_enemies>=4&!debuff.explosive_trap.up&targ
 # Black Arrow on cooldown
 actions.aoe+=/black_arrow,if=!debuff.black_arrow.up&focus>=35&target.time_to_die>=8
 # Explosive Shot when Lock and Load proc is active
-actions.aoe+=/explosive_shot,if=buff.lock_and_load.up&lock_and_load_shots>0
+actions.aoe+=/explosive_shot,if=buff.lock_and_load.up
 # Kill Shot in execute range
 actions.aoe+=/kill_shot,if=target.health.pct<=20
 # Cobra Shot when insufficient focus for Multi-Shot

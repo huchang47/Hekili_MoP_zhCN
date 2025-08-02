@@ -7,12 +7,12 @@ actions.precombat+=/stealth,if=!stealthed.all
 actions.precombat+=/slice_and_dice,if=buff.slice_and_dice.down
 
 # Main rotation
-actions+=/ambush,if=stealthed.all
+actions+=/ambush,if=stealthed.all|behind_target
 actions+=/shiv,if=debuff.dispellable_enrage.up
 actions+=/kick,if=target.debuff.casting.up
 actions+=/tricks_of_the_trade,if=settings.use_tricks_of_the_trade&time>30
 actions+=/call_action_list,name=cds
-actions+=/run_action_list,name=finish,if=combo_points=5|(talent.anticipation.enabled&combo_points>=4&anticipation_charges>=3)
+actions+=/run_action_list,name=finish,if=combo_points=5|(talent.anticipation.enabled&combo_points>=4&buff.anticipation.stack>=3)
 actions+=/run_action_list,name=aoe,if=spell_targets.fan_of_knives>=2
 actions+=/call_action_list,name=build
 actions+=/call_action_list,name=defensives
@@ -26,9 +26,10 @@ actions.aoe+=/crimson_tempest,if=combo_points>=4&spell_targets.fan_of_knives>=3&
 # Build rotation
 actions.build+=/marked_for_death,if=combo_points=0
 actions.build+=/dispatch,if=target.health.pct<35|(buff.blindside.up&combo_points<4)
-actions.build+=/dispatch,if=dot.deep_insight.remains>0&dot.revealing_strike.remains>0
-actions.build+=/mutilate,if=combo_points<4|(talent.anticipation.enabled&combo_points<5&anticipation_charges<3)
-actions.build+=/dispatch,if=combo_points<4|(talent.anticipation.enabled&combo_points<5&anticipation_charges<3)
+actions.build+=/dispatch,if=debuff.deep_insight.remains>0&debuff.revealing_strike.remains>0
+actions.build+=/mutilate,if=behind_target&(combo_points<4|(talent.anticipation.enabled&combo_points<5&buff.anticipation.stack<3))
+actions.build+=/mutilate,if=combo_points<4|(talent.anticipation.enabled&combo_points<5&buff.anticipation.stack<3)
+actions.build+=/dispatch,if=combo_points<4|(talent.anticipation.enabled&combo_points<5&buff.anticipation.stack<3)
 actions.build+=/preparation,if=!buff.vanish.up&cooldown.vanish.remains>60
 
 # Finish rotation

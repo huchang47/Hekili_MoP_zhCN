@@ -57,7 +57,7 @@ spec:RegisterResource( 3, { -- Energy with enhanced regeneration mechanics
     },
     
     -- Vendetta energy efficiency (Assassination signature)
-    vendetta = {
+    vendetta_energy = {
         aura = "vendetta",
         last = function ()
             local app = state.buff.vendetta.applied
@@ -241,10 +241,10 @@ spec:RegisterTalents({
     dirty_deeds = { 5, 2, 108216 }, -- Cheap Shot and Kidney Shot have 20% increased critical strike chance
     paralytic_poison = { 5, 3, 108215 }, -- Coats weapons with poison that reduces target's movement speed
     
-    -- Tier 6 (Level 90)
-    vendetta = { 6, 1, 79140 }, -- Marks an enemy for death, increasing all damage you deal to the target
-    -- shadow_clone = { 6, 2, 159621 }, -- Not available in MoP Classic
-    venom_rush = { 6, 3, 152152 }, -- Vendetta also increases your Energy regeneration
+    -- Tier 6 (Level 90) - Correct MoP Classic talents
+    shuriken_toss = { 6, 1, 114014 }, -- Throw a shuriken at target
+    marked_for_death = { 6, 2, 137619 }, -- Instantly generates 5 combo points
+    anticipation = { 6, 3, 114015 }, -- Allows combo points to exceed 5, up to 10
 })
 
 -- Auras for Assassination Rogue
@@ -359,36 +359,37 @@ spec:RegisterAuras({
         max_stack = 1
     },
     cold_blood = {
-        id = 14177,
-        duration = 60,
-        max_stack = 1
-    },
+    id = 14177,
+    duration = 60, -- Correct 1 minute duration for MoP
+    max_stack = 1
+},
     vendetta = {
         id = 79140,
         duration = 30,
         max_stack = 1
     },
     
-    -- Missing debuff tracking for Vendetta on target
-    vendetta_debuff = {
+    -- Vendetta debuff tracking for target (different from player buff)
+    vendetta_target = {
         id = 79140,
         duration = 30,
-        max_stack = 1,
-        copy = "vendetta" -- Allows both buff and debuff tracking
+        max_stack = 1
     },
     
-    -- Revealing Strike (Combat spec ability, but referenced in imported rotations)
+    -- Revealing Strike (Combat spec debuff on target, referenced in imported rotations)
     revealing_strike = {
         id = 84617,
         duration = 15,
-        max_stack = 1
+        max_stack = 1,
+        debuff = true -- Mark as target debuff
     },
     
-    -- Deep Insight (Combat spec buff, but referenced in imported rotations)
+    -- Deep Insight (Combat spec debuff on target, referenced in imported rotations)
     deep_insight = {
         id = 84747,
         duration = 15,
-        max_stack = 1
+        max_stack = 1,
+        debuff = true -- Mark as target debuff
     },
     
     -- Venom Rush talent buff
@@ -504,12 +505,13 @@ spec:RegisterAuras({
         max_stack = 5
     },
     
-    -- Jade Serpent Potion
-    jade_serpent_potion = {
-        id = 76089,
-        duration = 25,
-        max_stack = 1
-    },
+    -- Virmen's Bite (MoP agility potion, formerly called Jade Serpent Potion)
+jade_serpent_potion = {
+    id = 105697, -- Correct MoP agility potion buff ID
+    duration = 25,
+    max_stack = 1,
+    copy = "virmen_bite" -- Alternative name
+},
     
     -- Tricks of the Trade
     tricks_of_the_trade = {
@@ -568,8 +570,26 @@ spec:RegisterStateExpr("effective_combo_points", function()
 end)
 
 spec:RegisterStateExpr("behind_target", function()
-    -- Simplified positional check - in real game this would check actual positioning
-    return true -- Assume behind target for simulation purposes
+    -- Intelligent positioning logic for Assassination
+    -- Stealth abilities work regardless of positioning
+    if buff.stealth.up or buff.vanish.up or buff.subterfuge.up then
+        return true -- Stealth negates positioning requirements
+    end
+    
+    -- In group content, assume tank has aggro and we can be behind
+    if group then
+        return true -- Tank should have aggro in groups
+    end
+    
+    -- Solo PvE: assume we can position behind mobs
+    if target.exists and not target.is_player then
+        return true -- PvE mobs, can usually get behind
+    end
+    
+    -- PvP or uncertain cases: use time-based deterministic positioning
+    -- This prevents blocking abilities while being somewhat realistic
+    local time_factor = (query_time % 10) / 10 -- 0-1 based on time
+    return time_factor > 0.3 -- 70% of time cycles we're "behind"
 end)
 
 -- Stealth-breaking hook for proper MoP mechanics
@@ -656,12 +676,12 @@ spec:RegisterAbilities({
             
             -- Seal Fate proc chance on crit (50% chance for extra combo point)
             if (state.crit_chance or 0) > math.random() then
-                state.last_ability_crit = true
+                -- state.last_ability_crit removed for Hekili compatibility
                 if math.random() <= 0.5 then
                     gain(1, "combo_points")
                 end
             else
-                state.last_ability_crit = false
+                -- state.last_ability_crit removed for Hekili compatibility
             end
             
             -- Apply/refresh poisons
@@ -679,7 +699,7 @@ spec:RegisterAbilities({
             end
             
             -- Track last ability for Seal Fate
-            state.last_ability = "mutilate"
+            -- state.last_ability removed for Hekili compatibility
         end,
     },
     
@@ -728,12 +748,12 @@ spec:RegisterAbilities({
             
             -- Seal Fate proc chance on crit (50% chance for extra combo point)
             if (state.crit_chance or 0) > math.random() then
-                state.last_ability_crit = true
+                -- state.last_ability_crit removed for Hekili compatibility
                 if math.random() <= 0.5 then
                     gain(1, "combo_points")
                 end
             else
-                state.last_ability_crit = false
+                -- state.last_ability_crit removed for Hekili compatibility
             end
             
             -- Apply poisons
@@ -742,7 +762,7 @@ spec:RegisterAbilities({
             end
             
             -- Track last ability for Seal Fate
-            state.last_ability = "backstab"
+            -- state.last_ability removed for Hekili compatibility
         end,
     },
     
@@ -781,15 +801,15 @@ spec:RegisterAbilities({
                 
                 -- Seal Fate proc chance on crit
                 if (state.crit_chance or 0) > math.random() then
-                    state.last_ability_crit = true
+                    -- state.last_ability_crit removed for Hekili compatibility
                     if math.random() <= 0.5 then
                         gain(1, "combo_points")
                     end
                 else
-                    state.last_ability_crit = false
+                    -- state.last_ability_crit removed for Hekili compatibility
                 end
                 
-                state.last_ability = "dispatch"
+                -- state.last_ability removed for Hekili compatibility
             else
                 -- Used as finisher - consume combo points
                 spend(cp, "combo_points")
@@ -835,7 +855,7 @@ spec:RegisterAbilities({
             end
             
             -- Track for Seal Fate (though FoK doesn't typically crit for extra CPs in MoP)
-            state.last_ability = "fan_of_knives"
+            -- state.last_ability removed for Hekili compatibility
         end,
     },
     
@@ -1135,12 +1155,12 @@ kidney_shot = {
             
             -- Seal Fate proc chance on crit (50% chance for extra combo point)
             if (state.crit_chance or 0) > math.random() then
-                state.last_ability_crit = true
+                -- state.last_ability_crit removed for Hekili compatibility
                 if math.random() <= 0.5 then
                     gain(1, "combo_points")
                 end
             else
-                state.last_ability_crit = false
+                -- state.last_ability_crit removed for Hekili compatibility
             end
             
             -- Apply poisons from stealth
@@ -1149,7 +1169,7 @@ kidney_shot = {
             end
             
             -- Track last ability for Seal Fate
-            state.last_ability = "ambush"
+            -- state.last_ability removed for Hekili compatibility
             
             -- Remove stealth (unless Subterfuge talent extends it)
             if not talent.subterfuge.enabled then
@@ -1220,29 +1240,27 @@ kidney_shot = {
         end,
     },
     
-    -- Talents
+    -- Baseline Abilities (not talents)
     vendetta = {
         id = 79140,
         cast = 0,
         cooldown = 120,
         gcd = "off",
         
-        talent = "vendetta",
+        -- Vendetta is baseline Assassination ability in MoP Classic, not a talent
         toggle = "cooldowns",
         
         startsCombat = true,
         
         handler = function()
             -- Vendetta: Marks target for death with significant damage bonus
-            applyDebuff("target", "vendetta", 30) -- 30 second duration
+            applyDebuff("target", "vendetta_target", 30) -- 30 second duration
             
             -- Vendetta also provides energy efficiency buff to the player
             applyBuff("vendetta", 30) -- Player buff for enhanced energy regeneration
             
-            -- Venom Rush talent extends Vendetta's energy benefits
-            if talent.venom_rush.enabled then
-                applyBuff("venom_rush", 30) -- Additional energy regeneration
-            end
+            -- Note: Vendetta is a baseline ability in MoP Classic Assassination
+            -- No talent requirements
         end,
     },
     
@@ -1590,10 +1608,7 @@ kidney_shot = {
     },
 })
 
--- State expressions
-spec:RegisterStateExpr("behind_target", function()
-    return true -- Assume we can get behind target
-end)
+-- Duplicate behind_target removed - using the intelligent one above
 
 spec:RegisterStateExpr("poisoned", function()
     return debuff.deadly_poison_dot.up or debuff.wound_poison.up
@@ -1606,7 +1621,7 @@ spec:RegisterStateExpr("stealthed_all", function() return buff.stealth.up or buf
 
 -- Add anticipation_charges for compatibility (not used in MoP but referenced in imported rotations)
 spec:RegisterStateExpr("anticipation_charges", function()
-    return 0 -- Always 0 in MoP since Anticipation works differently
+    return buff.anticipation.stack or 0 -- Return anticipation buff stacks
 end)
 
 -- Hooks

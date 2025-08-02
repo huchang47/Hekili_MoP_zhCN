@@ -829,6 +829,13 @@ spec:RegisterAuras( {
         max_stack = 1,
         type = "Taunt",
     },
+
+    widow_venom = {
+        id = 82654,
+        duration = 12,
+        max_stack = 1,
+        debuff = true
+    },
 } )
 
 -- Enhanced Pet System for Marksmanship
@@ -1919,6 +1926,22 @@ spec:RegisterAbilities( {
             if talent.piercing_shots.enabled and action.auto_shot.lastCrit then
                 applyDebuff( "target", "piercing_shots", 8 )
             end
+        end,
+    },
+
+    widow_venom = {
+        id = 82654,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        
+        spend = 15,
+        spendType = "focus",
+        
+        startsCombat = true,
+        
+        handler = function ()
+            applyDebuff( "target", "widow_venom" )
         end,
     },
 } )

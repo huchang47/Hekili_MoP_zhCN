@@ -111,7 +111,7 @@ actions.core_rotation+=/lynx_rush,if=talent.lynx_rush.enabled&pet.alive
 actions.core_rotation+=/powershot,if=talent.powershot.enabled
 actions.core_rotation+=/dire_beast,if=talent.dire_beast.enabled
 actions.core_rotation+=/glaive_toss,if=talent.glaive_toss.enabled
-actions.core_rotation+=/explosive_trap,if=!debuff.explosive_trap.up
+# Explosive trap moved to AoE only
 # Optimal shot rotation using state expressions
 actions.core_rotation+=/cobra_shot,if=should_cobra_shot
 actions.core_rotation+=/steady_shot,if=should_steady_shot

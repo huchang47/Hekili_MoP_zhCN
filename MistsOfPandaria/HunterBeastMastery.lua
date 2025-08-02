@@ -532,6 +532,13 @@ spec:RegisterGlyphs( {
             type = "Taunt",
         },
 
+        widow_venom = {
+            id = 82654,
+            duration = 12,
+            max_stack = 1,
+            debuff = true
+        },
+
     } )
 
     spec:RegisterStateFunction( "apply_aspect", function( name )
@@ -1523,6 +1530,23 @@ end )
 
             handler = function ()
                 applyDebuff( "target", "wyvern_sting" )
+            end,
+        },
+
+        widow_venom = {
+            id = 82654,
+            cast = 0,
+            cooldown = 0,
+            gcd = "spell",
+            school = "nature",
+            
+            spend = 15,
+            spendType = "focus",
+            
+            startsCombat = true,
+            
+            handler = function ()
+                applyDebuff( "target", "widow_venom" )
             end,
         },
     } )

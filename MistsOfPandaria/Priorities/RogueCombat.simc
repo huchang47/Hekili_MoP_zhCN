@@ -12,12 +12,12 @@ actions+=/slice_and_dice,if=(buff.slice_and_dice.remains<=4|combo_points>=5)&!bu
 actions+=/killing_spree,if=buff.slice_and_dice.up&(combo_points>=5|energy<=40)&(buff.killing_spree.up|buff.adrenaline_rush.up)
 actions+=/adrenaline_rush,if=time_to_ready.killing_spree>=15
 actions+=/shadow_blades,if=time_to_ready.killing_spree>=15
-actions+=/ambush,if=combo_points<=4
+actions+=/ambush,if=behind_target&combo_points<=4
 actions+=/revealing_strike,if=(combo_points<=4&buff.anticipation.up&buff.anticipation.stack<=4)|debuff.revealing_strike.remains<=3
 actions+=/rupture,if=combo_points>=5&dot.rupture.remains<=2
 actions+=/eviscerate,if=combo_points>=5
 actions+=/vanish,if=energy>=50&combo_points>=3
-actions+=/ambush,if=energy>=50&combo_points>=3
+actions+=/ambush,if=behind_target&energy>=50&combo_points>=3
 actions+=/sinister_strike,if=combo_points<=4
 actions+=/preparation,if=!cooldown.vanish.ready
 actions+=/tricks_of_the_trade,if=false

@@ -216,12 +216,7 @@ spec:RegisterAuras( {
         max_stack = 1
     },
 
-        black_arrow_debuff = {
-            id = 3674,
-            duration = 15,
-            max_stack = 1,
-            type = "Magic"
-        },
+
 
     serpent_sting = { --- Debuff
         id = 118253,    
@@ -300,13 +295,13 @@ spec:RegisterAuras( {
             id = 3674,
             duration = 15,
             max_stack = 1,
+            debuff = true
         },
 
-        lock_and_load = {
-            id = 56453,
-            duration = 8,
-            max_stack = 1
-        },
+            lock_and_load = {
+        id = 56453,
+        duration = 8,
+    },
 
         piercing_shots = {
             id = 82924,
@@ -434,6 +429,15 @@ spec:RegisterAuras( {
             type = "Taunt",
         },
 
+        widow_venom = {
+            id = 82654,
+            duration = 12,
+            max_stack = 1,
+            debuff = true
+        },
+
+
+
         
     } )
 
@@ -446,15 +450,7 @@ spec:RegisterAuras( {
         if name then applyBuff( name ) end
     end )
 
-    -- Lock and Load state tracking
-    spec:RegisterStateExpr( "lock_and_load_shots", function()
-        -- More defensive approach to check Lock and Load buff
-        local lock_and_load = state.buff and state.buff.lock_and_load
-        if lock_and_load and lock_and_load.up then
-            return 3
-        end
-        return 0
-    end )
+
 
     -- Abilities
     spec:RegisterAbilities( {
@@ -667,13 +663,8 @@ spec:RegisterAuras( {
                 
                 -- Handle Lock and Load charge consumption
                 if buff.lock_and_load.up then
-                    -- In MoP, Lock and Load gives 3 free Explosive Shots
-                    -- The buff should be consumed when all charges are used
-                    -- Note: This is simplified - real implementation would track charges
-                    local remaining = state.lock_and_load_shots - 1
-                    if remaining <= 0 then
-                        removeBuff( "lock_and_load" )
-                    end
+                    -- Remove the buff when Explosive Shot is cast during Lock and Load
+                    removeBuff( "lock_and_load" )
                 end
                 
                 -- Explosive Shot is the signature Survival ability
@@ -1301,6 +1292,52 @@ spec:RegisterAuras( {
                 applyBuff( "dire_beast" )
             end,
         },
+
+        widow_venom = {
+            id = 82654,
+            cast = 0,
+            cooldown = 0,
+            gcd = "spell",
+            
+            spend = 15,
+            spendType = "focus",
+            
+            startsCombat = true,
+            
+            handler = function ()
+                applyDebuff( "target", "widow_venom" )
+            end,
+        },
+
+
+
+        exhilaration = {
+            id = 109260,
+            cast = 0,
+            cooldown = 120,
+            gcd = "off",
+            
+            startsCombat = false,
+            toggle = "defensive",
+            
+            handler = function ()
+                -- Instantly heals you for 30% of your total health
+                applyBuff( "exhilaration" )
+            end,
+        },
+
+        tranquilizing_shot = {
+            id = 19801,
+            cast = 0,
+            cooldown = 8,
+            gcd = "spell",
+            
+            startsCombat = true,
+            
+            handler = function ()
+                -- Dispel magic effect
+            end,
+        },
     } )
 
     -- Pet Registration
@@ -1328,10 +1365,10 @@ spec:RegisterCombatLogEvent( function( _, subtype, _, sourceGUID, sourceName, so
     if subtype == "SPELL_DAMAGE" and ( spellID == 75 or spellID == 2643 or spellID == 3044 ) then -- Auto Shot, Multi-Shot, Arcane Shot
         if state.talent.lock_and_load.enabled then
             local crit_chance = math.random()
-            -- 15% chance for Lock and Load to proc on ranged crits in MoP
-            if crit_chance <= 0.15 then
-                state.applyBuff( "lock_and_load", 8 ) -- 8-second duration, 3 charges
-            end
+                            -- 15% chance for Lock and Load to proc on ranged crits in MoP
+                if crit_chance <= 0.15 then
+                    state.applyBuff( "lock_and_load", 8 )
+                end
         end
     end
     
@@ -1418,6 +1455,8 @@ end )
         
         return true
     end )
+    
+
 
     -- Options
     spec:RegisterOptions( {
