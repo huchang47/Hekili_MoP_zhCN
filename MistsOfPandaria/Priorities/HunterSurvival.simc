@@ -50,7 +50,7 @@ actions.opener+=/stampede,if=cooldown.stampede.ready
 actions.opener+=/serpent_sting,if=!debuff.serpent_sting.up
 actions.opener+=/black_arrow,if=!debuff.black_arrow.up&focus>=35
 actions.opener+=/fervor,if=talent.fervor.enabled&focus<50
-actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&focus>=30
+actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&focus>=60
 actions.opener+=/rapid_fire,if=!buff.rapid_fire.up
 actions.opener+=/blood_fury,if=cooldown.blood_fury.ready
 actions.opener+=/synapse_springs,if=cooldown.synapse_springs.ready
@@ -82,7 +82,7 @@ actions.defensive+=/intimidation,if=talent.intimidation.enabled&cooldown.intimid
 # Rapid Fire, Fervor, A Murder of Crows, and Stampede should be used as many times as possible
 actions.cooldowns+=/rapid_fire,if=cooldown.rapid_fire.ready&!buff.rapid_fire.up
 actions.cooldowns+=/fervor,if=talent.fervor.enabled&cooldown.fervor.ready&focus<50
-actions.cooldowns+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus>=30
+actions.cooldowns+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus>=60
 actions.cooldowns+=/stampede,if=cooldown.stampede.ready
 
 # Glaive Toss should be used on cooldown
