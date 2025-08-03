@@ -73,8 +73,9 @@ local strformat = string.format
                 return state.buff.fervor.applied
             end,
 
-            interval = 0.1,
-            value = 50,
+            interval = 1,
+            value = 5,
+            duration = 10,
         },
     } )
 
@@ -1269,7 +1270,7 @@ spec:RegisterAuras( {
         fervor = {
             id = 82726,
             cast = 0,
-            cooldown = 90,
+            cooldown = 30,
             gcd = "off",
             
             startsCombat = false,
