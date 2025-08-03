@@ -1062,10 +1062,10 @@ spec:RegisterAuras( {
         a_murder_of_crows = {
             id = 131894,
             cast = 0,
-            cooldown = 60,
+            cooldown = 120,
             gcd = "spell",
 
-            spend = 30,
+            spend = 60,
             spendType = "focus",
 
             startsCombat = true,
