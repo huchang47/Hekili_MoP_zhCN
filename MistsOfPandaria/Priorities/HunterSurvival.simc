@@ -15,7 +15,7 @@ actions+=/call_action_list,name=cooldowns,if=time>=3
 actions+=/call_action_list,name=aoe,if=active_enemies>3
 
 # 2. Lock and Load burst phase (HIGHEST PRIORITY when active)
-actions+=/call_action_list,name=lock_and_load_burst,if=buff.lock_and_load.up
+actions+=/run_action_list,name=lock_and_load_burst,if=buff.lock_and_load.up
 
 # 3. MAIN ROTATION - Based on official guide
 # Apply and maintain Serpent Sting (will be refreshed by Cobra Shot)
@@ -107,16 +107,17 @@ actions.cooldowns+=/berserking
 actions.cooldowns+=/potion,name=virmens_bite,if=buff.bloodlust.up
 
 # AOE ROTATION (3+ TARGETS) - Based on official guide
-# For 4+ enemies: Multi-Shot spam priority
-actions.aoe+=/multi_shot,if=focus>=50&active_enemies>=4
+# PRIORITY: Lock and Load takes precedence over AoE abilities for maximum damage
+# Explosive Shot when Lock and Load proc is active (HIGHEST PRIORITY)
+actions.aoe+=/explosive_shot,if=buff.lock_and_load.up
+# Kill Shot in execute range
+actions.aoe+=/kill_shot,if=target.health.pct<=20
+# For 4+ enemies: Multi-Shot spam priority (only when not in Lock and Load)
+actions.aoe+=/multi_shot,if=focus>=50&active_enemies>=4&!buff.lock_and_load.up
 # Explosive Trap (if enemies are stacking)
 actions.aoe+=/explosive_trap,if=active_enemies>=4&!debuff.explosive_trap.up&target.time_to_die>20
 # Black Arrow on cooldown
 actions.aoe+=/black_arrow,if=!debuff.black_arrow.up&focus>=35&target.time_to_die>=8
-# Explosive Shot when Lock and Load proc is active
-actions.aoe+=/explosive_shot,if=buff.lock_and_load.up
-# Kill Shot in execute range
-actions.aoe+=/kill_shot,if=target.health.pct<=20
 # Cobra Shot when insufficient focus for Multi-Shot
 actions.aoe+=/cobra_shot,if=should_cobra_shot&focus>=14
 actions.aoe+=/steady_shot,if=should_steady_shot&focus>=14

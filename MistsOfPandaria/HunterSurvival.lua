@@ -301,6 +301,7 @@ spec:RegisterAuras( {
             lock_and_load = {
         id = 56453,
         duration = 8,
+        max_stack = 3,
     },
 
         piercing_shots = {
@@ -663,8 +664,8 @@ spec:RegisterAuras( {
                 
                 -- Handle Lock and Load charge consumption
                 if buff.lock_and_load.up then
-                    -- Remove the buff when Explosive Shot is cast during Lock and Load
-                    removeBuff( "lock_and_load" )
+                    -- Consume one charge when Explosive Shot is cast during Lock and Load
+                    removeBuff( "lock_and_load", 1 )
                 end
                 
                 -- Explosive Shot is the signature Survival ability
