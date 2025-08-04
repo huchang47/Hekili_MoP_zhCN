@@ -2090,7 +2090,7 @@ do
     }, {
         __index = function ( t, k )
             -- Make sure to get anything that should be dynamic, in case it was set (via newindex).
-            if class.stateExprs[ k ] then return 1 end
+            if state.class.stateExprs[ k ] then return 1 end
             if class.knownAuraAttributes[ k ] then return 1 end
             if k:match( "^time_to_pct" ) then return 1 end
             if k:match( "^incoming_damage" ) then return 1 end
@@ -2117,7 +2117,7 @@ do
             -- If the information will change and is time-sensitive, just return the calculated value.
             -- If something externally will set the value and it needs to persist, do not include in the reset table.
             -- If it's possible that something will set a value during recommendations generation, the key should also be in the reset table so it'll get wiped for each new set of recommendations.
-            if class.stateExprs[ k ] then return class.stateExprs[ k ]()
+            if state.class.stateExprs[ k ] then return state.class.stateExprs[ k ]()
 
             -- Internal processing stuff.
             elseif k == "display" then t[k] = "Primary"
@@ -2570,8 +2570,8 @@ do
             if t.toggle[ k ]   ~= nil then return t.toggle[ k ] end
             
             -- Check for state tables
-            if class.stateTables and class.stateTables[ k ] then
-                return class.stateTables[ k ]
+            if state.class.stateTables and state.class.stateTables[ k ] then
+                return state.class.stateTables[ k ]
             end
 
             if k ~= "scriptID" and not ( logged_state_errors[ t.scriptID ] and logged_state_errors[ t.scriptID ][ k ] ) then
