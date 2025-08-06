@@ -132,156 +132,78 @@ local function RegisterWindwalkerSpec()
             duration = 15,
             max_stack = 20,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 116740)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         touch_of_karma = {
             id = 122470,
             duration = 10,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 122470)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
+          
         },
         tiger_power = {
             id = 125359,
             duration = 20,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 125359)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
+            
         },
         power_strikes = {
             id = 129914,
             duration = 1,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 129914)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
+         
         },
         combo_breaker_tp = {
             id = 116768,
             duration = 15,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 116768)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
+           
         },
         combo_breaker_bok = {
             id = 116767,
             duration = 15,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 116767)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
+                
         },
         energizing_brew = {
             id = 115288,
             duration = 6,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115288)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
+            
         },
         rising_sun_kick_debuff = {
             id = 130320,
             duration = 15,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("target", 130320)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         zen_sphere = {
             id = 124081,
             duration = 16,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 124081)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         rushing_jade_wind = {
             id = 116847,
             duration = 6,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 116847)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         dampen_harm = {
             id = 122278,
             duration = 10,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 122278)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         diffuse_magic = {
             id = 122783,
             duration = 6,
             max_stack = 1,
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 122783)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         }
     })
 
