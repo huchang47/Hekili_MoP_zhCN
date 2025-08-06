@@ -96,139 +96,60 @@ local function RegisterBrewmasterSpec()
             duration = 1, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                -- Find the buff on the player by its ID
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 129914)
-                if name then
-                    -- If the buff exists, update its state
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                -- If the buff doesn't exist, reset its state
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },    
         tiger_power = { 
             id = 125359, -- This is the Spell ID for the Tiger Power buff
             duration = 20, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                -- Find the buff on the player by its ID
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 125359)
-                if name then
-                    -- If the buff exists, update its state
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                -- If the buff doesn't exist, reset its state
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         elusive_brew_stacks = {
             id = 128939, -- This is the Spell ID for the stacks buff itself
             duration = 30,
             max_stack = 15,
             emulated = true,
-            generate = function(t)
-                -- Find the buff on the player by its ID
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 128939)
-                if name then
-                    -- If the buff exists, update its state
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                -- If the buff doesn't exist, reset its state
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         legacy_of_the_emperor = { 
             id = 115921, 
             duration = 3600, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115921)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         shuffle = { 
             id = 115307, 
             duration = 6, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115307)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         elusive_brew = { 
             id = 115308, 
             duration = 6, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115308)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         fortifying_brew = { 
             id = 120954, 
             duration = 15, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 120954)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         guard = { 
             id = 115295, 
             duration = 30, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115295)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         dampen_harm = { 
             id = 122278, 
             duration = 10, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 122278)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         diffuse_magic = { 
             id = 122783, 
             duration = 6, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 122783)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         breath_of_fire_dot = { 
             id = 123725, 
@@ -236,13 +157,6 @@ local function RegisterBrewmasterSpec()
             tick_time = 2, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("target", 123725)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         heavy_stagger = { 
             id = 124273, 
@@ -250,13 +164,6 @@ local function RegisterBrewmasterSpec()
             tick_time = 1, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("player", 124273)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         moderate_stagger = { 
             id = 124274, 
@@ -264,13 +171,6 @@ local function RegisterBrewmasterSpec()
             tick_time = 1, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("player", 124274)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         light_stagger = { 
             id = 124275, 
@@ -278,39 +178,18 @@ local function RegisterBrewmasterSpec()
             tick_time = 1, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("player", 124275)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         zen_sphere = { 
             id = 124081, 
             duration = 16, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 124081)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         rushing_jade_wind = { 
             id = 116847, 
             duration = 6, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 116847)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         }
     })
 
