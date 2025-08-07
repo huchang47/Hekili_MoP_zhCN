@@ -30,8 +30,8 @@ else
     GetActiveLossOfControlData = function() return {} end
     GetActiveLossOfControlDataCount = function() return 0 end
 end
-
 -- MoP compatible item and spell functions
+---@diagnostic disable-next-line: deprecated
 local GetItemCooldown = _G.GetItemCooldown or function(item)
     if type(item) == "number" then
         return _G.GetItemCooldown and _G.GetItemCooldown(item) or 0, 0

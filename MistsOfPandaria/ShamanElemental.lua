@@ -1,148 +1,60 @@
 -- ShamanElemental.lua
--- January 2025 - MoP Structure based on Retail
+-- August 2025 - MoP Structure based on Retail
+-- Created by Smufrik
+
 
 -- MoP: Use UnitClass instead of UnitClassBase
-local _, playerClass = UnitClass('player')
-if playerClass ~= 'SHAMAN' then return end
+if select(2, UnitClass('player')) ~= 'SHAMAN' then return end
 
 local addon, ns = ...
-local Hekili = _G[ addon ]
+local Hekili = _G[ "Hekili" ]
+    
+-- Early return if Hekili is not available
+if not Hekili or not Hekili.NewSpecialization then return end
 local class = Hekili.Class
 local state = Hekili.State
 
-local function getReferences()
-    -- Legacy function for compatibility
-    return class, state
-end
 
 local strformat = string.format
+    local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+    local PTR = ns.PTR
 
-local function InitializeSpec()
-    if not Hekili or not Hekili.NewSpecialization then return end
-    
-    local spec = Hekili:NewSpecialization( 262 )
+    local spec = Hekili:NewSpecialization( 262, true )
 
 -- Enhanced Mana resource system for Elemental Shaman
-spec:RegisterResource( 0, { -- Mana = 0 in MoP
-    -- Water Shield mana restoration (Elemental gets better benefit than Enhancement)
-    water_shield = {
-        aura = "water_shield",
-        last = function ()
-            local app = state.buff.water_shield.applied
-            local t = state.query_time
-            return app + floor( ( t - app ) / 3 ) * 3
-        end,
-        interval = 3, -- Water Shield orb consumption
-        value = function ()
-            if not state.buff.water_shield.up then return 0 end
-            -- Elemental gets 5% max mana per orb (higher than Enhancement)
-            local base_restoration = state.mana.max * 0.05
-            
-            -- Glyph of Water Shield enhancement
-            if state.glyph.water_shield.enabled then
-                base_restoration = base_restoration * 1.2 -- 20% bonus
-            end
-            
-            return base_restoration
-        end,
-    },
-    
-    -- Thunderstorm mana restoration (Elemental signature ability)
-    thunderstorm_regen = {
-        last = function ()
-            return state.last_cast_time.thunderstorm or 0
-        end,
-        interval = 45, -- Thunderstorm cooldown
-        value = function()
-            -- Thunderstorm restores 8% mana in MoP for Elemental
-            return (state.last_ability and state.last_ability == "thunderstorm") and state.mana.max * 0.08 or 0
-        end,
-    },
-    
-    -- Elemental Focus mana efficiency (when clearcasting)
-    elemental_focus = {
-        aura = "clearcasting",
-        last = function ()
-            return state.query_time
-        end,
-        interval = 1,
-        value = function()
-            -- Clearcasting makes next spell cost no mana (effective restoration)
-            return state.buff.clearcasting.up and state.mana.max * 0.06 or 0 -- Avg spell cost
-        end,
-    },
-    
-    -- Telluric Currents mana return from Lightning Bolt on low health targets
-    telluric_currents = {
-        last = function ()
-            return state.last_cast_time.lightning_bolt or 0
-        end,
-        interval = 1,
-        value = function()
-            if state.talent.telluric_currents.enabled and (state.last_ability and state.last_ability == "lightning_bolt") and state.target.health.pct < 25 then
-                -- Telluric Currents returns 40% of Lightning Bolt cost as mana
-                return state.mana.max * 0.024 -- 6% spell cost * 40% return
-            end
-            return 0
-        end,
-    },
-}, {
-    -- Enhanced base mana regeneration for Elemental
-    base_regen = function ()
-        local base = state.mana.max * 0.02 -- 2% max mana per 5 seconds base
-        local spirit_bonus = (state.stat.spirit or 0) * 0.5 -- Spirit contribution
-        local meditation_bonus = 1.0
-        
-        -- Meditation allows 50% regen while casting
-        if state.talent.meditation.enabled and state.casting then
-            meditation_bonus = 0.5
-        end
-        
-        -- Mana Spring Totem bonus (if active)
-        if state.buff.mana_spring_totem.up then
-            base = base * 1.25 -- 25% bonus
-        end
-        
-        return (base + spirit_bonus) * meditation_bonus / 5 -- Convert to per-second
-    end,
-    
-    -- Unrelenting Storm mana bonus from critical strikes
-    unrelenting_storm = function ()
-        return state.talent.unrelenting_storm.enabled and 1 or 0 -- Random mana bonus from crits
-    end,
-} )
+-- Mana resource registration for Elemental Shaman (simplified for MoP compatibility)
+spec:RegisterResource( 0 ) -- Mana = 0 in MoP (use simple registration like other specs)
 
 -- Talents (MoP Elemental Shaman talents)
 spec:RegisterTalents( {
-    -- Tier 15
-    nature_guardian = { 1, 1, 30884 },
-    stone_bulwark_totem = { 1, 2, 108270 },
-    astral_shift = { 1, 3, 108271 },
+    -- Tier 1 (Level 15)
+    nature_guardian = { 1, 1, 30884 }, -- When you are below 30% health, all damage taken is reduced by 30% and your movement speed is increased by 30%.
+    stone_bulwark_totem = { 1, 2, 108270 }, -- Summons a Stone Bulwark Totem with 5 health at your feet for 30 sec. When damaged, the totem absorbs the damage instead of the player.
+    astral_shift = { 1, 3, 108271 }, -- You shift into the astral plane, reducing all damage taken by 40% for 6 sec.
     
-    -- Tier 30
-    frozen_power = { 2, 1, 63374 },
-    earthgrab_totem = { 2, 2, 51485 },
-    windwalk_totem = { 2, 3, 108273 },
+    -- Tier 2 (Level 30)
+    frozen_power = { 2, 1, 63374 }, -- Reduces the cooldown of your Frost Shock by 1 sec and your Frost Shock also reduces the target's movement speed by an additional 30%.
+    earthgrab_totem = { 2, 2, 51485 }, -- Summons an Earthgrab Totem that grasps the legs of enemies within 8 yards, preventing movement for 8 sec.
+    windwalk_totem = { 2, 3, 108273 }, -- Summons a Windwalk Totem that removes all movement impairing effects from party and raid members within 30 yards.
     
-    -- Tier 45  
-    call_of_the_elements = { 3, 1, 108285 },
-    totemic_restoration = { 3, 2, 108284 },
-    totemic_projection = { 3, 3, 108287 },
+    -- Tier 3 (Level 45)  
+    call_of_the_elements = { 3, 1, 108285 }, -- Reduces the cooldown of your totems by 4 sec.
+    totemic_restoration = { 3, 2, 108284 }, -- You may have 1 additional totem of each element active at one time.
+    totemic_projection = { 3, 3, 108287 }, -- Relocates your active totems to the target location.
     
-    -- Tier 60
-    lashing_lava = { 4, 1, 108291 },
-    conductivity = { 4, 2, 108282 },
-    unleashed_fury = { 4, 3, 117012 },
+    -- Tier 4 (Level 60)
+    lashing_lava = { 4, 1, 108291 }, -- Your Lava Lash ability will spread Flame Shock from your target to up to 4 nearby enemies.
+    conductivity = { 4, 2, 108282 }, -- When you cast Lightning Bolt or Chain Lightning on a target affected by your Flame Shock, it triggers a Lightning Blast at that target.
+    unleashed_fury = { 4, 3, 117012 }, -- Unleash Elements enhances your next spell cast.
     
-    -- Tier 75
-    unleash_life = { 5, 1, 73685 },
-    ancestral_swiftness = { 5, 2, 16188 },
-    echo_of_the_elements = { 5, 3, 108283 },
+    -- Tier 5 (Level 75)
+    unleash_life = { 5, 1, 73685 }, -- Unleashes elemental forces of Life, healing the Shaman and nearby allies for 30% of the Shaman's maximum health.
+    ancestral_swiftness = { 5, 2, 16188 }, -- Your next spell with a base casting time less than 10 sec becomes an instant cast spell.
+    echo_of_the_elements = { 5, 3, 108283 }, -- When you cast Earth Shock, Fire Nova, Lightning Bolt, or Chain Lightning, there is a 6% chance to not trigger the global cooldown.
     
-    -- Tier 90
-    unleashed_fury = { 6, 1, 117012 },
-    primal_elementalist = { 6, 2, 117013 },
-    elemental_blast = { 6, 3, 117014 },
+    -- Tier 6 (Level 90)
+    primal_elementalist = { 6, 1, 117013 }, -- Your Fire and Earth Elementals are infused with raw primal essence, granting them additional abilities.
+    elemental_blast = { 6, 2, 117014 }, -- Harnesses the raw power of the elements, dealing elemental damage and increasing your critical strike, haste, or mastery by 5% for 8 sec.
 } )
 
 -- Glyphs (Enhanced System - authentic MoP 5.4.8 glyph system)
@@ -220,27 +132,27 @@ spec:RegisterAuras( {
         max_stack = 1,
     },
     
-    -- Weapon Imbues
+    -- Weapon Imbues (MoP Classic IDs)
     flametongue = {
-        id = 318038,
+        id = 8024,
         duration = 3600,
         max_stack = 1,
     },
     
     frostbrand = {
-        id = 318039,
+        id = 8033,
         duration = 3600,
         max_stack = 1,
     },
     
     windfury = {
-        id = 319773,
+        id = 8232,
         duration = 3600,
         max_stack = 1,
     },
     
     rockbiter = {
-        id = 318037,
+        id = 8017,
         duration = 3600,
         max_stack = 1,
     },
@@ -250,87 +162,18 @@ spec:RegisterAuras( {
         id = 324,
         duration = 600,
         max_stack = 3,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetPlayerAuraBySpellID(324)
-            
-            if name then
-                t.name = name
-                t.count = count or 3
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.up = true
-                t.down = false
-                t.remains = expirationTime - GetTime()
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.up = false
-            t.down = true
-            t.remains = 0
-        end,
     },
     
     earth_shield = {
         id = 974,
         duration = 600,
         max_stack = 9,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetPlayerAuraBySpellID(974)
-            
-            if name then
-                t.name = name
-                t.count = count or 9
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.up = true
-                t.down = false
-                t.remains = expirationTime - GetTime()
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.up = false
-            t.down = true
-            t.remains = 0
-        end,
     },
     
     water_shield = {
         id = 52127,
         duration = 600,
         max_stack = 3,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetPlayerAuraBySpellID(52127)
-            
-            if name then
-                t.name = name
-                t.count = count or 3
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.up = true
-                t.down = false
-                t.remains = expirationTime - GetTime()
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.up = false
-            t.down = true
-            t.remains = 0
-        end,
     },
     
     -- Buffs
@@ -338,58 +181,12 @@ spec:RegisterAuras( {
         id = 77756,
         duration = 10,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetPlayerAuraBySpellID(77756)
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.up = true
-                t.down = false
-                t.remains = expirationTime - GetTime()
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.up = false
-            t.down = true
-            t.remains = 0
-        end,
     },
     
     clearcasting = {
         id = 16246,
         duration = 15,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetPlayerAuraBySpellID(16246)
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.up = true
-                t.down = false
-                t.remains = expirationTime - GetTime()
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.up = false
-            t.down = true
-            t.remains = 0
-        end,
     },
     
     -- Talent Buffs
@@ -397,90 +194,21 @@ spec:RegisterAuras( {
         id = 16166,
         duration = 30,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetPlayerAuraBySpellID(16166)
-            
-            if name and state.talent.elemental_mastery.enabled then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.up = true
-                t.down = false
-                t.remains = expirationTime - GetTime()
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.up = false
-            t.down = true
-            t.remains = 0
-        end,
     },
     
     ancestral_swiftness = {
         id = 16188,
         duration = 10,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetPlayerAuraBySpellID(16188)
-            
-            if name and state.talent.ancestral_swiftness.enabled then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.up = true
-                t.down = false
-                t.remains = expirationTime - GetTime()
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.up = false
-            t.down = true
-            t.remains = 0
-        end,
     },
     
     echo_of_the_elements = {
         id = 108283,
         duration = 10,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetPlayerAuraBySpellID(108283)
-            
-            if name and state.talent.echo_of_the_elements.enabled then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.up = true
-                t.down = false
-                t.remains = expirationTime - GetTime()
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.up = false
-            t.down = true
-            t.remains = 0
-        end,
     },
     
-    -- Debuffs on Target
+    -- Debuffs
     flame_shock = {
         id = 8050,
         duration = 30,
@@ -493,6 +221,152 @@ spec:RegisterAuras( {
         id = 8056,
         duration = 8,
         type = "Magic",
+        max_stack = 1,
+    },
+    
+    -- Totem auras with proper tracking
+    searing_totem = {
+        duration = 50,
+        max_stack = 1,
+        generate = function( t )
+            local up, name, start, duration, texture = GetTotemInfo( 1 )
+            
+            if up and texture == 135825 then -- Searing Totem texture
+                t.count = 1
+                t.expires = start + duration
+                t.applied = start
+                t.caster = "player"
+                return
+            end
+            
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
+    
+    fire_elemental = {
+        duration = 120,
+        max_stack = 1,
+        generate = function( t )
+            local up, name, start, duration, texture = GetTotemInfo( 1 )
+            
+            if up and texture == 135790 then -- Fire Elemental texture
+                t.count = 1
+                t.expires = start + duration
+                t.applied = start
+                t.caster = "player"
+                return
+            end
+            
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
+    
+    earth_elemental = {
+        duration = 120,
+        max_stack = 1,
+        generate = function( t )
+            local up, name, start, duration, texture = GetTotemInfo( 2 )
+            
+            if up and texture == 136024 then -- Earth Elemental texture
+                t.count = 1
+                t.expires = start + duration
+                t.applied = start
+                t.caster = "player"
+                return
+            end
+            
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
+
+    magma_totem = {
+        duration = 20,
+        max_stack = 1,
+        generate = function( t )
+            local up, name, start, duration, texture = GetTotemInfo( 1 )
+            
+            if up and texture == 135826 then -- Magma Totem texture
+                t.count = 1
+                t.expires = start + duration
+                t.applied = start
+                t.caster = "player"
+                return
+            end
+            
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
+
+    healing_stream_totem = {
+        duration = 15,
+        max_stack = 1,
+        generate = function( t )
+            local up, name, start, duration, texture = GetTotemInfo( 3 )
+            
+            if up and texture == 135127 then -- Healing Stream Totem texture
+                t.count = 1
+                t.expires = start + duration
+                t.applied = start
+                t.caster = "player"
+                return
+            end
+            
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
+
+    mana_tide_totem = {
+        duration = 12,
+        max_stack = 1,
+        generate = function( t )
+            local up, name, start, duration, texture = GetTotemInfo( 3 )
+            
+            if up and texture == 135861 then -- Mana Tide Totem texture
+                t.count = 1
+                t.expires = start + duration
+                t.applied = start
+                t.caster = "player"
+                return
+            end
+            
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
+    
+    -- Cooldown Buffs
+    ascendance = {
+        id = 114050,
+        duration = 15,
+        max_stack = 1,
+    },
+    
+    thunderstorm = {
+        id = 51490,
+        duration = 10,
+        max_stack = 1,
+    },
+    
+    spiritwalkers_grace = {
+        id = 79206,
+        duration = 15,
         max_stack = 1,
     },
 } )
@@ -515,7 +389,7 @@ spec:RegisterAbilities( {
         handler = function()
             removeBuff( "clearcasting" )
             if state.talent.rolling_thunder and state.buff.lightning_shield.up and state.buff.lightning_shield.stack >= 7 then
-                addBuff( "lava_surge" )
+                state:QueueAuraEvent( "lava_surge", "AURA_APPLIED" )
             end
         end,
     },
@@ -535,7 +409,7 @@ spec:RegisterAbilities( {
         handler = function()
             removeBuff( "clearcasting" )
             if state.talent.rolling_thunder and state.buff.lightning_shield.up and state.buff.lightning_shield.stack >= 7 then
-                addBuff( "lava_surge" )
+                state:QueueAuraEvent( "lava_surge", "AURA_APPLIED" )
             end
         end,
     },
@@ -575,7 +449,7 @@ spec:RegisterAbilities( {
         handler = function()
             -- Can proc Lava Surge
             if math.random() < 0.15 and state.buff.lightning_shield.up then
-                addBuff( "lava_surge" )
+                state:QueueAuraEvent( "lava_surge", "AURA_APPLIED" )
             end
         end,
     },
@@ -611,6 +485,37 @@ spec:RegisterAbilities( {
         
         handler = function()
             applyDebuff( "target", "frost_shock" )
+        end,
+    },
+
+    -- Ascendance (major cooldown)
+    ascendance = {
+        id = 114051,
+        cast = 0,
+        cooldown = 180,
+        gcd = "spell",
+        
+        startsCombat = false,
+        texture = 237577,
+        
+        handler = function()
+            applyBuff( "ascendance" )
+        end,
+    },
+
+    -- Thunderstorm (mana restore, knockback)
+    thunderstorm = {
+        id = 51490,
+        cast = 0,
+        cooldown = 45,
+        gcd = "spell",
+        
+        startsCombat = true,
+        texture = 237588,
+        
+        handler = function()
+            -- Mana restore and knockback handled elsewhere if needed
+            -- Could set a flag or update state if needed
         end,
     },
     
@@ -823,7 +728,7 @@ spec:RegisterAbilities( {
         usable = function() return target.casting end,
         
         handler = function()
-            interrupt()
+            -- Interrupt spell (actual interruption handled by Hekili core)
         end,
     },
     
@@ -840,7 +745,231 @@ spec:RegisterAbilities( {
             applyBuff( "ghost_wolf" )
         end,
     },
+    
+    -- Totems
+    searing_totem = {
+        id = 3599,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        
+        spend = 0.07,
+        spendType = "mana",
+        
+        startsCombat = true,
+        texture = 135825,
+        
+        handler = function()
+            -- Searing Totem provides continuous damage
+        end,
+    },
+    
+    magma_totem = {
+        id = 8190,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        
+        spend = 0.35,
+        spendType = "mana",
+        
+        startsCombat = true,
+        texture = 135826,
+        
+        handler = function()
+            -- Magma Totem provides AoE damage pulses
+        end,
+    },
+    
+    fire_elemental_totem = {
+        id = 2894,
+        cast = 0,
+        cooldown = 300,
+        gcd = "spell",
+        
+        spend = 0.23,
+        spendType = "mana",
+        
+        startsCombat = true,
+        texture = 135790,
+        
+        handler = function()
+            -- Summons Fire Elemental for 120 seconds
+        end,
+    },
+    
+    earth_elemental_totem = {
+        id = 2062,
+        cast = 0,
+        cooldown = 300,
+        gcd = "spell",
+        
+        spend = 0.23,
+        spendType = "mana",
+        
+        startsCombat = false,
+        texture = 136024,
+        
+        handler = function()
+            -- Summons Earth Elemental for 120 seconds
+        end,
+    },
+    
+    stormlash_totem = {
+        id = 120668,
+        cast = 0,
+        cooldown = 300,
+        gcd = "spell",
+        
+        spend = 0.23,
+        spendType = "mana",
+        
+        startsCombat = false,
+        texture = 839977,
+        
+        handler = function()
+            -- Stormlash Totem buffs raid damage
+        end,
+    },
+    
+    -- Other Abilities
+    unleash_elements = {
+        id = 73680,
+        cast = 0,
+        cooldown = 15,
+        gcd = "spell",
+        
+        spend = 0.17,
+        spendType = "mana",
+        
+        startsCombat = true,
+        texture = 462650,
+        
+        handler = function()
+            -- Unleash weapon imbue effects
+            if state.buff.flametongue.up then
+                -- Flame damage and movement bonus
+            elseif state.buff.frostbrand.up then
+                -- Frost damage and slow
+            elseif state.buff.windfury.up then
+                -- Lightning damage and speed
+            elseif state.buff.rockbiter.up then
+                -- Earth damage and damage reduction
+            end
+        end,
+    },
+    
+    spiritwalkers_grace = {
+        id = 79206,
+        cast = 0,
+        cooldown = 120,
+        gcd = "spell",
+        
+        startsCombat = false,
+        texture = 451169,
+        
+        handler = function()
+            applyBuff( "spiritwalkers_grace" )
+        end,
+    },
+    
+    earthquake = {
+        id = 61882,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        channeled = true,
+        
+        spend = 0.44,
+        spendType = "mana",
+        
+        startsCombat = true,
+        texture = 451165,
+        
+        handler = function()
+            -- Earthquake channeled AoE
+        end,
+    },
+    
+    call_of_the_elements = {
+        id = 108285,
+        cast = 0,
+        cooldown = 180,
+        gcd = "spell",
+        
+        talent = "call_of_the_elements",
+        
+        startsCombat = false,
+        texture = 136792,
+        
+        handler = function()
+            -- Reduces totem cooldowns
+        end,
+    },
+    
+    -- Ascendance abilities
+    lava_beam = {
+        id = 114074,
+        cast = 2.5,
+        cooldown = 0,
+        gcd = "spell",
+        
+        spend = function() return state.buff.clearcasting.up and 0 or 0.12 end,
+        spendType = "mana",
+        
+        startsCombat = true,
+        texture = 451165,
+        
+        usable = function() return buff.ascendance.up end,
+        
+        handler = function()
+            state:RemoveBuff( "clearcasting" )
+            if state.talent.rolling_thunder and state.buff.lightning_shield.up and state.buff.lightning_shield.stack >= 7 then
+                state:QueueAuraEvent( "lava_surge", "AURA_APPLIED" )
+            end
+        end,
+    },
 } )
+
+-- State Variables and Expressions
+spec:RegisterStateExpr( "lightning_shield_max_stack", function()
+    return 3 -- Lightning Shield has max 3 stacks in MoP
+end )
+
+spec:RegisterStateExpr( "time_to_bloodlust", function()
+    -- Simple implementation - return a large number if no bloodlust planned
+    return buff.bloodlust.up and 0 or 999
+end )
+
+-- Enchant tracking (weapon imbues) - using MoP Classic weapon enchant detection
+spec:RegisterStateTable( "enchant", setmetatable( {}, {
+    __index = function( t, k )
+        if k == "flametongue" then
+            -- Check main hand weapon enchant
+            local hasMainHandEnchant, mainHandExpiration, mainHandCharges, mainHandEnchantID = GetWeaponEnchantInfo()
+            return { weapon = hasMainHandEnchant and (mainHandEnchantID == 5 or state.buff.flametongue.up) }
+        elseif k == "frostbrand" then
+            local hasMainHandEnchant, mainHandExpiration, mainHandCharges, mainHandEnchantID = GetWeaponEnchantInfo()
+            return { weapon = hasMainHandEnchant and (mainHandEnchantID == 2 or state.buff.frostbrand.up) }
+        elseif k == "windfury" then
+            local hasMainHandEnchant, mainHandExpiration, mainHandCharges, mainHandEnchantID = GetWeaponEnchantInfo()
+            return { weapon = hasMainHandEnchant and (mainHandEnchantID == 283 or state.buff.windfury.up) }
+        elseif k == "rockbiter" then
+            local hasMainHandEnchant, mainHandExpiration, mainHandCharges, mainHandEnchantID = GetWeaponEnchantInfo()
+            return { weapon = hasMainHandEnchant and (mainHandEnchantID == 1 or state.buff.rockbiter.up) }
+        end
+        return { weapon = false }
+    end
+} ) )
+
+-- Earthquake tracking (for ticking/remains)
+spec:RegisterStateExpr( "ticking", function()
+    return false -- Would need to track if earthquake is currently channeling
+end )
+
+spec:RegisterStateExpr( "remains", function()
+    return 0 -- Earthquake remaining time - would need proper implementation
+end )
 
 -- Priority List
 spec:RegisterOptions( {
@@ -860,26 +989,5 @@ spec:RegisterOptions( {
     package = "Elemental",
 } )
 
-spec:RegisterPack( "Elemental", 20250108, [[Hekili:T3tAZTnor4FlCsKKvpbAb1fXssBACKOyN0fzSR9r1vvJ5sCnZGG)2VKf4vEvevHpNfDqjhhhV7rjjzgooSVF5L99oSN7V)1ND3N46)Ec33NX)M)M6)sC(5H3VF4VJp(6BZ(9J)(L9Op(6J)QJ)y4VpEjpWF8jpoF8Kx(aE8R)(jF(xyXJN4VFEVP)M6)C99AZ9LN4VN4r(VF(eo(1F8zH)AwqCJp(15(m)(y1YZpF(f3FET5U2Qf)T4qCrWPJGOsOl(5Vp)YJpIJNr4MFQX)(RNVx(VFpk)VFa9tpH)HFFd)xh)YJ)(VFa(VFC()yx6FqEI8Jd)rE(V)VE)V)8F(pE(ZJ)7bwxaVw(fpj)(VV4LgVE4zp5rxo5p9r8jOKZp(VpBE)MN)M9pqLKdE)V)6tFs9LMK3qUx4zxV)p(YJFa(XZ8JFEbp8apo(Rd8lp(0Jp5HrNzElpDr39b)JN4r4NX)5NJ)(3F)69Y)v3N9pOxoyUxgDx0F8B9V)KM(8N7)) ]])
+spec:RegisterPack( "Elemental", 20250807, [[Hekili:9IvBlYTnq4FlHchxiPU7D3EVK0Ch0uc0eiHqDk9dL4vAT1URyLTCLKVThCOF7DK87YsEVqkLqo8Aj9mspZmpZyLCwYxsIZWksYNoFX5xU4Mf3eTyX5lp)vjXQhkjjXL4094TWdf4C4VVJrYjfkmZmYdmooZGGKxjsHrtIxxrzQ3xKS2pS3aZTKKcV(QZtI3rZYi1ZLittI)YoQuJm)hRrngwJ4BGFNQO8cnIrLky4nCHg9BK9ugnc2ic(gkdm)pOrX7W54IxRrDBun6h1OpY)SgDz0YOB0OFNRWw0(am)3ILKmWga2)j)Wocg(X2kAgyxCb8mUsTdGHM2GrPGYfufLi1FWcWNfKuE(ASYmgPelAWUEhlJkBh)f3(tm62DQcAX2vYDucl7L0n3(S1vB2e5osuvPFi2Wa3GIxSTIS6abxYlSGqks3HlurdgoQEy)WijyHXAkUIKBrWmR7j1ViA0W(rOK)uoNR5mvdr9rmfizrh53SqZMPKcu6bmBprixTvGtjMTuo)ERlmkdC64IuYDlgUQumJTQ(NRmHfV0eGEBkNZY4hkKhFQyU1mnhCsbjh8Q3D7fhFLs4OXaUcl2sApE)ANHTbP9et3oQJ0mw161xZ48mwLubU7hFSgUifn34gwLrjV52Ll8dKDLR2ujEOdmSmLuKz4jlA23rAtcwLJLkI4HrXvJaeOEIypCW(pcWnubqQDt3nqZ)IGWo1Uzw1jt5O7U9QaC0K9Q)PjvCrodl31BTjoh)R0qnsLamG8aDJQGiLbMyht2eSeBdG0OMiOPzfrJcXAZ7bXbE6ElFaksgN1Jpki5qIL8ndIBNS4QcgXCaByePbbGxm5wndrQdMIif41mqqmium894vRReqQqlrzFLScMWiMYDLHKCcVIV7Obxa79dguA9qr9NPOg28UzazmdKXBeDR9nrn(Lto1xkuRfxjia6pFMtE3zEnezQg4VCg54omxF)XO7Uqm)1LaL409alpd)4t8)x4VBquo60lErBWVCanakYFlkh1tphVnh3plx58LNeyDdtkD2aJZ1gJiKODYP(s)MCoghOmfL5sEQrWXJecIa(OR9c3FxH37TU3s)7Fco3Ffb3PdnGqnfjB2mjX3dLuGX7Ab86K4dyHzmzBREnDUv3ZxovAIL0izvzjxOAAZBlSdfM(VuG8XEiGjsJ0O3RQxKTRdisjZ0fNANPnmY9gT(2o1GNOfPSkOdtyik0nN41qqPPPW)6pKedsKC5xFPgDyhnD3WzJlEO3QAub3a()uYOPufRh3mZtgJt6n6pdTukAnZxQHqJo7RnDv2)QZhy5dugBWjQbsv7uTSH9vfv5q9AJHLmq)r)H3NBimZlU0PxzyWKyttSCrsCCE1gbDFsSDiBJ7dtEHx8j7he0iQK8wyPwWsIhKtu3TUGwwpsOAzjXWCGYUuCs8ZGHRZy0OhF0CgTznA0BUvJUirbXio2TFTZwOQFd6QZza9IGGon3RhP(8wdgldIXZQP67j9lDunoZQV84RwJoPL8gwjtJUd4MRw0dU3YHgJCvqJmtjoaFnAa6952giVoiKbk4zpfNQrE0jSE8XL(0ONhIVV5ybcbQaoGNgpbdOVYaAWiLbMdM7zlosuJx52g3LR3QoHXG6zd3cJRroEdOm5xBWvSzZh98nto5LJ)ERHhJjFyvtSGN0WwZ5(Dq1siRQVtGUwDNpNBCbNAc7INOjGsm(sgFsRDSgNLG7(y15OyxhTRU33Wnn89CndbUHbhTKq3IW8ARWcdFZboI)JU0H590DAB(UoHzulxomhP(BLDsoV8BilYeZmxfnpTz64INRRv)vcMLT9LaS0kC6PuYG2A7iBpA1JPNWfRCTTTWBRO98LNhjwpSpGzRVf2Gp9AVHlSDm0NrJ(6GA0Hl651Z5GJTX65RGnT4O7jh62Es9Qjnw7eN3l)ot0EB20O4BN7SAYwD0vGyJm81NIH7x6T6XCN8A8cEPs978(R6AErNVht0D5xZNe5jn1RkY)Rn(1nl3JOJ2q4O7j(6bs0JVCSUW7oLOPxbMJzF1tr4Q9Fj)l]] )
 
--- Single Target
-spec:RegisterPack( "Elemental ST", 20250108, [[Hekili:T3tAZTnor4FlCsKKvpbAb1fXssBACKOyN0fzSR9r1vvJ5sCnZGG)2VKf4vEvevHpNfDqjhhhV7rjjzgooSVF5L99oSN7V)1ND3N46)Ec33NX)M)M6)sC(5H3VF4VJp(6BZ(9J)(L9Op(6J)QJ)y4VpEjpWF8jpoF8Kx(aE8R)(jF(xyXJN4VFEVP)M6)C99AZ9LN4VN4r(VF(eo(1F8zH)AwqCJp(15(m)(y1YZpF(f3FET5U2Qf)T4qCrWPJGOsOl(5Vp)YJpIJNr4MFQX)(RNVx(VFpk)VFa9tpH)HFFd)xh)YJ)(VFa(VFC()yx6FqEI8Jd)rE(V)VE)V)8F(pE(ZJ)7bwxaVw(fpj)(VV4LgVE4zp5rxo5p9r8jOKZp(VpBE)MN)M9pqLKdE)V)6tFs9LMK3qUx4zxV)p(YJFa(XZ8JFEbp8apo(Rd8lp(0Jp5HrNzElpDr39b)JN4r4NX)5NJ)(3F)69Y)v3N9pOxoyUxgDx0F8B9V)KM(8N7)) ]])
-
--- AOE
-spec:RegisterPack( "Elemental AOE", 20250108, [[Hekili:T3tAZTnor4FlCsKKvpbAb1fXssBACKOyN0fzSR9r1vvJ5sCnZGG)2VKf4vEvevHpNfDqjhhhV7rjjzgooSVF5L99oSN7V)1ND3N46)Ec33NX)M)M6)sC(5H3VF4VJp(6BZ(9J)(L9Op(6J)QJ)y4VpEjpWF8jpoF8Kx(aE8R)(jF(xyXJN4VFEVP)M6)C99AZ9LN4VN4r(VF(eo(1F8zH)AwqCJp(15(m)(y1YZpF(f3FET5U2Qf)T4qCrWPJGOsOl(5Vp)YJpIJNr4MFQX)(RNVx(VFpk)VFa9tpH)HFFd)xh)YJ)(VFa(VFC()yx6FqEI8Jd)rE(V)VE)V)8F(pE(ZJ)7bwxaVw(fpj)(VV4LgVE4zp5rxo5p9r8jOKZp(VpBE)MN)M9pqLKdE)V)6tFs9LMK3qUx4zxV)p(YJFa(XZ8JFEbp8apo(Rd8lp(0Jp5HrNzElpDr39b)JN4r4NX)5NJ)(3F)69Y)v3N9pOxoyUxgDx0F8B9V)KM(8N7)) ]])
-
-end
-
--- Lazy initialization
-if Hekili and Hekili.NewSpecialization then
-    InitializeSpec()
-else
-    local frame = CreateFrame("Frame")
-    frame:RegisterEvent("ADDON_LOADED")
-    frame:SetScript("OnEvent", function(self, event, addonName)
-        if addonName == "Hekili" then
-            InitializeSpec()
-            frame:UnregisterEvent("ADDON_LOADED")
-        end
-    end)
-end

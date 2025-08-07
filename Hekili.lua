@@ -1,6 +1,14 @@
 -- Hekili.lua
 -- July 2024
 
+-- MoP Classic API globals that may not be in annotations
+---@diagnostic disable: undefined-global
+---@type function|nil
+GetActiveTalentGroup = GetActiveTalentGroup
+---@type function|nil  
+callHook = callHook
+---@diagnostic enable: undefined-global
+
 local addon, ns = ...
 
 -- Initialize MoP compatibility tables
@@ -82,7 +90,8 @@ local UnpackAuraData = function(auraData)
 end
 
 -- MoP AuraUtil compatibility - avoid conflicts with ElvUI
-if _G.ElvUI then
+local ElvUI = _G.ElvUI
+if ElvUI then
     -- ElvUI detected - don't create global AuraUtil to avoid conflicts
     print("DEBUG: ElvUI detected - skipping global AuraUtil creation to prevent conflicts")
 
@@ -142,8 +151,19 @@ else
         print("DEBUG: Created global AuraUtil (no ElvUI detected)")
     end
 
-    if not AuraUtil.ForEachAura then
-        AuraUtil.ForEachAura = function(unit, filter, maxCount, func)
+    -- Only create ForEachAura if it doesn't exist or isn't functional
+    local needsCustomImplementation = not AuraUtil.ForEachAura
+    if not needsCustomImplementation then
+        -- Test if the existing implementation works for MoP
+        local testWorked = pcall(function()
+            AuraUtil.ForEachAura("player", "HELPFUL", 1, function() end)
+        end)
+        needsCustomImplementation = not testWorked
+    end
+
+    if needsCustomImplementation then
+        -- Create MoP-compatible ForEachAura function
+        local customForEachAura = function(unit, filter, maxCount, func)
             local i = 1
             while true do
                 local name, icon, count, dispelType, duration, expirationTime, source, isStealable,
@@ -186,9 +206,11 @@ else
                 if maxCount and i > maxCount then break end
             end
         end
-        print("DEBUG: Created global AuraUtil.ForEachAura (no ElvUI detected)")
+        
+        AuraUtil.ForEachAura = customForEachAura
+        print("DEBUG: Created custom AuraUtil.ForEachAura for MoP compatibility")
     else
-        print("DEBUG: AuraUtil.ForEachAura already exists")
+        print("DEBUG: Using existing AuraUtil.ForEachAura implementation")
     end
 end
 
@@ -646,7 +668,7 @@ end
 Hekili.ClassName = select( 2, UnitClass( "player" ) )
 Hekili.ClassIndex = select( 3, UnitClass( "player" ) )
 
--- Placeholder for callHook
+-- Placeholder for callHook (defined in Classes.lua)
 local callHook = callHook
 if not callHook then
     function callHook(hookName, ...)
@@ -662,18 +684,6 @@ function Hekili:GetMoPSpecialization()
     local _, class = UnitClass("player")
     if not class then
         return nil, nil
-    end
-
-    -- Try LibClassicSpecs first if available
-    if LibClassicSpecs and LibClassicSpecs.GetSpecialization and LibClassicSpecs.GetSpecializationInfo then
-        local currentSpec = LibClassicSpecs.GetSpecialization()
-        if currentSpec and currentSpec > 0 then
-            local specID, specName, description, icon, role, className = LibClassicSpecs.GetSpecializationInfo(currentSpec)
-            if specID and specID > 0 and specName then
-                print("DEBUG: LibClassicSpecs detection - specID:", specID, "specName:", specName, "role:", role)
-                return specID, specName
-            end
-        end
     end
 
     -- Use the proper mapping from Constants.lua
@@ -731,16 +741,6 @@ function Hekili:ForceSpecDetection()
             self.State.spec.key = specName and specName:lower():gsub("%s+", "_") or "unknown"
         end
 
-        -- Try to get role from LibClassicSpecs if available
-        if LibClassicSpecs and LibClassicSpecs.GetSpecializationRole then
-            local currentSpec = LibClassicSpecs.GetSpecialization and LibClassicSpecs.GetSpecialization()
-            if currentSpec and currentSpec > 0 then
-                local role = LibClassicSpecs.GetSpecializationRole(currentSpec)
-                if role then
-                    self.State.role = role
-                end
-            end
-        end
 
 
 
