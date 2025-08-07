@@ -1,8 +1,13 @@
+# Monk: Windwalker
+# SimCraft 548-8
+
+
 # =======================
 # Pre-Combat Setup
 # =======================
-actions.precombat+=/chi_burst,if=talent.chi_burst.enabled
-actions.precombat+=/chi_brew,if=talent.chi_brew.enabled
+actions.precombat+=/legacy_of_the_emperor,if=buff.stats.down&buff.legacy_of_the_emperor.down
+actions.precombat+=/legacy_of_the_white_tiger,if=buff.crit.down&buff.legacy_of_the_white_tiger.down
+actions.precombat+=/potion
 
 # =======================
 # Defensives List
@@ -11,56 +16,42 @@ actions.defensives+=/dampen_harm,if=talent.dampen_harm.enabled&!buff.touch_of_ka
 actions.defensives+=/diffuse_magic,if=talent.diffuse_magic.enabled&!buff.touch_of_karma.up&health.pct<=60
 
 # =======================
-# Cooldowns List
+# Core
 # =======================
-actions.cooldowns+=/use_items
-actions.cooldowns+=/blood_fury
-actions.cooldowns+=/berserking
-actions.cooldowns+=/arcane_torrent
-actions.cooldowns+=/invoke_xuen,if=talent.invoke_xuen.enabled
-# Line corrected: Replaced 'chi.deficit' with 'chi.current' syntax.
-actions.cooldowns+=/chi_brew,if=talent.chi_brew.enabled&chi.current<=5*talent.ascension.enabled+4*!talent.ascension.enabled-2
-actions.cooldowns+=/tigereye_brew,if=buff.tigereye_brew.stack>=10|(trinket.proc.agility.react|trinket.proc.strength.react)&buff.tigereye_brew.stack>=8
-actions.cooldowns+=/energizing_brew,if=energy.time_to_max>5&chi<=1
+actions+=/potion,if=buff.bloodlust.react|target.time_to_die<=60
+actions+=/use_items
+actions+=/berserking
+actions+=/chi_brew,if=talent.chi_brew.enabled&chi<=2&(trinket.proc.agility.react|(charges=1&recharge_time<=10)|charges=2|target.time_to_die<charges*10)
+actions+=/tiger_palm,if=buff.tiger_power.remains<=3&chi>=1
+actions+=/tigereye_brew,if=buff.tigereye_brew_use.down&buff.tigereye_brew.stack=20
+actions+=/tigereye_brew,if=buff.tigereye_brew_use.down&chi>=2&(buff.tigereye_brew.stack>=15|target.time_to_die<40)&debuff.rising_sun_kick.up&buff.tiger_power.up
+actions+=/energizing_brew,if=time_to_max_energy>5
+actions+=/rising_sun_kick,if=debuff.rising_sun_kick.down&chi>=2
+actions+=/tiger_palm,if=buff.tiger_power.down&debuff.rising_sun_kick.remains>1&time_to_max_energy>1&chi>=1
+actions+=/invoke_xuen,if=talent.invoke_xuen.enabled
+actions+=/run_action_list,name=aoe,if=active_enemies>=3
+actions+=/run_action_list,name=single_target,if=active_enemies<3
 
 # =======================
-# Core Builders (Lowest Priority)
+# Single-Target (ST)
 # =======================
-# Line corrected: Replaced 'chi.deficit' with 'chi.current' syntax.
-actions.core+=/expel_harm,if=health.pct<80&energy>=40&chi.current<5*talent.ascension.enabled+4*!talent.ascension.enabled
-# Line corrected: Replaced 'chi.deficit' with 'chi.current' syntax.
-actions.core+=/jab,if=energy>=40&chi.current<5*talent.ascension.enabled+4*!talent.ascension.enabled
+actions.single_target+=/touch_of_death,if=buff.death_note.up&chi>=3
+actions.single_target+=/rising_sun_kick,if=chi>=2
+actions.single_target+=/fists_of_fury,if=buff.energizing_brew.down&time_to_max_energy>4&buff.tiger_power.remains>4&chi>=3
+actions.single_target+=/chi_wave,if=talent.chi_wave.enabled&time_to_max_energy>2
+actions.single_target+=/chi_burst,if=talent.chi_burst.enabled&time_to_max_energy>2
+actions.single_target+=/zen_sphere,cycle_targets=1,if=talent.zen_sphere.enabled&time_to_max_energy>2&!dot.zen_sphere.ticking
+actions.single_target+=/blackout_kick,if=buff.combo_breaker_bok.react&chi>=2
+actions.single_target+=/tiger_palm,if=buff.combo_breaker_tp.react&(buff.combo_breaker_tp.remains<=2|time_to_max_energy>=2)&chi>=1
+actions.single_target+=/jab,if=chi.max-chi>=2
+actions.single_target+=/blackout_kick,if=energy+energy.active_regen*cooldown.rising_sun_kick.remains>=40&chi>=2
 
 # =======================
-# Single-Target Spenders (ST)
+# Area-of-Effect (AoE)
 # =======================
-actions.st+=/touch_of_death,if=target.health.pct<10
-actions.st+=/tiger_palm,if=chi>=1&(!buff.tiger_power.up|buff.tiger_power.remains<3)
-actions.st+=/rising_sun_kick,if=chi>=2&(!debuff.rising_sun_kick_debuff.up|debuff.rising_sun_kick_debuff.remains<3)
-actions.st+=/fists_of_fury,if=chi>=3&buff.tiger_power.up&debuff.rising_sun_kick_debuff.up&energy.time_to_max>2
-actions.st+=/blackout_kick,if=buff.combo_breaker_bok.up
-actions.st+=/tiger_palm,if=buff.combo_breaker_tp.up&buff.tiger_power.remains<=9
-actions.st+=/blackout_kick,if=chi>=2
-actions.st+=/chi_wave,if=talent.chi_wave.enabled
-actions.st+=/zen_sphere,if=talent.zen_sphere.enabled&!buff.zen_sphere.up
-actions.st+=/rushing_jade_wind,if=chi>=1&talent.rushing_jade_wind.enabled&!buff.rushing_jade_wind.up
-
-# =======================
-# Area-of-Effect Spenders (AoE)
-# =======================
-actions.aoe+=/touch_of_death,if=target.health.pct<10
-actions.aoe+=/tiger_palm,if=chi>=1&(!buff.tiger_power.up|buff.tiger_power.remains<3)
-actions.aoe+=/rising_sun_kick,if=chi>=2&!debuff.rising_sun_kick_debuff.up
-actions.aoe+=/fists_of_fury,if=chi>=3&buff.tiger_power.up&debuff.rising_sun_kick_debuff.up&energy.time_to_max>2
-actions.aoe+=/rushing_jade_wind,if=chi>=1&talent.rushing_jade_wind.enabled&!buff.rushing_jade_wind.up
-actions.aoe+=/spinning_crane_kick,if=chi>=2
+actions.aoe+=/rushing_jade_wind,if=talent.rushing_jade_wind.enabled
+actions.aoe+=/zen_sphere,cycle_targets=1,if=talent.zen_sphere.enabled&!dot.zen_sphere.ticking
+actions.aoe+=/chi_wave,if=talent.chi_wave.enabled
 actions.aoe+=/chi_burst,if=talent.chi_burst.enabled
-
-# =======================
-# Main Action List
-# =======================
-actions+=/call_action_list,name=defensives
-actions+=/call_action_list,name=cooldowns
-actions+=/call_action_list,name=st,if=active_enemies<3
-actions+=/call_action_list,name=aoe,if=active_enemies>=3
-actions+=/call_action_list,name=core
+actions.aoe+=/rising_sun_kick,if=chi=chi.max
+actions.aoe+=/spinning_crane_kick,if=!talent.rushing_jade_wind.enabled

@@ -31,25 +31,6 @@ local function RegisterBrewmasterSpec()
         state = Hekili.State
     end
 
-    -- Force Chi initialization with fallback
-    local function UpdateChi()
-        local chi = UnitPower("player", 12) or 0
-        local maxChi = UnitPowerMax("player", 12) or (state.talent.ascension.enabled and 5 or 4)
-
-        state.chi = state.chi or {}
-        state.chi.current = chi
-        state.chi.max = maxChi
-
-        return chi, maxChi
-    end
-
-    UpdateChi() -- Initial Chi sync
-
-    -- Ensure Chi stays in sync, but not so often it overwrites prediction.
-    for _, fn in pairs({ "resetState", "refreshResources" }) do
-        spec:RegisterStateFunction(fn, UpdateChi)
-    end
-
     -- Register Chi resource (ID 12 in MoP)
     spec:RegisterResource(12, {}, {
         max = function() return state.talent.ascension.enabled and 5 or 4 end

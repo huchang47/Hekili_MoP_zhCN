@@ -1653,8 +1653,9 @@ local resourceChange = function( amount, resource, overcap )
     if amount < 0 and r.spend then r.spend( -amount, resource, overcap )
     elseif amount > 0 and r.gain then r.gain( amount, resource, overcap )
     else
-        r.actual = max( 0, r.current + amount )
-        if not overcap then r.actual = min( r.max or 100, r.actual ) end
+        r.current = max( 0, r.current + amount )
+        if not overcap then r.current = min( r.max or 100, r.current ) end
+        r.actual = r.current
     end
 
     return true
