@@ -15,7 +15,7 @@ local strformat = string.format
 -- Enhanced MoP Specialization Detection for Monks
 function Hekili:GetMoPSpecialization()
     -- Prioritize the most defining abilities for each spec
-    
+
     -- Windwalker check
     if IsPlayerSpell(113656) or IsPlayerSpell(107428) then -- Fists of Fury or Rising Sun Kick
         return 269
@@ -25,7 +25,7 @@ function Hekili:GetMoPSpecialization()
     if IsPlayerSpell(121253) or IsPlayerSpell(115295) then -- Keg Smash or Guard
         return 268
     end
-    
+
     -- Mistweaver check (currently not implemented, but placeholder for completeness)
     -- if IsPlayerSpell(115175) or IsPlayerSpell(115151) then -- Soothing Mist or Renewing Mist
     --     return 270
@@ -139,42 +139,42 @@ local function RegisterWindwalkerSpec()
             duration = 10,
             max_stack = 1,
             emulated = true,
-          
+
         },
         tiger_power = {
             id = 125359,
             duration = 20,
             max_stack = 1,
             emulated = true,
-            
+
         },
         power_strikes = {
             id = 129914,
             duration = 1,
             max_stack = 1,
             emulated = true,
-         
+
         },
         combo_breaker_tp = {
             id = 116768,
             duration = 15,
             max_stack = 1,
             emulated = true,
-           
+
         },
         combo_breaker_bok = {
             id = 116767,
             duration = 15,
             max_stack = 1,
             emulated = true,
-                
+
         },
         energizing_brew = {
             id = 115288,
             duration = 6,
             max_stack = 1,
             emulated = true,
-            
+
         },
         rising_sun_kick = {
             id = 130320,
@@ -301,19 +301,9 @@ local function RegisterWindwalkerSpec()
             spendType = "energy",
 
             handler = function()
-                -- Gain chi from jab
                 local chi_gain = talent.power_strikes.enabled and buff.power_strikes.up and 3 or 2
-                
-                if Hekili.ActiveDebug then
-                    Hekili:Debug("Jab handler: gaining %d chi (current: %d)", chi_gain, chi.current or 0)
-                end
-                
                 gain(chi_gain, "chi")
-                
-                if Hekili.ActiveDebug then
-                    Hekili:Debug("Jab handler: after gain, chi: %d", chi.current or 0)
-                end
-                
+
                 if talent.power_strikes.enabled and buff.power_strikes.up then
                     removeBuff("power_strikes")
                 end
@@ -552,7 +542,6 @@ local function RegisterWindwalkerSpec()
             local unit, powerTypeString = ...
             if unit == "player" and state.spec.id == 269 then
                 if powerTypeString == "CHI" then
-                    -- CORRECTED: Removed 'or 0' to match Brewmaster implementation
                     local currentChi = UnitPower(unit, 12)
                     if state.chi.current ~= currentChi then
                         state.chi.current = currentChi
@@ -560,15 +549,11 @@ local function RegisterWindwalkerSpec()
                         Hekili:ForceUpdate(event)
                     end
                 elseif powerTypeString == "ENERGY" then
-                    -- CORRECTED: Removed 'or 0' to match Brewmaster implementation
                     local currentEnergy = UnitPower(unit, 3)
                     if state.energy.current ~= currentEnergy then
                         state.energy.current = currentEnergy
                         state.energy.actual = currentEnergy
                         Hekili:ForceUpdate(event)
-                        if Hekili.ActiveDebug then
-                            Hekili:Debug("Energy updated to %d for player", currentEnergy)
-                        end
                     end
                 end
             end
