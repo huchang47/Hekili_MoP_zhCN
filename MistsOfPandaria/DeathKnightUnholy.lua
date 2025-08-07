@@ -313,7 +313,7 @@ spec:RegisterHook( "spend", spendHook )
 -- Talents
 spec:RegisterTalents( {
     -- Tier 1 (Level 56)
-    roiling_blood             = { 1, 1, 108170 }, -- Your Pestilence refreshes disease durations and spreads diseases from each diseased target to all other targets.
+    roiling_blood             = { 1, 1, 108170 }, -- Your Blood Boil ability now also triggers Pestilence if it strikes a diseased target.
     plague_leech              = { 1, 2, 123693 }, -- Extract diseases from an enemy target, consuming up to 2 diseases on the target to gain 1 Rune of each type that was removed.
     unholy_blight             = { 1, 3, 115989 }, -- Causes you to spread your diseases to all enemy targets within 10 yards.
 
@@ -633,14 +633,14 @@ spec:RegisterAuras( {
     -- Blood Tap charges for converting runes to Death Runes
     blood_charge = {
         id = 114851,
-        duration = 60,
-        max_stack = 10
+        duration = 25,
+        max_stack = 12
     },
 
-    -- Horn of Winter buff - increases Attack Power and Strength
+    -- Horn of Winter buff - increases Attack Power
     horn_of_winter = {
         id = 57330,
-        duration = 120,
+        duration = 300,
         max_stack = 1
     },
 
@@ -662,7 +662,7 @@ spec:RegisterAuras( {
     -- Inflicted with a disease that deals Shadow damage over time.
     blood_plague = {
         id = 55078,
-        duration = 21,
+        duration = 30,
         tick_time = 3,
         type = "Disease",
         max_stack = 1
@@ -1110,7 +1110,7 @@ spec:RegisterAbilities( {
         end,
     },
 
-    -- Talent: Convert health to available runes
+    -- Talent: Convert Blood Charges to Death Runes.
     blood_tap = {
         id = 45529,
         cast = 0,
@@ -1151,10 +1151,9 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {0, 1, 1}, -- 0 Blood, 1 Frost, 1 Unholy
+        spend_runes = {1, 1, 0}, -- 1 Blood, 1 Frost, 0 Unholy
 
-        gain = 10,
-        gainType = "runicpower",
+        gain(10, "runic_power"),
 
         startsCombat = true,
 
@@ -1187,8 +1186,7 @@ spec:RegisterAbilities( {
 
         spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
 
-        gain = 10,
-        gainType = "runicpower",
+        gain(10, "runic_power"),
 
         startsCombat = true,
 
@@ -1239,10 +1237,8 @@ spec:RegisterAbilities( {
     unholy_blight = {
         id = 115989,
         cast = 0,
-        cooldown = 0,
+        cooldown = 90,
         gcd = "spell",
-
-        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
 
         talent = "unholy_blight",
         startsCombat = true,
@@ -1287,8 +1283,11 @@ spec:RegisterAbilities( {
     dark_simulacrum = {
         id = 77606,
         cast = 0,
-        cooldown = 20,
+        cooldown = 60,
         gcd = "off",
+
+        spend = 20,
+        spendType = "runic_power",
 
         pvptalent = "dark_simulacrum",
         startsCombat = false,
@@ -1333,7 +1332,7 @@ spec:RegisterAbilities( {
         cooldown = 30,
         gcd = "spell",
 
-        spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
+        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
 
         startsCombat = true,
         notalent = "defile",
@@ -1721,6 +1720,12 @@ spec:RegisterAbilities( {
         handler = function ()
             -- Blood Boil base functionality for MoP
             -- Spreads diseases to nearby enemies
+            if debuff.frost_fever.up then
+                active_dot.frost_fever = min(active_enemies, active_dot.frost_fever + active_enemies - 1)
+            end
+            if debuff.blood_plague.up then
+                active_dot.blood_plague = min(active_enemies, active_dot.blood_plague + active_enemies - 1)
+            end
         end,
     },
 
@@ -1728,13 +1733,14 @@ spec:RegisterAbilities( {
     horn_of_winter = {
         id = 57330,
         cast = 0,
-        cooldown = 0,
+        cooldown = 20,
         gcd = "spell",
 
         startsCombat = false,
 
         handler = function ()
             applyBuff( "horn_of_winter" )
+            gain(10, "runic_power") -- MoP gives 10 RP on cast
         end,
     },
 
