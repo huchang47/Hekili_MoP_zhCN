@@ -118,7 +118,13 @@ end)
 -- Register resources
 -- MoP: Use legacy power type constants
 spec:RegisterResource( 6 ) -- RunicPower = 6 in MoP
-spec:RegisterResource( 5 ) -- Runes = 5 in MoP
+spec:RegisterResource( 5, {}, {
+    state = {
+        expiry = { 0, 0, 0, 0, 0, 0 },
+        actual = 6,
+        max = 6
+    }
+} ) -- Runes = 5 in MoP with custom state
 
 -- Enhanced Resource Systems for Blood Death Knight
 spec:RegisterResource( 6, { -- RunicPower
@@ -207,56 +213,324 @@ spec:RegisterResource( 6, { -- RunicPower
         return state.talent.runic_corruption.enabled and 0.5 or 0    end,
 } )
 
-spec:RegisterResource( 5, { -- Runes
-    -- Blood Tap rune generation
-    blood_tap = {
-        aura = "blood_tap",
-        last = function ()
-            local app = state.buff.blood_tap.applied
-            local t = state.query_time
-            return app + floor( ( t - app ) / 1 ) * 1
+-- Register individual rune types for MoP 5.5.0 (Blood DK)
+spec:RegisterResource( 20, { -- Blood Runes = 20 in MoP
+    rune_regen = {
+        last = function () return state.query_time end,
+        stop = function( x ) return x == 2 end,
+        interval = function( time, val )
+            local r = state.blood_runes
+            if val == 2 then return -1 end
+            return r.expiry[ val + 1 ] - time
         end,
-        interval = 1,
-        value = function()
-            return state.talent.blood_tap.enabled and 1 or 0 -- Converts Blood Charges to runes
-        end,
-    },
-    
-    -- Death Pact rune efficiency
-    death_pact = {
-        aura = "death_pact",
-        last = function ()
-            local app = state.buff.death_pact.applied
-            local t = state.query_time
-            return app + floor( ( t - app ) / 1 ) * 1
-        end,
-        interval = 1,
-        value = function()
-            return state.talent.death_pact.enabled and 0.5 or 0 -- Slight rune efficiency bonus
-        end,
-    },
-}, {
-    -- Enhanced base rune regeneration
-    base_regen = function ()
-        local base = 10 -- 10 second base rune regeneration
-        local presence_bonus = 1
-        local talent_bonus = 1
-        
-        -- Presence bonuses
-        if state.buff.unholy_presence.up then
-            presence_bonus = 0.85 -- 15% faster rune regeneration
-        elseif state.buff.blood_presence.up then
-            presence_bonus = 1.0 -- Normal rune regeneration
+        value = 1,
+    }
+}, setmetatable( {
+    expiry = { 0, 0 },
+    cooldown = 10,
+    regen = 0,
+    max = 2,
+    forecast = {},
+    fcount = 0,
+    times = {},
+    values = {},
+    resource = "blood_runes",
+
+    reset = function()
+        local t = state.blood_runes
+        for i = 1, 2 do
+            local start, duration, ready = GetRuneCooldown( i )
+            start = start or 0
+            duration = duration or ( 10 * state.haste )
+            t.expiry[ i ] = ready and 0 or ( start + duration )
+            t.cooldown = duration
         end
-        
-        -- Talent bonuses
-        if state.talent.improved_blood_presence.enabled then
-            talent_bonus = talent_bonus * 0.95 -- 5% faster rune regeneration
-        end
-        
-        return base * presence_bonus * talent_bonus
+        table.sort( t.expiry )
+        t.actual = nil
     end,
-} )
+
+    gain = function( amount )
+        local t = state.blood_runes
+        for i = 1, amount do
+            table.insert( t.expiry, 0 )
+            t.expiry[ 3 ] = nil
+        end
+        table.sort( t.expiry )
+        t.actual = nil
+    end,
+
+    spend = function( amount )
+        local t = state.blood_runes
+        for i = 1, amount do
+            local nextReady = ( t.expiry[ 1 ] > 0 and t.expiry[ 1 ] or state.query_time ) + t.cooldown
+            table.remove( t.expiry, 1 )
+            table.insert( t.expiry, nextReady )
+        end
+        t.actual = nil
+    end,
+
+    timeTo = function( x )
+        return state:TimeToResource( state.blood_runes, x )
+    end,
+}, {
+    __index = function( t, k )
+        if k == "actual" then
+            local amount = 0
+            for i = 1, 2 do
+                if t.expiry[ i ] <= state.query_time then
+                    amount = amount + 1
+                end
+            end
+            return amount
+        elseif k == "current" then
+            return t.actual
+        end
+        return rawget( t, k )
+    end
+} ) )
+
+spec:RegisterResource( 21, { -- Frost Runes = 21 in MoP
+    rune_regen = {
+        last = function () return state.query_time end,
+        stop = function( x ) return x == 2 end,
+        interval = function( time, val )
+            local r = state.frost_runes
+            if val == 2 then return -1 end
+            return r.expiry[ val + 1 ] - time
+        end,
+        value = 1,
+    }
+}, setmetatable( {
+    expiry = { 0, 0 },
+    cooldown = 10,
+    regen = 0,
+    max = 2,
+    forecast = {},
+    fcount = 0,
+    times = {},
+    values = {},
+    resource = "frost_runes",
+
+    reset = function()
+        local t = state.frost_runes
+        for i = 3, 4 do -- Frost runes are at positions 3-4
+            local start, duration, ready = GetRuneCooldown( i )
+            start = start or 0
+            duration = duration or ( 10 * state.haste )
+            t.expiry[ i - 2 ] = ready and 0 or ( start + duration )
+            t.cooldown = duration
+        end
+        table.sort( t.expiry )
+        t.actual = nil
+    end,
+
+    gain = function( amount )
+        local t = state.frost_runes
+        for i = 1, amount do
+            table.insert( t.expiry, 0 )
+            t.expiry[ 3 ] = nil
+        end
+        table.sort( t.expiry )
+        t.actual = nil
+    end,
+
+    spend = function( amount )
+        local t = state.frost_runes
+        for i = 1, amount do
+            local nextReady = ( t.expiry[ 1 ] > 0 and t.expiry[ 1 ] or state.query_time ) + t.cooldown
+            table.remove( t.expiry, 1 )
+            table.insert( t.expiry, nextReady )
+        end
+        t.actual = nil
+    end,
+
+    timeTo = function( x )
+        return state:TimeToResource( state.frost_runes, x )
+    end,
+}, {
+    __index = function( t, k )
+        if k == "actual" then
+            local amount = 0
+            for i = 1, 2 do
+                if t.expiry[ i ] <= state.query_time then
+                    amount = amount + 1
+                end
+            end
+            return amount
+        elseif k == "current" then
+            return t.actual
+        end
+        return rawget( t, k )
+    end
+} ) )
+
+spec:RegisterResource( 22, { -- Unholy Runes = 22 in MoP
+    rune_regen = {
+        last = function () return state.query_time end,
+        stop = function( x ) return x == 2 end,
+        interval = function( time, val )
+            local r = state.unholy_runes
+            if val == 2 then return -1 end
+            return r.expiry[ val + 1 ] - time
+        end,
+        value = 1,
+    }
+}, setmetatable( {
+    expiry = { 0, 0 },
+    cooldown = 10,
+    regen = 0,
+    max = 2,
+    forecast = {},
+    fcount = 0,
+    times = {},
+    values = {},
+    resource = "unholy_runes",
+
+    reset = function()
+        local t = state.unholy_runes
+        for i = 5, 6 do -- Unholy runes are at positions 5-6
+            local start, duration, ready = GetRuneCooldown( i )
+            start = start or 0
+            duration = duration or ( 10 * state.haste )
+            t.expiry[ i - 4 ] = ready and 0 or ( start + duration )
+            t.cooldown = duration
+        end
+        table.sort( t.expiry )
+        t.actual = nil
+    end,
+
+    gain = function( amount )
+        local t = state.unholy_runes
+        for i = 1, amount do
+            table.insert( t.expiry, 0 )
+            t.expiry[ 3 ] = nil
+        end
+        table.sort( t.expiry )
+        t.actual = nil
+    end,
+
+    spend = function( amount )
+        local t = state.unholy_runes
+        for i = 1, amount do
+            local nextReady = ( t.expiry[ 1 ] > 0 and t.expiry[ 1 ] or state.query_time ) + t.cooldown
+            table.remove( t.expiry, 1 )
+            table.insert( t.expiry, nextReady )
+        end
+        t.actual = nil
+    end,
+
+    timeTo = function( x )
+        return state:TimeToResource( state.unholy_runes, x )
+    end,
+}, {
+    __index = function( t, k )
+        if k == "actual" then
+            local amount = 0
+            for i = 1, 2 do
+                if t.expiry[ i ] <= state.query_time then
+                    amount = amount + 1
+                end
+            end
+            return amount
+        elseif k == "current" then
+            return t.actual
+        end
+        return rawget( t, k )
+    end
+} ) )
+
+-- Death Runes State Table for MoP 5.5.0 (Blood DK)
+spec:RegisterStateTable( "death_runes", setmetatable( {
+    state = {},
+
+    reset = function()
+        for i = 1, 6 do
+            local start, duration, ready = GetRuneCooldown( i )
+            local type = GetRuneType( i )
+            local expiry = ready and 0 or start + duration
+            state.death_runes.state[i] = {
+                type = type,
+                start = start,
+                duration = duration,
+                ready = ready,
+                expiry = expiry
+            }
+        end
+    end,
+
+    getActiveDeathRunes = function()
+        local activeRunes = {}
+        local state_array = state.death_runes.state
+        for i = 1, 6 do
+            if state_array[i].type == 4 and state_array[i].expiry < state.query_time then
+                table.insert(activeRunes, i)
+            end
+        end
+        return activeRunes
+    end,
+
+    getActiveRunes = function()
+        local activeRunes = {}
+        local state_array = state.death_runes.state
+        for i = 1, 6 do
+            if state_array[i].expiry < state.query_time then
+                table.insert(activeRunes, i)
+            end
+        end
+        return activeRunes
+    end,
+
+    countDeathRunes = function()
+        local count = 0
+        local state_array = state.death_runes.state
+        for i = 1, 6 do
+            if state_array[i].type == 4 and state_array[i].expiry < state.query_time then
+                count = count + 1
+            end
+        end
+        return count
+    end,
+
+    countRunesByType = function(type)
+        local count = 0
+        local state_array = state.death_runes.state
+        local runeMapping = {
+            blood = {1, 2},
+            frost = {3, 4},
+            unholy = {5, 6}
+        }
+        local runes = runeMapping[type]
+        if runes then
+            for _, rune in ipairs(runes) do
+                if state_array[rune].type == 4 and state_array[rune].expiry < state.query_time then
+                    count = count + 1
+                elseif state_array[rune].type == (type == "blood" and 1 or type == "frost" and 2 or 3) and state_array[rune].expiry < state.query_time then
+                    count = count + 1
+                end
+            end
+        else
+            print("Invalid rune type:", type)
+        end
+        return count
+    end
+}, {
+    __index = function( t, k )
+        if k == "active_death_runes" then
+            return t.getActiveDeathRunes()
+        elseif k == "active_runes" then
+            return t.getActiveRunes()
+        elseif k == "count" then
+            return t.countDeathRunes()
+        elseif k == "blood" then
+            return t.countRunesByType("blood")
+        elseif k == "frost" then
+            return t.countRunesByType("frost")
+        elseif k == "unholy" then
+            return t.countRunesByType("unholy")
+        end
+        return rawget( t, k )
+    end
+} ) )
 
 -- Tier sets
 spec:RegisterGear( "tier14", 86919, 86920, 86921, 86922, 86923 ) -- T14 Battleplate of the Lost Cataphract
@@ -1576,106 +1850,128 @@ do
     
     -- Blood Runes
     spec:RegisterStateExpr( "blood_runes", function ()
-        return state.runes.blood
+        local count = 0
+        for i = 1, 2 do
+            local start, duration, ready = GetRuneCooldown( i )
+            if ready then count = count + 1 end
+        end
+        return count
     end )
     
     -- Frost Runes
     spec:RegisterStateExpr( "frost_runes", function ()
-        return state.runes.frost
+        local count = 0
+        for i = 3, 4 do
+            local start, duration, ready = GetRuneCooldown( i )
+            if ready then count = count + 1 end
+        end
+        return count
     end )
     
     -- Unholy Runes
     spec:RegisterStateExpr( "unholy_runes", function ()
-        return state.runes.unholy
+        local count = 0
+        for i = 5, 6 do
+            local start, duration, ready = GetRuneCooldown( i )
+            if ready then count = count + 1 end
+        end
+        return count
     end )
     
     -- Death Runes
     spec:RegisterStateExpr( "death_runes", function ()
-        return state.runes.death
+        local count = 0
+        for i = 1, 6 do
+            local start, duration, ready = GetRuneCooldown( i )
+            local type = GetRuneType( i )
+            if ready and type == 4 then count = count + 1 end
+        end
+        return count
     end )
-      -- Initialize the rune tracking system for MoP
-    spec:RegisterStateTable( "runes", {
-        blood = { count = 2, actual = 2, max = 2, cooldown = 10, recharge_time = 10 },
-        frost = { count = 2, actual = 2, max = 2, cooldown = 10, recharge_time = 10 },
-        unholy = { count = 2, actual = 2, max = 2, cooldown = 10, recharge_time = 10 },
-        death = { count = 0, actual = 0, max = 6, cooldown = 10, recharge_time = 10 }, -- Death runes created from conversions
-    } )
-    
-    -- Rune regeneration mechanics for MoP
-    spec:RegisterStateFunction( "spend_runes", function( rune_array )
-        if type(rune_array) == "table" then
-            local blood_cost, frost_cost, unholy_cost = rune_array[1], rune_array[2], rune_array[3]
-            
-            -- Spend Blood runes
-            if blood_cost and blood_cost > 0 then
-                if runes.blood.count >= blood_cost then
-                    runes.blood.count = runes.blood.count - blood_cost
-                elseif runes.death.count >= blood_cost then
-                    runes.death.count = runes.death.count - blood_cost
-                end
-            end
-            
-            -- Spend Frost runes
-            if frost_cost and frost_cost > 0 then
-                if runes.frost.count >= frost_cost then
-                    runes.frost.count = runes.frost.count - frost_cost
-                elseif runes.death.count >= frost_cost then
-                    runes.death.count = runes.death.count - frost_cost
-                end
-            end
-            
-            -- Spend Unholy runes
-            if unholy_cost and unholy_cost > 0 then
-                if runes.unholy.count >= unholy_cost then
-                    runes.unholy.count = runes.unholy.count - unholy_cost
-                elseif runes.death.count >= unholy_cost then
-                    runes.death.count = runes.death.count - unholy_cost
-                end
-            end
-        else
-            -- Legacy support for single rune type spending
-            local rune_type, amount = rune_array, 1
-            
-            if rune_type == "blood" and runes.blood.count >= amount then
-                runes.blood.count = runes.blood.count - amount
-            elseif rune_type == "frost" and runes.frost.count >= amount then
-                runes.frost.count = runes.frost.count - amount
-            elseif rune_type == "unholy" and runes.unholy.count >= amount then
-                runes.unholy.count = runes.unholy.count - amount
-            elseif rune_type == "death" and runes.death.count >= amount then
-                runes.death.count = runes.death.count - amount
-            end
+
+    -- Legacy rune type expressions for SimC compatibility
+spec:RegisterStateExpr( "blood", function() 
+    -- Safe rune counting that works in both game and emulation
+    if GetRuneCooldown then
+        local count = 0
+        for i = 1, 2 do
+            local start, duration, ready = GetRuneCooldown( i )
+            if ready then count = count + 1 end
         end
-        
-        -- Handle Runic Empowerment and Runic Corruption procs
-        if talent.runic_empowerment.enabled then
-            -- 45% chance to refresh a random rune
-            if math.random() < 0.45 then
-                applyBuff("runic_empowerment")
-            end
+        return count
+    else
+        -- Fallback for emulation
+        if state.blood_runes and state.blood_runes.current then
+            return state.blood_runes.current
         end
-        
-        if talent.runic_corruption.enabled then
-            -- 45% chance to increase rune regeneration by 100% for 3 seconds
-            if math.random() < 0.45 then
-                applyBuff("runic_corruption")
-            end
+        return 2 -- Default to 2 blood runes
+    end
+end )
+spec:RegisterStateExpr( "frost", function() 
+    -- Safe rune counting that works in both game and emulation
+    if GetRuneCooldown then
+        local count = 0
+        for i = 3, 4 do
+            local start, duration, ready = GetRuneCooldown( i )
+            if ready then count = count + 1 end
         end
-    end )
-    
-    -- Convert runes to death runes (Blood Tap, etc.)
+        return count
+    else
+        -- Fallback for emulation
+        if state.frost_runes and state.frost_runes.current then
+            return state.frost_runes.current
+        end
+        return 2 -- Default to 2 frost runes
+    end
+end )
+spec:RegisterStateExpr( "unholy", function() 
+    -- Safe rune counting that works in both game and emulation
+    if GetRuneCooldown then
+        local count = 0
+        for i = 5, 6 do
+            local start, duration, ready = GetRuneCooldown( i )
+            if ready then count = count + 1 end
+        end
+        return count
+    else
+        -- Fallback for emulation
+        if state.unholy_runes and state.unholy_runes.current then
+            return state.unholy_runes.current
+        end
+        return 2 -- Default to 2 unholy runes
+    end
+end )
+spec:RegisterStateExpr( "death", function() 
+    -- Safe rune counting that works in both game and emulation
+    if GetRuneCooldown and GetRuneType then
+        local count = 0
+        for i = 1, 6 do
+            local start, duration, ready = GetRuneCooldown( i )
+            local type = GetRuneType( i )
+            if ready and type == 4 then count = count + 1 end
+        end
+        return count
+    else
+        -- Fallback for emulation
+        if state.death_runes and state.death_runes.count then
+            return state.death_runes.count
+        end
+        return 0 -- Default to 0 death runes
+    end
+end )
+      -- Convert runes to death runes (Blood Tap, etc.)
     spec:RegisterStateFunction( "convert_to_death_rune", function( rune_type, amount )
         amount = amount or 1
         
-        if rune_type == "blood" and runes.blood.count >= amount then
-            runes.blood.count = runes.blood.count - amount
-            runes.death.count = runes.death.count + amount
-        elseif rune_type == "frost" and runes.frost.count >= amount then
-            runes.frost.count = runes.frost.count - amount
-            runes.death.count = runes.death.count + amount
-        elseif rune_type == "unholy" and runes.unholy.count >= amount then
-            runes.unholy.count = runes.unholy.count - amount
-            runes.death.count = runes.death.count + amount
+        if rune_type == "blood" and state.blood_runes.current >= amount then
+            state.blood_runes.current = state.blood_runes.current - amount
+            state.death_runes.count = state.death_runes.count + amount
+        elseif rune_type == "frost" and state.frost_runes.current >= amount then
+            state.frost_runes.current = state.frost_runes.current - amount
+            state.death_runes.count = state.death_runes.count + amount
+        elseif rune_type == "unholy" and state.unholy_runes.current >= amount then
+            state.unholy_runes.current = state.unholy_runes.current - amount
+            state.death_runes.count = state.death_runes.count + amount
         end
     end )
     
@@ -1703,7 +1999,7 @@ spec:RegisterStateExpr( "bone_shield_charges", function()
 end )
 
 spec:RegisterStateExpr( "total_runes", function()
-    return runes.blood.count + runes.frost.count + runes.unholy.count + runes.death.count
+    return state.blood_runes.current + state.frost_runes.current + state.unholy_runes.current + state.death_runes.count
 end )
 
 spec:RegisterStateExpr( "runes_on_cd", function()
@@ -1713,6 +2009,88 @@ end )
 spec:RegisterStateExpr( "rune_deficit", function()
     return 6 - total_runes -- Same as runes_on_cd but clearer name
 end )
+
+-- MoP-specific rune state expressions for Blood DK
+spec:RegisterStateExpr( "blood_runes", function() return state.blood_runes.current end )
+spec:RegisterStateExpr( "frost_runes", function() return state.frost_runes.current end )
+spec:RegisterStateExpr( "unholy_runes", function() return state.unholy_runes.current end )
+spec:RegisterStateExpr( "death_runes", function() return state.death_runes.count end )
+
+-- MoP Blood-specific rune tracking
+spec:RegisterStateExpr( "death_strike_runes_available", function()
+    return blood_runes > 0 or death_runes > 0
+end )
+
+spec:RegisterStateExpr( "blood_tap_charges", function()
+    return buff.blood_tap.stack or 0
+end )
+
+spec:RegisterStateExpr( "blood_tap_available", function()
+    return talent.blood_tap.enabled and (blood_tap_charges >= 5 or state.blood_runes.current > 0)
+end )
+
+-- MoP Death Rune conversion for Blood
+spec:RegisterStateFunction( "blood_tap_convert", function( amount )
+    amount = amount or 1
+    if state.blood_runes.current >= amount then
+        state.blood_runes.current = state.blood_runes.current - amount
+        state.death_runes.count = state.death_runes.count + amount
+        return true
+    end
+    return false
+end )
+
+-- Rune state expressions for MoP 5.5.0
+spec:RegisterStateExpr( "rune", function()
+    local total = 0
+    for i = 1, 6 do
+        local start, duration, ready = GetRuneCooldown( i )
+        if ready then total = total + 1 end
+    end
+    return total
+end )
+
+spec:RegisterStateExpr( "rune_deficit", function()
+    return 6 - rune_current
+end )
+
+spec:RegisterStateExpr( "rune_current", function()
+    -- Use state resources for emulation compatibility
+    local total = 0
+    if state.blood_runes and state.blood_runes.current then
+        total = total + state.blood_runes.current
+    end
+    if state.frost_runes and state.frost_runes.current then
+        total = total + state.frost_runes.current
+    end
+    if state.unholy_runes and state.unholy_runes.current then
+        total = total + state.unholy_runes.current
+    end
+    if state.death_runes and state.death_runes.count then
+        total = total + state.death_runes.count
+    end
+    return total
+end )
+
+-- Alias for APL compatibility
+spec:RegisterStateExpr( "runes_current", function()
+    return rune_current
+end )
+
+
+
+spec:RegisterStateExpr( "rune_max", function()
+    return 6
+end )
+
+-- Threat expression for emulation compatibility
+spec:RegisterStateExpr( "threat", function()
+    return 0 -- Default threat value for emulation
+end )
+
+
+
+
 
 spec:RegisterStateExpr( "death_strike_heal", function()
     -- Estimate Death Strike healing based on recent damage taken
