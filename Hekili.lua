@@ -84,7 +84,7 @@ end
 -- MoP AuraUtil compatibility - avoid conflicts with ElvUI
 if _G.ElvUI then
     -- ElvUI detected - don't create global AuraUtil to avoid conflicts
-    print("DEBUG: ElvUI detected - skipping global AuraUtil creation to prevent conflicts")
+    -- print("DEBUG: ElvUI detected - skipping global AuraUtil creation to prevent conflicts")
 
     -- Create internal AuraUtil for Hekili's own use only
     if not ns.AuraUtil then
@@ -133,13 +133,13 @@ if _G.ElvUI then
                 if maxCount and i > maxCount then break end
             end
         end
-        print("DEBUG: Created internal ns.AuraUtil for Hekili (ElvUI compatibility mode)")
+        -- print("DEBUG: Created internal ns.AuraUtil for Hekili (ElvUI compatibility mode)")
     end
 else
     -- No ElvUI detected - safe to create global AuraUtil
     if not AuraUtil then
         AuraUtil = {}
-        print("DEBUG: Created global AuraUtil (no ElvUI detected)")
+        -- print("DEBUG: Created global AuraUtil (no ElvUI detected)")
     end
 
     if not AuraUtil.ForEachAura then
@@ -186,9 +186,9 @@ else
                 if maxCount and i > maxCount then break end
             end
         end
-        print("DEBUG: Created global AuraUtil.ForEachAura (no ElvUI detected)")
+        -- print("DEBUG: Created global AuraUtil.ForEachAura (no ElvUI detected)")
     else
-        print("DEBUG: AuraUtil.ForEachAura already exists")
+        -- print("DEBUG: AuraUtil.ForEachAura already exists")
     end
 end
 
