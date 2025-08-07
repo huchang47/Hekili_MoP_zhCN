@@ -31,25 +31,6 @@ local function RegisterBrewmasterSpec()
         state = Hekili.State
     end
 
-    -- Force Chi initialization with fallback
-    local function UpdateChi()
-        local chi = UnitPower("player", 12) or 0
-        local maxChi = UnitPowerMax("player", 12) or (state.talent.ascension.enabled and 5 or 4)
-
-        state.chi = state.chi or {}
-        state.chi.current = chi
-        state.chi.max = maxChi
-
-        return chi, maxChi
-    end
-
-    UpdateChi() -- Initial Chi sync
-
-    -- Ensure Chi stays in sync, but not so often it overwrites prediction.
-    for _, fn in pairs({ "resetState", "refreshResources" }) do
-        spec:RegisterStateFunction(fn, UpdateChi)
-    end
-
     -- Register Chi resource (ID 12 in MoP)
     spec:RegisterResource(12, {}, {
         max = function() return state.talent.ascension.enabled and 5 or 4 end
@@ -96,139 +77,60 @@ local function RegisterBrewmasterSpec()
             duration = 1, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                -- Find the buff on the player by its ID
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 129914)
-                if name then
-                    -- If the buff exists, update its state
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                -- If the buff doesn't exist, reset its state
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },    
         tiger_power = { 
             id = 125359, -- This is the Spell ID for the Tiger Power buff
             duration = 20, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                -- Find the buff on the player by its ID
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 125359)
-                if name then
-                    -- If the buff exists, update its state
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                -- If the buff doesn't exist, reset its state
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         elusive_brew_stacks = {
             id = 128939, -- This is the Spell ID for the stacks buff itself
             duration = 30,
             max_stack = 15,
             emulated = true,
-            generate = function(t)
-                -- Find the buff on the player by its ID
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 128939)
-                if name then
-                    -- If the buff exists, update its state
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                -- If the buff doesn't exist, reset its state
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         legacy_of_the_emperor = { 
             id = 115921, 
             duration = 3600, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115921)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         shuffle = { 
             id = 115307, 
             duration = 6, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115307)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         elusive_brew = { 
             id = 115308, 
             duration = 6, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115308)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         fortifying_brew = { 
             id = 120954, 
             duration = 15, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 120954)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         guard = { 
             id = 115295, 
             duration = 30, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 115295)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         dampen_harm = { 
             id = 122278, 
             duration = 10, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 122278)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         diffuse_magic = { 
             id = 122783, 
             duration = 6, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 122783)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         breath_of_fire_dot = { 
             id = 123725, 
@@ -236,13 +138,6 @@ local function RegisterBrewmasterSpec()
             tick_time = 2, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("target", 123725)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         heavy_stagger = { 
             id = 124273, 
@@ -250,13 +145,6 @@ local function RegisterBrewmasterSpec()
             tick_time = 1, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("player", 124273)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         moderate_stagger = { 
             id = 124274, 
@@ -264,13 +152,6 @@ local function RegisterBrewmasterSpec()
             tick_time = 1, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("player", 124274)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         light_stagger = { 
             id = 124275, 
@@ -278,39 +159,18 @@ local function RegisterBrewmasterSpec()
             tick_time = 1, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("player", 124275)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         zen_sphere = { 
             id = 124081, 
             duration = 16, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 124081)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         },
         rushing_jade_wind = { 
             id = 116847, 
             duration = 6, 
             max_stack = 1, 
             emulated = true,
-            generate = function(t)
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 116847)
-                if name then
-                    t.name = name; t.count = count; t.expires = expirationTime; t.applied = expirationTime - duration; t.caster = caster; return
-                end
-                t.count = 0; t.expires = 0; t.applied = 0; t.caster = "nobody"
-            end
         }
     })
 
@@ -693,7 +553,7 @@ end)
         width = "full"
     })
 
-    spec:RegisterPack("Brewmaster", 20250728, [[Hekili:DZv6YTTrs4NfvPcfzScdV0HZkQQsSt2y7C4APtLFSvi5qGHIWceGloImDPI1(39ry))(KLNKT75aNZGdsq5yNQILfoMP7V(RVMzmM2F6BMoXKeqN(Zd6n48Ex1By3(x2FuVbtNeSDdD6KneJ7i3c)fhYA4p)gtYMaR)GUB(36rVFnXpG6TB(pqVZY2A3C3LlTmSi24RT12LyIdVVBONb8QtNSi0Yo4fotxKFopV)5NdZP)gQbC5lUA6KvwMMu(Zs9nMo5nRS83nh)FYU5cPcNr43ncSCD2n32YpaU9s3ijQliiEUlTSHP)Z2nFS6)B3lH79ApQH76fKGDZ9PbHByxu7lWNs)UBKV1y)aIJbDM7YzbROZ8dc9m3oZ9D7EzXdeCVNtxsD8bm1V4hvmu)QpO2FNDOFKvy387xrb9hebJ7q8XdUXkRBxDgGdVMJzoUGITm02gU2FpK4zYVSP79oWvioWVV1neVGZF(V)VWZsS9OeZTWarW5buk8MMiMViC5YyiWms8FYykxSMTaKQZSwogFYUjV4mUm2L9JBg3VxRvuIDWQUBOahXj46(961I9w3Iczxu(ALFuyxbVxeQ86qpRLBTCUvcjFjYbi)XwgSC7TilT9OEF(t6i02eGadBq1buuLQ1xTro6rAMXkRUgHEEGmdQrlGYea32VBOpDw6NU1jgUU2OWk0jgU2sivZSP)b1(MXdlqp(jxtQh4VKuvgYvflG(B7Ep3oJ8(eQf6siNAHsh9(Ew(4CCe022zmOJh17HhucbDYIbdsYWfkc4(YTm2BfE2iXoHMWC2bL)p)p)VDZVS3NZXKV31linoA57CASzE(9wbWOeyXgJne71frR)kMuNdigOMPUmAUzic)oTtPRG788Hp8qwO6YED4dbtUMTX9EQxxmuedwYRtFPaRqnoJtTWGtb1K6fhgGXvqilc)WRYH07joy4ZaxG2SI4GE6mHLFjYA3qhaaTjyeF1Wugnpkcqcekh94CGEKMhmSJqHFoz9gmU2pq8wZu2Fes3GH5Deb(5tovg)dEBVTbRyae1MbmPrdic3PySrl4cMOgQtrmzZ8SvWehPejUwzg7SkDExIkKw4zcxMsZkeLtWH6DR17tY5LrhWqbu82BfiXZwzfR6sNtuZPrdsKjK)IDHNoKyJcFReEbxpUFszah3etEaXgEgQzIznIgQC6HroAE5VCx5L6sDilSPMPM9b5toWZTC9tJsnOf6(mHe9laVzjtKQgqd6hbJEGuWV3Yt4a(CR3)EUZ5pqEVG7fU5mee8ULgefbArONd8yYSUtwbkGT45xqCUdqRiOXvizaYSGnPy9flHPmtSOXJp)leWfX3a5XUos86jJ(It0Dpo65ZfbiQ8AILJ)nx1YKYP8cvci9VNcbIKxpTSeLiotOBUtjwqfdLniBeQSvWP(SAfH788Zy(ToCmKLjwL3zcGqvS4dt)J9ufAbtEndxVHlvGKVjIdluoMKcP)0ySSbkOByWS7SmURHK1QXNDr6y7jqukuI)r3BTm6ugVMD)Fcm9bee7JyKSeImeyTLF66fmG5rLEkRMzuRmzkpjftlkNgpW172Gzz4H5zUsuOpaEfp)eL4h6rLv(NPinHyqXbit0A5qmBTyeYmPVIcEQtGgywXZVDlgMJnL8OuYqN80OoUHyksrm0SZ)D0BN5Jdvgt91d)Y(AT1Tsfx9M4KcXwI3Wlp51yDaGvvKnE4izLFsZclJoacwEQmsIIjGACsBHANRud0f4HhYDzrCHRhpOtHMnlN3g6f5OW8qKE(Bs6OO0QPOpGKi5(5ZKhJBjFwMQbTJ4zDhWns4J9rU61oLJ3qEeU0kB4gPD8FqxcEgRsMfAPm(mzb4yZ9nyulkNMD4HcARkPZ1JH6HZgKOtUsl(nwZOjlT4mrMezveNvv7dwxX9WWLPud8sXLAiBBj6orIBZB)U(QZr9TCV3RZIP93dF5rsW9BDFvS9VuRAABzjrSWC)eNTY(iQGQDqbMyYIucyT0T0Y2g)nwJJXHpteEpvvXaNjz3dH(OvQYIDAJ5WluxMS28WW9Mato6e(grfJFfKbhAndjY2ugZVn0M7aMuV2I6xAMD4UVKSGRUlXrIPDtEd3v2Mp2gSX(mzBGC1q6gLmnz(fv4M(Dh6hdq(ba88wYcex4PQNjKuWeLny1vxg7EfLanQguyGRuO6hb1tSwbB4CAHyC8u6AfaNP(m2TuRnemLOYPtgduwndNZ7hYwUwyE2tTzuJeeSYM5gqpBsBzdP91YER1xhU334(D4cdkstZAeOQXj4V)V8DFnusWl)n(imzJLJdZH6zEeCfxEfKcGJ3dFISRw)8(v6t8sCXWNEH(yq2zVLysNDVLJzEWgHbbGL7PZNBo)JWxH1mMRlAgZvzK10kRVaeNzGyyuw08Q7jLQVzuNlBe1rz))97(0Y1ZJiHPeN0p2r2Q7W)jLJt1vBETqQztlj22lGAspI0Hctq)0JswaMoRrJv6mC44WE36yvqWeaYOilkphUuUflpil6bw5LSFo(keQE7RKj0XBRQ4foeOm)DL8moPUUgaQ1(WT(DGbrlNRdq6gvE4yaHpA4BLIh)be1hvfaSAK7IOQ2C9pyfb(LrxiWmtxQClKVZb7OCYZEvLXgE78JUOk(uffvA0rlQK(EQ5Gs2gOsWMkPBAo0KUz68iuDuB2Et1oQH8hEi9IKeNBrBLWI1YakTHjKy73(bLv8SqHWLucymZ4)6m8WOCgEMzgBM48Du2ZAeVPFL9OYTBaXT2nW(l0P8PexaKYFk4NQAFQ8xeyekjbjEtsyG7msaUdFtNaaaQarhJO(D7FXWH9VA6K7jS9yZhp1qypIR346fiAG8uuloD3Cp6)k0ITEU(URHhch61e2MvY3(B)U7Ej71x6Ad4mJktc9i4kcq9OIT)HTDvSthdrWzqfc38Ka5ZXp7nUHoPEAttx2gDfqwq8PFnWKWT4o)(wGumfAbWQiH2bvvr(r2MMp8RXTiYbao2TDztfISCb70gHhDkFrJtpy77y1vJ6hDWRQha0haGF1XpCdowSfkqy0ovZ53sRae7vxpjyujMGmlw((FctQ(5lrAWAQPUgZ8hcxSCNKmnwyza26zF7xD77(6H1C7AVcl)hEzkckh8ybLXK8MgqsmYvoiCdOwnNA8bXdnnRG7EIfxkolV8knJ28Br0CHBlBF8TmGjWZY5oAa4zoF38xeWFjwwJ1uhtuOHk5deNAmCSTC9ScWUFCmSdnXQ65NEoPu9pzBd5lcOR9)9ZW6FTmwL8Pz70LCwfkm9DBSHUOcSJh3K6VCs)BSvqtmnVHpeqOKFxujD8LgKyMVhkepHgjgYa5JYqd2LCcxVGYJEz7gag0xSwM(7Q0wmmm20jS)gEYTXkLGF(ZStjUGqm9BHRdYmaYe4r57P2n45zC0U5TW4Hruo(1hWU8j8JtsIn3D6e(mpDsQnzKFCV9S2WVNU6U1Csx0wNELoFltdGAj1QR8azQoxjXQs8M(Nrp2Rd6ckpd1kpPq6RbdaJ(0F38Vq2TVIw6qBrQMM4gPr9I1HOoTuPchWXMb1Mr1Gj1wqzYUrW7M)WdkULiNdafCsxNynkUjZmQ0bEuBqn6CTAu6AGyMO(96L3jbU(5Ly0EcyHypYj7JPv6aw0AiT3u4IpvmicDXhpiuBfXVgYUPYLlkfjRXXTlRHVIMOUTZe1nLpYqUJu(iZPuRIcoV)hFiu)UsR(jmGgzoooCnv3rYHRupUShyOV68ySsksQiah4XxcbSNwgH4A98H(hCi1r6cPcsw)EvllfJzwnUvYJLeBkQtrihIEEGPosFMNysU(skYl55jydVqbLgTOvqiB8ddfOpbW86wszHPxcVKXrlBDUt7JRzdb0fi)IJS3FLZHMtURAvTfDgo0xB7rAJ4lUCy924tQOzwHf8YJSfuD2WBaVPUpTEMyfB0AXLR)jlEDifnPcft7QCK42Q3uZIBr5t3OAhIjmFSUc7k6WDd0VLGPyM6l0)yGK1HsxYrBP4EM0JFnCNn1ZMKbshvAGs9D3CGUzNS)EAc4klw1quejM2UykChblEu9Yh9wYIm0SJ15bP4E3(RO1B0(c913RjTbPWM20JuXTZn6I65gwwOrLnz8OfASIC0QFqBkP3t9i8(buxNILLP5nSZsvTDxLMjBWdydVdnXPdqvxAsHj7zWOQTOO4aYORZe(wjmJ)LJjEdZv1xHEPkXqeD6yuvPT(riMqK1FECZWWzg5eYPCNJvvozfvupQQYOQIoML0ZwtJuJUFGQsm2NXMX9tn24sdiZUlhXuhAN4zKruJGQcxpHJJrRvb93Cf72A296K3tXoyhR5PVzv9Ws)rjqFB)pkFmckEraoUgM4Dppgszxt1cS2yF1bQXUU1qACcctbRiAD(QeWDUIJxwO3L(SCfTOJS3k(lfsLj3rNWXsi218ZzsX8ubYBK5BjIYAEgetaZ)DfH9epnr0sXiQDj)R0hdLOK2YmKfAVYjAP(QAjk8GBalyh2Y4HPwPJ)sBLWWN4(v1QN4BCwzM9p0FzZQraV4nwPGViw5ARjXNal(7M8WZfLtvI2PhSm4Dd9vpRgr8QUk3wb7tezrSTJQrKo6aLbhaOC0(eQv8kgQzBz166P60vkbZmiY4OnWvfkJRlCN4Xn9PUS6jtFK)6Rv8khQc10qYoxqYYYIyywIgYYG3zqI)c9bxR41eKhKoZ3NSkWQuHOQ9zJHSettg46r4Z1gppPVY(AlPdiDl8XvxwTfei7Aux7LJtBAV6)vFqFk0J)NdHItpECH(dD54uS2thvSs)Mmv9TjSqe8iUQDhkDVH(InuC(1)Qbwhbc6HdHAzHb4xhzX)mAufrTAHVY9Htw)Qbkvvn)BTHjsbS1lALRhujIL9wYA21M())d]])
+    spec:RegisterPack("Brewmaster", 20250728, [[Hekili:DZv6YTTrs4NfvQcfzSmdPi1vwsvLVYgR4K4k0PYp2kKyiWqsybcWfhswUuHA)7(iS)FFYYtY29mdUNba8sYRtvYkcyWmD)1NtpnW4UJ)W4rgeF64F5KoNCANl6Cw7Ux09YtpF8i)7xrhpAfr)gYC4)XMSe(3xyqw5BElnu7LU07ws88PUHA)i9gtlZqnNzZm1njw4JDVLdXaNEpNaxD4rhpAAGPL)BThpn3AEkSMD63bwtVvuD4YNDX4rlmnmO8Xs90hp6dlm9c1WFiHAcQcxr4V19nDSd1Sm98HBpZjMIApEe7IizO74sHF)lmwMAtMArng)s46UMapysGHsVLAfQD1WqTE9d1AeQPVWSTEGRl12NF9tyx(GqTPbZM12Bb8Vw02bRgpIteapAbKMtG)KBm1VHt7UMR43BO8)lu7vaTfQ1C0cIl1iu7DoZn1BfQPC8)mX02h(juBeNe4eeapWpln98mTNp2hasL8kJ(bIBf1fKetwsjEbUupGvkY4dc1onu7Bd18jwWfAt80P2Eah1wm1HApluRpBihu2OGjMAtDNFFBaTcicSUFNiqv8KRCUJ6oXZ318gGIIi)yeM(PvuRjauTmh8(7Eao8g8UG8hUnhoEDetcWMGlfQr6OImct9uct5XHEmwTBfOHk(mHhUHoFIhy9Sqgl8t05GGfVlSioHAZXjJXaVAHjNPSCUdyaBdCHCcMViAbrUP)AOG3uOj7BohGCgW32W5oqX6HhKClx6sqRdWUbCBHwjCKyyeR8sLeD1pGdju794ublTGA61)zTYO4cg1WTbPSPRqn(uLC0ckXYFrBqaRhjI62PZxBQWM2FmG5yGjXTD8fAc6KvRGPfqOZ2fieOC)8nx5ocbAkXTzp2nzQtzrg0DtR9iUC(AylOWzFZCo7Zyd0JBOumGqg2QSyc)gDg4rArkp5moZ)i0d1u4H4(ayMduUPrkh8xOK)ecqGPMCh5wAg5NUJJfALNC3mm1JR9dm1xCAcwfrsYuayc3)GCRaK4Rc14ywIhjS1XLOqCzvkeduRp0DRDz2xLltGY62rjPXJunbaULMy0Retkf6SYvyVcybopyq5X)n)8NVh0KalUptJc9lU3uxkXFXeNztMbkEmomLcDMBktu9s2i45N9dmnxwSyXcIgXFMYddhS6yuu6oN6JxW(iFK(DTHHfjitmnGXpLyFdxw2vDQCfXL6zn(sNFkE5ylH6mO(IkykXhHQ7HedqQIr5QtQPiLx0KS3zsCcG2a1GiJin4oq24Mww4FXYkpjKFQ0y4lEIn7cMcc1cvJc8q6h4hFylfUuDNLtj(YYIVE5z)(OPiuZJ6Jk8kgAcx65tS1POQU)cke3kW14(joFItsg0zKalPeuS)mIL1e(Fmb3lsDj1FMjLFHyRnVdEYsiwCINW3GgqsOp3BPEY2aGAQk1ue5h1twUXQNHefS8PamCxf9Ovg605wQ7mqfswsV1KrDPYYVSo8yEFYd4ozsn7E(YYmBtMBMLAM5M4qJtVjAgjb(oti((e0RwYkYuuJHQs3a8(rOvw8Ol2IWrSBNp9weQoVtnJuPWEsK0WVkWSs2h(JwOo1HH2VYS5bexJe0Uc5yH9AKtyWMnzzl83XBeQD3cQnpwwuwBcuHNomljVx9AaQGWi2CyMLJh6P0GydrDwJDZVJWQ6LxbJFmcwUIt188rfmNG5zCsGhtE7ZTWl1yvDsHcs1nWddLo5Jed6K7mTnKVhGIdd0NnUx1g9oBpV7GAVh6c0DDnUFHZBGC16j2lfRYBcqSSsU9IF9nFFO2VD9FWFUrRmTTzM3VYLyJfTbe6CHBVNfzK7bQQlmtQoZXY3tIAJB1Y4dQPywIe889Seu9MpAF56jI9eG8eDeJ52vLAG)vlETnfvrgkM1uzpPBdo0nXaJR47rrqELxIYVE9QTnIWI(6kTQOBVzqmogxOAPAMQle4(ajxhvAf6WZGSUNs4UruxZu143oUYNRNmjhK2VshLQR(5wAMDWMBPjGR8y1osfjctBwUkClHwC)1lE0hjtZPMDnzAIsvucSmhPy(7rfOKNdlMbRDcDfF(n8QFG32lGD(PWZuETD)su61FtH(13QjRaP0I6QgPsk3B)ZwpZWQCnkTKApAUgRPoQfpMS)cInhbykJgoiiXIJFJnUZ3rV6N28AtVra1GmAz5kvjwhvzLLVoLovAvj5Gr6dCfTdtzEws9i9Kw3VkQqKkDJloVEyw(W4RThlLBWzeWMyHh(GO(eFhw1X5lWu6SOSZCP5F9V)VNuRnlXu5W8fNHZad)g9bEYLw85uNnNfZHKb65LhzDBEfGcslU5Jf0VTESKyEUxXk15Hx)DsvkcUhDSTTQ7CNFSD1iavDH2CC1JYSJLmXKZgpU(BA5PgS2dkOBpeQul0pZHwuQlvg5tTcWHozQl9oGlGGAETz)seoGJVL03dkRSzMzMxs6mh7z67xx3QVoM1QQoYVHp78oRlk0eN)aqfltfA)d29)475M6mOFwGL1XXfrmk6vK3H7DcWly)x)R)dmwILi5UfmXN)ckEtdSp6qUDnk0SiUBd25OHoTa9ip6KvbUMZyLWFkJhYLSjhZtsWeyU5y060r5tq7Stwo8(9r3mcUEo2ZFKBVpEwbZG(D(gS3IsxL1yCJBZUg1lU(SCt5vchn8fnlICePLkq5KTau(zhdrZJLGl944s8jWIkuODDkmsYovIFExZO2prTlXYAmbzMEG)f)umwYDBwargg32nYpVHiGSWbUNUnnR6Oiw56W1qSUx48Jh8ngeynzkGBqor4I(nC48hIzJirG4yE4twKpqFEUORy5Igz6PUEoYqnfkzNkuYYRfXWSuU5ZH35qIISXZfoPqMmNVMip(aNrDt8oX0SCCtbz4v5O4DeBStDXgBsFbEWnXz6JxIS0ja5hlqT1T8k1WDstwUIAZABS6QvjdrLBZMazPwMCW1Rz3jQZ0aO6De846TmXcpHhlip(gnYPoWQU3NzFf5WsWT9rSdsm9bBHhrC8jZxAys1BPQS(5G9uMFwHkHYyxVkIMQm(w88hBBe5ac92qt3giqcfLhnsKce2TymjBzfk7e5r4JsAagXLjOq0mQS)Zsi9OY7KqZXA(mXfiWabnMGwCNU3TD3Z61R7fJhDhHDUVEyJTJs6LRaDvHRMJWgt4iWrl9FgyYAWrpNLWGWt4FjHTICZgV2HxZE8zowWQYGwsGlbt5N6s5NNixnIfSNZK8oLhre)OXXtLam7YmAddhMcOpzkXJ(9HxZuUZEK6IlAuOvYHBCTewt0Ym1L7EhZgQ33J6z2aAYUTdBPaoXJtTh1mLiF4Wt)wvji)S(F7bQUxRJ4EFYozB6C1wb7h3etRha0faGF32lyfoxmnoHK8if9NKscijv71Jc6xHiifOD1WtAKZbBdLUJB0mtOQHd79Wdz9epy45DA1qs08ib2UAPxJv(PWURWUtuiHJ61N1t(2T(Y3n1cRHSt68QlAOO9FAOU1FAKvoDfiNKOm8fjzgd4N8yb45nfkYzf1631O5grd129)oaQ2Dm8tIVHcXKVM)6YbBJzMzu7Kf)(1iIJiCyWE9Im1HfW10(gQp4tqlu7T(8hIfVAj12ajA)fyZzXsFfNBthiFm8SRS1TcmWkCW3eqev9pyzn9wF6sV)8ym5xt9fPhnRJLJwvbdt)0kltDtFRK5nn)hTO)n2ElelZh4tb4e7pf5ILCPtsTY3zAzLIJetPF0qzOb7s2blNs5(nTC8bb6Bxgf49ISsm0bk2AYmyE8OdvNe81hkP)JVUShGVoETJZzyOIG9O8UIvovzOkDOIP6lJcsLabjzT8SHPJdES5SHLxuWRg2TtENlD70rUBj5famgv2rfDsoB9DzlTdYzzsSPBJsQ7uJdKvsPgzYV5QH9kHp2B1jAFWTnZhTOFNhEqke0kpgCsAn8NMI9OaryuDbGylYNfluwTtPvalFbv5hfWuoop2dqkeQG6XPG6rw9GETem8JqTBuWiPQNumtKVuwLiSZZ0fnjQryHKI3uruHd3SI4KW6XLUc48CvAc5(mLScj(gPScgmSBAAO(LHr(YhvIhCDvuhPmR(jfdoWJTm4Y4qdkHUdZ)2eutGEF)wfKanr7xeqMSPrMZx0MMA9ED)us8MV9VfbsXgzUN3oizt2uKGFxN3Na5s60VSc7iUQEgds)uxuNCsRZh9I0g8Uuz8zuQq9BKlm7bzKbXbe3OpQefiJKxS9ex9Y(4BKXVZMjfAKXv6vOR0dkR7jsZNBXxEIcSCCB0Kt7AqVN1vjJvK4li83OVIefOUK2elRsrZcPgH2Np8qHllmshm8KwLQPu(3OGkuuKSVLNwfKhv2R3ZxhfLgh0mJfDpUt18n7sK0AZ)UlSf(yAkZp)aSWZ59(0QqcpB(39GceSU4BSqUeGs)DIOHYVredgU7vchCXPi)wTn6G8yA3nWITFRNMeTIuxkKKfpOru)JHQUY2cy(0d62DdsHkoAA6V0bvRrNLEQWNC2pgb1rSUvUEz0Yo)BoqTj7SkY9ot(gxuMCZHBsN3w9EiEe6Q0yaYZhGNpsMwuvger5DuFX5nu3PT4exRGrpcSN02vC)X0RvWRDvlzUzCt)DsaGAlM3b85UuwUJ4(1sER0w)WYFDMRZ2Q2xV8NXOlXbDFw4LQrEGpbGP8vWPrvV5s5fxNTBexvPSMLzL8(4jNDpOs(nh7C(oHDKNpr7lRMp3JkmvyK()7iB9n4)QYWP(SnpxOYFVD3JQdLgG(Y9suagpRGJLAmS94WgVT56GGPaK(Xs091RiBEiqA87AzzCW6AAaOwZTx63cMeL6CTaLU(v7ogq49g(wl)XpHOE)6aG1t5Umv16)MYwBSHxkJ(NvhBQY8k1FV5vs9EQ3S3y28qt2ntxeHwh2MDAHnJ3q(dpKTarjXwuMj8Hs)C7vrYZcgclNwUpLBhJFJ2gAKQJBQAS6jhdBvdn6mCqCBN02ZvVKybqQEuWVLT9PQFqqJqQsqQNmZN2o4pw44oE0VBADpzjRp7h))o]])
 end
 
 -- Deferred loading mechanism

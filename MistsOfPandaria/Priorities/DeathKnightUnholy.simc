@@ -1,41 +1,63 @@
 # Death Knight: Unholy
+# Based on Wowhead's MoP Classic Guide: https://www.wowhead.com/mop-classic/guide/classes/death-knight/unholy/dps-rotation-cooldowns-abilities-pve
+
 actions.precombat+=/horn_of_winter,if=!buff.horn_of_winter.up
 actions.precombat+=/unholy_presence
 actions.precombat+=/raise_dead
 actions.precombat+=/army_of_the_dead
 
+# Defensives and Cooldowns
 actions+=/mind_freeze
-actions+=/antimagic_shell,damage=100000,if=cooldown.antimagic_shell.remains=0&settings.dps_shell.enabled
+actions+=/antimagic_shell,damage=100000,if=cooldown.antimagic_shell.remains=0&settings.dps_shell
 actions+=/use_item,name=trinket1,if=buff.dark_transformation.up
 actions+=/use_item,name=trinket2,if=buff.dark_transformation.up
 actions+=/blood_fury,if=buff.dark_transformation.up
 actions+=/berserking,if=buff.dark_transformation.up
 actions+=/arcane_torrent,if=runic_power<70&buff.dark_transformation.up
 actions+=/potion,if=buff.dark_transformation.up
-actions+=/unholy_blight,if=talent.unholy_blight.enabled&(dot.frost_fever.remains<3|dot.blood_plague.remains<3)
 
-actions+=/raise_dead,if=!pet.ghoul.active
-actions+=/plague_leech,if=talent.plague_leech.enabled&((dot.blood_plague.remains<3&dot.frost_fever.remains<3)|(cooldown.outbreak.remains<1))
+# Disease Management and Plague Leech Optimization
+actions+=/unholy_blight,if=talent.unholy_blight.enabled&(dot.frost_fever.remains<3|dot.blood_plague.remains<3)
+actions+=/plague_leech,if=talent.plague_leech.enabled&((dot.blood_plague.remains<3&dot.frost_fever.remains<3)|(rune_current<=2&(dot.frost_fever.ticking|dot.blood_plague.ticking)))
 actions+=/outbreak,if=(!dot.blood_plague.ticking|!dot.frost_fever.ticking)&cooldown.dark_transformation.remains<2
 actions+=/plague_strike,if=!dot.blood_plague.ticking
 actions+=/icy_touch,if=!dot.frost_fever.ticking
-actions+=/death_coil,if=runic_power>90|buff.sudden_doom.react
+
+# Sudden Doom Priority and Runic Power Management
+actions+=/death_coil,if=buff.sudden_doom.react
+actions+=/death_coil,if=runic_power>90
+
+# Pet Management
+actions+=/raise_dead,if=!pet.ghoul.active
 actions+=/dark_transformation
+
+# Soul Reaper Logic
 actions+=/soul_reaper,if=target.health.pct-3*(target.health.pct/target.time_to_die)<=35&cooldown.dark_transformation.remains>4
 
-actions+=/blood_boil,if=active_enemies>=2&(dot.blood_plague.ticking&dot.frost_fever.ticking)&(blood=2|(blood=1&blood.cooldown_remains<3))
-actions+=/death_and_decay,if=active_enemies>=2&unholy=1&(settings.dnd_while_moving.enabled|!moving)
+# AoE Setup
+actions+=/blood_boil,if=active_enemies>=2&(dot.blood_plague.ticking&dot.frost_fever.ticking)&(blood>=1)
+actions+=/death_and_decay,if=active_enemies>=2&unholy>=1&(settings.dnd_while_moving|!moving)
 
+# Action Lists
 actions+=/run_action_list,name=aoe,if=active_enemies>=4
 actions+=/run_action_list,name=single_target,if=active_enemies<4
 
+# Single Target Rotation
 actions.single_target+=/dark_transformation,if=buff.dark_transformation.down
-actions.single_target+=/scourge_strike,if=unholy=2|(unholy=1&death=1)
-actions.single_target+=/festering_strike,if=blood=2&frost=2
+
+# Festering Wound Management
+actions.single_target+=/scourge_strike,if=debuff.festering_wound.stack>=3&(unholy>=1)
+actions.single_target+=/festering_strike,if=blood>=1&frost>=1&debuff.festering_wound.stack<6
+
+# Blood Tap Optimization
 actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=5&unholy=0
+
+# Sudden Doom Priority
 actions.single_target+=/death_coil,if=buff.sudden_doom.react
+
+# Standard Rotation
 actions.single_target+=/scourge_strike,if=cooldown.death_and_decay.remains>0
-actions.single_target+=/festering_strike,if=blood>0&frost>0
+actions.single_target+=/festering_strike,if=blood>=1&frost>=1&debuff.festering_wound.stack<6
 actions.single_target+=/death_coil,if=runic_power>70
 actions.single_target+=/death_coil,if=talent.dark_transformation.enabled&cooldown.dark_transformation.remains<3&buff.dark_transformation.down
 actions.single_target+=/death_coil,if=buff.shadow_infusion.stack=4
@@ -43,11 +65,12 @@ actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.
 actions.single_target+=/horn_of_winter,if=runic_power<70&!buff.horn_of_winter.up
 actions.single_target+=/empower_rune_weapon,if=unholy=0&blood=0&frost=0
 
+# AoE Rotation
 actions.aoe+=/pestilence,if=dot.blood_plague.ticking&talent.unholy_blight.enabled&cooldown.unholy_blight.remains<3
 actions.aoe+=/pestilence,if=dot.blood_plague.ticking&dot.blood_plague.remains<3
 actions.aoe+=/blood_boil,if=dot.blood_plague.ticking&dot.frost_fever.ticking
-actions.aoe+=/death_and_decay,if=settings.dnd_while_moving.enabled|!moving
-actions.aoe+=/scourge_strike,if=unholy=1
+actions.aoe+=/death_and_decay,if=settings.dnd_while_moving|!moving
+actions.aoe+=/scourge_strike,if=unholy>=1
 actions.aoe+=/dark_transformation
 actions.aoe+=/death_coil,if=runic_power>90|buff.sudden_doom.react
 actions.aoe+=/blood_boil

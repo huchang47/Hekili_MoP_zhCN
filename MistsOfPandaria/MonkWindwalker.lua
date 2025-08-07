@@ -1,93 +1,79 @@
--- MonkWindwalker.lua
-
--- Boilerplate and Class Check
-if not Hekili or not Hekili.NewSpecialization then return end
-if select(2, UnitClass('player')) ~= 'MONK' then return end
-if GetSpecialization() ~= 269 then return end
+-- MonkWindwalker.lua July 2025
+-- Adapted from MonkBrewmaster.lua by Smufrik, Tacodilla, Uilyam
 
 local addon, ns = ...
-local Hekili = _G[ "Hekili" ]
-local class = Hekili.Class
-local state = Hekili.State
+local _, playerClass = UnitClass('player')
+if playerClass ~= 'MONK' then return end
 
--- Helper functions
+local Hekili = _G["Hekili"]
+local class, state = Hekili.Class, Hekili.State
+
+local floor = math.floor
 local strformat = string.format
 
--- Windwalker specific combat log tracking
-local ww_combat_log_events = {}
 
-local function RegisterWWCombatLogEvent(event, callback)
-    if not ww_combat_log_events[event] then
-        ww_combat_log_events[event] = {}
+-- Enhanced MoP Specialization Detection for Monks
+function Hekili:GetMoPSpecialization()
+    -- Prioritize the most defining abilities for each spec
+
+    -- Windwalker check
+    if IsPlayerSpell(113656) or IsPlayerSpell(107428) then -- Fists of Fury or Rising Sun Kick
+        return 269
     end
-    table.insert(ww_combat_log_events[event], callback)
+
+    -- Brewmaster check
+    if IsPlayerSpell(121253) or IsPlayerSpell(115295) then -- Keg Smash or Guard
+        return 268
+    end
+
+    -- Mistweaver check (currently not implemented, but placeholder for completeness)
+    -- if IsPlayerSpell(115175) or IsPlayerSpell(115151) then -- Soothing Mist or Renewing Mist
+    --     return 270
+    -- end
+
+    return nil -- Return nil if no specific spec is detected, to allow fallbacks
 end
 
--- Hook into combat log for Windwalker-specific tracking
+-- Define FindUnitBuffByID and FindUnitDebuffByID from the namespace
+local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+
+-- Create frame for deferred loading and combat log events
 local wwCombatLogFrame = CreateFrame("Frame")
-wwCombatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-wwCombatLogFrame:SetScript("OnEvent", function(self, event)
-    local timestamp, subevent, _, sourceGUID, _, _, _, destGUID, _, _, _, spellID = CombatLogGetCurrentEventInfo()
-    if sourceGUID ~= state.GUID then return end
 
-    if ww_combat_log_events[subevent] then
-        for _, callback in ipairs(ww_combat_log_events[subevent]) do
-            callback(timestamp, subevent, sourceGUID, destGUID, spellID)
-        end
-    end
-end)
-
-
+-- Define Windwalker specialization registration
 local function RegisterWindwalkerSpec()
-    if not class or not state or not Hekili.NewSpecialization then return end
-
+    -- Create the Windwalker spec (269 is Windwalker in MoP)
     local spec = Hekili:NewSpecialization(269, true)
+
     spec.name = "Windwalker"
-    spec.role = "DAMAGER"
+    spec.role = "DPS"
     spec.primaryStat = 2 -- Agility
 
-    -- Enhanced resource registration for Windwalker Monk
-    spec:RegisterResource(3, { -- Energy with Windwalker-specific mechanics
-        -- Combo Breaker energy efficiency (Windwalker signature)
-        combo_breaker = {
-            aura = "combo_breaker",
+    -- Ensure state is properly initialized
+    if not state then
+        state = Hekili.State
+    end
+
+
+
+    -- Register Chi resource (ID 12 in MoP)
+    spec:RegisterResource(12, {}, {
+        max = function() return state.talent.ascension.enabled and 5 or 4 end
+    })
+
+    -- Register Energy resource (ID 3 in MoP)
+    spec:RegisterResource(3, {
+        base_energy_regen = {
             last = function ()
-                local app = state.buff.combo_breaker.applied
-                local t = state.query_time
-                return app + floor( ( t - app ) / 1 ) * 1
+                return state.query_time
             end,
             interval = 1,
             value = function()
-                -- Combo Breaker provides energy efficiency
-                return state.buff.combo_breaker.up and 3 or 0 -- +3 energy per second during Combo Breaker
+                local base = 10 -- Base energy regen (10 energy per second)
+                local haste_bonus = 1.0 + ((state.stat.haste_rating or 0) / 42500) -- Approximate haste scaling
+                return base * haste_bonus
             end,
         },
-        
-        -- Tiger Palm energy refund mechanics (enhanced for Windwalker)
-        tiger_palm_efficiency = {
-            last = function ()
-                return state.query_time -- Continuous tracking
-            end,
-            interval = 1,
-            value = function()
-                -- Tiger Palm provides better energy efficiency for Windwalker
-                return state.buff.tiger_power.up and 2 or 0 -- +2 energy per second with Tiger Power active (more than Brewmaster)
-            end,
-        },
-        
-        -- Ascension talent bonus (if talented)
-        ascension = {
-            last = function ()
-                return state.query_time -- Continuous passive
-            end,
-            interval = 1,
-            value = function()
-                -- Ascension provides passive energy bonus
-                return state.talent.ascension.enabled and 2 or 0 -- +2 energy per second with Ascension
-            end,
-        },
-        
-        -- Energizing Brew energy boost (if available)
         energizing_brew = {
             aura = "energizing_brew",
             last = function ()
@@ -97,576 +83,489 @@ local function RegisterWindwalkerSpec()
             end,
             interval = 1,
             value = function()
-                -- Energizing Brew energy restoration
-                return state.buff.energizing_brew.up and 15 or 0 -- +15 energy per second during Energizing Brew (less than Brewmaster)
+                return state.buff.energizing_brew.up and 20 or 0 -- Additional 20 energy per second
             end,
         },
     }, {
-        -- Enhanced base energy regeneration for MoP Windwalker
-        base_regen = 10, -- Base 10 energy per second in MoP
-        haste_scaling = false, -- Energy doesn't scale with haste in MoP
-        
-        regenerates = function()
-            local base = 10 -- Standard energy regen
-            local bonus = 0
-            
-            -- Stance-specific bonuses
-            if state.buff.stance_of_the_fierce_tiger.up then
-                bonus = bonus + 1 -- +1 energy per second in Tiger Stance
-            end
-            
-            -- Combat efficiency (Windwalker combat training)
-            if state.combat then
-                bonus = bonus + 1 -- +1 energy per second in combat (Monk training)
-            end
-            
-            -- Storm, Earth, and Fire energy sharing
-            if state.buff.storm_earth_and_fire.up then
-                bonus = bonus + 2 -- +2 energy per second during clones
-            end
-            
-            return base + bonus
+        max = function() return 100 end,
+        base_regen = function()
+            local base = 10 -- Base energy regen (10 energy per second)
+            local haste_bonus = 1.0 + ((state.stat.haste_rating or 0) / 42500) -- Approximate haste scaling
+            return base * haste_bonus
         end,
-    } )
+        regen = function()
+            return state:CombinedResourceRegen( state.energy )
+        end,
+    })
 
-    spec:RegisterResource(12, { -- Chi with Windwalker-specific mechanics
-        -- Tigereye Brew chi generation synergy (Windwalker signature)
-        tigereye_brew_generation = {
-            last = function ()
-                return state.query_time
-            end,
-            interval = 1,
-            value = function()
-                -- Tigereye Brew builds stacks when spending Chi
-                if state.last_chi_spent and state.last_chi_spent > 0 then
-                    return 0 -- No direct chi generation, but tracks consumption for Tigereye stacks
-                end
-                return 0
-            end,
-        },
-        
-        -- Power Strikes chi bonus (Windwalker talent)
-        power_strikes = {
-            last = function ()
-                return state.query_time
-            end,
-            interval = 20, -- Power Strikes procs every 20 seconds
-            value = function()
-                if state.talent.power_strikes.enabled then
-                    return 1 -- Next Jab generates extra Chi
-                end
-                return 0
-            end,
-        },
-        
-        -- Ascension chi maximum increase (Windwalker talent)
-        ascension_bonus = {
-            last = function ()
-                return state.query_time
-            end,
-            interval = 1,
-            value = function()
-                -- Ascension increases max Chi by 1
-                return state.talent.ascension.enabled and 1 or 0 -- Effective max chi bonus
-            end,
-        },
-        
-        -- Chi Brew instant generation (Windwalker talent)
-        chi_brew_generation = {
-            last = function ()
-                return (state.last_cast_time and state.last_cast_time.chi_brew) or 0
-            end,
-            interval = 1,
-            value = function()
-                -- Chi Brew instantly generates 2 Chi
-                return (state.last_ability and state.last_ability == "chi_brew") and 2 or 0
-            end,
-        },
-        
-        -- Storm, Earth, and Fire chi efficiency
-        storm_earth_fire_efficiency = {
-            aura = "storm_earth_and_fire",
-            last = function ()
-                return state.query_time
-            end,
-            interval = 1,
-            value = function()
-                -- SEF provides effective chi efficiency through damage multiplication
-                return state.buff.storm_earth_and_fire.up and 0.5 or 0 -- Effective chi value bonus
-            end,
-        },
-    }, {
-        -- Base chi mechanics for Windwalker
-        max_chi = function ()
-            local base = 4 -- Base max Chi in MoP
-            if state.talent.ascension.enabled then
-                base = base + 1 -- Ascension increases max Chi by 1
-            end
-            return base
-        end,
-        
-        -- Chi generation from abilities
-        jab_generation = function ()
-            return 2 -- Jab generates 2 Chi in MoP (enhanced from 1 in earlier expansions)
-        end,
-        
-        -- Chi efficiency from Windwalker mastery
-        combo_strikes_efficiency = function ()
-            return 1.0 -- Combo Strikes mastery affects chi efficiency indirectly
-        end,
-    } )
-
-    -- MoP Tier Gear Registration
-    spec:RegisterGear("tier14", 85469, 85472, 85475, 85478, 85481)
-    spec:RegisterGear("tier15", 95861, 95864, 95867, 95870, 95873)
-    spec:RegisterGear("tier16", 99251, 99254, 99257, 99260, 99263)
-
-    -- MoP Talent Registration (Verified for 5.4.8)
+    -- Talents for MoP Windwalker Monk
     spec:RegisterTalents({
-        -- Tier 1 (Level 15) - Movement
-        celerity = { 1, 1, 115173, "Grants an extra charge of Roll." },
-        tigers_lust = { 1, 2, 116841, "Increases movement speed and removes roots/snares." },
-        momentum = { 1, 3, 115174, "Rolling increases your movement speed." },
-        -- Tier 2 (Level 30) - Healing/Damage
-        chi_wave = { 2, 1, 115098, "Bouncing wave of Chi that damages and heals." },
-        zen_sphere = { 2, 2, 124081, "AoE healing/damage sphere." },
-        chi_burst = { 2, 3, 123986, "Directional cone of Chi that damages and heals." },
-        -- Tier 3 (Level 45) - Resource Management
-        power_strikes = { 3, 1, 121817, "Every 20 sec, your next Jab generates an extra Chi." },
-        ascension = { 3, 2, 115396, "Increases max Chi by 1, and energy regen by 10%." },
-        chi_brew = { 3, 3, 115399, "Instantly restores 2 Chi." },
-        -- Tier 4 (Level 60) - Crowd Control
-        ring_of_peace = { 4, 1, 116844, "Creates a sanctuary that incapacitates enemies." },
-        charging_ox_wave = { 4, 2, 119392, "A forward charge that stuns enemies." },
-        leg_sweep = { 4, 3, 119381, "AoE stun around the Monk." },
-        -- Tier 5 (Level 75) - Survival
-        healing_elixirs = { 5, 1, 122280, "Heals you when using Brews/Teas, or when low health." },
-        dampen_harm = { 5, 2, 122278, "Reduces damage from large hits." },
-        diffuse_magic = { 5, 3, 122783, "Reduces magic damage taken and can reflect spells." },
-        -- Tier 6 (Level 90) - Damage Cooldowns
-        rushing_jade_wind = { 6, 1, 116847, "AoE damage tornado around you." },
-        invoke_xuen = { 6, 2, 123904, "Summons Xuen, the White Tiger, to fight for you." },
-        chi_torpedo = { 6, 3, 115008, "Replaces Roll with a longer-distance damaging torpedo." },
+        celerity = { 1, 1, 115173 },
+        tigers_lust = { 1, 2, 116841 },
+        momentum = { 1, 3, 115174 },
+        chi_wave = { 2, 1, 115098 },
+        zen_sphere = { 2, 2, 124081 },
+        chi_burst = { 2, 3, 123986 },
+        power_strikes = { 3, 1, 121817 },
+        ascension = { 3, 2, 115396 },
+        chi_brew = { 3, 3, 115399 },
+        deadly_reach = { 4, 1, 115176 },
+        charging_ox_wave = { 4, 2, 119392 },
+        leg_sweep = { 4, 3, 119381 },
+        healing_elixirs = { 5, 1, 122280 },
+        dampen_harm = { 5, 2, 122278 },
+        diffuse_magic = { 5, 3, 122783 },
+        rushing_jade_wind = { 6, 1, 116847 },
+        invoke_xuen = { 6, 2, 123904 },
+        chi_torpedo = { 6, 3, 115008 }
     })
 
-    -- MoP Glyph Registration
-    spec:RegisterGlyphs({
-        [125672] = "expel_harm",
-        [125677] = "touch_of_karma",
-        [146958] = "fists_of_fury", -- Increases parry chance while channeling.
-        [125679] = "touch_of_death",
-        [125687] = "fortifying_brew",
-    })
-
-    -- MoP Aura Registration
+    -- Auras for Windwalker Monk
     spec:RegisterAuras({
-        -- Core Buffs & Procs
-        legacy_of_the_emperor = {
-            id = 115921,
-            duration = 3600,
-            name = "Legacy of the Emperor"
-        },
-    
-        legacy_of_the_white_tiger = {
-            id = 116781,
-            duration = 3600,
-            name = "Legacy of the White Tiger"
-        },
-    
-        stance_of_the_fierce_tiger = {
-            id = 103985,
-            duration = 10,
-            name = "Stance of the Fierce Tiger"
-        },
-    
-        tigereye_brew_stack = {
-            id = 116740,
-            duration = 60,
+        tigereye_brew = {
+            id = 1247279,
+            duration = 120,
             max_stack = 20,
-            name = "Tigereye Brew"
+            emulated = true,
         },
-    
+        tigereye_brew_use = {
+            id = 1247275,
+            duration = 15,
+            max_stack = 1,
+            emulated = true,
+        },
+        touch_of_karma = {
+            id = 122470,
+            duration = 10,
+            max_stack = 1,
+            emulated = true,
+
+        },
         tiger_power = {
             id = 125359,
-            duration = 15,
-            name = "Tigereye Brew"
+            duration = 20,
+            max_stack = 1,
+            emulated = true,
+
         },
-    
-        combo_breaker_bok = {
+        power_strikes = {
+            id = 129914,
+            duration = 1,
+            max_stack = 1,
+            emulated = true,
+
+        },
+        combo_breaker_tp = {
             id = 116768,
             duration = 15,
-            name = "Combo Breaker: Blackout Kick"
+            max_stack = 1,
+            emulated = true,
+
         },
-    
-        combo_breaker_tp = {
-            id = 116768, -- Using same ID as BOK variant for MoP
+        combo_breaker_bok = {
+            id = 116767,
             duration = 15,
-            name = "Combo Breaker: Tiger Palm"
+            max_stack = 1,
+            emulated = true,
+
         },
-    
-        storm_earth_and_fire = {
-            id = 137639,
-            duration = 15,
-            name = "Storm, Earth, and Fire"
-        },
-    
-        healing_sphere = {
-            id = 124458,
-            duration = 15,
-            name = "Healing Sphere"
-        },
-    
-        -- Cooldowns
         energizing_brew = {
             id = 115288,
-            duration = 20,
-            name = "Energizing Brew"
-        },
-    
-        fortifying_brew = {
-            id = 115203,
-            duration = 20,
-            dr = 0.2,
-            name = "Fortifying Brew"
-        },
-    
-        -- Target Debuffs
-        rising_sun_kick_debuff = {
-            id = 121411,
-            duration = 15,
-            debuff = true,
-            name = "Rising Sun Kick"
-        },
-    
-        mortal_wounds = {
-            id = 115804,
-            duration = 10,
-            debuff = true,
-            name = "Mortal Wounds"
-        },
-    
-        -- Talent Auras
-        tigers_lust = {
-            id = 116841,
             duration = 6,
-            name = "Tigers Lust"
+            max_stack = 1,
+            emulated = true,
+
         },
-    
-        chi_torpedo = {
-            id = 119085,
-            duration = 10,
-            name = "Chi Torpedo"
+        rising_sun_kick = {
+            id = 130320,
+            duration = 15,
+            max_stack = 1,
+            emulated = true,
         },
-    
+        zen_sphere = {
+            id = 124081,
+            duration = 16,
+            max_stack = 1,
+            emulated = true,
+        },
         rushing_jade_wind = {
             id = 116847,
             duration = 6,
-            dot = true,
-            name = "Rushing Jade Wind"
+            max_stack = 1,
+            emulated = true,
         },
+        dampen_harm = {
+            id = 122278,
+            duration = 10,
+            max_stack = 1,
+            emulated = true,
+        },
+        diffuse_magic = {
+            id = 122783,
+            duration = 6,
+            max_stack = 1,
+            emulated = true,
+        },
+        legacy_of_the_emperor = {
+            id = 117666,
+            duration = 3600,
+            max_stack = 1
+        },
+        legacy_of_the_white_tiger = {
+            id = 116781,
+            duration = 3600,
+            max_stack = 1
+        },
+        death_note = {
+            id = 121125,
+            duration = 3600,
+            max_stack = 1
+        }
     })
 
-    -- Pet Registration
-    spec:RegisterPet("xuen_the_white_tiger", 63508, "invoke_xuen", 45, "xuen")
-
-    -- Ability Registration (MoP 5.4.8 accurate)
+    -- Abilities for Windwalker Monk
     spec:RegisterAbilities({
-        -- Core Abilities
-        stance_of_the_fierce_tiger = {
-            id = 103985,
+        legacy_of_the_emperor = {
+            id = 115921,
             cast = 0,
             cooldown = 0,
-    
-            gcd = "off",
-    
+            gcd = "spell",
+            startsCombat = false,
+
             handler = function()
-                applyBuff("stance_of_the_fierce_tiger", 10)
+                applyBuff("legacy_of_the_emperor", 3600)
             end
         },
-    
+        legacy_of_the_white_tiger = {
+            id = 116781,
+            cast = 0,
+            cooldown = 0,
+            gcd = "spell",
+            startsCombat = false,
+
+            handler = function()
+                applyBuff("legacy_of_the_white_tiger", 3600)
+            end
+        },
+        expel_harm = {
+            id = 115072,
+            cast = 0,
+            cooldown = 15,
+            gcd = "spell",
+            startsCombat = true,
+
+            spend = 40,
+            spendType = "energy",
+
+            handler = function()
+                gain(1, "chi")
+            end
+        },
+        tigereye_brew = {
+            id = 1247275,
+            cast = 0,
+            cooldown = 0,
+            gcd = "off",
+            startsCombat = false,
+
+            toggle = "cooldowns",
+
+            handler = function()
+                removeBuff("tigereye_brew")
+            end
+        },
+        touch_of_death = {
+            id = 115080,
+            cast = 0,
+            cooldown = 90,
+            gcd = "spell",
+            startsCombat = true,
+
+            spend = 3,
+            spendType = "chi",
+
+            toggle = "cooldowns",
+
+            handler = function()
+                removeBuff("death_note")
+            end
+        },
         jab = {
             id = 100780,
             cast = 0,
             cooldown = 0,
             gcd = "spell",
-            school = "physical",
-    
+            startsCombat = true,
+
             spend = 40,
             spendType = "energy",
-    
+
             handler = function()
-                gain(2, "chi")
-            end
-        },
-    
-        tiger_palm = {
-            id = 100787,
-    
-            spend = 1,
-            spendType = "chi",
-    
-            handler = function()
-                if buff.combo_breaker_tp.up then
-                    removeBuff("combo_breaker_tp")
+                local chi_gain = talent.power_strikes.enabled and buff.power_strikes.up and 3 or 2
+                gain(chi_gain, "chi")
+
+                if talent.power_strikes.enabled and buff.power_strikes.up then
+                    removeBuff("power_strikes")
                 end
             end
         },
-    
+       tiger_palm = {
+            id = 100787,
+            cast = 0,
+            cooldown = 0,
+            gcd = "spell",
+            startsCombat = true,
+
+            spend = function() return state.buff.combo_breaker_tp.up and 0 or 1 end,
+            spendType = "chi",
+
+            handler = function()
+                applyBuff("tiger_power", 20)
+                removeBuff("combo_breaker_tp")
+            end
+        },
         blackout_kick = {
             id = 100784,
-    
-            spend = 2,
+            cast = 0,
+            cooldown = 0,
+            gcd = "spell",
+            startsCombat = true,
+
+            spend = function() return state.buff.combo_breaker_bok.up and 0 or 2 end,
             spendType = "chi",
-    
+
             handler = function()
-                if buff.combo_breaker_bok.up then
-                    removeBuff("combo_breaker_bok")
-                end
+                removeBuff("combo_breaker_bok")
             end
         },
-    
         rising_sun_kick = {
             id = 107428,
-    
+            cast = 0,
             cooldown = 8,
+            gcd = "spell",
+            startsCombat = true,
+
             spend = 2,
             spendType = "chi",
-    
+
             handler = function()
-                if buff.combo_breaker_bok.up then
-                    removeBuff("combo_breaker_bok")
-                end
+                applyDebuff("target", "rising_sun_kick", 15)
             end
         },
-    
-        spinning_crane_kick = {
-            id = 101546,
-            channeled = true,
-    
-            spend = 40,
-            spendType = "energy",
-    
-            usable = function()
-                return enemies >= 3
-            end,
-    
-            handler = function() end
-        },
-    
         fists_of_fury = {
             id = 113656,
+            cast = 0,
             cooldown = 25,
-            channeled = true,
-    
+            gcd = "spell",
+            startsCombat = true,
+
             spend = 3,
             spendType = "chi",
-    
+
             handler = function() end
         },
-    
-        expel_harm = {
-            id = 115072,
-            cooldown = 15,
-    
-            spend = 40,
-            spendType = "energy",
-    
-            handler = function()
-                gain(1, "chi")
-            end
+        spinning_crane_kick = {
+            id = 101546,
+            cast = 0,
+            cooldown = 0,
+            gcd = "spell",
+            startsCombat = true,
+
+            spend = 2,
+            spendType = "chi",
+
+            handler = function() end
         },
-    
-        -- Cooldowns
-        tigereye_brew = {
-            id = 116740,
-            gcd = "off",
-    
-            usable = function()
-                return buff.tigereye_brew_stack.stack >= (state.settings.tigereye_min_stacks or 10)
-            end,
-    
-            handler = function()
-                local stacks_consumed = buff.tigereye_brew_stack.stack or 0
-                if stacks_consumed > 0 then
-                    removeBuff("tigereye_brew_stack")
-                    applyBuff("tiger_power", 15, stacks_consumed)
-                end
-            end
-        },
-    
         energizing_brew = {
             id = 115288,
+            cast = 0,
             cooldown = 60,
-    
-            toggle = "cooldowns",
-    
+            gcd = "off",
+            startsCombat = false,
+
             handler = function()
-                applyBuff("energizing_brew", 20)
-                gain(state.chi.max, "chi")
+                applyBuff("energizing_brew", 6)
             end
         },
-    
-        fortifying_brew = {
-            id = 115203,
-            cooldown = 180,
-    
-            toggle = "defensives",
-    
-            handler = function()
-                applyBuff("fortifying_brew", 20)
-            end
-        },
-    
-        storm_earth_and_fire = {
-            id = 137639,
-            cooldown = 90,
-            charges = 2,
-    
-            toggle = "cooldowns",
-    
-            handler = function()
-                applyBuff("storm_earth_and_fire", 15)
-            end
-        },
-    
-        touch_of_death = {
-            id = 115080,
-            cooldown = 90,
-    
-            toggle = "defensives",
-    
-            handler = function() end
-        },
-    
-        touch_of_karma = {
-            id = 122470,
-            cooldown = 90,
-    
-            toggle = "defensives",
-    
-            handler = function() end
-        },
-    
-        -- Talent Abilities
         chi_brew = {
             id = 115399,
+            cast = 0,
             cooldown = 45,
             charges = 2,
-    
+            startsCombat = false,
+
+            gcd = "off",
             talent = "chi_brew",
-    
-            handler = function()
-                gain(2, "chi")
-            end
+
+            handler = function() end
         },
-    
-        invoke_xuen = {
-            id = 123904,
-            cooldown = 180,
-    
-            toggle = "cooldowns",
-    
-            talent = "invoke_xuen",
-    
-            handler = function()
-                summonPet("xuen_the_white_tiger")
-            end
-        },
-    
         rushing_jade_wind = {
             id = 116847,
+            cast = 0,
             cooldown = 6,
-    
-            spend = 1,
-            spendType = "chi",
-    
-            talent = "rushing_jade_wind",
-    
-            handler = function() end
-        },
-    
-        leg_sweep = {
-            id = 119381,
-            cooldown = 45,
-    
-            aoe = true,
-            talent = "leg_sweep",
-    
-            handler = function() end
-        },
-    
-        -- Utility
-        spear_hand_strike = {
-            id = 116705,
-            cooldown = 15,
-    
-            gcd = "off",
-            interrupt = true,
-    
-            handler = function() end
-        },
-    
-        disable = {
-            id = 116095,
-    
-            spend = 15,
-            spendType = "energy",
-    
-            handler = function() end
-        },
-    
-        healing_sphere = {
-            id = 115460,
-    
+            gcd = "spell",
+            startsCombat = true,
+
             spend = 40,
             spendType = "energy",
-    
+
+            talent = "rushing_jade_wind",
+
+            handler = function()
+                -- Gain chi if hits three or more enemies
+                local chi_gain = active_enemies >= 3 and 1 or 0
+                if chi_gain > 0 then
+                    gain(chi_gain, "chi")
+                end
+                applyBuff("rushing_jade_wind", 6)
+            end
+        },
+        zen_sphere = {
+            id = 124081,
+            cast = 0,
+            cooldown = 10,
+            gcd = "spell",
+            startsCombat = true,
+
+            talent = "zen_sphere",
+
+            handler = function()
+                applyBuff("zen_sphere", 16)
+            end
+        },
+        chi_wave = {
+            id = 115098,
+            cast = 0,
+            cooldown = 15,
+            gcd = "spell",
+            startsCombat = true,
+
+            talent = "chi_wave",
+
             handler = function() end
         },
-    
-        legacy_of_the_emperor = {
-            id = 115921,
-    
-            spend = 20,
-            spendType = "energy",
-    
+        chi_burst = {
+            id = 123986,
+            cast = 1,
+            cooldown = 30,
+            gcd = "spell",
+            startsCombat = true,
+
+            spend = 2,
+            spendType = "chi",
+
+            talent = "chi_burst",
+
+            handler = function()
+                spend(2, "chi") -- CORRECTED: Added spend command
+            end
+        },
+        invoke_xuen = {
+            id = 123904,
+            cast = 0,
+            cooldown = 180,
+            gcd = "off",
+            startsCombat = true,
+
+            talent = "invoke_xuen",
+            toggle = "cooldowns",
+
             handler = function() end
         },
-    
-        legacy_of_the_white_tiger = {
-            id = 116781,
-    
-            spend = 20,
-            spendType = "energy",
-    
-            handler = function() end
+        dampen_harm = {
+            id = 122278,
+            cast = 0,
+            cooldown = 90,
+            gcd = "off",
+            startsCombat = false,
+
+            talent = "dampen_harm",
+            toggle = "defensives",
+
+            handler = function()
+                applyBuff("dampen_harm", 10)
+            end
         },
+        diffuse_magic = {
+            id = 122783,
+            cast = 0,
+            cooldown = 90,
+            gcd = "off",
+            startsCombat = false,
+
+            talent = "diffuse_magic",
+            toggle = "defensives",
+
+            handler = function()
+                applyBuff("diffuse_magic", 6)
+            end
+        },
+        spear_hand_strike = {
+            id = 116705,
+            cast = 0,
+            cooldown = 10,
+            gcd = "off",
+            startsCombat = true,
+
+            toggle = "interrupts",
+
+            handler = function() end
+        }
     })
 
-    -- Combat Log Logic
-    local chi_spent_for_brew = 0
-    RegisterWWCombatLogEvent("SPELL_CAST_SUCCESS", function(timestamp, subevent, sourceGUID, destGUID, spellID)
-        local ability = class.abilities[spellID]
-        if not ability or not ability.spendType == "chi" or not ability.spend > 0 then return end
+    spec:RegisterStateExpr("time_to_max_energy", function()
+        if state.energy.active_regen and state.energy.active_regen > 0 then
+            local deficit = state.energy.max - state.energy.current
+            if deficit <= 0 then
+                return 0
+            end
+            return deficit / state.energy.active_regen
+        end
+        return 3600 -- Large number indicating it will never be reached
+    end)
 
-        chi_spent_for_brew = chi_spent_for_brew + ability.spend
-        -- In MoP, 3 Chi spent = 1 stack of Tigereye Brew
-        if chi_spent_for_brew >= 3 then
-            local stacks_to_add = math.floor(chi_spent_for_brew / 3)
-            addStack("tigereye_brew_stack", stacks_to_add)
-            chi_spent_for_brew = chi_spent_for_brew % 3
+    -- Temporary expression to fix a warning about missing threat value
+    -- Should probably remove this
+    spec:RegisterStateExpr("threat", function()
+        return {
+            situation = threat_situation or 0,
+            percentage = threat_percent or 0
+        }
+    end)
+
+    -- Consolidated event handler
+    wwCombatLogFrame:RegisterEvent("UNIT_POWER_UPDATE")
+    wwCombatLogFrame:RegisterEvent("ADDON_LOADED")
+
+    wwCombatLogFrame:SetScript("OnEvent", function(self, event, ...)
+        if event == "UNIT_POWER_UPDATE" then
+            local unit, powerTypeString = ...
+            if unit == "player" and state.spec.id == 269 then
+                if powerTypeString == "CHI" then
+                    local currentChi = UnitPower(unit, 12)
+                    if state.chi.current ~= currentChi then
+                        state.chi.current = currentChi
+                        state.chi.actual = currentChi
+                        Hekili:ForceUpdate(event)
+                    end
+                elseif powerTypeString == "ENERGY" then
+                    local currentEnergy = UnitPower(unit, 3)
+                    if state.energy.current ~= currentEnergy then
+                        state.energy.current = currentEnergy
+                        state.energy.actual = currentEnergy
+                        Hekili:ForceUpdate(event)
+                    end
+                end
+            end
+        elseif event == "ADDON_LOADED" then
+            local addonName = ...
+            if addonName == "Hekili" or TryRegister() then
+                self:UnregisterEvent("ADDON_LOADED")
+            end
         end
     end)
 
-    -- State Expressions for APL
-    spec:RegisterStateExpr("tigereye_ready", function()
-        return buff.tigereye_brew_stack.stack >= (settings.tigereye_min_stacks or 10)
-    end)
-    spec:RegisterStateExpr("rsk_debuff_down", function()
-        return debuff.rising_sun_kick_debuff.down or debuff.rising_sun_kick_debuff.remains < 3
-    end)
-
-    -- Options and Settings
+    -- Options
     spec:RegisterOptions({
         enabled = true,
         aoe = 3,
@@ -674,25 +573,39 @@ local function RegisterWindwalkerSpec()
         nameplates = true,
         nameplateRange = 8,
         damage = true,
-        damageExpiration = 5,
-        potion = "potion_of_mogu_power", -- MoP Agility Potion
-        package = "Windwalker",
+        damageExpiration = 8,
+        package = "Windwalker"
     })
 
-    spec:RegisterSetting("tigereye_min_stacks", 10, {
-        name = strformat("Min. %s Stacks", Hekili:GetSpellLinkWithTexture(spec.abilities.tigereye_brew.id)),
-        desc = strformat("The minimum number of stacks required before %s will be recommended for use.", Hekili:GetSpellLinkWithTexture(spec.abilities.tigereye_brew.id)),
-        type = "range", min = 1, max = 20, step = 1, width = "full"
+    spec:RegisterSetting("use_energizing_brew", true, {
+        name = strformat("Use %s", Hekili:GetSpellLinkWithTexture(115288)), -- Energizing Brew
+        desc = "If checked, Energizing Brew will be recommended when energy is low.",
+        type = "toggle",
+        width = "full"
     })
 
-    spec:RegisterSetting("tigereye_pandemic", 4, {
-        name = strformat("%s Pandemic Window", Hekili:GetSpellLinkWithTexture(spec.abilities.tigereye_brew.id)),
-        desc = strformat("Recommends refreshing %s when the remaining duration is less than this value.", Hekili:GetSpellLinkWithTexture(125359)),
-        type = "range", min = 0, max = 15, step = 0.5, width = "full"
+    spec:RegisterSetting("energizing_brew_energy", 40, {
+        name = "Energizing Brew Energy Threshold (%)",
+        desc = "Energizing Brew will be recommended when your energy drops below this percentage.",
+        type = "range", min = 10, max = 80, step = 5,
+        width = "full"
     })
 
-    -- APL Package
-    spec:RegisterPack("Windwalker", 20250722, [[Hekili:fN12UTnot4NLGc420dEL8HwNc7CXEXITb72BCxS3zjAjABvll5LIkUUWqpw7lW(I9pKuhiPiLvYFb6fTjICMHdN5BoWjRCx9Lvldru8QppYz0uNp4mDO7SjJME3QL0ZhXRwEefShTf(Le0b4))7OKWtO49ycBRZXPOqMiYsZjbW2RwUopkM(PKvRBl3pmzMZeG2J4ay53dhXUOWqSGwCwWQLFzxuwHp7FOc)YtUWpDd8DanknPWpokJcBVjLu4)749rXrdxTKVitnqPy4hFMFRWjO1X4Wv)6QLbKikMeHG7ekgNqhgSlYBDojJoSIQLIdaOTARvuqjVMGi5z7Is269vui27eyBAlWwKWe8yRc(Mc)q868nBgsIYy8LLN4Tpky)W8JscvDpMiNyvKCPrJ2IjEhtpHjdZOGPTWFEH)4grwsak(atAtTknWav4F)Ic)rn8MDmkjHPqbeucUwLEFxcz4b03k8FxHFTaDBe4xrRzc4dpBbG)2rCS3oeHFBMXbhLBTogU9P5uHAkjEMlhaIBq5X0AyuZveJiGatc9YOKO9yvofqLkIZZWEGMEitJOXQ6rAAO3MCYznQMOqfMKHj7bJRgvtLPcrcygEAkHaWsnkT7gkrXrjpMUh79TCCsB8R0MD7sOiYwmD4omkMUB4XakhH56ibXsZd25LUXleJO7QDm2Ide42kE2d(sKsqG6wmXD31UP8OBc(u11SWFqj(zod)W)8vf(GdozpCxossdgI2czzONhsWi2D6YfT9b4aozlCLLiqkKtGwYQ29wTunGYW0CWmD9Wx8zSq7ldG5yEhXj()RwFl)U39zntlBrfn8lGEs3uWtLHPnS8icUoWUSFloh(HRId65R8Cr7jQpvsMx25Kap2j)iMRD2ZKliYdNGpeHZ0ZkgGIJ9eF4XkZik2uEyIIeU2tMRlBMrSVcNvlJNrkJ2RAAwlf1GX5zT5FwfD1MjLQmMkDD1AImy9j0JyZ1wz70DfWsX8DCIx2XDakt5IaAofYBZZhwj3gs7Uqi4hiBpd47dSuLE86h3x4pTkSxoradZjONdjM4Oe6Y3j67mJtvaG9kMDvsxCqw2MGpGIsAHjnu83Ek(Uk(3kxLGclhRAdc2Rdy7exWpXbDAmguz0B5KgPcJL0RnSU)yLb4Ls7SOsj0IRw1jM1ct6STcgcUbPzVCJz5WpcT6JZCS10shLe6q8vyw2ktCA1rvR00pHsKGeDSu9YEsbURoi9W6ug1i4HdERtvBMvTHSUZOAqC0JvqNoqYGUFNnOSR9mgAPnnHnNxVRLRAy6PKUUSknYPhBR2jNBNDulRPplDbk2CKGzCHm0amfLeGzXz0DyVnry4bFECdPPoHVkcRhV(6QLi0HQMbNkTthJ3IcoxDloTdKOXlHE28R3nJtpAdr39DDPwI4i4Ty41VVgIYhov(Ge77X3ha9PXScJuHV8eIWEuwg7D1WZOJoCmLqlF78lH2lEzHpb)p5rewqEw6bGguon9a8S9qwipkzlKES4H)ikb2Y9Jf()vsw(rMuyei0zqu1oTxwt8iRe3QNIgMgBNj1OIgwMyLLMq8gQNALAdpGTHT3BLniPAdzFWkzn51BOEMvQvIkzmW9EBsJJtb71wMtIGGCAqcoyD4PMaZraJugzvsH1ijllaTIUKuURpprH6WqgXHikAnkd)XIh4Lu0m3LRkLyfw5bdykab8dcs1bkXo0QQ9Y(GOAAzSpGjT296dIYkK1oAYeK1oOsPTN(GRA6DPH67EsywxN(fj4ELCfkMqx7o0wrcLCy3TAYe6A3VA7aEgUvx7(1F(b0TAeW460JDg)3kMS35fkNP2pQKdTgfxFcUKgJvFIUuhvvFcVuNgvFcXmelypatzGl)uarkJZsETkTQAnfdHfirDFM)WafwBpTVLo0AHXEsM2(n7zyS2VjJ5Ih(0HkoMO6LyxzOTWC6UuO10F7)(xYJreccfYArpDteRfXx8Ic))mnzpC4n)zzysviOSH1g53S4xSBFmtFTf5TrBwyRX9oyfSp6Ck)OsJmA1yzM8QMLFlRv4fgA5(T8MOx40h2n1iDj)Y9G)AO)BjtmZWQNnsEZ6)qaYl2m4FLvRh0V8QQd2xEhPeAsgAdJYxMj10Ac(0MA)CxhJCWJMzCCJ55YlZupqadGfMVWDWRSp43lx6yOVxUyBg73QO(YjOyQJTjCF)cxNlxEUAZTdSl3zY6tFXSUCt3ZtzuXN6dzwCYI4AXrwnF65JVoFWZgBZ49lglN2jJfD1QBbjSG1rvZaf3Vy0GBSoCATtPQLFnGM84N14OPXFjEApR5b3uoLzn21EjatgThk09th8kb8(YfXUZN4CRUbsTjlEKL1jJE5s3JiwY1jKEtJWQGE5rYoFSsqKYiZAjqLNByxMlgpW6LyGbl1iHlx)0AERIKxY4yBhuol03XLJRU7Q(vmm5Os6aPCEZC0yeEpJboexG7xmrN8EMWBHoFkpnO2QAACPx3)AyQOdS6ExC310KYqX2(S5WQDmEXUH598u7u(nYaYg9MNCRkcMEw5NAjKNsmSoZ9levNldtQQXUPtSruSorDfJOtB7jgV6)n]])
+    spec:RegisterSetting("chi_brew_chi", 2, {
+        name = "Chi Brew Chi Threshold",
+        desc = "Chi Brew will be recommended when you have fewer than this many Chi.",
+        type = "range", min = 0, max = 4, step = 1,
+        width = "full"
+    })
+
+    spec:RegisterSetting("defensive_health_threshold", 60, {
+        name = "Defensive Health Threshold (%)",
+        desc = "Defensive abilities (Dampen Harm, Diffuse Magic) will be recommended when your health drops below this percentage.",
+        type = "range", min = 10, max = 90, step = 5,
+        width = "full"
+    })
+
+    spec:RegisterPack("Windwalker", 20250806, [[Hekili:TM1EVTTnq8plbdWijTrtYpsBhIcqxxbwl2kgGcW(pjrlrzZAzrbkQK6Ia9zFhPEr9GYQPRfDZMK37J)U7ODTCFW1jeXXUFzP5YnMV18ngMMwWhCD4NsXUoPOGdODWhsqhH)7)sscFcfFaZeBDkMIcfSiJMZcGTDih)adfXl83S(T3amzBojM)Pe3TJjMvwwUoOC(EkWT)KCeJCD2tcdXLNhNf468WEswHV4FOc)kLPWNgbFpGtOjf(XKmoSDeLv4)N4dKyIbOBmAejg0OFPW)VPjh(Tc)wvV4ZWQ9u1Ipl(lSU94)rU3)WW38b6XTiGkhmppDAkk1WmJugoqs1RS)1y8ouWjpAKhFp2dFmfZOSxtIS3MhfzKXr8mJq6tjlKFF0tl3FoC)P9eo2Jt2HBLqaJW1kafcMqiPuPJ)8UR)ahHtYipIHWZFbrP55TcBOcKvicS5eV9i2rHjWrX4eq)Bx1aNG2gJdxCH0E408G9cZ5aShYipDXEmkMV3inGFN9TM6edjkkpd7DeTJeOki11)Hf1zDqFGYWZYP041BIJBJP0W48mUbddh65N5i2om3GdxJ84uVqcUJ9cCqyiq89yM6IBXSmm7ajzN6Qb7jEBz4NuCf1l14fGfUZE5Il5msYbqYWvUadWpft4NQvQld2luRmBRfqcK8ZEcn8oBlZRE(56DxoQ6xT71Wrv1nz6Pxkk(yJZOAj6tqEldFersYUZELqdV32AaT4t4gJRL86v9a3KYfKo7jUFgCWEP5lMNsvcCA64nOVBg1zS28QfHyjzmsgeU8YYt8oqcoiY8g4feqtTQiobZ2r(UGQMOAfVpI(MNC7t3VrLKEcrqIgXRyx)aHjjvA4yvi8ERfJOLwJewjjpspG9(woorjJvz16K2owiiUYV5jkH8ArboBefl4Gy9hXcrEKGZU3E1zjuybXGUkJCdzXDRMbCGJKh38GKhf(x68WvZcDWOJWf((AOPqmIVVX)l)MxcLJf5ms34k9mzKmGEr5bKejkflKBuo7uJy7L9vg6hjYUEyACDMW6ZQTc4PNqpI7HyjwQbXAezoHXib8Yzz8(GGI1EH887qvRS09WT(xhCkOzhaFuriThAsPS4IqANdZHOKko(aPVngqyO58M4zzhbqDDQiYGGwJ82spucE3)k9WKSHxW7YkEAfNUu3Mvi1c4)HgO9YR6FvFGo8v02Q8sdGYBoNkpWbukQxv()mQUYYW7WjxhqPXImvTOt2RnB8rN9Q97bZ(gA0nFmkchiUB)E6hN5LBassc6KTxOgFffc9PbTYQKWmyVbWDvm5LM(D2mTs2pJ7GJrYzVKnWxmkYuDwq)tNLssseNpGHsWnuCX5CEUopc9gbmQzOLBDDEcXe8kZ15thtPmoOC(B6nlIrXNDDKFsoAKAoiSWxKZCvlJF31r0roMrqIHL6dsx4VOWhSRc)7Tl8xbtljfemCwhe(YHLyK0Yn1LsnAbgDjGUCWU1QQn60YwDQxyrWGvtBRJvzqAYdHdaPv4VwUPUQekhzmxwNItcLBTwLtxY7eQMIFOMmHm2mhz0nzF(crsNqk3EoPm8o9KIrU5ff(JFTVvjA3dKPkGIilh0R3mD4xtLNUrqfBUd8TG)V9hH)1LJKS)YQ0iDfLk8VZw6iE(znUPYTVQRYAPCdTP8OqtF3u3KKOw(3mUrdL4emWYulhQvPxv4psHSc)RbgFMIzLsDT5SD9CbKtekpEoqA9MvTYPoygNsF(TMTsTCM35IUjNM(SWz18UzAyvnVgYQXSBMoU3PMf2H64YTE2QeRYKq9dpx6LUuqKCmyWYG8ljDDgLUKHwMYCrbjQNF5e(ALtEDfd6bVaQ)0yy6rIf60QzE3qp61ets3Rsq3POlTDZEcS(mZazAcz2E7OdqYOAH0S3mzmyTzniI2P7hVOxE6eMNEGrnq(BAzwVIYtJEnXBcOflzK(eMaDB0xoykhMA3awtvMZAM5Nw6H30)sdTmtztj363uvJBP7ZkOkMk88Q3sOPZgXX8kFxEOvxjZ73W1lG531N3D7GvI938CWZa9V9nTBtK1)U2TQ8ONPxTGHpT)G31x7awJ8A(NT4Xe9Au)U66mY(VTUodv5CdkhvxpuTueVm4pzC48J60MN07iZT474d4(YCOt306)d9LQFSenD(pEZ9ZRja1M710)U(kSs0jBjkLOlXjbr1xh9cr5N5McmY8Ynn8v9lMmRSTr(rAQJFLy69)9tK72(BOmSDqfoo30Yb)eu)uzKJ(Zb9ZAuQ80TcFnlfha6ZTVt(v3)7]])
 
 end
 
@@ -706,11 +619,5 @@ local function TryRegister()
     return false
 end
 
-if not TryRegister() then
-    wwCombatLogFrame:RegisterEvent("ADDON_LOADED")
-    wwCombatLogFrame:SetScript("OnEvent", function(self, event, addonName)
-        if addonName == "Hekili" or TryRegister() then
-            self:UnregisterEvent("ADDON_LOADED")
-        end
-    end)
-end
+-- Attempt immediate registration or wait for ADDON_LOADED
+TryRegister()

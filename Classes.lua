@@ -3821,6 +3821,7 @@ function Hekili:SpecializationChanged()
         class[ key ] = nil
     end
     if rawget( state, "rune" ) then state.rune = nil; class.rune = nil; end
+    if rawget( state, "runes" ) then state.runes = nil; class.runes = nil; end
 
     for k in pairs( class.resourceAuras ) do
         class.resourceAuras[ k ] = nil
@@ -3868,7 +3869,7 @@ if spec then
                     class.resources[ res ] = model
                     state[ res ] = model.state
                 end
-                if rawget( state, "runes" ) then state.rune = nil; class.rune = nil; end
+                if rawget( state, "runes" ) then state.runes = nil; class.runes = nil; end
 
                 for k,v in pairs( spec.resourceAuras ) do
                     class.resourceAuras[ k ] = v
@@ -3905,7 +3906,7 @@ if spec then
                 end
             end
 
-            if rawget( state, "runes" ) then state.rune = nil; class.rune = nil; end
+            if rawget( state, "runes" ) then state.runes = nil; class.runes = nil; end
 
             for k, v in pairs( spec.auras ) do
                 if not class.auras[ k ] then class.auras[ k ] = v end
