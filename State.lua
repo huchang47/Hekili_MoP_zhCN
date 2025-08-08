@@ -2763,7 +2763,7 @@ do
                         if duration == 0 then duration = 3600 end
 
                         local ability = class.abilities[ spellID ]
-                        if present and ( icon == totemIcon or abilitty and t.key == ability.key ) then
+                        if present and ( icon == totemIcon or ( ability and t.key == ability.key ) ) then
                             t.expires = start + duration
                             return t.expires
                         end

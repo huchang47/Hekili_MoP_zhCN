@@ -9,6 +9,10 @@ local addon, ns = ...
 local Hekili = _G[ addon ]
 local class, state = Hekili.Class, Hekili.State
 
+-- Safe local references to WoW API (helps static analyzers and emulation)
+local GetRuneCooldown = rawget( _G, "GetRuneCooldown" ) or function() return 0, 10, true end
+local GetRuneType = rawget( _G, "GetRuneType" ) or function() return 1 end
+
 local FindUnitBuffByID = ns.FindUnitBuffByID
 local strformat = string.format
 
@@ -224,6 +228,7 @@ spec:RegisterResource( 22, { -- Unholy Runes = 22 in MoP
         t.actual = nil
     end,
 
+
     spend = function( amount )
         local t = state.unholy_runes
         for i = 1, amount do
@@ -254,15 +259,88 @@ spec:RegisterResource( 22, { -- Unholy Runes = 22 in MoP
     end
 } ) )
 
+-- Unified DK Runes interface across specs
+do
+    local function buildTypeCounter(indices, typeId)
+        return setmetatable({}, {
+            __index = function(_, k)
+                if k == "count" then
+                    local ready = 0
+                    if typeId == 4 then
+                        for i = 1, 6 do
+                            local start, duration, isReady = GetRuneCooldown(i)
+                            local rtype = GetRuneType(i)
+                            if (isReady or (start and duration and (start + duration) <= state.query_time)) and rtype == 4 then
+                                ready = ready + 1
+                            end
+                        end
+                    else
+                        for _, i in ipairs(indices) do
+                            local start, duration, isReady = GetRuneCooldown(i)
+                            if isReady or (start and duration and (start + duration) <= state.query_time) then
+                                ready = ready + 1
+                            end
+                        end
+                    end
+                    return ready
+                end
+                return 0
+            end
+        })
+    end
+
+    spec:RegisterStateTable("runes", setmetatable({
+        expiry = { 0, 0, 0, 0, 0, 0 },
+        cooldown = 10,
+        reset = function()
+            local t = state.runes
+            for i = 1, 6 do
+                local start, duration, ready = GetRuneCooldown(i)
+                start = start or 0
+                duration = duration or (10 * state.haste)
+                t.expiry[i] = ready and 0 or (start + duration)
+                t.cooldown = duration
+            end
+        end,
+    }, {
+        __index = function(t, k)
+            local idx = tostring(k):match("time_to_(%d)")
+            if idx then
+                local i = tonumber(idx)
+                local e = t.expiry[i] or 0
+                return math.max(0, e - state.query_time)
+            end
+            if k == "blood" then return buildTypeCounter({1,2}, 1) end
+            if k == "frost" then return buildTypeCounter({3,4}, 2) end
+            if k == "unholy" then return buildTypeCounter({5,6}, 3) end
+            if k == "death" then return buildTypeCounter({}, 4) end
+            if k == "count" or k == "current" then
+                local c = 0
+                for i = 1, 6 do
+                    if t.expiry[i] <= state.query_time then c = c + 1 end
+                end
+                return c
+            end
+            return rawget(t, k)
+        end
+    }))
+
+    spec:RegisterHook("reset_precast", function()
+        if state.runes and state.runes.reset then state.runes.reset() end
+    end)
+end
+
 -- Death Runes State Table for MoP 5.5.0 - Removed duplicate registration
 
 spec:RegisterResource( 6, {
     -- Frost Fever Tick RP (20% chance to generate 4 RP)
     frost_fever_tick = {
+
         aura = "frost_fever",
 
         last = function ()
             local app = state.dot.frost_fever.applied
+
             return app + floor( state.query_time - app )
         end,
 
@@ -712,8 +790,7 @@ local aura_removals = {
 }
 
 local dnd_damage_ids = {
-    [43265] = "death_and_decay",
-    [43265] = "defile"
+    [43265] = "death_and_decay"
 }
 
 local last_dnd_tick, dnd_spell = 0, "death_and_decay"
@@ -2122,12 +2199,20 @@ end )
 
 -- MoP rune regeneration tracking
 spec:RegisterStateExpr( "rune_regeneration", function()
-    return 6 - rune_current -- Runes regenerating
+    local total = 0
+    if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
+    if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
+    if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
+    if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
+    return 6 - total
 end )
 
 -- MoP Death Rune conversion tracking
 spec:RegisterStateExpr( "death_rune_conversion_available", function()
-    return blood_runes > 0 or frost_runes > 0 or unholy_runes > 0
+    local br = state.blood_runes and state.blood_runes.current or 0
+    local fr = state.frost_runes and state.frost_runes.current or 0
+    local ur = state.unholy_runes and state.unholy_runes.current or 0
+    return br > 0 or fr > 0 or ur > 0
 end )
 
 -- Rune state expressions for MoP 5.5.0
@@ -2141,17 +2226,31 @@ spec:RegisterStateExpr( "rune", function()
 end )
 
 spec:RegisterStateExpr( "rune_deficit", function()
-    return 6 - rune_current
+    local total = 0
+    if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
+    if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
+    if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
+    if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
+    return 6 - total
 end )
 
 spec:RegisterStateExpr( "rune_current", function()
-    -- Always return a value for emulation compatibility
-    return 6 -- Default to 6 runes for Unholy DK in emulation
+    local total = 0
+    if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
+    if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
+    if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
+    if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
+    return total
 end )
 
 -- Alias for APL compatibility
 spec:RegisterStateExpr( "runes_current", function()
-    return rune_current
+    local total = 0
+    if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
+    if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
+    if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
+    if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
+    return total
 end )
 
 

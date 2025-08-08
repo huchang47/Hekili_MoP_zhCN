@@ -16,21 +16,21 @@ actions+=/call_action_list,name=single_target
 actions.cooldowns+=/potion,if=buff.bloodlust.up|boss&fight_remains<30|cooldown.ascendance.remains<3
 actions.cooldowns+=/feral_spirit
 actions.cooldowns+=/ascendance,if=cooldown.spirit_walk.remains>5
-actions.cooldowns+=/fire_elemental_totem
-actions.cooldowns+=/earth_elemental_totem,if=!active_totem.fire_elemental_totem
+actions.cooldowns+=/fire_elemental_totem,if=!totem.fire_elemental.up
+actions.cooldowns+=/earth_elemental_totem,if=!totem.earth_elemental.up
 actions.cooldowns+=/spiritwalkers_grace,moving=1
 actions.cooldowns+=/blood_fury,if=!buff.ascendance.up|buff.ascendance.remains>8
 actions.cooldowns+=/berserking,if=!buff.ascendance.up|buff.ascendance.remains>8
 actions.cooldowns+=/ancestral_swiftness
 actions.cooldowns+=/use_item,slot=trinket1,if=variable.trinket_sync_slot=1&(buff.ascendance.up|cooldown.ascendance.remains>20)
 actions.cooldowns+=/use_item,slot=trinket2,if=variable.trinket_sync_slot=2&(buff.ascendance.up|cooldown.ascendance.remains>20)
-actions.cooldowns+=/stormlash_totem,if=!active_totem.stormlash_totem
+actions.cooldowns+=/stormlash_totem,if=!totem.stormlash_totem.up
 
 # AoE rotation
 actions.aoe+=/flame_shock,if=!ticking&active_enemies<6
 actions.aoe+=/flame_shock,cycle_targets=1,if=!ticking&active_enemies<6
 actions.aoe+=/fire_nova,if=active_dot.flame_shock>=3
-actions.aoe+=/magma_totem,if=!active_totem.magma_totem
+actions.aoe+=/magma_totem,if=!totem.magma_totem.up&!totem.fire_elemental.up
 actions.aoe+=/unleash_elements
 actions.aoe+=/primal_strike,if=active_enemies<5
 actions.aoe+=/chain_lightning,if=buff.maelstrom_weapon.stack=5
@@ -41,10 +41,10 @@ actions.aoe+=/lava_lash
 actions.aoe+=/flame_shock,cycle_targets=1,if=!ticking&active_enemies<6
 actions.aoe+=/earth_shock
 actions.aoe+=/fire_nova,if=active_dot.flame_shock>=1
-actions.aoe+=/searing_totem,if=!active_totem.fire_elemental_totem&!active_totem.magma_totem&!active_totem.searing_totem
+actions.aoe+=/searing_totem,if=!totem.searing_totem.up&!totem.magma_totem.up&!totem.fire_elemental.up
 
 # Single target rotation
-actions.single_target+=/searing_totem,if=!active_totem.fire_elemental_totem&!active_totem.magma_totem&!active_totem.searing_totem
+actions.single_target+=/searing_totem,if=!totem.searing_totem.up&!totem.magma_totem.up&!totem.fire_elemental.up
 actions.single_target+=/flame_shock,if=!ticking|ticking&remains<3
 actions.single_target+=/unleash_elements
 actions.single_target+=/lightning_bolt,if=buff.maelstrom_weapon.stack=5

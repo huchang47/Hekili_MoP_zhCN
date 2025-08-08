@@ -10,6 +10,10 @@ local Hekili = _G[ "Hekili" ]
 local class = Hekili.Class
 local state = Hekili.State
 
+-- Safe local references to WoW API (helps static analyzers)
+local GetRuneCooldown = rawget( _G, "GetRuneCooldown" ) or function() return 0, 10, true end
+local GetRuneType = rawget( _G, "GetRuneType" ) or function() return 1 end
+
 local function getReferences()
     -- Legacy function for compatibility
     return class, state
@@ -513,6 +517,79 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
         return rawget( t, k )
     end
 } ) )
+
+-- Unified DK Runes interface across specs: provides runes.<type>.count, runes.death.count, runes.time_to_1..6, and expiry[]
+do
+    local function buildTypeCounter(indices, typeId)
+        return setmetatable({}, {
+            __index = function(_, k)
+                if k == "count" then
+                    local ready = 0
+                    if typeId == 4 then
+                        for i = 1, 6 do
+                            local start, duration, isReady = GetRuneCooldown(i)
+                            local rtype = GetRuneType(i)
+                            if (isReady or (start and duration and (start + duration) <= state.query_time)) and rtype == 4 then
+                                ready = ready + 1
+                            end
+                        end
+                    else
+                        for _, i in ipairs(indices) do
+                            local start, duration, isReady = GetRuneCooldown(i)
+                            if isReady or (start and duration and (start + duration) <= state.query_time) then
+                                ready = ready + 1
+                            end
+                        end
+                    end
+                    return ready
+                end
+                return 0
+            end
+        })
+    end
+
+    spec:RegisterStateTable("runes", setmetatable({
+        expiry = { 0, 0, 0, 0, 0, 0 },
+        cooldown = 10,
+        reset = function()
+            local t = state.runes
+            for i = 1, 6 do
+                local start, duration, ready = GetRuneCooldown(i)
+                start = start or 0
+                duration = duration or (10 * state.haste)
+                t.expiry[i] = ready and 0 or (start + duration)
+                t.cooldown = duration
+            end
+        end,
+    }, {
+        __index = function(t, k)
+            -- Dynamic time_to_N queries, e.g., runes.time_to_1 .. runes.time_to_6
+            local idx = tostring(k):match("time_to_(%d)")
+            if idx then
+                local i = tonumber(idx)
+                local e = t.expiry[i] or 0
+                return math.max(0, e - state.query_time)
+            end
+            if k == "blood" then return buildTypeCounter({1,2}, 1) end
+            if k == "frost" then return buildTypeCounter({3,4}, 2) end
+            if k == "unholy" then return buildTypeCounter({5,6}, 3) end
+            if k == "death" then return buildTypeCounter({}, 4) end
+            if k == "count" or k == "current" then
+                local c = 0
+                for i = 1, 6 do
+                    if t.expiry[i] <= state.query_time then c = c + 1 end
+                end
+                return c
+            end
+            return rawget(t, k)
+        end
+    }))
+
+    -- Keep expiry fresh when we reset the simulation step
+    spec:RegisterHook("reset_precast", function()
+        if state.runes and state.runes.reset then state.runes.reset() end
+    end)
+end
 
 -- Comprehensive Tier Sets and Gear Registration for MoP Death Knight
 -- Tier 14: Battleplate of the Lost Cataphract
@@ -1618,11 +1695,18 @@ end )
 
 -- MoP Frost-specific rune tracking
 spec:RegisterStateExpr( "obliterate_runes_available", function()
-    return (frost_runes > 0 and unholy_runes > 0) or death_runes >= 2
+    local fr = state.frost_runes and state.frost_runes.current or 0
+    local ur = state.unholy_runes and state.unholy_runes.current or 0
+    local dr = 0
+    if state.death_runes and state.death_runes.count then dr = state.death_runes.count end
+    return (fr > 0 and ur > 0) or dr >= 2
 end )
 
 spec:RegisterStateExpr( "howling_blast_runes_available", function()
-    return frost_runes > 0 or death_runes > 0
+    local fr = state.frost_runes and state.frost_runes.current or 0
+    local dr = 0
+    if state.death_runes and state.death_runes.count then dr = state.death_runes.count end
+    return fr > 0 or dr > 0
 end )
 
 spec:RegisterStateExpr( "rime_proc_active", function()
@@ -1648,7 +1732,12 @@ spec:RegisterStateExpr( "rune", function()
 end )
 
 spec:RegisterStateExpr( "rune_deficit", function()
-    return 6 - rune_current
+    local total = 0
+    if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
+    if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
+    if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
+    if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
+    return 6 - total
 end )
 
 spec:RegisterStateExpr( "rune_current", function()
@@ -1671,7 +1760,12 @@ end )
 
 -- Alias for APL compatibility
 spec:RegisterStateExpr( "runes_current", function()
-    return rune_current
+    local total = 0
+    if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
+    if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
+    if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
+    if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
+    return total
 end )
 
 

@@ -139,7 +139,9 @@
         "removeStack",
         "active_dot",
         "runes",
-        "spend"
+        "spend",
+        "check_swd_reset",
+        "removeDebuff"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.runtime.builtin": {

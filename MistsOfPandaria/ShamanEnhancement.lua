@@ -20,6 +20,9 @@ local spec = Hekili:NewSpecialization( 263 ) -- Enhancement spec ID for MoP
 
 local strformat = string.format
 local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+local function GetTargetDebuffByID( spellID )
+    return FindUnitDebuffByID( "target", spellID )
+end
 local function UA_GetPlayerAuraBySpellID(spellID)
     for i = 1, 40 do
         local name, _, count, _, duration, expires, caster, _, _, id = UnitBuff("player", i)
@@ -283,7 +286,7 @@ spec:RegisterResource( 0, { -- Mana = 0 in MoP
         
         value = function ()
             local base_regen = state.mana.max * 0.02 -- 2% of max mana per tick base
-            local spirit_bonus = stat.spirit * 0.5 -- Spirit contribution
+            local spirit_bonus = (state.stat and state.stat.spirit or 0) * 0.5 -- Spirit contribution
             local meditation_bonus = talent.meditation.enabled and 1.5 or 1.0 -- 50% while casting if Meditation
             
             return base_regen + spirit_bonus * meditation_bonus
@@ -1296,6 +1299,12 @@ spec:RegisterAuras( {
         duration = 5,
         max_stack = 1,
     },
+    -- Alias for APL condition compatibility (SimC uses debuff.frozen_power)
+    frozen_power = {
+        id = 94794,
+        duration = 5,
+        max_stack = 1,
+    },
     earthgrab = {
         id = 64695,
         duration = 5,
@@ -1306,6 +1315,12 @@ spec:RegisterAuras( {
     fire_elemental_totem = {
         id = 2894,
         duration = function() return glyph.fire_elemental_totem.enabled and 120 or 60 end,
+        max_stack = 1,
+    },
+    -- Provide an aura entry for Earth Elemental Totem for internal timing when cast
+    earth_elemental_totem = {
+        id = 2062,
+        duration = 60,
         max_stack = 1,
     },
     capacitor_totem = {
@@ -1434,6 +1449,22 @@ spec:RegisterAuras( {
     },
 } )
 
+-- Register totem models for icon-based detection
+spec:RegisterTotems( {
+    searing_totem = { id = 135825 },
+    magma_totem = { id = 135826 },
+    fire_elemental = { id = 135790 },
+    earth_elemental = { id = 136024 },
+    healing_stream_totem = { id = 135127 },
+    mana_tide_totem = { id = 135861 },
+    stormlash_totem = { id = 237579 },
+    earthbind_totem = { id = 136102 },
+    grounding_totem = { id = 136039 },
+    stoneclaw_totem = { id = 136097 },
+    stoneskin_totem = { id = 136098 },
+    tremor_totem = { id = 136108 },
+} )
+
 -- Enhancement Shaman abilities
 spec:RegisterAbilities( {
     -- Core rotational abilities
@@ -1454,6 +1485,38 @@ spec:RegisterAbilities( {
             applyDebuff("target", "stormstrike")
               -- Stormstrike debuff increases nature spell crit by 25% for 15 seconds
             -- This affects Lightning Bolt, Chain Lightning, Lightning Shield, Earth Shock
+        end,
+    },
+
+    -- Ascendance replacement strike during Ascendance window
+    stormblast = {
+        id = 115356,
+        cast = 0,
+        cooldown = 8,
+        gcd = "spell",
+        spend = 0.07,
+        spendType = "mana",
+        startsCombat = true,
+        texture = 651244,
+        usable = function() return buff.ascendance.up, "requires Ascendance" end,
+        handler = function()
+            -- Acts like Stormstrike during Ascendance window
+            applyDebuff("target", "stormstrike")
+        end,
+    },
+
+    -- Early-level filler, occasionally referenced in AOE list
+    primal_strike = {
+        id = 73899,
+        cast = 0,
+        cooldown = 8,
+        gcd = "spell",
+        spend = 0.05,
+        spendType = "mana",
+        startsCombat = true,
+        texture = 460956,
+        handler = function()
+            -- Simple melee strike
         end,
     },
     
@@ -1752,6 +1815,22 @@ spec:RegisterAbilities( {
             applyBuff("healing_stream_totem")
         end,
     },
+
+    -- Raid cooldown in MoP
+    stormlash_totem = {
+        id = 120668,
+        cast = 0,
+        cooldown = 300,
+        gcd = "totem",
+        toggle = "cooldowns",
+        spend = 0.12,
+        spendType = "mana",
+        startsCombat = false,
+        texture = 237579,
+        handler = function()
+            applyBuff("stormlash_totem")
+        end,
+    },
     
     -- Defensives and utility
     lightning_shield = {
@@ -1922,6 +2001,21 @@ spec:RegisterAbilities( {
             applyBuff("ancestral_guidance")
         end,
     },
+
+    earth_elemental_totem = {
+        id = 2062,
+        cast = 0,
+        cooldown = 300,
+        gcd = "totem",
+        toggle = "defensives",
+        spend = 0.18,
+        spendType = "mana",
+        startsCombat = false,
+        texture = 136024,
+        handler = function()
+            applyBuff("earth_elemental_totem")
+        end,
+    },
     
     healing_tide_totem = {
         id = 108280,
@@ -1961,6 +2055,33 @@ spec:RegisterAbilities( {
             if buff.windfury_weapon.up then
                 applyBuff("unleash_wind")
             end
+        end,
+    },
+
+    -- Major CD: Ascendance (Enhancement)
+    ascendance = {
+        id = 114051,
+        cast = 0,
+        cooldown = 180,
+        gcd = "off",
+        toggle = "cooldowns",
+        startsCombat = false,
+        texture = 651244,
+        handler = function()
+            applyBuff("ascendance")
+        end,
+    },
+
+    -- Interrupt
+    wind_shear = {
+        id = 57994,
+        cast = 0,
+        cooldown = 12,
+        gcd = "off",
+        startsCombat = false,
+        texture = 136018,
+        handler = function()
+            -- Interrupt handler; no state changes needed
         end,
     },
 } )

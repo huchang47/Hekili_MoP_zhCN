@@ -4,7 +4,7 @@
 # Precombat preparation
 actions.precombat+=/lightning_shield,if=!buff.lightning_shield.up
 actions.precombat+=/flametongue_weapon,if=!enchant.flametongue.weapon
-actions.precombat+=/searing_totem,if=!totem.searing_totem.up
+actions.precombat+=/searing_totem,if=!totem.searing_totem.up&!totem.fire_elemental.up&!totem.magma_totem.up
 actions.precombat+=/potion
 actions.precombat+=/lightning_bolt
 
@@ -29,7 +29,7 @@ actions.cooldowns+=/ascendance
 actions.single_target+=/flame_shock,if=!ticking|remains<=3
 actions.single_target+=/unleash_elements,if=talent.unleashed_fury.enabled
 actions.single_target+=/lava_burst,if=buff.lava_surge.up
-actions.single_target+=/searing_totem,if=!totem.searing_totem.up
+actions.single_target+=/searing_totem,if=!totem.searing_totem.up&!totem.fire_elemental.up&!totem.magma_totem.up
 actions.single_target+=/earth_elemental_totem,if=!totem.earth_elemental.up&target.time_to_die>=60
 actions.single_target+=/ascendance,if=cooldown.lava_burst.remains>0
 actions.single_target+=/lava_burst,if=dot.flame_shock.ticking&(buff.ascendance.up|cooldown_react)
@@ -40,7 +40,7 @@ actions.single_target+=/lightning_bolt
 
 # AoE rotation (3+ targets)
 actions.aoe+=/fire_elemental_totem,if=!totem.fire_elemental.up
-actions.aoe+=/magma_totem,if=active_enemies>=4&!totem.magma_totem.up
+actions.aoe+=/magma_totem,if=active_enemies>=4&!totem.magma_totem.up&!totem.fire_elemental.up
 actions.aoe+=/ascendance
 actions.aoe+=/flame_shock,if=active_enemies<=3&(!ticking|remains<=3)
 actions.aoe+=/lava_burst,if=active_enemies<=3&buff.lava_surge.up
