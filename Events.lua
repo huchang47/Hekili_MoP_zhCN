@@ -104,6 +104,42 @@ local GetSpecialization = GetSpecialization or function()
         elseif IsPlayerSpell(18562) or IsPlayerSpell(2908) then return 4 -- Restoration (maps to 105)
         else return 1 end -- Default to Feral
     end
+
+    local Hekili = _G["Hekili"]
+local state  = Hekili and Hekili.State
+
+-- Create a dedicated event frame for encounter tracking
+local bossEvtFrame = CreateFrame("Frame", "HekiliBossEvents")
+
+-- Register boss-relevant events
+bossEvtFrame:RegisterEvent("ENCOUNTER_START")
+bossEvtFrame:RegisterEvent("ENCOUNTER_END")
+bossEvtFrame:RegisterEvent("PLAYER_ENTERING_WORLD") -- for resets on zoning/reload
+
+-- Define what happens on those events
+bossEvtFrame:SetScript("OnEvent", function(self, event, ...)
+    if not state then return end
+
+    if event == "ENCOUNTER_START" then
+        local encounterID, encounterName, difficultyID, groupSize = ...
+        state.encounterID   = encounterID or 0
+        state.encounterName = encounterName
+        Hekili:ForceUpdate(event)
+
+    elseif event == "ENCOUNTER_END" then
+        local encounterID = ...
+        if state.encounterID == encounterID then
+            state.encounterID   = 0
+            state.encounterName = nil
+            Hekili:ForceUpdate(event)
+        end
+
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        state.encounterID   = 0
+        state.encounterName = nil
+        Hekili:ForceUpdate(event)
+    end
+end)
     
     -- For other classes, use talent group as fallback
     local activeTalentGroup = GetActiveTalentGroup and GetActiveTalentGroup() or 1
