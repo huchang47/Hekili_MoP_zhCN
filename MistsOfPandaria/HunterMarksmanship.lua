@@ -1377,15 +1377,10 @@ spec:RegisterAuras( {
 spec:RegisterCombatLogEvent( function( _, subtype, _, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags, _, spellID, spellName )
     if sourceGUID ~= state.GUID then return end
     
-    -- Track auto shot for Thrill of the Hunt procs
-    if ( subtype == "SPELL_CAST_SUCCESS" or subtype == "SPELL_DAMAGE" ) and spellID == 75 then -- Auto Shot
-        if state.talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then -- 30% chance
-            state.applyBuff( "thrill_of_the_hunt", 8 )
-        end
-    end
+    -- Do NOT allow Auto Shot to proc Thrill of the Hunt (MoP requirement)
     
     -- Lock and Load procs from Auto Shot crits and other ranged abilities
-    if subtype == "SPELL_DAMAGE" and ( spellID == 75 or spellID == 2643 or spellID == 3044 ) then -- Auto Shot, Multi-Shot, Arcane Shot
+    if subtype == "SPELL_DAMAGE" and ( spellID == 2643 or spellID == 3044 ) then -- Multi-Shot, Arcane Shot (exclude Auto Shot)
         if state.talent.lock_and_load.enabled then
             local crit_chance = math.random()
                             -- 15% chance for Lock and Load to proc on ranged crits in MoP
@@ -1431,12 +1426,7 @@ end )
         return buff.bloodlust
     end )
 
-    -- Threat situation for misdirection logic
-    spec:RegisterStateExpr( "threat", function()
-        return {
-            situation = 0 -- Default to no threat situation
-        }
-    end )
+    -- Threat is provided by engine; no spec override
 
     -- === SHOT ROTATION STATE EXPRESSIONS ===
     

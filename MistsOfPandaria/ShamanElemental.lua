@@ -775,6 +775,11 @@ spec:RegisterAbilities( {
         startsCombat = true,
         texture = 135825,
         
+        usable = function()
+            -- Don't suggest if Searing Totem already active
+            return not buff.searing_totem.up, "searing totem already active"
+        end,
+        
         handler = function()
             -- Searing Totem provides continuous damage
         end,

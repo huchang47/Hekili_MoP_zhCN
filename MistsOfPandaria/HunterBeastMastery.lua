@@ -604,12 +604,7 @@ spec:RegisterStateExpr( "should_focus_fire", function()
     return false
 end )
 
-spec:RegisterStateExpr( "threat", function()
-    -- Threat situation for misdirection logic
-    return {
-        situation = 0 -- Default to no threat situation
-    }
-end )
+-- Threat is handled by engine; no spec override
 
 spec:RegisterStateExpr( "should_maintain_beast_cleave", function()
     -- Beast Cleave is a passive buff that needs to be refreshed every 4 seconds

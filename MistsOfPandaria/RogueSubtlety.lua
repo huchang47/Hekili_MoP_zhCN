@@ -12,6 +12,7 @@ local class, state = Hekili.Class, Hekili.State
 local insert, wipe = table.insert, table.wipe
 local strformat = string.format
 local GetSpellInfo = ns.GetUnpackedSpellInfo
+local floor = math.floor
 
 local spec = Hekili:NewSpecialization( 261 )
 
@@ -77,35 +78,36 @@ spec:RegisterResource( 3, { -- Energy with Subtlety-specific enhancements
         end,
     },
     
-    -- Relentless Strikes energy return (enhanced for Subtlety)
-    relentless_strikes_energy = {
-        last = function ()
-            return state.query_time
-        end,
-        interval = 1,
-        value = function()
-            -- Relentless Strikes: Enhanced for Subtlety with stealth bonuses
-            if state.talent.relentless_strikes.enabled and state.last_finisher_cp then
-                local energy_chance = state.last_finisher_cp * 0.05 -- 5% chance per combo point (enhanced for Subtlety)
-                local stealth_bonus = (state.buff.stealth.up or state.buff.vanish.up or state.buff.shadow_dance.up) and 1.5 or 1.0
-                return math.random() < energy_chance and (25 * stealth_bonus) or 0
-            end
-            return 0
-        end,
-    },
-    
-    -- Find Weakness energy efficiency bonus
-    find_weakness_energy = {
-        aura = "find_weakness",
-        last = function ()
-            return state.buff.find_weakness.applied or 0
-        end,
-        interval = 1,
-        value = function()
-            -- Find Weakness provides energy efficiency bonus
-            return state.buff.find_weakness.up and 3 or 0 -- +3 energy per second with Find Weakness
-        end,
-    },
+  -- Relentless Strikes energy return (enhanced for Subtlety)
+  relentless_strikes_energy = {
+    last = function ()
+      return state.query_time
+    end,
+    interval = 1,
+    value = function()
+      -- Relentless Strikes: Enhanced for Subtlety with stealth bonuses
+      if state.talent.relentless_strikes.enabled and state.last_finisher_cp then
+        local energy_chance = state.last_finisher_cp * 0.05 -- 5% chance per combo point (enhanced for Subtlety)
+        local stealth_bonus = (state.buff.stealth.up or state.buff.vanish.up or state.buff.shadow_dance.up) and 1.5 or 1.0
+        if math.random() < energy_chance then
+          return 25 * stealth_bonus
+        end
+      end
+      return 0
+    end,
+  },
+
+  find_weakness_energy = {
+    aura = "find_weakness",
+    last = function ()
+      return state.buff.find_weakness.applied or 0
+    end,
+    interval = 1,
+    value = function()
+      -- Find Weakness provides energy efficiency bonus
+      return state.buff.find_weakness.up and 3 or 0 -- +3 energy per second with Find Weakness
+    end,
+  },
 }, {
     -- Enhanced base energy regeneration for Subtlety with Shadow mechanics
     base_regen = function ()
@@ -598,7 +600,7 @@ spec:RegisterAbilities( {
 
     startsCombat = true,
     
-    usable = function () return stealthed_all, "requires stealth" end,
+  usable = function () return (buff.stealth.up or buff.vanish.up or buff.shadow_dance.up), "requires stealth" end,
 
     handler = function ()
       gain( 1, "combo_points" )
@@ -689,7 +691,7 @@ spec:RegisterAbilities( {
     talent = "premeditation",
     startsCombat = false,
     
-    usable = function () return stealthed_all and combo_points.current < 4, "requires stealth and less than 4 combo points" end,
+  usable = function () return (buff.stealth.up or buff.vanish.up or buff.shadow_dance.up) and combo_points.current < 4, "requires stealth and less than 4 combo points" end,
 
     handler = function ()
       gain( 2, "combo_points" )
@@ -855,7 +857,7 @@ spec:RegisterAbilities( {
     spendType = "energy",
 
     startsCombat = true,
-    usable = function () return stealthed_all, "requires stealth" end,
+  usable = function () return (buff.stealth.up or buff.vanish.up or buff.shadow_dance.up), "requires stealth" end,
 
     handler = function ()
       gain( 2 + ( talent.initiative.enabled and talent.initiative.rank or 0 ), "combo_points" )
@@ -957,8 +959,8 @@ spec:RegisterAbilities( {
     nodebuff = "cheap_shot",
 
     usable = function ()
-      if boss then return false, "cheap_shot assumed unusable in boss fights" end
-      return stealthed_all, "not stealthed"
+  if target.boss then return false, "cheap_shot assumed unusable in boss fights" end
+  return (buff.stealth.up or buff.vanish.up or buff.shadow_dance.up), "not stealthed"
     end,
 
     handler = function ()
@@ -1233,7 +1235,7 @@ spec:RegisterAbilities( {
 
     startsCombat = false,
     
-    usable = function () return stealthed_all, "requires stealth" end,
+  usable = function () return (buff.stealth.up or buff.vanish.up or buff.shadow_dance.up), "requires stealth" end,
 
     handler = function ()
       -- Pick pocket implementation
@@ -1515,7 +1517,7 @@ spec:RegisterStateExpr("behind_target", function()
     end
     
     -- In group content, assume tank has aggro and we can be behind
-    if group then
+  if state.group then
         return true -- Tank should have aggro in groups
     end
     
@@ -1573,7 +1575,7 @@ spec:RegisterHook("runHandler", function(action, pool)
     
     -- Handle Master of Subtlety and other stealth-related buffs
     if action == "ambush" or action == "garrote" or action == "cheap_shot" then
-        if stealthed_all then
+  if (buff.stealth.up or buff.vanish.up or buff.shadow_dance.up) then
             -- Subtlety gets enhanced benefits from stealth openers
             if talent.master_of_subtlety.enabled then
                 applyBuff("master_of_subtlety", 6) -- 6-second damage bonus
@@ -1614,33 +1616,12 @@ spec:RegisterStateExpr("enemies", function()
     return active_enemies or 1
 end)
 
-spec:RegisterStateExpr("threat", function()
-    return {
-        pct = 50 -- Simplified threat tracking for simulation
-    }
-end)
-
-spec:RegisterStateExpr("solo", function()
-    return not group
-end)
-
--- Simplified threat tracking to avoid circular reference
-spec:RegisterStateExpr("target_threat_pct", function()
-    return 50 -- Simplified threat percentage for simulation
-end)
-
-
-
 -- Magic debuff state for SimC compatibility
 spec:RegisterStateExpr("magic_debuff_active", function()
     return false -- Simplified - no magic debuffs active by default
 end)
 
 -- Settings access for abilities and state expressions
-spec:RegisterStateExpr("should_use_tricks", function()
-    return settings.use_tricks_of_the_trade and group and not solo
-end)
-
 spec:RegisterStateExpr("should_use_shadowstep", function()
     return settings.allow_shadowstep and talent.shadowstep.enabled
 end)

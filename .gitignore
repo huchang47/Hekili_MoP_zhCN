@@ -14,3 +14,4 @@ Documentation/
 .vscode/settings.json
 .gitignore
 .vscode/settings.json
+syntaxcheck.bat

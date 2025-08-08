@@ -1636,9 +1636,7 @@ all:RegisterAuras({
         duration = 3600,
     },
 
-    stamina = {
-        duration = 3600,
-    },
+    -- removed duplicate generic stamina; detailed MoP stamina aura defined later
 
     attack_power_multiplier = {
         duration = 3600,
@@ -2685,8 +2683,8 @@ all:RegisterAuras({
             if amount > 0 then
                 -- t.name = ABSORB
                 t.count = 1
-                t.expires = now + 10
-                t.applied = now - 5
+                t.expires = state.query_time + 10
+                t.applied = state.query_time - 5
                 t.caster = unit
                 return
             end
@@ -3869,7 +3867,6 @@ if spec then
                     class.resources[ res ] = model
                     state[ res ] = model.state
                 end
-                if rawget( state, "runes" ) then state.runes = nil; class.runes = nil; end
 
                 for k,v in pairs( spec.resourceAuras ) do
                     class.resourceAuras[ k ] = v
@@ -3906,7 +3903,6 @@ if spec then
                 end
             end
 
-            if rawget( state, "runes" ) then state.runes = nil; class.runes = nil; end
 
             for k, v in pairs( spec.auras ) do
                 if not class.auras[ k ] then class.auras[ k ] = v end
@@ -4017,7 +4013,7 @@ if spec then
     state.threat.raw = 0
     state.threat.rawTarget = 0
 
-    HekiliEngine.activeThread = nil
+    if Hekili.Engine then Hekili.Engine.activeThread = nil end
     self:UpdateDisplayVisibility()
     self:UpdateDamageDetectionForCLEU()
 end

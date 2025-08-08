@@ -15,10 +15,10 @@ local Error = ns.Error
 local orderedPairs = ns.orderedPairs
 local round, roundUp, roundDown = ns.round, ns.roundUp, ns.roundDown
 local safeMin, safeMax = ns.safeMin, ns.safeMax
+local safeAbs = ns.safeAbs or math.abs
 
 
 local GetItemSpell = ns.GetItemSpell
-local GetItemCooldown = GetItemCooldown
 local IsUsableItem = ns.IsUsableItem
 local GetSpellInfo = ns.GetUnpackedSpellInfo
 local UnitBuff, UnitDebuff = ns.UnitBuff, ns.UnitDebuff
@@ -27,7 +27,7 @@ local IsAbilityDisabled = ns.IsAbilityDisabled
 local GetPowerRegenForPowerType = GetPowerRegenForPowerType or function() return 0, 0 end
 local UnitPartialPower = UnitPartialPower or function() return 0 end
 local IsSpellKnownOrOverridesKnown = IsSpellKnownOrOverridesKnown or IsSpellKnown
-local GetSpellLossOfControlCooldown = function() return 0, 0 end
+local GetSpellLossOfControlCooldown = function(...) return 0, 0 end
 
 -- MoP: Aura functions compatibility
 local GetBuffDataByIndex, GetDebuffDataByIndex = function() return nil end, function() return nil end
@@ -36,19 +36,19 @@ local UnpackAuraData = function(data)
 end
 
 -- MoP: Spell charges compatibility
-local GetSpellCharges = function(spellID)
-    if type(GetSpellCharges) == "function" then
-        local charges, maxCharges, start, duration, chargeModRate = GetSpellCharges(spellID)
-        if charges then
-            return charges, maxCharges, start, duration, chargeModRate
-        end
+local GetSpellCharges = (_G and rawget( _G, "GetSpellCharges" ))
+if type( GetSpellCharges ) ~= "function" then
+    GetSpellCharges = function( spellID )
+        return 0, 0, 0, 0, 1
     end
-    return 0, 0, 0, 0, 1
 end
+-- Fallbacks for constants in static analyzer env
+local MAX_PLAYER_LEVEL = (_G and rawget( _G, "MAX_PLAYER_LEVEL" )) or 90
+local CR_CRIT_TAKEN_SPELL = _G and rawget( _G, "CR_CRIT_TAKEN_SPELL" )
 
 -- Clean up table_x later.
 ---@diagnostic disable-next-line: deprecated
-local insert, remove, sort, tcopy, unpack, wipe = table.insert, table.remove, table.sort, ns.tableCopy, table.unpack, table.wipe
+local insert, remove, sort, tcopy, unpack, wipe = table.insert, table.remove, table.sort, ns.tableCopy, unpack, table.wipe
 local format = string.format
 
 local Mark, SuperMark, ClearMarks = ns.Mark, ns.SuperMark or function() end, ns.ClearMarks
@@ -654,8 +654,8 @@ state.GetActiveLossOfControlDataCount = function() return 0 end
 state.GetNumGroupMembers = GetNumGroupMembers
 -- state.GetItemCooldown = GetItemCooldown
 -- MoP: Use legacy GetItemCount
-state.GetItemCount = GetItemCount
-state.GetItemGem = GetItemGem
+state.GetItemCount = (type(_G)=="table" and _G.GetItemCount) or function() return 0 end
+state.GetItemGem = (type(_G)=="table" and _G.GetItemGem) or function() return nil end
 state.GetItemInfo = ns.CachedGetItemInfo  -- Use cached version for MoP compatibility
 state.GetPlayerAuraBySpellID = GetPlayerAuraBySpellID
 state.GetShapeshiftForm = GetShapeshiftForm
@@ -663,10 +663,11 @@ state.GetShapeshiftFormInfo = GetShapeshiftFormInfo
 -- MoP: Spell cast count not available
 state.GetSpellCount = function() return 0 end
 state.GetSpellInfo = ns.GetUnpackedSpellInfo
-state.GetSpellLink = GetSpellLink
+-- Guarded WoW API accessors for analyzer environments
+state.GetSpellLink = (type(_G)=="table" and _G.GetSpellLink) or function() return nil end
 -- MoP: Use legacy GetSpellTexture
-state.GetSpellTexture = GetSpellTexture
-state.GetStablePetInfo = GetStablePetInfo
+state.GetSpellTexture = (type(_G)=="table" and _G.GetSpellTexture) or function() return nil end
+state.GetStablePetInfo = (type(_G)=="table" and _G.GetStablePetInfo) or function() return nil end
 state.GetTime = GetTime
 state.GetTotemInfo = GetTotemInfo
 state.InCombatLockdown = InCombatLockdown
@@ -679,8 +680,8 @@ state.IsSpellKnownOrOverridesKnown = IsSpellKnownOrOverridesKnown
 -- MoP: Use legacy IsUsableItem
 state.IsUsableItem = IsUsableItem
 -- MoP: Use legacy IsUsableSpell
-state.IsUsableSpell = IsUsableSpell
-state.UnitAura = UnitAura
+state.IsUsableSpell = (type(_G)=="table" and _G.IsUsableSpell) or function() return true end
+state.UnitAura = (type(_G)=="table" and _G.UnitAura) or ns.UnitAura
 -- MoP: Aura slots not available
 state.UnitAuraSlots = function() return {} end
 state.UnitBuff = UnitBuff
@@ -708,6 +709,7 @@ state.glyph = setmetatable( {}, {
             if glyphID and type( glyphID ) == "number" then
                 -- Check if player has this glyph active
                 for i = 1, 6 do -- MoP has 6 glyph slots
+                    local GetGlyphSocketInfo = (type(_G)=="table" and _G.GetGlyphSocketInfo) or function(...) return nil end
                     local enabled, glyphType, glyphSpell = GetGlyphSocketInfo( i )
                     if enabled and glyphSpell == glyphID then
                         return { enabled = true }
@@ -762,6 +764,20 @@ state.safebool = function( val )
     if val == nil then return false end
     if val == 0 then return false end
     return true
+end
+
+-- Safe proxy for evaluating registered state expressions by key.
+-- Some spec modules may incorrectly call state:EvaluateExpr("key");
+-- provide a compatible helper that returns the expression's value if present.
+function state:EvaluateExpr( key )
+    local class = self.class
+    if class and class.stateExprs then
+        local f = class.stateExprs[ key ]
+        if type( f ) == "function" then
+            return f()
+        end
+    end
+    return nil
 end
 
 state.combat = 0
@@ -1681,13 +1697,15 @@ end
 
 local spend = function( amount, resource, noforecast )
     amount, resource = ns.callHook( "prespend", amount, resource )
-    resourceChange( -amount, resource, overcap )
+    -- Spending never overcaps; pass false for overcap.
+    resourceChange( -amount, resource, false )
     if not noforecast and resource ~= "health" then forecastResources( resource ) end
-    ns.callHook( "spend", amount, resource, overcap, true )
+    ns.callHook( "spend", amount, resource, false, true )
 end
 
 local rawSpend = function( amount, resource )
-    resourceChange( -amount, resource, overcap )
+    -- Spending never overcaps; pass false for overcap.
+    resourceChange( -amount, resource, false )
     forecastResources( resource )
 end
 
@@ -2451,7 +2469,8 @@ do
                 local amount, resource
 
                 if ability then
-                    amount, resource = ability.spend
+                    amount = ability.spend
+                    resource = ability.spendType
 
                     if not resource and ability.spendType then
                         resource = ability.spendType
@@ -2575,6 +2594,13 @@ do
                 return state.class.stateTables[ k ]
             end
 
+            -- Provide safe defaults for core tables that may be referenced by scripts during early init.
+            if k == "threat" then
+                -- Minimal default until Classes.lua initializes state.threat
+                t[k] = { situation = 0, percentage = 0, raw = 0, rawTarget = 0 }
+                return t[k]
+            end
+
             if k ~= "scriptID" and not ( logged_state_errors[ t.scriptID ] and logged_state_errors[ t.scriptID ][ k ] ) then
                 local key_str = type(k) == "function" and tostring(k) or k
                 Hekili:Error( "Unknown key '" .. key_str .. "' in emulated environment for [ " .. t.scriptID .. " : " .. t.this_action .. " ].\n\n" .. debugstack() )
@@ -2590,7 +2616,11 @@ do
         end
     }
 
-    SuperMark( state, autoReset )
+    -- Guard for environments where SuperMark signature is unknown
+    local ok = pcall(function() ns.SuperMark( state, autoReset ) end)
+    if not ok and ns.SuperMark then
+        pcall(function() ns.SuperMark() end)
+    end
 end
 ns.metatables.mt_state = mt_state
 
@@ -2690,7 +2720,11 @@ local mt_stat = {
             t.bonus_armor = bonus or 0
 
         elseif k == "resilience_rating" then
-            t[k] = GetCombatRating(CR_CRIT_TAKEN_SPELL)
+            if CR_CRIT_TAKEN_SPELL then
+                t[k] = GetCombatRating(CR_CRIT_TAKEN_SPELL)
+            else
+                t[k] = 0
+            end
 
         elseif k == "mastery_rating" then
             t[k] = GetCombatRating(CR_MASTERY)
@@ -2726,7 +2760,8 @@ local mt_stat = {
             t[k] = 0
 
         elseif k == "crit" then
-            t[k] = ( max( GetCritChance(), GetSpellCritChance( "player" ), GetRangedCritChance() ) + ( t.mod_crit_pct or 0 ) )
+            local spellCrit = (GetSpellCritChance and GetSpellCritChance()) or 0
+            t[k] = ( max( GetCritChance(), spellCrit, GetRangedCritChance() ) + ( t.mod_crit_pct or 0 ) )
 
         end
 
@@ -2791,7 +2826,10 @@ do
                 end
 
                 local petGUID = UnitGUID( "pet" )
-                petGUID = petGUID and tonumber( petGUID:match( "%-(%d+)%-[0-9A-F]+$" ) )
+                if petGUID then
+                    local petIdStr = petGUID:match( "%-(%d+)%-[0-9A-F]+$" )
+                    petGUID = petIdStr and tonumber( petIdStr ) or nil
+                end
 
                 local id = t.id
                 if petGUID and id == petGUID and UnitHealth( "pet" ) > 0 then
@@ -2846,10 +2884,10 @@ do
         health_pct = 1,
         health_percent = 1,
     }, {
-        __index = function( t, k, v )
-            if v == nil then return end
-            if type( v ) == "boolean" then Mark( t, k ) end
-            rawset( t, k, v )
+        __index = function( t, k )
+            -- default to false for unknown boolean flags and mark on access
+            Mark( t, k )
+            return false
         end
     } )
 
@@ -2861,11 +2899,11 @@ do
                 rawset( t, "__last_pet_guid", guid )
                 rawset( t, "real_pet", nil )
 
-                for alias, petData in pairs( class.pets ) do
+        for alias, petData in pairs( class.pets ) do
                     local token = petData.token or alias
                     local entry = rawget( t, token )
                     if entry and type( entry ) == "table" then
-                        t.expires = 0
+            entry.expires = 0
                     end
                 end
             end
@@ -2875,7 +2913,8 @@ do
                 local petID = UnitGUID( "pet" )
 
                 if petID then
-                    petID = tonumber( petID:match( "%-(%d+)%-[0-9A-F]+$" ) )
+                    local pid = petID and petID:match( "%-(%d+)%-[0-9A-F]+$" )
+                    petID = pid and tonumber( pid ) or nil
                     local model, token
                     -- Try direct alias match first
                     model = class.pets[ petID ]
@@ -3182,15 +3221,18 @@ do
                 return Hekili:GetTimeToPct( "target", percent ) - ( state.offset + state.delay )
 
             elseif k == "unit" then
-                if state.args.cycle_target == 1 then return UnitGUID( "target" ) .. "c" or "cycle"
-                elseif state.args.target then return ( UnitGUID( "target" ) .. '+' .. state.args.target ) or "unknown" end
-                return UnitGUID( "target" ) or "unknown"
+                if state.args.cycle_target == 1 then return tostring( UnitGUID( "target" ) or "" ) .. "c" or "cycle"
+                elseif state.args.target then return tostring( UnitGUID( "target" ) or "" ) .. '+' .. tostring( state.args.target ) end
+                return tostring( UnitGUID( "target" ) or "unknown" )
 
             elseif k == "npcid" then
                 if UnitExists( "target" ) then
                     local id = UnitGUID( "target" )
                     id = id and id:match( "(%d+)-%x-$" )
-                    id = id and tonumber( id )
+                    if id then
+                        local nid = tonumber( id )
+                        id = nid
+                    end
 
                     return id or -1
                 end
@@ -4052,7 +4094,7 @@ do
 
             if aura and aura.hidden then
                 -- Hidden auras might be detectable with FindPlayerAuraByID.
-                local name, _, count, _, duration, expires, caster, _, _, spellID, _, _, _, _, timeMod, v1, v2, v3 = FindPlayerAuraByID( aura.id )
+                local name, _, count, _, duration, expires, caster, _, _, spellID, _, _, _, _, timeMod, v1, v2, v3 = state.FindPlayerAuraByID( aura.id )
 
                 if name then
                     local buff = auras.player.buff[ t.key ] or {}
@@ -4131,7 +4173,7 @@ do
                         end
                     end
 
-                    t.id = rawget( t, id ) or ( aura and aura.id ) or t.key
+                    t.id = rawget( t, 'id' ) or ( aura and aura.id ) or t.key
                 end
 
                 return rawget( t, k )
@@ -4570,7 +4612,8 @@ local mt_default_totem = {
 
         end
 
-        Error( "UNK: totem." .. name or "no_name" .. "." .. k )
+    local nm = rawget(t, "name") or "no_name"
+    Error( "UNK: totem." .. nm .. "." .. k )
     end,
     __newindex = function( t, k, v )
         if v == nil then return end
@@ -5516,7 +5559,7 @@ local mt_default_action = {
             return 0
 
         elseif k == "cost_type" then
-            local a, _ = ability.spendType
+            local a = ability.spendType
             if type( a ) == "string" then return a end
 
             a = ability.spend
@@ -5777,8 +5820,14 @@ local autoAuraKey = setmetatable( {}, {
 
 
 do
-    -- MoP: UnitAuraBySlot doesn't exist, use fallback
-    local UnitAuraBySlot = function() return nil end
+    -- MoP: UnitAuraBySlot doesn't exist, use a signature-compatible fallback
+    local function UnitAuraBySlot(unit, slot)
+        -- name, iconTexture, count, debuffType, duration, expirationTime, unitCaster,
+        -- isStealable, nameplateShowPersonal, spellId, canApplyAura, isBossDebuff,
+        -- castByPlayer, nameplateShowAll, timeMod, value1, value2, value3, value4,
+        -- value5, value6, value7, value8, value9, value10
+        return nil
+    end
 
     function state.StoreMatchingAuras( unit, auras, filter, ... )
         local n = auras.count
@@ -6595,8 +6644,8 @@ do
 
         full = dispName == "Primary" or state.offset > 0
 
-        ClearMarks( firstTime )
-        firstTime = nil
+    ClearMarks( firstTime )
+    firstTime = false
 
         state.ClearCycle()
         state:ResetVariables()
@@ -6664,7 +6713,11 @@ do
 
         -- TODO: Determine if we can Mark/Purge these tables instead of having their own resets.
         for k in pairs( class.stateTables ) do
-            if rawget( state[ k ], "onReset" ) then state[ k ].onReset( state[ k ] ) end
+            local tbl = state[ k ]
+            if type( tbl ) == "table" then
+                local onReset = rawget( tbl, "onReset" )
+                if type( onReset ) == "function" then onReset( tbl ) end
+            end
         end
 
         -- Hekili:Yield( "Reset Post-States" )
@@ -6853,7 +6906,8 @@ do
         -- 2.  We cannot cast anything while casting (typical), so we want to advance the clock, complete the cast, and then generate recommendations.
 
         if casting and cast_time > 0 then
-            local channeled, destGUID = state.buff.casting.v3 == 1
+            local channeled = state.buff.casting.v3 == 1
+            local destGUID
 
             if ability then
                 channeled = channeled or ability.channeled
@@ -7406,8 +7460,8 @@ do
         -- if state.buff.empowering.up and state.buff.empowering.spell ~= spell then return true, "empowerment" end -- Disabled for MoP
         if state.filter ~= "none" and state.filter ~= toggle and not ability[ state.filter ] then return true, "display" end
         if ability.item and not ability.bagItem and not state.equipped[ ability.item ] then return false, "not equipped" end
-        if toggleSpell[ spell ] and toggle and toggle ~= "none" then
-            if not self.toggle[ toggle ] or ( profile.toggles[ tQoggle ].separate and state.filter ~= toggle and not spec.noFeignedCooldown ) then return true, format( "%s filtered", toggle ) end
+        if toggleSpells[ spell ] and toggle and toggle ~= "none" then
+            if not self.toggle[ toggle ] or ( profile.toggles[ toggle ].separate and state.filter ~= toggle and not spec.noFeignedCooldown ) then return true, format( "%s filtered", toggle ) end
         end
 
         return false
@@ -7434,8 +7488,15 @@ do
             end
         else
             local usable = ability.usable
-            if type( usable ) == "number" and not IsUsableSpell( usable ) then
+            if type( usable ) == "number" and state.IsUsableSpell then
+                local ok
+                -- Some analyzers stub IsUsableSpell() with no params; permit true in that case
+                pcall(function()
+                    ok = state.IsUsableSpell( usable )
+                end)
+                if ok == false then
                 return false, "IsUsableSpell(" .. usable .. ") was false"
+                end
             elseif type( usable ) == "boolean" and not usable then
                 return false, "ability.usable was false"
             end
@@ -7668,7 +7729,8 @@ function state:TimeToReady( action, pool )
     end
     --]]
 
-    local spend, resource = ability.spend
+    local spend = ability.spend
+    local resource
     if spend then
         if type( spend ) == "number" then
             resource = ability.spendType or class.primaryResource

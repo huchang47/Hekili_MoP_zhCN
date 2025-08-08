@@ -889,7 +889,7 @@ function Hekili:GetPredictionFromAPL( dispName, packName, listName, slot, action
                         action = class.abilities[ action ].key
                         ability = class.abilities[ action ]
                         state.this_action = action
-                        state.this_list = listName
+                        state.this_list = slot.listName or slot.list or "default"
                         entryReplaced = true
                     elseif action == "potion" then
                         local usePotion = entry.potion or spec.potion
@@ -1341,7 +1341,10 @@ function Hekili:GetPredictionFromAPL( dispName, packName, listName, slot, action
                                                             local extra_amt   = state.args.extra_amount or 0
 
                                                             local next_known  = next_action and state:IsKnown( next_action )
-                                                            local next_usable, next_why = next_action and state:IsUsable( next_action )
+                                                            local next_usable, next_why = false, "unknown"
+                                                            if next_action then
+                                                                next_usable, next_why = state:IsUsable( next_action )
+                                                            end
                                                             local next_cost   = next_action and state.action[ next_action ] and state.action[ next_action ].cost or 0
                                                             local next_res    = next_action and state.GetResourceType( next_action ) or class.primaryResource
 
@@ -1356,7 +1359,7 @@ function Hekili:GetPredictionFromAPL( dispName, packName, listName, slot, action
                                                             elseif state.cooldown[ next_action ].remains > 0 then
                                                                 if debug then self:Debug( "Attempted to Pool Resources for Next Entry ( %s ), but the next entry is on cooldown.  Skipping.", next_action ) end
                                                             elseif state[ next_res ].current >= next_cost + extra_amt then
-                                                                if debug then self:Debug( "Attempted to Pool Resources for Next Entry ( %s ), but we already have all the resources needed ( %.2f > %.2f + %.2f ).  Skipping.", next_ation, state[ next_res ].current, next_cost, extra_amt ) end
+                                                                if debug then self:Debug( "Attempted to Pool Resources for Next Entry ( %s ), but we already have all the resources needed ( %.2f > %.2f + %.2f ).  Skipping.", next_action, state[ next_res ].current, next_cost, extra_amt ) end
                                                             else
                                                                 -- Oops.  We only want to wait if
                                                                 local next_wait = state[ next_res ][ "time_to_" .. ( next_cost + extra_amt ) ]
@@ -1868,7 +1871,17 @@ function Hekili.Update()
                                     local resources
 
                                     for k in orderedPairs( class.resources ) do
-                                        resources = ( resources and ( resources .. ", " ) or "" ) .. string.format( "%s[ %.2f / %.2f ]", k, state[ k ].current, state[ k ].max )
+                                        local res = rawget( state, k ) or state[ k ]
+                                        local cur, maxv = 0, 0
+                                        if type( res ) == "table" then
+                                            local okc, c = pcall( function() return res.current end )
+                                            local okm, m = pcall( function() return res.max end )
+                                            cur = okc and c or ( rawget( res, "actual" ) or 0 )
+                                            maxv = okm and m or ( rawget( res, "max" ) or 0 )
+                                        elseif type( res ) == "number" then
+                                            cur = res
+                                        end
+                                        resources = ( resources and ( resources .. ", " ) or "" ) .. string.format( "%s[ %.2f / %.2f ]", k, cur, maxv )
                                     end
                                     Hekili:Debug( 1, "Resources: %s\n", resources )
                                 end
@@ -1969,7 +1982,17 @@ function Hekili.Update()
                         local resources
 
                         for k in orderedPairs( class.resources ) do
-                            resources = ( resources and ( resources .. ", " ) or "" ) .. string.format( "%s[ %.2f / %.2f ]", k, state[ k ].current, state[ k ].max )
+                            local res = rawget( state, k ) or state[ k ]
+                            local cur, maxv = 0, 0
+                            if type( res ) == "table" then
+                                local okc, c = pcall( function() return res.current end )
+                                local okm, m = pcall( function() return res.max end )
+                                cur = okc and c or ( rawget( res, "actual" ) or 0 )
+                                maxv = okm and m or ( rawget( res, "max" ) or 0 )
+                            elseif type( res ) == "number" then
+                                cur = res
+                            end
+                            resources = ( resources and ( resources .. ", " ) or "" ) .. string.format( "%s[ %.2f / %.2f ]", k, cur, maxv )
                         end
                         Hekili:Debug( 1, "Resources: %s", resources or "none" )
                         ns.callHook( "step" )
@@ -2058,14 +2081,30 @@ function Hekili.Update()
 
                     slot.resource_type = state.GetResourceType( action )
 
-                    for k,v in pairs( class.resources ) do
-                        slot.resources[ k ] = state[ k ].current
+                    for k, v in pairs( class.resources ) do
+                        local res = rawget( state, k ) or state[ k ]
+                        if type( res ) == "table" then
+                            -- Prefer current if available (may be via __index).
+                            local ok, val = pcall( function() return res.current end )
+                            if ok and val ~= nil then
+                                slot.resources[ k ] = val
+                            elseif rawget( res, "actual" ) ~= nil then
+                                slot.resources[ k ] = res.actual
+                            else
+                                slot.resources[ k ] = 0
+                            end
+                        elseif type( res ) == "number" then
+                            -- Some legacy specs may expose numeric resources directly.
+                            slot.resources[ k ] = res
+                        else
+                            slot.resources[ k ] = 0
+                        end
                     end
 
                     if i < display.numIcons then
                         -- Advance through the wait time.
                         state.this_action = action
-                        state.this_list = listName
+                        state.this_list = slot.listName or slot.list or "default"
 
                         if state.delay > 0 then state.advance( state.delay ) end
 
@@ -2161,7 +2200,7 @@ function Hekili.Update()
                         local resInfo
 
                         for k in orderedPairs( class.resources ) do
-                            local res = rawget( state, k )
+                            local res = rawget( state, k ) or state[ k ]
 
                             if res then
                                 local forecast = res.forecast and res.fcount and res.forecast[ res.fcount ]
@@ -2171,7 +2210,10 @@ function Hekili.Update()
                                     final = string.format( "%.2f @ [%d - %s] %.2f", forecast.v, res.fcount, forecast.e or "none", forecast.t - state.now - state.offset )
                                 end
 
-                                resInfo = ( resInfo and ( resInfo .. ", " ) or "" ) .. string.format( "%s[ %.2f / %.2f || %s ]", k, res.current, res.max, final )
+                                local okc, cur = pcall( function() return res.current end ); if not okc then cur = rawget( res, "actual" ) or 0 end
+                                local okm, maxv = pcall( function() return res.max end ); if not okm then maxv = rawget( res, "max" ) or 0 end
+
+                                resInfo = ( resInfo and ( resInfo .. ", " ) or "" ) .. string.format( "%s[ %.2f / %.2f || %s ]", k, cur or 0, maxv or 0, final )
                             end
 
                             if resInfo then resInfo = "Resources: " .. resInfo end
@@ -2239,7 +2281,7 @@ function Hekili.Update()
                 end
             end
 
-            if round < 5 then Hekili:Yield( "Recommendations finished for " .. dispName .. ".", nil, true ) end
+            if round < 5 then Hekili:Yield( "Recommendations finished for " .. dispName .. "." ) end
 
             dispName = nextDisplay
             state.display = dispName

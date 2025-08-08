@@ -12,33 +12,14 @@ local floor = math.floor
 local strformat = string.format
 
 
--- Enhanced MoP Specialization Detection for Monks
-function Hekili:GetMoPSpecialization()
-    -- Prioritize the most defining abilities for each spec
-
-    -- Windwalker check
-    if IsPlayerSpell(113656) or IsPlayerSpell(107428) then -- Fists of Fury or Rising Sun Kick
-        return 269
-    end
-
-    -- Brewmaster check
-    if IsPlayerSpell(121253) or IsPlayerSpell(115295) then -- Keg Smash or Guard
-        return 268
-    end
-
-    -- Mistweaver check (currently not implemented, but placeholder for completeness)
-    -- if IsPlayerSpell(115175) or IsPlayerSpell(115151) then -- Soothing Mist or Renewing Mist
-    --     return 270
-    -- end
-
-    return nil -- Return nil if no specific spec is detected, to allow fallbacks
-end
+-- Enhanced MoP Specialization Detection for Monks is provided in core (Hekili.lua).
 
 -- Define FindUnitBuffByID and FindUnitDebuffByID from the namespace
 local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
 
 -- Create frame for deferred loading and combat log events
 local wwCombatLogFrame = CreateFrame("Frame")
+local TryRegister -- forward declare for static analyzers
 
 -- Define Windwalker specialization registration
 local function RegisterWindwalkerSpec()
@@ -524,14 +505,7 @@ local function RegisterWindwalkerSpec()
         return 3600 -- Large number indicating it will never be reached
     end)
 
-    -- Temporary expression to fix a warning about missing threat value
-    -- Should probably remove this
-    spec:RegisterStateExpr("threat", function()
-        return {
-            situation = threat_situation or 0,
-            percentage = threat_percent or 0
-        }
-    end)
+    -- Removed spec-level threat expression; rely on core state.threat
 
     -- Consolidated event handler
     wwCombatLogFrame:RegisterEvent("UNIT_POWER_UPDATE")
@@ -559,7 +533,7 @@ local function RegisterWindwalkerSpec()
             end
         elseif event == "ADDON_LOADED" then
             local addonName = ...
-            if addonName == "Hekili" or TryRegister() then
+            if addonName == "Hekili" or (TryRegister and TryRegister()) then
                 self:UnregisterEvent("ADDON_LOADED")
             end
         end
@@ -610,7 +584,7 @@ local function RegisterWindwalkerSpec()
 end
 
 -- Deferred loading mechanism
-local function TryRegister()
+function TryRegister()
     if Hekili and Hekili.Class and Hekili.Class.specs and Hekili.Class.specs[0] then
         RegisterWindwalkerSpec()
         wwCombatLogFrame:UnregisterEvent("ADDON_LOADED")

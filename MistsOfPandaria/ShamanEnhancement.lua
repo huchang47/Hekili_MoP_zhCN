@@ -1724,6 +1724,10 @@ spec:RegisterAbilities( {
         startsCombat = false,
         texture = 135824,
         
+        usable = function()
+            return not buff.searing_totem.up, "searing totem already active"
+        end,
+        
         handler = function()
             applyBuff("searing_totem")
         end,
