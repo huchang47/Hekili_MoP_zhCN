@@ -1,5 +1,5 @@
     -- HunterSurvival.lua
-    -- july 2025 by smufrik
+    -- August 2025 by Smufrik & SaschaDaSilva
 
 -- Early return if not a Hunter
 if select(2, UnitClass('player')) ~= 'HUNTER' then return end
@@ -786,7 +786,6 @@ spec:RegisterAuras( {
             spendType = "focus",
 
             startsCombat = true,
-            texture = 132215,
 
             handler = function ()
                 -- Refresh Serpent Sting to its full duration (15s) if present
