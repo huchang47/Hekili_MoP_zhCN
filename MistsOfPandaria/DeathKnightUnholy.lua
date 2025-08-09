@@ -1794,7 +1794,11 @@ spec:RegisterAbilities( {
         spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
 
         startsCombat = true,
-        
+        usable = function()
+            if (state.unholy or 0) > 0 or (state.death or 0) > 0 then return true end
+            return false, "no unholy/death rune"
+        end,
+
         handler = function ()
             -- Scourge Strike base functionality for MoP
         end,
@@ -1849,6 +1853,18 @@ spec:RegisterAbilities( {
         spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
 
         startsCombat = true,
+        usable = function()
+            local bloodReady = (state.blood or 0) > 0 or (state.death or 0) > 0
+            if not bloodReady then return false, "no blood/death rune" end
+            local enemies = active_enemies or state.active_enemies or 1
+            if enemies > 1 then
+                if (debuff.frost_fever.up and active_dot.frost_fever < enemies) or (debuff.blood_plague.up and active_dot.blood_plague < enemies) then
+                    return true
+                end
+                if enemies >= 2 and debuff.frost_fever.up and debuff.blood_plague.up then return true end
+            end
+            return false, "single target / no spread need"
+        end,
 
         handler = function ()
             -- Blood Boil base functionality for MoP
@@ -1870,6 +1886,13 @@ spec:RegisterAbilities( {
         gcd = "spell",
 
         startsCombat = false,
+
+        -- Only cast to apply/refresh the buff and when RP is meaningfully low (<=60) like retail logic.
+        usable = function()
+            if buff.horn_of_winter.up and buff.horn_of_winter.remains > 6 then return false, "buff active" end
+            local rp = (state.runic_power and state.runic_power.current) or 0
+            return rp <= 60, "runic power high"
+        end,
 
         handler = function ()
             applyBuff( "horn_of_winter" )
@@ -2457,5 +2480,5 @@ spec:RegisterSetting( "dark_transformation_auto", true, {
     width = "full"
 } )
 
-spec:RegisterPack( "Unholy", 20250803, [[Hekili:TMv3UTnUs4NLGfWWUBRQLCst6b2(IfNl22fO34U3kjAjklHO)GevdYbg6z)mK0sIKIuwonTiT2KC(Hd)Mz(iJRT7pDpeIiy3F4S25H1pTEJ1AB7hDEY9a51sS7HsuWZOtWhYrzW)(V5XfPVsh(10cuiv86IMQayk3dhBssjFl39OwDA)f3dOgsCrL7Hdznrvjp7EiojmeZLaxh4E4NXj1T(0FqT(xSDRFre89assrERFAsnbMoQOQ1)VXpNKMy5EGni1zqfy4)(bBFHZrhtXHU)L7HGQecUkbbMPGyDmTOi0RmfDQbBrscEoj)uR)IwFckfNtSAyBsVJPjNIjwxudBbbffPHfVKRSKkCgkjh8QTT(BaNG5QqqcxtsancrhcemEB(0OjNLX282nwuvrnXlc)lCv3CdwHl5XIKuQvU3OvQXeciyTvyEO3lXGJ5Lv8lyKHW55ZT(316ZhEWcHyej2dbIfIdqVsnZdgnd)yO1FxRV9GkQdai5jSxnbWySWXxyyJolGQE2JuHYRbqugIp4G6HL)Ordw1KNe4vw8cgGF7B9)6A(g5ytuKvDdfm7fwuKbNsG5u3vbxIBpj6ocHuzV4Rg9Il4uUKeuPegL5k8PcIrqCWQMajsG7crPhuTlin1w2RN3wgWCpUMzM7UyjiFo3RiY7LKCqaRMYblipfZmMtmfok5gG5FcFNHl5FFWe4mMJ5boj27fmQegKa)9qnaQaqhHgaitxsGTn0akSOz6tdBMmTwyh5WrjlB9frS8uokYO77RMceBoNEiu5OeQCguyeuGawE(jbvAob(3aIXwI4XPbmN506BlB6lg1tF5ALIkd1q3l5EJJ5MReCjMVxbEkRqDX8NMxM2EAMMPT8vlnOdoRTrMUfk1Hz4aFgPiso5e1u4hWXiqCVK8OMAQUUGHaeZ9gvP5S4FdaRPAIMtTFxRjAoV(DUMyioc1KounStGSeiXiQcJ)FyLwqQrGojq5KKm0jiguhJtt1MZPSMbuvV3pqsOS(YI6SfuTnJr70En9p6k)15lqIv(ZyI9SkPtpk4mz7fttzqfv782uTZmkYzsrYaYOMQxNUs38ugUQgxXi0nFsodO7zzduvacGDKIQkiDC66DZsHLfDDAVArpZ82xoMARsroA75PPAl1DwYuxPyhuvOetSofx0KArvWVWdkQcLuJHUsWDPMv9nUN5LIXbXQBXLxFlOHJV6MSNQsFMCrd5i0b(zPLAZwQqir0ZUs5ZLSsLMVjYLRgy42imdFl9Weib1TvUsH3j8UrB4Ho72MPtzE3mOVKGxH8MMlrpZfoEFUdI9nENiBZ1l4KSTIXOusSvza0r6tmS0hy4int)5(rHEe0QfEHjy256wO7WMhUHZ39s0fQHCmpyFxEP3Q5Ip8erpCoolbxZzc4iwS4wVKChSCPyB6bI)dJzp0k3QBp6nolCLAxGUBDBBUqO5n1O7DSuS)78UKUKpP5E6oMRbQZXeo2aiTh)ZE0NYH)GoE8UP0N0HQCZLgvv(2zRB5BjYijvwHdkYoI0EPrdS4ypEvvsjFY)l)gD)toT3W)P1V7nZKQgyGNyhNlL(mGtvZEAh5CYnIlvOtI8QUxCvOQSxPMKeRBTSiaGPP8X7F(oO85lOQCksX9W3aYLvek04EL3KZQ97qaTehac(Gdnqwebqk3d)rRV(qs735kO2QpO)N7(SCq5Jjr7UtFWsV4krm9lAiwPFE1Ou737xhmRaFzXHvi8(rof2DCgS09X1OgVB9cZuIfTud48awk7Juu8UoMSutmbLQRQaNBqbd8sVfH65FEdcjtOKkOq)VTpUEXm1dNh5nyyjkEu5MIL5ILgOvTDZ5ZMiLTDZkzG1aSKb7vznkTDeyBj4C6OhUy5sZEWcJ(9QZNxAKc4w7vReDNU5PUYY7m1(8857m08C1I50TFRJMqaN)flGzSTTGu9SS6LqxVCbbgOnPa(2)11NpRN0LK8J3pItlWyHFoQqw6tB(WYrd(5XSNwTD3MhMvuC)9YOUb2fuhqUz6(DolgJEUeLgHD6pmxYw(ohacX)K9c98Day2QXb7Ewf6DiEgiOZLxLbdG44dOMPjtkGxheyAOZG3FvbLOrmwfBfd4wslwp(yYQu0WNzTj)eMufDjArpl6dCSW8o7vM1J6lxYCj(H6c2r(ohZc3)mAcvMg9WClm8OC739q3j86jIAszLxjlCgrPR9uX7NWxmgR2VMhRMsyZLxEC2sD9h9DwfgGUbVruNUtdDVURqU07oOXSMhZOuHcXvjyQQrnpXQqQ2AEXUDxo9PW4bvbfzO9U6)T1sLZyb2jPCm9Vm6TBEJ20mxbvfk344w7sOQnnL(NF5DvLzSmO9iZor7zjp7nYayuSs)mVh4EU((9r7C9CJyC2DhD))p]] )
+spec:RegisterPack( "Unholy", 20250809, [[Hekili:DV1EpUTns8plbfyRnUD9Q1p22MUEbss7Dx71lxqCo0)Z20s02eRSOojQ1Xfg(Z(ndPEqkrkRDBsAVRanETe18E(nZqrp)M5Fy(SaIGo)Td9goX7B9(Ub3mA0TEJNptCiMoFwmX)bYg4pIi7G)9FhTLhEaV8HqojaF8uEwIpCR5ZwLXcf)u08v2O5KBgcRnM6dxEc8NBzbbu1APP(ZN9HTS0tlX)NCAzoxpTKVg(UVGXJoTmKLkGBVMNCA5FN(alKnaeKe(AwiW(V60YFGseBpT8FeX2Sv8Ytlvc7PFgU1RjP0aGCaz(v((TusWxdK6FYF3PLVjKKMY8pT8VLXcOWJTviItF51xVF)(b7vlEGpF3174Xx5Rw81BW1ET8B00RdqgF1ds(EDMKRxheNEvcxqqz)kFopmGVpk9kYkqUfmA6vXpsp9ZN(zL2LoioHcmzfr8xME9wEs0c(6f7zrcAYLS1txLTE9aZlpaj4XJ2UtcDhHfLE3T2jVscxaxkLg5tTVOyU0QB9EjewkDbO1b2Vpjz3buCeBlwL0j8d010Ou2Ju0jhbUJ3uywkjd8W7yrblwNqP)gv)YKibBhzdZFr6wAy4Lbe4B0P34H)hAIkSXdQTYcRXuVlsPcblAt6aW5OUPohYaDIjO7Ued1Nksyrpqf3uA9dijpSqKqIsHiWDs)6GS4ZsGHpbcSkKZbDpl5Wt5HOjP0Kha96j8qKeFseDHGNKqJe4dMKfbwSy(EAYDFJ3fDKoQOKZYyW5)3ijB4hcn8PPz72XJwSj)wizIPIbB2YZchGl7r6f9AHWhpw60TTGCh)9d96FXAm3CrXvg5vescbYa0aafqIGWPDGXip28DHKnzWn(fk1hav(xXqqf73igjfv5sRcr6JkGGecezGX1hqJiRcPbx0lGlgSoHNkwSM(OwM6OJhXBPcaILSU6E9nS4YBUiefln(PF5k21ZnrVWPO0)4XEq0aM6UM5Ze3pDytbxW8XqolID(D633qS5zIvjuYdOi)cxpZXJVWbFaN1xv5tMb5wpG(goKLl9J3m40YxfhdO9lzqjJxJeVA9rCWRQG7edSymtL0RvrtYLHax(fOY2PLjuaHkfIl6rEKZaw5hYIJr1wjaKvGcFAPGd1RiamduidU6RE7pCA5E4XjjfsfB3oAadOjk6(GuLTd52Y9mSuMrqy7sUlb)Iwcb69IwIE0sUmUDro0ed)lZ)aGMKPIjD7fLMXzzyPFi5JZ3b6ycJNWehYZ7EpIdbxfbImslXN8nKurzD(3WzH1mGy9DtQJEaSVeGYZ2saT50YFkADwkMglnYs)07FhA8tndoKv1x4dCPeFlvs7fbaPb7aSuPu1790D8hX(l2qJOjO4RHME)35DAzq2U4VhATauXqCHmG7yZqLD1O83HkTwSfdUaJF6G(52S3rfMwJk5SQAS02xhb1qLAIsw4tGhaSdusmkaQeRL9sz7IdzRzOit)i1pdJ9lLoJaaOnWqaFfFEfSuYgqqGMNcfBhe7lUB6Ojx0j46X5I0R4)iixuHTAKRY9kkvCby23b9uvIu5mrWsqz)lKR((P3CrVCYvNe3zYMJh1wNgfRTS(ndMa3p4O8jhSl7QIgsjPQvf4r2VfAXDbeJPWiv)rrKXRK8a8zYaj94ISOfQVTadYuDLq4uB8E8zFWuGLGqO8RnjXDfETzY1DA5hKlecPY7bUQtrdkzpOS1gkWaOCM9xPPq)UsaZFLNHWhwsrAWWuFyKLngGNuj3wxqUf7rQnivaZHC)uaOS0Z0VoFlQfjhljOODcmswaaPy71Yccui)MQVc)qo(bIpr)ymtrmjcy(ylqrmS3bB1jipsyHii9a3kzLUuPMT0oGQqU9(bQQtyTRgTcfM3VSBlLrBMaupssGvZNeJgnqaECkmBLoEdyIKEcaLeDlPiWKGhRqrnwgo2Ge8LwmOOoU21Zuo(cU2)jA(AGPDpaPvcEiTD4F0wWeos2xH4R7VkeSYGODTSZKR2RcFXMfwbR7LQOgSxHTKhXogavnlpWa1V8yLFJMW1mlqt9Fn2QdACG4nO(3bQO)LYAn4YzWnt5k6gWLRLfGzRseg4dctiDliGcmh(kvFukgkTNnCDTydBMNvbW1MrAAr355TX9bsSJgWBWsvWTGeR1AC51k7lwYA1L93IpArM(KCi4sjWvRkqaidBRZhQ7NiR8hYxb(UdFp2BOac7Xlcz8f2nEsqUzZpKG0OFlaIDQXJA5uNhN956oU3t5mC1f1)jdkKIXL73knvaKn4ZmBYqbIPkzaMOD8aAAEFxLTtOsHHKHhLtHb8o5rfIVQ7FJ2(APVUxIaKYMYLKqA0vrWYSayCzqcwHG0C09GnDtLCcZZYIcPPPLyiYg1PFCljdmm4giLuLTr)itVJXU4gDvotfrMkvKfSC9ihXyYf907MC6KjQ5ZQUYyVIcut9aC8wDLYXYWXXXovjHkxa2DQ2Ome5KmaQHCxUUIaO5YW5thN4P3(xN1Dt537Zx6RBk3Cl103WJP36LVrdp99yRLez6oj5xiNMEpuds1ztHVsv7a(uw6a(uxKUvL19J7OaXI8p0O2Gm4gDl9I41dWH44u0w1htsek8(Celv5Ku(ok67VulHdRe88CPJ9QxvRMS2cMWbSjXYgAaTr52HStwkkcGka0cZVLkNQnjr5OsseeEzgFihVVQM2gsmMbVwGRdRFYbciFEnKKoRWfTazlfUiW0WOm0tFoMMWZqN44C8u0VGBdBRdX36Uk1E7x3n6zYt3nlwNGMZK9uha7Z2yxwLU6t(mQPEEg5To9TmA35NERorAP4Cd(zBiEBIK1C1B9YXZA0sr(1FE1OAGhyZh8PayxrVViW5kw97feVZEMrEZNbHzOzT8vNnA(S9Kee1kD(SFcKKezBiJR9wXauS5ZK)f(g5aobF8w5l3l30o)1WLLpX8zvP)Q39wclwDddGQ5ZGBGDqqGv5AtrxEbG(2c0KCbTdpDA5DNwoAUau5AYBh5VlyQCcBtTbMn65ZmBqc496v0GBdGmPOyc8CA5XJgRxJQwxE)knPcqd1KXo1K6K4(PGbXUnRd6Ol(pXj)DIcQu(xGDG)ObLRbLIK)wNKVyCyuTUPIgMiPij(gzsrblAcVPtFy5FRtoQLUQylKFlvfhZOvDpN7JfAWDdSkJeMixudEp2RUDZp3J8DovaxiVvIrt0xf3Mu39dpnYRB86M16UCRLkpXf2SMfZo(S0GCRr2G5cLYuDKVMXmG0OeM8D4O87YaFTVBQeOouXzlvgKS3nqwdN4ixorbeiR3pABa6wdPnq2DTPS6YwRXP2WNDKWzY522Hwdu3wMAvh5Qx12GjZ7XqblW5fYw9TXZT09h7(4QBk6DUAAQSeh7xBXs6xyUEX5krJe7C1OVxrtB1B6OP(pH7(RjYyT92vPZt0bjYd4QqjQUq7HViUHTsLDkd6)N2RyNLV7GreHKT1qqZYsM2pxBI8NO6IYLOxwPSJdBi1vq81YoEQ7Z8LDEFMBGX3OpfBn90PqZM7(8Vhh895gV6TVCwJ3NSDM(YN8ot35cODVrVEw61BYefmTT7n2REHrvZlYAeN1Gllu0phAVrZCN10)jzBKBTdPjENPLUFh5UU6PTJnW9fTNw3dS(fPNwxv9Dgz8LEJRBniASkiYv9xNkX)tUJ26wIQM)AzFRTpF5qp1yib01KSqRdGyyRCF6ERm0ANT32MOO2j4vxHo3P8vlmV5P9fhvAN80SRo2WTn5qX5)Tti8zXfhq(YhRLoLlozWppspS9nDPvczc3Hh0423ILUrSYdGSTwFCHDEA534vbrFoEyEELBFxA6ebvhC52A3O2HtUEHVYlxX4gN8o9kdooA0MtF1YXItwUEOxXGDgNNz1SkETwc3yWU6PUpNtbTLAWU3d4ENDE1IrABBS3(DRvaBNM1cPOddxBzlqBoBDv3yLNt6Cytx6B5wSAvtlVBr7yvrQAAZz6o5fTr48TC9S7UBXj12Axh1ekRtf8eol2Du4BTdK2eL)GpW2gBW152Y9ZesASto2JWnGsSDMTL4etkYJCxdPlHjLh4BjTCnu(tEG32pd4F(pa4DBA5BCnGF1zXUM(2XZi(LpVZiE9JhEnNz9ctsvqwaT0pD23kYnoRtwDWVR7JFoNP8ZSPC4mx57kxNRAow2RPRcJAVnllVou55pxxMuwqZxQMbM)t99QvurVXMm(5(9jIgf31sDRNn3xNE6nB3(76ZO0MLx33W6v3mDjYhm)SURL1zEG1pNAmw9UYxOARgFB5iJDpGDDACNKeozUgTnFfoYXPk)DsABGQcAwB()6dAz9N56Fs)nU2aq95VfjLJmwRN2IFiR1qSgPV08(9nxXy9vOdDBSQj6RQ(pTvZ1k9WKmOOc40EDs2dKh4Ylo))o]] )
 
