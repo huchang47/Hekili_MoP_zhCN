@@ -1,156 +1,111 @@
-# ===================
-# WARRIOR: ARMS - MISTS OF PANDARIA ENHANCED ROTATION
-# Based on the reworked stance system and ability changes
-# Key Changes: Slam is now instant and primary damage ability, Mortal Strike generates rage, 
-# stances are for rage generation, Sweeping Strikes has 10s cooldown
-# ===================
 
-# ===================
-# PRECOMBAT SETUP WITH STANCE OPTIMIZATION
-# ===================
-actions.precombat+=/battle_shout,if=!buff.str_agi_int.up&!buff.battle_shout.up
-actions.precombat+=/commanding_shout,if=!buff.stamina.up&!buff.commanding_shout.up
-actions.precombat+=/stance,choose=battle
-actions.precombat+=/snapshot_stats
-actions.precombat+=/flask,type=winters_bite
-actions.precombat+=/food,type=black_pepper_ribs_and_shrimp
-actions.precombat+=/apply_poison,lethal=deadly,nonlethal=crippling
+### Pre-Pull ###
+actions.precombat+=/battle_shout,if=!buff.battle_shout.up&!buff.commanding_shout.up
+actions.precombat+=/commanding_shout,if=!buff.commanding_shout.up&!buff.battle_shout.up
+actions.precombat+=/battle_stance,if=!in_battle_stance
+actions.precombat+=/potion
 
-# ===================
-# MAIN ROTATION WITH ENHANCED MOP LOGIC
-# ===================
-actions+=/auto_attack
-actions+=/charge,if=time=0|movement.distance>8
-
-# Interrupts and Emergency Actions
-actions+=/pummel,if=target.debuff.casting.react&target.debuff.casting.interruptible
-actions+=/disrupting_shout,if=target.debuff.casting.react&target.debuff.casting.interruptible&!cooldown.pummel.ready&talent.disrupting_shout.enabled
-actions+=/spell_reflection,if=target.casting
-
-# Stance Management for Rage Generation
-actions+=/stance,choose=battle,if=rage.deficit>40&!buff.berserker_stance.up&!movement.moving
-actions+=/stance,choose=berserker,if=health.pct<70&incoming_damage_3s>health.max*0.2
-actions+=/stance,choose=defensive,if=health.pct<40&!buff.defensive_stance.up
-
-# Execute Sophisticated Action Lists
+### Base Dispatcher ###
+actions+=/charge,if=time=0|target.range>8
 actions+=/run_action_list,name=movement,if=movement.distance>5
 actions+=/call_action_list,name=cooldowns
-actions+=/run_action_list,name=execute_phase,if=target.health.pct<20
-actions+=/run_action_list,name=single_target,if=active_enemies=1
-actions+=/run_action_list,name=aoe_rotation,if=active_enemies>=2
+actions+=/run_action_list,name=execute,if=target.health.pct<20
+actions+=/run_action_list,name=aoe,if=active_enemies>=2
+actions+=/run_action_list,name=st,if=active_enemies=1
 actions+=/call_action_list,name=defensives
+actions+=/call_action_list,name=utility
 
-# ===================
-# SOPHISTICATED COOLDOWN MANAGEMENT
-# ===================
-actions.cooldowns+=/recklessness,if=debuff.colossus_smash.remains>6|(target.time_to_die<25&debuff.colossus_smash.up)
-actions.cooldowns+=/avatar,if=debuff.colossus_smash.remains>6|(target.time_to_die<25&debuff.colossus_smash.up)
-actions.cooldowns+=/bloodbath,if=talent.bloodbath.enabled&(debuff.colossus_smash.remains>6|(target.time_to_die<25&debuff.colossus_smash.up))
-actions.cooldowns+=/berserker_rage,if=buff.enrage.down&rage<80
-actions.cooldowns+=/deadly_calm,if=rage>60&debuff.colossus_smash.up&talent.deadly_calm.enabled
+### Cooldowns ###
+# Use offensive cooldowns either inside an active CS window or when CS is about to be applied.
+actions.cooldowns+=/colossus_smash,if=debuff.colossus_smash.remains<1
+actions.cooldowns+=/avatar,if=talent.avatar.enabled&(debuff.colossus_smash.up|cooldown.colossus_smash.remains<4|target.time_to_die<25)
+actions.cooldowns+=/bloodbath,if=talent.bloodbath.enabled&(debuff.colossus_smash.up|cooldown.colossus_smash.remains<4|target.time_to_die<25)
+actions.cooldowns+=/recklessness,if=debuff.colossus_smash.up|target.time_to_die<30
+actions.cooldowns+=/berserker_rage,if=buff.enrage.down&(debuff.colossus_smash.up|cooldown.colossus_smash.remains<3|is_execute_phase)
+actions.cooldowns+=/deadly_calm,if=talent.deadly_calm.enabled&debuff.colossus_smash.up&rage>=60
+actions.cooldowns+=/storm_bolt,if=talent.storm_bolt.enabled&debuff.colossus_smash.up
+actions.cooldowns+=/dragon_roar,if=talent.dragon_roar.enabled&(debuff.colossus_smash.up|cooldown.colossus_smash.remains>6)&active_enemies<=4
+actions.cooldowns+=/bladestorm,if=talent.bladestorm.enabled&active_enemies>=4&!debuff.colossus_smash.up
 
-# Trinkets and Consumables
-actions.cooldowns+=/use_item,slot=trinket1,if=(debuff.colossus_smash.up|cooldown.colossus_smash.remains<2)&(buff.recklessness.up|cooldown.recklessness.remains>20)
-actions.cooldowns+=/use_item,slot=trinket2,if=(debuff.colossus_smash.up|cooldown.colossus_smash.remains<2)&(buff.recklessness.up|cooldown.recklessness.remains>20)
+# Trinkets / Racials / Potion
+actions.cooldowns+=/use_item,slot=trinket1,if=debuff.colossus_smash.up|target.time_to_die<25
+actions.cooldowns+=/use_item,slot=trinket2,if=debuff.colossus_smash.up|target.time_to_die<25
 actions.cooldowns+=/potion,if=buff.recklessness.up|target.time_to_die<25
-
-# Racial Abilities
 actions.cooldowns+=/blood_fury,if=debuff.colossus_smash.up
 actions.cooldowns+=/berserking,if=debuff.colossus_smash.up
-actions.cooldowns+=/arcane_torrent,if=rage<rage.max-40
-actions.cooldowns+=/lights_judgment,if=debuff.colossus_smash.down&cooldown.mortal_strike.remains
-actions.cooldowns+=/bag_of_tricks,if=debuff.colossus_smash.down&cooldown.mortal_strike.remains
+actions.cooldowns+=/arcane_torrent,if=rage.deficit>=40
 
-# ===================
-# EXECUTE PHASE OPTIMIZATION (20% and below)
-# ===================
-actions.execute_phase+=/colossus_smash,if=debuff.colossus_smash.remains<2
-actions.execute_phase+=/mortal_strike,if=!debuff.mortal_wound.up|debuff.mortal_wound.remains<3
-actions.execute_phase+=/execute,if=debuff.colossus_smash.up&rage>=30
-actions.execute_phase+=/execute,if=buff.sudden_execute.up&buff.sudden_execute.remains<3
-actions.execute_phase+=/execute,if=rage>=100
-actions.execute_phase+=/slam,if=debuff.colossus_smash.up&rage>=25&rage<100
-actions.execute_phase+=/overpower,if=buff.overpower.stack>=2|rage<80
-actions.execute_phase+=/execute,if=rage>=30&buff.sudden_execute.down
-actions.execute_phase+=/heroic_throw,if=rage<30
+### Execute Phase (<20%) ###
+actions.execute+=/colossus_smash,if=debuff.colossus_smash.remains<1
+actions.execute+=/mortal_strike,if=!debuff.mortal_wound.up|debuff.mortal_wound.remains<3
+actions.execute+=/execute,if=debuff.colossus_smash.up&rage>=30
+actions.execute+=/execute,if=buff.sudden_execute.up&buff.sudden_execute.remains<3
+actions.execute+=/execute,if=rage>=100
+actions.execute+=/slam,if=debuff.colossus_smash.up&rage>=25&rage<100
+actions.execute+=/overpower,if=buff.taste_for_blood.stack>=2|rage<80
+actions.execute+=/execute,if=rage>=30
+actions.execute+=/slam,if=rage>=50
+actions.execute+=/battle_shout,if=rage<40
 
-# ===================
-# ENHANCED SINGLE TARGET ROTATION
-# ===================
-actions.single_target+=/colossus_smash,if=debuff.colossus_smash.remains<2
-actions.single_target+=/mortal_strike,if=!debuff.mortal_wound.up|debuff.mortal_wound.remains<4
+### Single Target (non-execute) ###
+actions.st+=/colossus_smash,if=debuff.colossus_smash.remains<1
+actions.st+=/mortal_strike,if=!debuff.mortal_wound.up|debuff.mortal_wound.remains<4
+# Overpower / Taste for Blood management
+actions.st+=/overpower,if=buff.taste_for_blood.stack>=2
+actions.st+=/slam,if=debuff.colossus_smash.up&rage>=25
+actions.st+=/slam,if=rage>=80&!debuff.colossus_smash.up
+actions.st+=/execute,if=buff.sudden_death.up&buff.sudden_death.remains<3
+actions.st+=/storm_bolt,if=talent.storm_bolt.enabled&debuff.colossus_smash.up
+actions.st+=/dragon_roar,if=talent.dragon_roar.enabled&debuff.colossus_smash.up
+actions.st+=/shockwave,if=talent.shockwave.enabled&debuff.colossus_smash.up
+actions.st+=/slam,if=rage>=50
+actions.st+=/overpower,if=rage<70
+actions.st+=/battle_shout,if=rage<50&!buff.battle_shout.up
+actions.st+=/heroic_throw,if=rage>90
 
-# Slam Priority System (Primary Damage Ability)
-actions.single_target+=/slam,if=debuff.colossus_smash.up&rage>=25
-actions.single_target+=/slam,if=rage>=80&!debuff.colossus_smash.up
+### AOE (>=2 targets) ###
+actions.aoe+=/sweeping_strikes,if=!buff.sweeping_strikes.up&active_enemies>=2
+actions.aoe+=/thunder_clap,if=talent.blood_and_thunder.enabled&!dot.deep_wounds.ticking&active_enemies>=3
+actions.aoe+=/colossus_smash,if=debuff.colossus_smash.remains<1&active_enemies<=6
+actions.aoe+=/mortal_strike,if=buff.sweeping_strikes.up&active_enemies<=4
+actions.aoe+=/bladestorm,if=talent.bladestorm.enabled&active_enemies>=4
+actions.aoe+=/dragon_roar,if=talent.dragon_roar.enabled&active_enemies>=3
+actions.aoe+=/thunder_clap,if=active_enemies>=4&dot.deep_wounds.remains<4
+actions.aoe+=/cleave,if=active_enemies<=4&buff.sweeping_strikes.up
+actions.aoe+=/slam,if=buff.sweeping_strikes.up&rage>=25
+actions.aoe+=/slam,if=debuff.colossus_smash.up&rage>=25&active_enemies>=3
+actions.aoe+=/execute,if=buff.sudden_death.up&active_enemies<=3
+actions.aoe+=/overpower,if=active_enemies<=4&rage<80
+actions.aoe+=/whirlwind,if=active_enemies>=5&rage>=30
+actions.aoe+=/battle_shout,if=rage<rage.max-30&active_enemies>=3
 
-# Execute and Overpower Management
-actions.single_target+=/execute,if=buff.sudden_death.up&buff.sudden_death.remains<3
-actions.single_target+=/overpower,if=buff.overpower.stack>=2
-actions.single_target+=/overpower,if=rage<60&buff.overpower.stack>=1
-
-# Secondary Abilities
-actions.single_target+=/storm_bolt,if=debuff.colossus_smash.up&talent.storm_bolt.enabled
-actions.single_target+=/dragon_roar,if=debuff.colossus_smash.up&talent.dragon_roar.enabled
-actions.single_target+=/shockwave,if=debuff.colossus_smash.up&talent.shockwave.enabled
-
-# Rage Builders and Fillers
-actions.single_target+=/slam,if=rage>=40&target.time_to_die>6
-actions.single_target+=/overpower,if=rage<80
-actions.single_target+=/battle_shout,if=rage<50&!buff.dragon_roar.up
-actions.single_target+=/heroic_throw,if=rage>80
-
-# ===================
-# ADVANCED AOE ROTATION WITH DEEP WOUNDS PRIORITY
-# ===================
-actions.aoe_rotation+=/sweeping_strikes,if=!buff.sweeping_strikes.up&active_enemies>=2
-actions.aoe_rotation+=/thunder_clap,if=!dot.deep_wounds.ticking&active_enemies>=3&talent.blood_and_thunder.enabled
-actions.aoe_rotation+=/colossus_smash,if=debuff.colossus_smash.remains<2&active_enemies<=6
-actions.aoe_rotation+=/mortal_strike,if=buff.sweeping_strikes.up&active_enemies<=4
-
-# AoE Damage Abilities
-actions.aoe_rotation+=/bladestorm,if=active_enemies>=4&talent.bladestorm.enabled
-actions.aoe_rotation+=/dragon_roar,if=active_enemies>=3&talent.dragon_roar.enabled
-actions.aoe_rotation+=/thunder_clap,if=active_enemies>=4&dot.deep_wounds.remains<4
-actions.aoe_rotation+=/cleave,if=active_enemies<=4&buff.sweeping_strikes.up
-
-# AoE Slam with Sweeping Strikes synergy
-actions.aoe_rotation+=/slam,if=buff.sweeping_strikes.up&active_enemies>=2&rage>=25
-actions.aoe_rotation+=/slam,if=debuff.colossus_smash.up&active_enemies>=3&rage>=25
-
-# AoE Finishers
-actions.aoe_rotation+=/execute,if=buff.sudden_death.up&active_enemies<=3
-actions.aoe_rotation+=/overpower,if=active_enemies<=4&rage<80
-actions.aoe_rotation+=/whirlwind,if=active_enemies>=5&rage>=30
-actions.aoe_rotation+=/battle_shout,if=rage<rage.max-30&active_enemies>=3
-
-# ===================
-# MOBILITY AND POSITIONING
-# ===================
+### Movement ###
 actions.movement+=/heroic_leap,if=target.distance>12
-actions.movement+=/charge,if=target.distance>8&!buff.charge.up
-actions.movement+=/intervene,if=target.distance>10&group&!solo
-actions.movement+=/storm_bolt,if=target.distance>8&talent.storm_bolt.enabled
-actions.movement+=/heroic_throw,if=target.distance>5&rage>60
+actions.movement+=/charge,if=target.distance>8
+actions.movement+=/intervene,if=group&!solo&target.distance>10
+actions.movement+=/storm_bolt,if=talent.storm_bolt.enabled&target.distance>8
+actions.movement+=/heroic_throw,if=target.distance>5
 
-# ===================
-# ADVANCED DEFENSIVE RESPONSES
-# ===================
-actions.defensives+=/die_by_the_sword,if=incoming_damage_5s>health.max*0.25&health.pct<60
-actions.defensives+=/shield_wall,if=incoming_damage_4s>health.max*0.4&health.pct<50
+### Defensives ###
+actions.defensives+=/die_by_the_sword,if=health.pct<60&incoming_damage_5s>health.max*0.25
+actions.defensives+=/shield_wall,if=health.pct<50&incoming_damage_4s>health.max*0.4
 actions.defensives+=/last_stand,if=health.pct<30&incoming_damage_3s>health.max*0.2
-actions.defensives+=/rallying_cry,if=health.pct<25&group&!solo
-actions.defensives+=/demoralizing_shout,if=incoming_damage_5s>health.max*0.15&active_enemies>=2
-actions.defensives+=/intimidating_shout,if=health.pct<40&active_enemies>=2&!target.debuff.fear.up
-actions.defensives+=/enraged_regeneration,if=health.pct<35&!buff.enraged_regeneration.up
-actions.defensives+=/vigilance,if=group&!solo&tank.health.pct<50&talent.vigilance.enabled
+actions.defensives+=/rallying_cry,if=group&!solo&health.pct<25
+actions.defensives+=/demoralizing_shout,if=active_enemies>=2&incoming_damage_5s>health.max*0.15
+actions.defensives+=/intimidating_shout,if=active_enemies>=2&health.pct<40&!target.debuff.fear.up
+actions.defensives+=/enraged_regeneration,if=health.pct<35&buff.enraged_regeneration.down
+actions.defensives+=/vigilance,if=talent.vigilance.enabled&group&!solo&tank.health.pct<50
 actions.defensives+=/healthstone,if=health.pct<30
 actions.defensives+=/victory_rush,if=health.pct<70&buff.victory_rush.up
 
-# ===================
-# UTILITY AND SUPPORT ACTIONS
-# ===================
+### Utility ###
 actions.utility+=/sunder_armor,if=!debuff.sunder_armor.up&!debuff.expose_armor.up&target.time_to_die>15
 actions.utility+=/demoralizing_shout,if=!debuff.demoralizing_shout.up&active_enemies>=2
 actions.utility+=/commanding_shout,if=group&!buff.commanding_shout.up&!buff.blood_pact.up
 actions.utility+=/battle_shout,if=group&!buff.battle_shout.up&!buff.horn_of_winter.up
+
+### Fallback ###
+actions+=/battle_shout,if=rage<20
+actions+=/slam,if=rage>=30
+actions+=/overpower
+actions+=/heroic_throw

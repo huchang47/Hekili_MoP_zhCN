@@ -15,6 +15,10 @@ end
 local class = Hekili.Class
 local state = Hekili.State
 
+-- Ensure death_knight namespace exists early to avoid unknown key errors in emulation.
+if not state.death_knight then state.death_knight = { runeforge = {} } end
+if not state.death_knight.runeforge then state.death_knight.runeforge = {} end
+
 -- Safe local references to WoW API (helps static analyzers and emulation)
 local GetRuneCooldown = rawget( _G, "GetRuneCooldown" ) or function() return 0, 10, true end
 local GetRuneType = rawget( _G, "GetRuneType" ) or function() return 1 end
@@ -2012,85 +2016,43 @@ spec:RegisterAbilities( {
 
 -- Add state handlers for Death Knight rune system
 do
-    local runes = {}
-    
-    spec:RegisterStateExpr( "rune", function ()
-        return runes
-    end )
-    
-    -- Removed legacy per-type rune count expressions that shadow resource tables.
-
-    -- Legacy rune type expressions for SimC compatibility
-spec:RegisterStateExpr( "blood", function() 
-    -- Safe rune counting that works in both game and emulation
-    if GetRuneCooldown then
+    -- Legacy rune type expressions for SimC compatibility (kept, but simplified and NOT shadowing resource tables).
+    -- Provide blood/frost/unholy/death counts directly via API so they are self-contained and cannot recurse through
+    -- the resource tables (which might themselves reference these expressions during evaluation).
+    spec:RegisterStateExpr( "blood", function()
         local count = 0
         for i = 1, 2 do
-            local start, duration, ready = GetRuneCooldown( i )
+            local _, _, ready = GetRuneCooldown( i )
             if ready then count = count + 1 end
         end
         return count
-    else
-        -- Fallback for emulation
-        if state.blood_runes and state.blood_runes.current then
-            return state.blood_runes.current
-        end
-        return 2 -- Default to 2 blood runes
-    end
-end )
-spec:RegisterStateExpr( "frost", function() 
-    -- Safe rune counting that works in both game and emulation
-    if GetRuneCooldown then
+    end )
+    spec:RegisterStateExpr( "frost", function()
         local count = 0
         for i = 3, 4 do
-            local start, duration, ready = GetRuneCooldown( i )
+            local _, _, ready = GetRuneCooldown( i )
             if ready then count = count + 1 end
         end
         return count
-    else
-        -- Fallback for emulation
-        if state.frost_runes and state.frost_runes.current then
-            return state.frost_runes.current
-        end
-        return 2 -- Default to 2 frost runes
-    end
-end )
-spec:RegisterStateExpr( "unholy", function() 
-    -- Safe rune counting that works in both game and emulation
-    if GetRuneCooldown then
+    end )
+    spec:RegisterStateExpr( "unholy", function()
         local count = 0
         for i = 5, 6 do
-            local start, duration, ready = GetRuneCooldown( i )
+            local _, _, ready = GetRuneCooldown( i )
             if ready then count = count + 1 end
         end
         return count
-    else
-        -- Fallback for emulation
-        if state.unholy_runes and state.unholy_runes.current then
-            return state.unholy_runes.current
-        end
-        return 2 -- Default to 2 unholy runes
-    end
-end )
-spec:RegisterStateExpr( "death", function() 
-    -- Safe rune counting that works in both game and emulation
-    if GetRuneCooldown and GetRuneType then
+    end )
+    spec:RegisterStateExpr( "death", function()
         local count = 0
         for i = 1, 6 do
-            local start, duration, ready = GetRuneCooldown( i )
-            local type = GetRuneType( i )
-            if ready and type == 4 then count = count + 1 end
+            local _, _, ready = GetRuneCooldown( i )
+            if ready and GetRuneType( i ) == 4 then count = count + 1 end
         end
         return count
-    else
-        -- Fallback for emulation
-        if state.death_runes and state.death_runes.count then
-            return state.death_runes.count
-        end
-        return 0 -- Default to 0 death runes
-    end
-end )
-      -- Convert runes to death runes (Blood Tap, etc.)
+    end )
+
+    -- Convert runes to death runes (Blood Tap, etc.)
     spec:RegisterStateFunction( "convert_to_death_rune", function( rune_type, amount )
         amount = amount or 1
         
@@ -2150,26 +2112,22 @@ spec:RegisterStateExpr( "runes_on_cd", function()
     return 6 - total
 end )
 
-spec:RegisterStateExpr( "rune_deficit", function()
+-- Removed duplicate rune_deficit (defined later with extended context) to prevent re-registration recursion.
+
+-- MoP-specific rune state expressions for Blood DK
+-- Removed shadowing expressions blood_runes/frost_runes/unholy_runes/death_runes that returned numeric counts and
+-- replaced with direct API-based blood/frost/unholy/death expressions above. This prevents state table name clashes
+-- and potential recursive evaluation leading to C stack overflows.
+
+-- MoP Blood-specific rune tracking
+spec:RegisterStateExpr( "death_strike_runes_available", function()
+    -- Death Strike requires one pair of runes (in MoP any pair of Blood/Death for Blood spec) – simplify: need at least 2 usable runes of any kind.
     local total = 0
     if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
     if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
     if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
     if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
-    return 6 - total
-end )
-
--- MoP-specific rune state expressions for Blood DK
-spec:RegisterStateExpr( "blood_runes", function() return state.blood_runes.current end )
-spec:RegisterStateExpr( "frost_runes", function() return state.frost_runes.current end )
-spec:RegisterStateExpr( "unholy_runes", function() return state.unholy_runes.current end )
-spec:RegisterStateExpr( "death_runes", function() return state.death_runes.count end )
-
--- MoP Blood-specific rune tracking
-spec:RegisterStateExpr( "death_strike_runes_available", function()
-    local br = state.blood_runes and state.blood_runes.current or 0
-    local dr = state.death_runes and state.death_runes.count or 0
-    return br > 0 or dr > 0
+    return total >= 2
 end )
 
 spec:RegisterStateExpr( "blood_tap_charges", function()
@@ -2194,16 +2152,19 @@ spec:RegisterStateFunction( "blood_tap_convert", function( amount )
 end )
 
 -- Rune state expressions for MoP 5.5.0
+-- Simplified rune count expression; unique name 'rune_count' to avoid collisions with any internal engine usage.
+-- Unify with Unholy: provide 'rune' expression for total ready runes.
 spec:RegisterStateExpr( "rune", function()
     local total = 0
     for i = 1, 6 do
-        local start, duration, ready = GetRuneCooldown( i )
+        local _, _, ready = GetRuneCooldown( i )
         if ready then total = total + 1 end
     end
     return total
 end )
 
-spec:RegisterStateExpr( "rune_deficit", function()
+-- Provide rune_regeneration (mirrors Unholy) representing rune deficit relative to maximum.
+spec:RegisterStateExpr( "rune_regeneration", function()
     local total = 0
     if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
     if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
@@ -2211,6 +2172,21 @@ spec:RegisterStateExpr( "rune_deficit", function()
     if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
     return 6 - total
 end )
+
+-- Consolidated rune_deficit definition (single source).
+spec:RegisterStateExpr( "rune_deficit", function()
+    -- Pure API-based calculation to avoid referencing other state expressions.
+    local ready = 0
+    for i = 1, 6 do
+        local _, _, isReady = GetRuneCooldown( i )
+        if isReady then ready = ready + 1 end
+    end
+    return 6 - ready
+end )
+
+-- Stub for time_to_wounds to satisfy Unholy script references when Blood profile loaded.
+-- Avoid referencing spec.State (not defined in MoP module context).
+spec:RegisterStateExpr( "time_to_wounds", function() return 999 end )
 
 spec:RegisterStateExpr( "rune_current", function()
     local total = 0
@@ -2250,5 +2226,5 @@ spec:RegisterStateExpr( "death_strike_heal", function()
 end )
 
 -- Register default pack for MoP Blood Death Knight
-spec:RegisterPack( "Blood", 20250803, [[Hekili:9EvBpUPrq4FlNIKVK0ukGTVEjY2sn6(qZ1MOk5KVcSgwSxzGLcl31RcXV9oZYB7IHZo6IQIsYDSZlp7SZ8mZ4y58vNTbeb15l2M2lnV1CUHP5CZfoBfpLsD2Ms8ps2d)qcjg(3DrCEi(1NI4Kau5CErMpCcCwbls8PeNDJAX53cYMs9HpV00z7bwqaTwwAUVZ2VEGLx5H)Lu5140kpEi87(cgpPYlILlGJd5zvE)o9ilIz4Sv(r5DGgskIeWp(f5DQwlNTXSKa3Wmk9Fbmsti7IOboF0raWafR)lB9ZycAgJ4SLL4Zb927gqIby4UeC7M1vEhOKiXbJyY)u592kptJ5MvEZQ8858Oa(JjgKebd0G57MFGgfzKrJjSeqBqzZEmnqmemZF5G5MLvELLDhK6lQ8wv5TuXXbuI4GBUiJDKIEDXKEDxryOXoEcfGiJgfyuKkVQYVhqs8reLvaN)iLKYtmW7VYnml(jxEOR4a1fCAa6SL)4UIVUYtqY2tfgqGK6k4UbmQ82UWShMdH)BuceNEdqiEZlhIlg)vy(YEN)ajoLLbV(yXKm08RVC)oFC)AR86Z8P74fy5aptWefbYCGBF5(2EcFRCNLbAbjf947V8So9SkLtq7yzoTHWiReewY8HWmEUq53lsoWJEQ(d92NgNYFKMnmRWYAGFALhQJsosfwQEUJlq)vUNkaDPzD8Qt2XkO0vOL)TZLiUgYGnax2))JlBjUMMmtqIOjcdPRX0bJgPukALh5FalVnYfqJG6KoR6cBOYx7TfHR2Jl(b1xxTY(o)kH50SFxv5fWBHzAezFbfyA8pcXIAp0iG0ZUH0hOzTN37mEHyxgLCu6RPj)AiYoHVyW1DZWR7MtUUBgEDHwZrUaesPzsqmn92ZCH7nx93vAFynnV1LeGy(pbu3f(hK2AAEiu(hOU0eAmJ2WbzpSPgb41cO(KNKg79QJaO11BWmattHCgVwhQ2XzY232dPioHkAJgtd8ANjuIK22QawX2dG70vwx1u)CGNLGDEFKLaNi77H5iJDMALScvTUus3oDLcWmaujsAt5D82tM2WVoejG8Nmk0qzhPFiTr4Ug4D50HzS06dVdTyL3FKW2Fq8HkVpwhBX)8TuCMt4x(mbkfSV9DyVpSX0ffK6Mhu)jaqConXFywZCnjvAkPl2cvXYiS8MzH0KsgzEKKLaLg54yWWCmmOpuMOzu3RBMS96kVm6FxWYWlzopgKJui4X13AGWmzpn3O6()KLahTeIoFljVifTekq7u0xpcN(1DQDZKQP32OxJBNuJ2w(9Y((jLvji2lUT50Y3vHOiU1KIRwUPOG93N9NpT91YNqvKVJH8Oi(JYMgKImcuPbLjW3lYrTzGMcuSwZG7YGjOIw5s4YKayKnvPdcqHHSDYoso9dv3x59ZGA9rWMVmYdnCY9JKH1vy(9LJ9mX7tIhnHWZeWBR361y6y(GuMQ7)uCRm2dwAeogkeleaSC2UnUieYdq6iEilcQTFvL30el3)QNHBbDlibiYF1gcR8(nPRZRUVgd5gDH3FA9VOhzEhlC9vtqBpQ66HPjKrntymb6PIAr)D1umNIDqALfOv)8GDyXBYP7lSzD)UcVfxxE25wvETPQtu7CFrE4MLLL9tsTAPM1gUukAXrwuC2ZUJRg8ovMlgLV(0fyxTWC2i45nQUuNg(I82c9ycmzPI9oDNWlYMZ1TPTwCUL4)ISK9alPHoLaXOpwdFqgzboPEySAL1m50OW)xpW8klvvbozxymH43H7ZSUDnlu7ZS50klZYYlzJjqWZ6q7F4oSUahRRFaOt)mtW2tQPgjyBL7aQaOlcsTHmpjevALocNMhZP2EB2eBUTzTL5Sx3e9llBc)LLTXFTm721LKCItTmsz5vtSwHQPu27Pg2d2WcQbAG1MwyTPdwB0HL2sppl20lRAwTPtJZa5blXGQr8vxazZA7Pygp99chC5SMqDOOUQKnwJBnnfV0EyLLpZAhRwE69XVb3kBvSb2OaNr25)(]]  )
+spec:RegisterPack( "Blood", 20250809, [[Hekili:9IvBVTTnq4FlfbWjzRtts2onTi2anRdBnBTOaof7BsIwIoMlsIEuuXldg63(os9gjTOJBtr)qBsOoY75EHp3DmWl42Gfjioo4J(U(tDV091oEtg755hSG)4gCWInO47r3b)sokd()LPuAsvehxWfF7XukkrCgf0swm8DqIssk)95blh6GDNEbi7gCmS8u3GfRjjj4AzXfXblUDnPOks8puvuJQRIORG)oMtO5vrPKco85vuwv0VJVNKsCcwixuAk4vOYuo8RFuAA17kyrgjpjCfdJ)paJ4C0YuCsW1bCagcX6xzrmJWXmckybjpMc77UWeugaJWPGANpRkAngLYx7KH(3QOFOkY1zSBv0OQOyknnHUn3bLZjWoiXHfRXPPomCgIKd7g2SBpMmetaMXgGPv0emIVoSGZi3JRDvmYM6p9wqKhaF0hiCYDOAF0Nyekygp(vznxmTkA3UUpSjMxfDvveeTaaoXQ3sfIHSYCCri6bejviQ09CgexpwmmzymCb4Op3Ixba3ulEpel7Xq6Qq(ACiSNedp4hq)Tiz6xAcFfQw1YYvRCwsZXqmIGttCk3ing56jO8yH1iS2WTy0gAUJ4eey5INFAvBGaCCCe7om3bYxWHCAycbl9htC7bJjiv9t7JtbeF1ZhIwItJN2R8hqzBimijxYCi07LpF9oEy96RC7IeJxslf36PmoHxMitrE9Zx3(w0TInlD0C0gHg9CTKvQeWmsiVg(sv0c5NGl2a3bh2FUGE9azMTzEEEwTXgYBaTEYeNvmAbx5VlZxttFSEHEGIZ2q3IzMPpEMmNA2WTms(9y4W)CHs1dE9QEQGQJ2uptPN1uGg3AFENSdD1tFd94VtPcqBJHTri)VlitZz4lXLDIvokfNZDKQwKu50iLYvF5NIxlijCk4qvZ6uxp3wIxTaVaUArEXcQHEnYJo9kHPjf73cyovkYHQFydnMKSTsrl5lzy09g5KVJuGrfIALOCiPmdWRQf8cae0wlytk6UsmW4gFpenR9rnci9DHRWpGzTFxIg78Pn037XsAeEMBgEMVx4zUz4b67kneS1nyMee2jxpG51FC1RRut1ZoJ5bChkSWpcfSkJxlB1YgvyDShbK1j4y0JMD4q)vO9VCWb9UpTOk6TlHE(4eSwDAKSlOqCood(sDEL8ILVD2WJlJZSjdF7nmomimYDxsjYw98nzI2JMEUglmK8W4Q4yIA)TkNTr7T2VX(IM7LRPSCr7rBf1zyYMhePCd9nvImL6D6sjvR9(FapnWKklPiTXlDnD2X1UiXagmmuvEjQVH(bYEm0UXDEXjwf9h5K7wZFtv011(2RbEa4hIML)l6wW3MCkyvFG(jOpWuurbjUk63kjjazXN3igJrwigUa6F5lf9ziAc4O8LDJyOhPadRalRORfTgRjPAdcAIPf6ziGwRPVwvPKoWTiwoCHSqmzfyleOuoJ3m90PndlDAved)pLeMWilOzGCOsonR2Qb(687Wfov38NerBj(Gt8Z5fLBeNKqGACahNX8mN2TLxBDlTnk1lR3fwfULvxr4xzvyfErf5V0Q8AeFk7Wo27O26L23UZP)cQI4t(Ye3URP)EJqCzOEfnnLUvw7cvYqq2nCHdwVuM4tGDXfI1EeIjOf5W8w5YPY8KYCnPtsecdxiqlHBqVP6MQOFQP(vtL92L6tEBwr)QbS4ndKs2DH)ytk)UBR7BgVpRnE4B8mfa(G7PLCypblwKvUcsUeKA0verjMtGkAdspDZjFjmucPTssja4jNiEsGghluavcXIQBQXAHtNt)hN9Z6M3ljRM9clfjgC76SBwKrn1yib6z0Ar)7QzQ6XUisClk)((36O7OGdq51Eux2GGsyC7p138z9t89dI32z0t9UoZCLWSgC2EkgvCO2sXrbIlMUBxFZJxn19qN2HARz0zpPUMORRlCpVX6mFMenpRXlSiWXaVkXOd(SjAg1(YC0EQZ2)1sUAI7ObWZ5QQuFiVJsBg(kOHELZB)hG4OoZX6NPVwSUTE5rDs(gN00MaP1NxqvtkoQbdMMbSbEKa5(e(YR8gjhsa(z9Cmx51af9xjq98aQ7qO5QSxkMvEw7i8IJ8jMk)kp3D7oMPXbbFsf6)nxH18zdXuupHt)iQdhwAN)vamBJCpYY42ZN55o6SMqYUDnXKD7AdkN)nutthDWheUo8pWa5QqOTHpzviBZUUB3lSmfQ6rP0oyT9ymqoC3TXZmV1ZmVZZmx3ZO1Q4bXMoDqt7ID7yqixxiXYeV7t73nZS4urXQZFoFM)xBzI9ZdeDI(KQqDe1Ul)Z9g(0024X20XUDhyQ0RMUV9g3GBLHoNFPRC2OG))]]  )
 

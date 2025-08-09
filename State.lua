@@ -238,6 +238,14 @@ state.target = {
     updated = true
 }
 
+-- MoP Arms: Provide base placeholders for commonly accessed spec-level state fields to avoid
+-- Unknown key warnings when referenced early by APL expressions before a spec initializes them.
+-- (Specs can still override/update these as needed.)
+state.last_cast_time = state.last_cast_time or {}
+state.last_ability   = state.last_ability   == nil and false or state.last_ability
+state.rage = state.rage or { current = 0, max = 100, time_to_max = 0, per_second = 0 }
+state.damage = state.damage or { incoming_damage_3s = 0 }
+
 state.movement = {}
 
 setmetatable( state.movement, {

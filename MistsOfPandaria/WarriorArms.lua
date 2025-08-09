@@ -13,14 +13,78 @@
     
     local class, state = Hekili.Class, Hekili.State
 
+    -- Safe initialization without triggering emulation unknown-key warnings (use rawget instead of state.field lookups).
+    do
+        local st = rawget( Hekili, "State" )
+        if st then
+            if rawget( st, "last_cast_time" ) == nil then rawset( st, "last_cast_time", {} ) end
+            if rawget( st, "rage" ) == nil then rawset( st, "rage", { current = 0, max = 100, time_to_max = 0, per_second = 0 } ) end
+            if rawget( st, "movement" ) == nil then rawset( st, "movement", { distance = 0, moving = false } ) end
+            if rawget( st, "damage" ) == nil then rawset( st, "damage", { incoming_damage_3s = 0 } ) end
+            if rawget( st, "last_ability" ) == nil then rawset( st, "last_ability", false ) end
+            -- Placeholder stance value; false (not nil) to indicate explicitly 'unset' without triggering stance equality checks.
+            -- current_stance: nil until detected; use event-driven SyncStance. Avoid boolean placeholder that can confuse stance checks.
+            if rawget( st, "current_stance" ) == nil then
+                local idx = type( GetShapeshiftForm ) == "function" and GetShapeshiftForm() or 0
+                local map = { [1] = "battle", [2] = "defensive", [3] = "berserker" }
+                rawset( st, "current_stance", map[ idx ] )
+            end
+        end
+    end
+
+    -- Local aliases to core state helpers (mirrors DK/Shaman pattern) to avoid undefined global references.
+    local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
+    local addStack, removeStack = state.addStack, state.removeStack
+    local setCooldown = state.setCooldown
+    local gain, spend = state.gain, state.spend
+    local interrupt = state.interrupt
+
+    -- Provide lightweight fallbacks if engine helpers are missing in emulation/test harness.
+    if not addStack then
+        addStack = function(aura, target, n)
+            local b = state.buff[aura]
+            if not b then return end
+            b.stack = math.min((b.stack or 0) + (n or 1), b.max_stack or 99)
+            b.up = b.stack > 0
+        end
+    end
+    if not removeStack then
+        removeStack = function(aura, n)
+            local b = state.buff[aura]
+            if not b then return end
+            b.stack = math.max(0, (b.stack or 0) - (n or 1))
+            if b.stack == 0 then b.up = false end
+        end
+    end
+    if not setCooldown then
+        setCooldown = function(name, value)
+            if state.cooldown[name] then
+                state.cooldown[name].expires = state.query_time + (value or 0)
+            end
+        end
+    end
+    if not interrupt then
+        interrupt = function() end
+    end
+
+    -- (Removed direct state.* initialization above in favor of rawget block.)
+
     local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+    local GetTargetDebuffByID = ns.GetTargetDebuffByID or function(id, caster)
+        if FindUnitDebuffByID then
+            local name, icon, count, debuffType, duration, expirationTime, unitCaster = FindUnitDebuffByID("target", id, caster or "PLAYER")
+            if name then
+                return { name = name, icon = icon, count = count or 1, duration = duration, expires = expirationTime, applied = expirationTime - duration, caster = unitCaster }
+            end
+        end
+        return nil
+    end
     local PTR = ns.PTR
 
     local strformat = string.format
 
     local spec = Hekili:NewSpecialization( 71 )
 
--- Combat Log Event Tracking System (following Hunter Survival structure)
 local combatLogFrame = CreateFrame("Frame")
 local combatLogEvents = {}
 
@@ -81,6 +145,112 @@ RegisterCombatLogEvent("UNIT_DIED", function(timestamp, subevent, sourceGUID, so
 end)
 
 
+-- Lightweight stance synchronization: check visible stance auras on player when UNIT_AURA fires.
+do
+    -- Stance detection: Use GetShapeshiftForm() index first (reliable even if aura not shown), fallback to aura IDs.
+    local STANCE_IDS = { battle = 2457, defensive = 71, berserker = 2458 }
+    local INDEX_TO_STANCE = { [1] = "battle", [2] = "defensive", [3] = "berserker" }
+
+    local function HasPlayerAuraByID( id )
+        for i = 1, 40 do
+            local name, _, _, _, _, _, _, _, _, spellId = UnitBuff( "player", i )
+            if not name then break end
+            if spellId == id then return true end
+        end
+        return false
+    end
+
+    local function DetectStance()
+        -- Prefer direct form info with spellID (most reliable).
+        if GetNumShapeshiftForms and GetShapeshiftFormInfo then
+            local num = GetNumShapeshiftForms()
+            for i = 1, num do
+                local _, name, isActive, _, spellID = GetShapeshiftFormInfo(i)
+                if isActive and spellID then
+                    if spellID == STANCE_IDS.battle then return "battle" end
+                    if spellID == STANCE_IDS.defensive then return "defensive" end
+                    if spellID == STANCE_IDS.berserker then return "berserker" end
+                end
+            end
+        end
+        -- Fallback to index mapping if form info didn't yield a result.
+        local idx = GetShapeshiftForm and GetShapeshiftForm() or 0
+        if idx and idx > 0 then
+            local mapped = INDEX_TO_STANCE[ idx ]
+            if mapped then return mapped end
+        end
+        -- Aura fallback if everything else fails.
+        for key, id in pairs( STANCE_IDS ) do if HasPlayerAuraByID( id ) then return key end end
+        return nil
+    end
+
+    local function SyncStance()
+        local prev = state.current_stance
+        local detected = DetectStance()
+        if detected ~= prev then
+            state.current_stance = detected
+            -- Also sync synthetic stance buffs so any code relying on buff.* stays consistent.
+            local b = state.buff
+            if b then
+                b.battle_stance.up     = detected == "battle"
+                b.defensive_stance.up  = detected == "defensive"
+                b.berserker_stance.up  = detected == "berserker"
+                if detected == "battle" then
+                    b.defensive_stance.up = false; b.berserker_stance.up = false
+                elseif detected == "defensive" then
+                    b.battle_stance.up = false; b.berserker_stance.up = false
+                elseif detected == "berserker" then
+                    b.battle_stance.up = false; b.defensive_stance.up = false
+                end
+            end
+        end
+        if not detected then state.current_stance = nil end
+    end
+
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("UNIT_AURA")
+    f:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
+    f:RegisterEvent("PLAYER_ENTERING_WORLD")
+    f:SetScript("OnEvent", function( self, event, unit )
+        if event == "UNIT_AURA" and unit ~= "player" then return end
+        SyncStance()
+    end)
+
+    C_Timer.After( 0.2, SyncStance )
+    -- Poll as safety in case events do not fire for stance changes.
+    C_Timer.NewTicker( 2, SyncStance )
+
+    -- Simple slash debug (no dependency on profile debug flags): /hstance
+    SLASH_HEKILISTANCE1 = "/hstance"
+    SlashCmdList.HEKILISTANCE = function( msg )
+        SyncStance() -- force update before reporting
+        local idx = GetShapeshiftForm and GetShapeshiftForm() or 0
+        local base = string.format( "[Hekili Stance] idx=%s -> mapped=%s (state=%s)", tostring(idx), tostring(INDEX_TO_STANCE[idx] or 'nil'), tostring(state.current_stance) )
+        if msg and msg:lower():find("full") then
+            local b = state.buff
+            local forms = {}
+            if GetNumShapeshiftForms and GetShapeshiftFormInfo then
+                local num = GetNumShapeshiftForms()
+                for i = 1, num do
+                    local fName, fName2, isActive, isCastable, spellID = GetShapeshiftFormInfo(i)
+                    forms[#forms+1] = string.format("[%d] id=%s active=%s name1=%s name2=%s", i, tostring(spellID), tostring(isActive), tostring(fName), tostring(fName2))
+                end
+            end
+            local detail = string.format( " | buffs: battle=%s defensive=%s berserker=%s | expr: in_battle=%s in_defensive=%s in_berserker=%s | forms: %s", 
+                b and tostring(b.battle_stance and b.battle_stance.up) or 'nil',
+                b and tostring(b.defensive_stance and b.defensive_stance.up) or 'nil',
+                b and tostring(b.berserker_stance and b.berserker_stance.up) or 'nil',
+                tostring(state.current_stance == 'battle'),
+                tostring(state.current_stance == 'defensive'),
+                tostring(state.current_stance == 'berserker'),
+                table.concat(forms, "; ") )
+            base = base .. detail
+        end
+        if Hekili and Hekili.Print then Hekili:Print( base ) else print( base ) end
+    end
+end
+
+
 spec:RegisterResource( 1, {
     -- MoP Stance-based rage generation with improved mechanics
     battle_stance_regen = {
@@ -92,45 +262,10 @@ spec:RegisterResource( 1, {
         end,
         interval = 1,
         value = function()
-            -- Battle Stance: Enhanced rage from auto-attacking, no rage from taking damage
-            if not state.buff.battle_stance.up or not state.combat then return 0 end
-            
-            local weapon_speed = state.main_hand.speed or 2.6
-            local base_rage = (3.5 / weapon_speed) * 2.5 -- Weapon speed formula
-            
-            -- Weapon specialization bonus
-            local spec_bonus = 1.0
-            if state.main_hand.type == "sword" and state.talent.sword_specialization.enabled then
-                spec_bonus = spec_bonus + 0.05 -- 5% more rage from swords
-            elseif state.main_hand.type == "mace" and state.talent.mace_specialization.enabled then
-                spec_bonus = spec_bonus + 0.05 -- 5% more rage from maces
-            elseif state.main_hand.type == "axe" and state.talent.axe_specialization.enabled then
-                spec_bonus = spec_bonus + 0.05 -- 5% more rage from axes
-            end
-            
-            return base_rage * spec_bonus
-        end,
-    },
-    
-    berserker_stance_regen = {
-        aura = "berserker_stance",
-        last = function ()
-            local app = state.buff.berserker_stance.applied
-            local t = state.query_time
-            return app + floor( ( t - app ) / 1 ) * 1
-        end,
-        interval = 1,
-        value = function()
-            -- Berserker Stance: Reduced rage from auto-attacking but gets rage from taking damage
-            if not state.buff.berserker_stance.up or not state.combat then return 0 end
-            
-            local weapon_speed = state.main_hand.speed or 2.6
-            local auto_rage = (3.5 / weapon_speed) * 1.5 -- 60% of Battle Stance auto rage
-            
-            -- Damage taken rage (simulated - in real game this would be event-driven)
-            local damage_rage = state.incoming_damage_rate and (state.incoming_damage_rate * 0.1) or 2
-            
-            return auto_rage + damage_rage
+            if not state.combat or state.current_stance ~= "battle" then return 0 end
+            local weapon_speed = state.main_hand and state.main_hand.speed or 2.6
+            local base_rage = (3.5 / weapon_speed) * 2.5
+            return base_rage
         end,
     },
     
@@ -156,7 +291,7 @@ spec:RegisterResource( 1, {
     -- Mortal Strike rage generation (MoP: generates 10 rage instead of costing rage)
     mortal_strike_regen = {
         last = function ()
-            return state.last_cast_time.mortal_strike or 0
+            local lct = state.last_cast_time; return (lct and lct.mortal_strike) or 0
         end,
         interval = 6, -- Mortal Strike cooldown
         value = function()
@@ -196,7 +331,7 @@ spec:RegisterResource( 1, {
     -- Charge rage generation (MoP: Juggernaut talent gives 15 rage per charge)
     charge_rage = {
         last = function ()
-            return state.last_cast_time.charge or 0
+            local lct = state.last_cast_time; return (lct and lct.charge) or 0
         end,
         interval = 20, -- Charge cooldown
         value = function()
@@ -207,7 +342,7 @@ spec:RegisterResource( 1, {
     -- Victory Rush/Impending Victory rage generation
     victory_rush_rage = {
         last = function ()
-            return state.last_cast_time.victory_rush or state.last_cast_time.impending_victory or 0
+            local lct = state.last_cast_time; return (lct and (lct.victory_rush or lct.impending_victory)) or 0
         end,
         interval = 1,
         value = function()
@@ -830,19 +965,19 @@ spec:RegisterAuras( {
     battle_stance = {
         id = 2457,
         duration = 3600,
-        max_stack = 1
+    max_stack = 1
     },
     
     defensive_stance = {
         id = 71,
         duration = 3600,
-        max_stack = 1
+    max_stack = 1
     },
     
     berserker_stance = {
         id = 2458,
         duration = 3600,
-        max_stack = 1
+    max_stack = 1
     },
     
     berserker_rage = {
@@ -1179,7 +1314,7 @@ spec:RegisterAbilities( {
                 removeBuff( "sudden_death" )
             else
                 -- MoP: Consume extra rage for additional damage (up to 70 rage total)
-                local current_rage = rage.current
+                local current_rage = (state.rage and state.rage.current) or 0
                 local extra_rage = math.min( current_rage, 70 )
                 if extra_rage > 0 then
                     spend( extra_rage, "rage" )
@@ -1719,10 +1854,8 @@ spec:RegisterAbilities( {
     disrupting_shout = {
         id = 102060,
         cast = 0,
-        cooldown = function() 
-            -- MoP: Shares cooldown with Pummel
-            return cooldown.pummel.remains > 0 and cooldown.pummel.remains or 15
-        end,
+    -- Use static 15s; handler manually syncs pummel to avoid recursive cooldown lookups.
+    cooldown = 15,
         gcd = "spell",
         
         spend = 0,
@@ -1742,10 +1875,8 @@ spec:RegisterAbilities( {
     pummel = {
         id = 6552,
         cast = 0,
-        cooldown = function() 
-            -- MoP: Shares cooldown with Disrupting Shout
-            return cooldown.disrupting_shout.remains > 0 and cooldown.disrupting_shout.remains or 15
-        end,
+    -- Static 15s; handler syncs disrupting_shout.
+    cooldown = 15,
         gcd = "off",
         
         spend = 0,
@@ -1845,7 +1976,7 @@ spec:RegisterAbilities( {
         startsCombat = false,
         texture = 132349,
         
-        usable = function() return not buff.battle_stance.up end,
+    usable = function() return state.current_stance ~= "battle" end,
         
         handler = function()
             -- Remove other stances
@@ -1854,9 +1985,11 @@ spec:RegisterAbilities( {
             
             -- Apply Battle Stance
             applyBuff( "battle_stance" )
+            -- Set immediately so predictions/conditions respond without waiting on events.
+            state.current_stance = "battle"
             
             -- MoP: Stance switching incurs rage loss
-            local rage_loss = rage.current * 0.25 -- Lose 25% of current rage
+            local rage_loss = ((state.rage and state.rage.current) or 0) * 0.25 -- Lose 25% of current rage
             spend( rage_loss, "rage" )
         end,
     },
@@ -1873,7 +2006,7 @@ spec:RegisterAbilities( {
         startsCombat = false,
         texture = 132341,
         
-        usable = function() return not buff.defensive_stance.up end,
+    usable = function() return state.current_stance ~= "defensive" end,
         
         handler = function()
             -- Remove other stances
@@ -1882,9 +2015,10 @@ spec:RegisterAbilities( {
             
             -- Apply Defensive Stance
             applyBuff( "defensive_stance" )
+            state.current_stance = "defensive"
             
             -- MoP: Stance switching incurs rage loss
-            local rage_loss = rage.current * 0.25
+            local rage_loss = ((state.rage and state.rage.current) or 0) * 0.25
             spend( rage_loss, "rage" )
         end,
     },
@@ -1901,7 +2035,7 @@ spec:RegisterAbilities( {
         startsCombat = false,
         texture = 132275,
         
-        usable = function() return not buff.berserker_stance.up end,
+    usable = function() return state.current_stance ~= "berserker" end,
         
         handler = function()
             -- Remove other stances
@@ -1910,10 +2044,178 @@ spec:RegisterAbilities( {
             
             -- Apply Berserker Stance
             applyBuff( "berserker_stance" )
+            state.current_stance = "berserker"
             
             -- MoP: Stance switching incurs rage loss
-            local rage_loss = rage.current * 0.25
+            local rage_loss = ((state.rage and state.rage.current) or 0) * 0.25
             spend( rage_loss, "rage" )
+        end,
+    },
+
+    -- Imported APL compatibility stubs (out-of-era or cross-spec actions)
+    whirlwind = {
+        id = 1680,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        spend = 0,
+        spendType = "rage",
+        startsCombat = true,
+        texture = 132369,
+        handler = function()
+            -- AoE damage handled by engine. Glyph-driven rage handled elsewhere.
+        end,
+    },
+
+    cleave = {
+        id = 845,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        spend = 20,
+        spendType = "rage",
+        startsCombat = true,
+        texture = 132338,
+        handler = function()
+            -- Frontal cleave; engine distributes damage.
+        end,
+    },
+
+    last_stand = {
+        id = 12975,
+        cast = 0,
+        cooldown = 180,
+        gcd = "off",
+        toggle = "defensives",
+        spend = 0,
+        spendType = "rage",
+        startsCombat = false,
+        texture = 135871,
+        handler = function()
+            -- Prot CD; included so imported APL lines don't error.
+        end,
+    },
+
+    -- (Removed bag_of_tricks and lights_judgment from core table; will register conditionally below.)
+
+    apply_poison = {
+        id = 2823, -- Rogue Deadly Poison placeholder.
+        cast = 0,
+        cooldown = 0,
+        gcd = "off",
+        spend = 0,
+        spendType = "rage",
+        startsCombat = false,
+        texture = 132273,
+        handler = function()
+            -- Irrelevant to Warrior; ignore.
+        end,
+    },
+
+    -- Additional unsupported import actions now mapped
+    recklessness = {
+        id = 1719,
+        cast = 0,
+        cooldown = 300,
+        gcd = "off",
+        spend = 0,
+        spendType = "rage",
+        toggle = "cooldowns",
+        startsCombat = true,
+        texture = 458972,
+        handler = function()
+            applyBuff( "recklessness" )
+        end,
+    },
+
+    shield_wall = {
+        id = 871,
+        cast = 0,
+        cooldown = 240,
+        gcd = "off",
+        spend = 0,
+        spendType = "rage",
+        toggle = "defensives",
+        startsCombat = false,
+        texture = 132362,
+        handler = function()
+            applyBuff( "shield_wall" )
+        end,
+    },
+
+    demoralizing_shout = {
+        id = 1160,
+        cast = 0,
+        cooldown = 60,
+        gcd = "spell",
+        spend = 0,
+        spendType = "rage",
+    -- Mark as defensive/utility so the engine treats it as a valid suggested action category.
+    toggle = "defensives",
+        startsCombat = true,
+        texture = 132366,
+        handler = function()
+            applyDebuff( "target", "demoralizing_shout" )
+        end,
+    },
+
+    intimidating_shout = {
+        id = 5246,
+        cast = 0,
+        cooldown = 90,
+        gcd = "spell",
+        spend = 0,
+        spendType = "rage",
+    toggle = "defensives",
+        startsCombat = true,
+        texture = 132154,
+        handler = function()
+            applyDebuff( "target", "fear" )
+        end,
+    },
+
+    enraged_regeneration = {
+        id = 55694,
+        cast = 0,
+        cooldown = 60,
+        gcd = "off",
+        spend = 0,
+        spendType = "rage",
+        toggle = "defensives",
+        startsCombat = false,
+        texture = 132345,
+        handler = function()
+            applyBuff( "enraged_regeneration" )
+        end,
+    },
+
+    victory_rush = {
+        id = 34428,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        spend = 0,
+        spendType = "rage",
+    toggle = "defensives",
+        startsCombat = true,
+        texture = 132342,
+        handler = function()
+            -- Healing handled externally; placeholder.
+        end,
+    },
+
+    sunder_armor = {
+        id = 7386,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        spend = 0,
+        spendType = "rage",
+    toggle = "utility",
+        startsCombat = true,
+        texture = 134955,
+        handler = function()
+            applyDebuff( "target", "sunder_armor" )
         end,
     },
     
@@ -1943,33 +2245,57 @@ spec:RegisterOptions( {
 
 local NewFeature = "|TInterface\\OptionsFrame\\UI-OptionsFrame-NewFeatureIcon:0|t"
 
-spec:RegisterSetting( "spell_reflection_filter", true, {
-    name = format( "%s Filter M+ |T132361:0|t Spell Reflection", NewFeature ),
-    desc = "If checked, then the addon will only suggest |T132361:0|t Spell Reflection on reflectable spells that target the player.",
-    type = "toggle",
-    width = "full",
-} )
 
 -- State Expressions for MoP Arms Warrior
 spec:RegisterStateExpr( "rage_deficit", function()
-    return (rage.max or 100) - (rage.current or 0)
+    return ((state.rage and state.rage.max) or 100) - ((state.rage and state.rage.current) or 0)
 end )
 
 spec:RegisterStateExpr( "current_rage", function()
-    return rage.current or 0
+    return (state.rage and state.rage.current) or 0
 end )
 
 spec:RegisterStateExpr( "rage_time_to_max", function()
-    return rage.time_to_max
+    return (state.rage and state.rage.time_to_max) or 0
 end )
 
 spec:RegisterStateExpr( "rage_per_second", function()
-    return rage.per_second
+    return (state.rage and state.rage.per_second) or 0
 end )
 
 spec:RegisterStateExpr( "should_use_execute", function()
     return target.health_pct <= 20
 end )
+
+-- APL compatibility: some imported lines reference is_execute_phase.
+-- Treat execute phase as target below 20% HP (classic execute threshold).
+spec:RegisterStateExpr( "is_execute_phase", function()
+    return target.health_pct < 20
+end )
+
+-- Stance convenience expressions for APL clarity.
+spec:RegisterStateExpr( "in_battle_stance", function()
+    local b = state.buff
+    return (b and b.battle_stance and b.battle_stance.up) or state.current_stance == "battle"
+end )
+spec:RegisterStateExpr( "in_defensive_stance", function()
+    local b = state.buff
+    return (b and b.defensive_stance and b.defensive_stance.up) or state.current_stance == "defensive"
+end )
+spec:RegisterStateExpr( "in_berserker_stance", function()
+    local b = state.buff
+    return (b and b.berserker_stance and b.berserker_stance.up) or state.current_stance == "berserker"
+end )
+
+spec:RegisterStateExpr( "no_stance", function()
+    return state.current_stance == nil
+end )
+
+-- Expose current_stance itself as a safe state expression so accesses don't trigger Unknown key errors before it's set.
+spec:RegisterStateExpr( "current_stance", function()
+    return rawget( state, "current_stance" ) -- may be nil until detected or set by a stance ability/event.
+end )
+
 
 spec:RegisterStateExpr( "colossus_smash_remains", function()
     return debuff.colossus_smash.remains
@@ -1991,20 +2317,19 @@ spec:RegisterStateExpr( "deep_wounds_remains", function()
     return debuff.deep_wounds.remains
 end )
 
-spec:RegisterStateExpr( "active_enemies", function()
-    return active_enemies or 1
-end )
+-- Avoid shadowing engine-provided active_enemies; expose arms_active_enemies if needed.
+-- active_enemies handled centrally in State.lua; removed spec-local arms_active_enemies to avoid duplication.
 
 spec:RegisterStateExpr( "incoming_damage_3s", function()
-    return damage.incoming_damage_3s or 0
+    return (state.damage and state.damage.incoming_damage_3s) or 0
 end )
 
 spec:RegisterStateExpr( "movement_distance", function()
-    return movement.distance or 0
+    return (state.movement and state.movement.distance) or 0
 end )
 
 spec:RegisterStateExpr( "movement_moving", function()
-    return movement.moving or false
+    return (state.movement and state.movement.moving) or false
 end )
 
 spec:RegisterStateExpr( "target_time_to_die", function()
@@ -2053,5 +2378,7 @@ spec:RegisterStateExpr( "tank", function()
     }
 end )
 
-spec:RegisterPack( "Arms", 20250721, [[Hekili:vZXFZPnY1plEUPKKR(OagC8DJXZqCijKgdEmK7A7FGqGwmQwiPkjmN74Hp7992vR0UR2vsKKj31RZ1dK299E773V3(mZBpF28Po2jK5J70QtVwVUt7MD60d(N5ttEkKmFAO9QhSVh(GV9w4)pHeNGp8jVaBhCZXb7IwbVy(0L7C9sg5pFPEi2bwBiz18XVU98PBCDCiSLsIxnF6SnUXhwG)R9HfPO8WIG1W3xL4g4FyHNBCc861brhw8bYdUEUnNpL(qKkSdiwrbj24AHVpMEUi(2l9ioZFd8EkuakypHe66FVvCsK7dKyg(JCdzVUFX)5WIbV9xhm(6HVf(0KHhwC3KzdMnAY4dl(TrZ(WHfVD4WBHpp5ZJF70dlU9UrtUB0S)5HfAG18PaQsirU2ZNEYHfl3TEDtvkQ5UWdlAWo3psSi(KTUe4GFfqjDMNaCvLJMeiDcsA6aa0AFWoFN4MjUREaaUriEg9nj2Ee)KMl9ccCSS9DSs2a7Me1KJMm(x6lSw5zhIeZzgjghc94TkWlioExSv8w74nnJiBTD9bKFjCA0svxcu155iuE)ik7AeLhf)eXt3C8Snic4cPBcrtpdAql9SbvMKGOTk6odcaLJ3AVLQ5oyjOGM4Iky50Nobqxzbah2zCEGso34bUsjQtK99b(GLHTgzPWlr086Jcnm6wvDtu821SwZf1gvxMHktcxbvfpI9Juz3pBY63ZwRuBk88dl27MSb(CkkGpXWXHfXp5tIU)PVyvnQPl9nruLd637HeA7whP9tjy4SIyq(GJ4ZKFrYVtwTd8zRH58oxF34nKO4IN)DOtClhIDIrkdfGNrrTz)wMf6StdOmDrRCAn4rsuyWEcvRTTzpq6ys9uysNja39BCJ8276tn6AB2ntgrHFO5w7F)WIFcHKzjJG3d7KepIv8MGDjZX)hNZBfUXoMuwOlfpH1iW1W)XWR)8mqeE7hgmf(ptUD2OBg9VsJE9YoT(la967a2weVG9VQYqw1WLE1bOyWi1Dl1Tbv155N1)orOFwjURp2arPQR61e4wd1iAdZeiDdCOQ7vgoicOsnIJQghsLTBPNmnhJOMh)o9Kn4Kqe39H5qeuCKzy2mobsHlZXhkBR2s2CqbrHKr(RtWEFTSg1GbAmKfL9GNUa3vqgqrb7zwOoK1278s0zBwTn4ndgnUyoJdh)H0ukVzcK84NM8(rxBW8Jtx27scSaVhaJTCJSe3TWPcqDlgNFlWL3stgasw22FfYkbXGGJLn2r3R1iIVIWDB3s8uoUJ8begTleZkN6fz4wikjXF1tq6p0nkfXibrcMTatD0oobICcwfaosZyr37D5iXfOPYTh)gGa66aNuRcc8q9PMSdoceNNKYRYnMUhm2p6kxtYvkROCd8VmApIS2JSkbHNGTAiXZZk9v4t04DqsoonvP4gBFWEa1usRY6oQ5X7Hqzr2PAksMoa5S2DLBcvFQBloZJsIlH8firpa58X054oCorqFe(aCkq9VGai0xASrHtcDN687OScb6AdX2dsgje5BGH9RzuLR)QGTOOWHMEU1zXuAoDX0i4)iyV0SJaXWpa6CnvB8RWvaggXpgZpiJRKJXSxQZPLKeBiZ5gKHAqiu3muJhuUTd3QdCNqRkoJkJ25BX(SfwVSi5Q33qpwH1wSk(5RrB(Qz(qSbLojKiabU5uS2uqlyfOWd70QKJIawKtK64Y4eJSwpSedQrqcCms9lib0o1dns9Zqx6O1IXNPsfZIKLjkljnZ04FqTuH1k(2K3m6t0(Dmymeo72jthHb6gn(9vMoj3PMOQx7kYGu3EUqYgJfntUWqJb4QGyywV3hfK79kgYJkhY0Ohpcc46fAQivNgpHwZV1YapnrsYFx9IHizjlML3HfNxAEoHreWnj4fUm1dPcyQH(XVn4oSJy)cOFC3ntPvkDZOPZGpn5DG6cO0m4UrdeZikpxP3agYGBn0LwYg4eer2haUKHhXpIXpfNq2MM)HnTNlqCAqE7FpAW93jW3UM9TFHxMp2Kr)G9yubemjP7omYDRDeSEN0w4KcUtbcMwSbVHaGcblKiIbK1cRGtryQqrK04Nm2(9zXppvBZfaVvOMwCEwhAnCm8WBVB41tU5ndMbqC4SpFlpbZPZqUPAjFAaHs5zSmRtISSV31c0UfIBZIRli(rBSQk3lfE2q0xBvybkBBbwFEsus2SkVuR1BLjoOysQX(H1K79ud5yRLU6lNITQLEqY3wHKWqiVMi3LX0ELgVb0Cc1LMIhjzJnnTzBhVNesLpm07jRWa3y8B(b(8fI2sHEysrudY84MLyqcgTp4rIJ9H)TogKtNC7hadWrxpygATD9KjF6Tt(TXyLkJh8(H3mC8SkvuQOraONgwThVml1vSQelOcghxwjxP1BAU60xvUU13hsixK9ODcRnPLfcjVl6lXwILUkkwEPje9nMKLO6msP8WtuGr8z50tDazQ1B5P1JVU84rcrDQGOfQRIAPybj1Svtjv5VuNnkFzGJv)hijTX2weKi(9CAZO0G3kQSkal)(lEfx2sHLOPyrij9wrPENwuHMKP7mgrZlT(AOy6DBXJACz1dLEu78N9JQKGPJUkSuuo1IoJ2i5mKWaEc0MUsa2DETEx0tksG7Sx5Ib91EtoM4OARrQgBt1aJfcOSAL03e6Uc2Q2rRS9rotueV6TJ1DAMZGmjRuFx5I2CC65E)MKyR)9oN7Zkz8y7m7rJ0L23BfS2cE7Qhsl0rUkTVTnvplr1PqroFcYXA2G7E)WzIjUQzJvFU)(1h9YU2ttTauZvNXsN(2i3GiAA3tttg)L3YtLw(2qF6vvZe00x6YJDLVYlY61s1Mz8gAB6sE1FDyz9DH6tEcV51IToRGNlD3rwXxiF5aAcUPav9DApN(LASU5U2N5e5CH(QRf2TnaBZDglROvfLgOgtFhQ2Xr5zTIQL14H)4G5XCt5FbE4Li)nbREyV9Jen16ZFLwV)LylY6v7B2565arqs1qFNRNNY92MBUK2AsDbrXC2QiEr1xNtj(9Z2CpL2JkidKckkFPPvF3SxjtxAVshEJXkj4aWmSw(eSpa37dICQt4H8Hf6TdF3WXth9R4idnC6TtgpD40kdnO2P6EM6unRqaLwLEERYJBOc9UgGExDaVN4fcUXL45yT32ZR8AIuGXzhD)4ZYSWooH21CNYJhO284Ev1cVi4m8eslRGualTGM6kBAZWjIGs6(RdbI9A75(FLAXHz)(6VzbTiHFqLV1O1efZkxFWQ31Xw(sQmhTqvw2tY4Lv)OJvejVJxsOt3ckp1)csTupw(pOEhb9Aj6G9r37D9O3VsbhSzVQ8igfuBfDMGVccbXA6BjXc0FxuuM1JURGyypzfTtjXeXxWCvTlHM7uz(PIztxLDeOrvhFuFEMyl7N(5BVDYDq(RdUgZETAFu5zyjIyHU7L(wYVhgetKFRHWnT7v3eElA20S0bMSc7nZEUKu(sdQxOFLsVNvkziGWk7KPz)xfrRslxLE3MGiFS2hw)lllOjvxAVDKpqhX482cmE3THq6)PDR(fs1m9cSB7)NDUr0UThGtuaoacBzx0yAd2BE4JFY1hEv7U)cOv5hVlebiUcgvaqvm27lGnqr86apVG90(GBVlcBaoK0a88D0(97Y73phi4nAHh4e(68dOu9oFPv74Glg8NzV0oM8lh(iTKyXQGGh9rnNCPBo84o5)8)3CWXhjpYmg4gPJ7YXXhABKpim3kViB59mUC1XxiFpNBEp0(9NVYxx7vErnwPwMe)MupoUK5J9F4AlS7i1WPn7MbpUJ7z1G7wLet8UsmknYUOKJJ(mR0k2VXCQSDhJBqPXxc7XmtqQVvgpBItcWXD8mRCZMu6ArKzdfRrcmVwQJJ8mZmfQU4f1qzkV0G64GPyEa1XftXCLRJYRUuEf46TmUrX0a)dXDawSq6hfPfdQaP5OECYFZwFIPv(IAOVOxK(DNNLN)x6detao9rYjSLfwo)8IC4rB5hXFwM0qM3CCsq3Gj6pD7U1rUpGdUrWAx8cW)b9tjWh)HVQ5Wa3(x7OyGW4730yGy7B5az8rtmwZV5hoYzZWiGyY)4MzXG)R9)BI52FQ76(NWQgtASnACI2Qh0cp1sueHjF0nsHNUIG0ctg))u2mA0NrggwPVDialQp8Ky9Rzn4K)HtXXWOV4SAyyXGDiBTLnXg63Ry(gNYMlJ(SlE(0Sb1O)k(CAuHgWrm83vj)rslptAXhZYCdfzyv19B98ZfMQZRUiLqRXmBlcA24ptbT5buUrDgSAbGQoz0FdaFJt0oX2nQyATfPk16o(YOkHjYoLJx7PRwIy0y7GeK4uxFv3wCt8IZADJtuMY6sGoF3icYBz1LVUvJITP9Q8MD(JTA2XmuZskubQzeTMrHoLJvRPBweZkZr7P4SV2NF(r8x0EONKbKYi0YaqwnfvIkP2hiO3iCS70QsOi1(fek4kY7Nv)2vcbXkfkcGR63P6dDEU8v4zRotrwvU0AMXIXtKqfxiXx6DKF15p)8ll2kXl70RHPlG7v6rlBUU(oIWSrYIPOOFIXA8YV5uJjYrAGUqAsOz(0rXOb(PlVOL(9lmtwChuxDElJKrdZZ5vQcN5bFspbajYBbjcS9uCMI6ZN1lKwmWd3f(8ZvmYtx25vnEjDVkZDKWo1nItx1PLb2SwQSZF2Os20sLPeuaSAv5sLBfgxQsu)PJBLzBoXmk1ORc(jp(9kpmuCv1l5dp1p11G(TsFDmJyQPs5tSKHtLyxG(kHFPUSp2)AGR09TuCpmKIefxPp1l7ygusNpA1i6N3PNFUKzD6YZmJG0VxMIe1X3v9pRvTGcRAj1)AGBO7Xhh5XOI2TkHmW5bPgNei8avPVuyLndhzhkL5bcGZZpxiMqLhGZAPLxWkV2eue7kEMnlkqkxrV6j0RsDBPSX(60Tvb13gD7U86lo6HWZmLvB9OQbbBLxaz7B2pTC2(MNPoZyZG9hFy7Au8HAS9ubADSaQ5UP6RNNQ5xakT5IqnJexjC4SHFRurLXrLZmKfg)Q6aAntmxjunFW2QdKlmGCz5yyEi3QRkjuaAX0yU68JrGk63tD1QDMJUHEzf9knGBMHIo)ExDrv(9(Y(DQQsxHILvIStLF0BOEWygAf)5WPbce91GQcxXFJGyEf1)tzvbqEwJKk(5RYiopAV6ki)Y(NBe2fCZxtE0L95U21)dkLreM)JhfInvUu3CUK6VXugHOIdbJm(s9euHyUiDA43ukmINjXi96mlcnGv2WexxKhxVF(NmBrK6GPMcyWiqtGudW0ORYIcJCyMFYY(TBYiIQkeQkh9mJqsYrzrbrbxNkBp7IM1Pv0ttY4QQ)688MvFhK(zbowvnV38Fz7v6ZK3XXCF54Fp9izX7BmVtKT7ODxcn1xzdxWVig(FN7A3F2Fy6AXzRg0XmRXj0HQu3(LZYOinuJ0lkYdYINPcVuX751pcN2HRUsXsE7nrVBkt3nsyfhXxLoE3RHqxDpVLbqlmad6GAxfO2veO9mb08XCaHPWoo7y6uVmmfh(zfOchvTkjY8Wc38ED4IT7vwEbsiO4CxOqMDlAy3PXjY3ot6KpBaf6gsdvoCVuJodd5SbiNnSXi4eyMnugHzmbrtJUSbqlmfYf0gmsn5ZXHYEEDAjkkJLCfwJvmgXvAnMo1iO9IWaqWY9JKgmsA(IZkMuzYI1LrF7E6qKE9voy1oBXLPQMdyD3GEQepnaEHRnNF7DItnSoqRgyteSk3UF6tlovW40)o))b]] )
+spec:RegisterPack( "Arms", 20250809, [[Hekili:vV1EpUTns8pllcoJKEjUYYw7dG1lqtVE4AaU0IZP)RKPLOxlSYsgIYRZEWqF2VHK6bfFj6Bx0dhksZUsKZmCE8BgoJs4SWVfUkbvHd)QVNFG3TE3n1FU)mV7cxv9YbC4QdO4Nqpc)qoAp8))PY9e6dFjRaLq3mP4yzm8IWvBoMMv9R5HBuPOV)IGBH1Eahh(1BMfUAxAscMVumjoC132LsQxt)dQEDdlRxxSf(94Q0I861zPKk41BlkRx)pWpLMLonCf7HuPa)DC8rGNFl8RSJeohTjdNe(5WvXLPv4YueLvBoUD704IScc5ijIShr2nTeVhLMdK((61GKX5hSTbRkScoogj8v1RBO9(IYkuw0PIJ5jtpEOE95Z6FNixN3Z1M1qQktFctz68l80q55K61Lm93dlbI71t9wTeq3fgPlJQKJu7tuZgAPQUxz4GiWQaJSQxkN5PxmV(1E89deEW9smIKH2t5Yn2vgvisfoc88I2KvuKmLuboOnKNBH7i)TcuV4zC5HIt4sklU1bLGbt1DoS1anNQzEJSrqExiSVnOQQmCezxXXQq6)TIu9)NbulUGakk(tz6b(Q)Twtw96FSE93O29giNptT81R3JYbv3ECE1f5LyWPWCqOZE3QMDxc3U1JrOE1ScJuPR5qrryHemQANo8c(lghTWCSiyhb9oOxlk3hTPiRAAZYy8YHds3gThq2WNeqDvKhvwGkVqgjSt7XVTNODfXpDc9m(c5t3(CkA3imH547oyIBmbRnZCmC3Md6C2yhiryMbhhj8NVoZCUVMtu967eeSD4YI04OQDLfN44x7bzLfRAffRcv(igS3qTeO8yoDN5Rq3mm6GDulDe6wbaWD03BpP(JLfnXoG6IaME2pRvcfo5P5W2FgNpsMD7bqJi9dJEmdYOJmb2msj4TOJzJzJs3dKc8G94zaA4sjk)rl6zZMQwpdJYz5X8i(phrlYKxQzeVg4o3knMYoHaLLzKaXffzjfNYjJzVyhYDyugaDEiUIfo575Mu6ufy0n)mocCD2NIjkzRSrFuXivOjt7LdkhWgPjv6Ye4KQf8MW5eGVeDG8orIJvWLlQEXLsVKmhkiyUGjp3iMSkIRaT6aF1gznyHWX7qjoUypiF2dZmGrpa)gOdufusA(JoGHBTeptKZT0fYB0oW6vP5rTKIfWRkZ8h3gr2(2df8)wsH2hcRrHoOMY)GWUjBJBz96UDwVgNwTJwRjuruAc8kuo)(U0L9ZRQxFknhwjSBynN2HZ5pLDl5nWjgGbH8dBOB8WHSuCY0WrlH8nO48M0iONrvsLg9EZvTWHTBp72KQfdq4Pa)rvfrjPnHBW95(qVCZfc7M(g5Lvv(gArO)VvK7Kd7G)2LkdSselbI4Fkdti5WFSNeGXiCofsAk9O(2PyMZxAkPTDbrh2HOXdI6dCjbx(eUmIka2tP0wAogLK9seGIV3PsMLU101cAjbsPlNJRfp5qX6Vn3(41BwG6CUgmamQjNI((LdU88LErMnzia6JEqhiZ6kYyH7xaTNQAZP2Um4g(5pHRMrZIwuj(7VYGk6LShGO)noLjSMe8VqXPOm(p)78Cf6UuLKu6)MivdoO(H2VpgJhIGcUWbPSG2VvMlMsa7lA7Xsw1vZUC0pfydi9pJu276bGySnnoTQX3ti(hvgJYPh7YsEf9v8kBDQmjYjm(aRaew7LiTqn6C4fQQwEBoLULR6GcEGk8oMNGhclqdKkOaJ4d8(HraZzmv7yuGeA)sdfJIZ4xX9snXdkQWiWY12k3yS(r7OMwcatP7F2U36fdHzcIA88xga3hXmjbhBoxLzaxzNedDnv2HWC6kTgaHM)PA3e8cYWnnVYCMfRwF7nc1YTVCSqHMHhmIzXHgPzSdP6uF67lQfKDZ2GXNlHf4CDh7ajnKybNN2LwMrVYYiy7DcfdzEp671R)eLsUORvNrHWf(TIzl1fLR5SlnhUgj1ZkbThKMOaEbsnlMjB)q9AVPI(xq(XOnVaWWGCCQOmXo8TeFd0Z3fg4Rqmjzxkolj6eklZogTehNRNJZnDs75ygIuXUwCIDeA9nTuUTvInxdodVqLLyEHaxy)PUil3mrlhgsiGYs)3dAAG7DWQN7shUfDT4UT9NCaMTyaHxeYlnhQYknbvnqcmJKlBld6Hw5xyljQe)iiGLikdyxFta(qZsC62hpN(yAgTDidspzQ505pj3JsX5m0rl7a9kET9uG)ki9A(yt6qIi341RUEongYp)su5rPcjfFbhsPTbGJvdyJrMWZvIkbNlHUx18w83puqWdFRUcUPT0xmjMarTdW0Zkv3BhlivFCHJtPWTU4XQE9aWWr7HNJ4m6Ao4G3TROmpQyB0j20rS1LsMrhsksOVK)vRCJpCVXtOYCq0iHR(19hGkjPHb3j9fPmT(laDpwbClC1Q9h3cfOqB3AX20mC4Q39U3bxlSe)PF)yww9A6V(f((jt76j7FD5pkkrFmD7YR0D8MCLrDTwIkVWEcRHet0Ys7slRJPmQk3Dv97JFlY6Vu)fME5ZSwb93sjhqvXSgHkQFOha2KCOmGgQS078zX5(8WTIRvAEcFK2l)LTtQHscLr(8qWaEjnsaob6Bw7ySQPunMWkp3M799gD)WLoP7DyK6dl9hDJKk19TC24hT(cNgFTniIDwUFUVh2mtg8O)mBZDV3vhxyU7IvZtvkwVT69Z0tgElL52rnn6EY7nD5HZNhP3B3VOZbwa6)E)GpOxs66uSGWO0f7)eLhXMhzw9szSgQo3ZWHCq7FPKvO6gw9mVMt48ZNLB(SHdNqJGfu3A608etsZeQe)WYRnCq7BaSa9vBNSrYBqS77jGOyR2GHxHw8HR)WKH4l3VCHjx22gHmWNvUNktKH5wm5kZNBg(YinDvV4CeQ8cQEy)hPDkDzBhHVyFx)GlG8(VzKNNUSlKqQ3TxeP6B8QnPZAekuSWLV3HTxLUFX2Xc2DVUCk)cpifmO8re9EiR5F5ds1m1ej)6q77jYG(dYkKPHisF2HNpR75DGm6iTq9aJayiImQD)n3Yq6lYDIUh7QiX58mpTSM2qlhKB)a2pCVbQ01MPUJG2VqsGoNpZOZTJPhSPUALz(Ac0Ug5ISzCvWdeUD(Jzy639jnUc8aZlY)uZ2LDejvVoFq2(FBC)wWWhVGpDvjPWDdL0gD2pXW(4V(wpBy)d2OHyI2oQor9HAIh4IWBwYyg5CplSJeS7t7uu8K)mrDMygJnuT)SyIBKxI2iNaVXUZiBVIFxsDsXD9rD)0V9lqOg17QPVie5yn4Qr0tH0qayXlClU64bukWWxMCIJ4yqTkggZg4KQFaBkSAUmRUyycLQTUwMKkihoQigu4gNu)xxYMmHCpiyunMSXrH3tmmiR7vKk(qMujcOjMysPP461eazujRc0nCJJIqoUkzmSp5tNcbgeMRQlusbZ3v3qD0zgc0ubtJtLoaJ2598P5E6oVn4b)ZM(0ibc02(MEef6hKn3rBWxC8dZ81UlHMjjTHB1U(UpQA6wyTECYv0MEprHFEA3VRPyCtAKrrL3vqN(7V13xNHAW(g(qdwLgIfLMcnS6AVjQdy5H(HR8d0rIzG0cdQsIQbQuDHevxyGO9ZIsIMZvP5Czj1anfhdLSrwS5DMoOQTnxxqI)OAYzMyG60I0ZabHDbKuw7mOmWcDJiswdhWbknoWjdKUBWpc()kdwAYWiRbJs6EXsvgqAHjcP4oyuA6hZJ0EUXJFaLgruxe1F009ZHHtn9eL6WlmRgwvj6hmuxzUsJeAI694Fq0LONr6D4UY24FSviupH1nPGgdttIlJZlqCWo6iTCMarYQF(gkdUPZq83Ha2nS)v1jnOaTPBg209HfbpFW76snk(qL)LQe(Fo]] )
+
+-- Removed duplicate stance aura synthesis block; stance handled by early SyncStance logic.
 
