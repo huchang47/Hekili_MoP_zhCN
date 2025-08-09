@@ -369,6 +369,18 @@ spec:RegisterAuras( {
         duration = 15,
         max_stack = 1,
     },
+    
+    astral_shift = {
+        id = 108271,
+        duration = 6,
+        max_stack = 1,
+    },
+
+    stone_bulwark_totem = {
+        id = 108270,
+        duration = 30,
+        max_stack = 1,
+    },
 } )
 
 -- Register totem models for icon-based detection
@@ -506,10 +518,11 @@ spec:RegisterAbilities( {
 
     -- Ascendance (major cooldown)
     ascendance = {
-        id = 114051,
+    id = 114050, -- Correct Elemental Ascendance spell ID
         cast = 0,
         cooldown = 180,
         gcd = "spell",
+    toggle = "cooldowns",
         
         startsCombat = false,
         texture = 237577,
@@ -690,6 +703,7 @@ spec:RegisterAbilities( {
         gcd = "spell",
         
         talent = "elemental_mastery",
+    toggle = "cooldowns",
         
         handler = function()
             applyBuff( "elemental_mastery" )
@@ -703,6 +717,7 @@ spec:RegisterAbilities( {
         gcd = "spell",
         
         talent = "ancestral_swiftness",
+    toggle = "cooldowns",
         
         handler = function()
             applyBuff( "ancestral_swiftness" )
@@ -807,6 +822,7 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 300,
         gcd = "spell",
+    toggle = "cooldowns",
         
         spend = 0.23,
         spendType = "mana",
@@ -824,6 +840,7 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 300,
         gcd = "spell",
+    toggle = "cooldowns", -- treat as major CD so hidden when CDs disabled
         
         spend = 0.23,
         spendType = "mana",
@@ -841,6 +858,7 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 300,
         gcd = "spell",
+    toggle = "cooldowns",
         
         spend = 0.23,
         spendType = "mana",
@@ -885,6 +903,7 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 120,
         gcd = "spell",
+    toggle = "defensives",
         
         startsCombat = false,
         texture = 451169,
@@ -917,6 +936,7 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 180,
         gcd = "spell",
+    toggle = "cooldowns",
         
         talent = "call_of_the_elements",
         
@@ -925,6 +945,35 @@ spec:RegisterAbilities( {
         
         handler = function()
             -- Reduces totem cooldowns
+        end,
+    },
+
+    -- Defensives (Talents Tier 1)
+    astral_shift = {
+        id = 108271,
+        cast = 0,
+        cooldown = 90,
+        gcd = "spell",
+        talent = "astral_shift",
+        toggle = "defensives",
+        startsCombat = false,
+        texture = 538565,
+        handler = function()
+            applyBuff( "astral_shift" )
+        end,
+    },
+
+    stone_bulwark_totem = {
+        id = 108270,
+        cast = 0,
+        cooldown = 120,
+        gcd = "spell",
+        talent = "stone_bulwark_totem",
+        toggle = "defensives",
+        startsCombat = false,
+        texture = 538576,
+        handler = function()
+            applyBuff( "stone_bulwark_totem" )
         end,
     },
     
@@ -963,21 +1012,34 @@ spec:RegisterStateExpr( "time_to_bloodlust", function()
 end )
 
 -- Enchant tracking (weapon imbues) - using MoP Classic weapon enchant detection
+local _GetWeaponEnchantInfo = _G.GetWeaponEnchantInfo -- may be nil on some clients/builds.
 spec:RegisterStateTable( "enchant", setmetatable( {}, {
     __index = function( t, k )
+        -- Fallback: if API not present just use self-buff presence.
         if k == "flametongue" then
-            -- Check main hand weapon enchant
-            local hasMainHandEnchant, mainHandExpiration, mainHandCharges, mainHandEnchantID = GetWeaponEnchantInfo()
-            return { weapon = hasMainHandEnchant and (mainHandEnchantID == 5 or state.buff.flametongue.up) }
+            if _GetWeaponEnchantInfo then
+                local has, _, _, enchantID = _GetWeaponEnchantInfo()
+                return { weapon = ( has and ( enchantID == 5 ) ) or state.buff.flametongue.up }
+            end
+            return { weapon = state.buff.flametongue.up }
         elseif k == "frostbrand" then
-            local hasMainHandEnchant, mainHandExpiration, mainHandCharges, mainHandEnchantID = GetWeaponEnchantInfo()
-            return { weapon = hasMainHandEnchant and (mainHandEnchantID == 2 or state.buff.frostbrand.up) }
+            if _GetWeaponEnchantInfo then
+                local has, _, _, enchantID = _GetWeaponEnchantInfo()
+                return { weapon = ( has and ( enchantID == 2 ) ) or state.buff.frostbrand.up }
+            end
+            return { weapon = state.buff.frostbrand.up }
         elseif k == "windfury" then
-            local hasMainHandEnchant, mainHandExpiration, mainHandCharges, mainHandEnchantID = GetWeaponEnchantInfo()
-            return { weapon = hasMainHandEnchant and (mainHandEnchantID == 283 or state.buff.windfury.up) }
+            if _GetWeaponEnchantInfo then
+                local has, _, _, enchantID = _GetWeaponEnchantInfo()
+                return { weapon = ( has and ( enchantID == 283 ) ) or state.buff.windfury.up }
+            end
+            return { weapon = state.buff.windfury.up }
         elseif k == "rockbiter" then
-            local hasMainHandEnchant, mainHandExpiration, mainHandCharges, mainHandEnchantID = GetWeaponEnchantInfo()
-            return { weapon = hasMainHandEnchant and (mainHandEnchantID == 1 or state.buff.rockbiter.up) }
+            if _GetWeaponEnchantInfo then
+                local has, _, _, enchantID = _GetWeaponEnchantInfo()
+                return { weapon = ( has and ( enchantID == 1 ) ) or state.buff.rockbiter.up }
+            end
+            return { weapon = state.buff.rockbiter.up }
         end
         return { weapon = false }
     end
@@ -1010,5 +1072,5 @@ spec:RegisterOptions( {
     package = "Elemental",
 } )
 
-spec:RegisterPack( "Elemental", 20250807, [[Hekili:9IvBlYTnq4FlHchxiPU7D3EVK0Ch0uc0eiHqDk9dL4vAT1URyLTCLKVThCOF7DK87YsEVqkLqo8Aj9mspZmpZyLCwYxsIZWksYNoFX5xU4Mf3eTyX5lp)vjXQhkjjXL4094TWdf4C4VVJrYjfkmZmYdmooZGGKxjsHrtIxxrzQ3xKS2pS3aZTKKcV(QZtI3rZYi1ZLittI)YoQuJm)hRrngwJ4BGFNQO8cnIrLky4nCHg9BK9ugnc2ic(gkdm)pOrX7W54IxRrDBun6h1OpY)SgDz0YOB0OFNRWw0(am)3ILKmWga2)j)Wocg(X2kAgyxCb8mUsTdGHM2GrPGYfufLi1FWcWNfKuE(ASYmgPelAWUEhlJkBh)f3(tm62DQcAX2vYDucl7L0n3(S1vB2e5osuvPFi2Wa3GIxSTIS6abxYlSGqks3HlurdgoQEy)WijyHXAkUIKBrWmR7j1ViA0W(rOK)uoNR5mvdr9rmfizrh53SqZMPKcu6bmBprixTvGtjMTuo)ERlmkdC64IuYDlgUQumJTQ(NRmHfV0eGEBkNZY4hkKhFQyU1mnhCsbjh8Q3D7fhFLs4OXaUcl2sApE)ANHTbP9et3oQJ0mw161xZ48mwLubU7hFSgUifn34gwLrjV52Ll8dKDLR2ujEOdmSmLuKz4jlA23rAtcwLJLkI4HrXvJaeOEIypCW(pcWnubqQDt3nqZ)IGWo1Uzw1jt5O7U9QaC0K9Q)PjvCrodl31BTjoh)R0qnsLamG8aDJQGiLbMyht2eSeBdG0OMiOPzfrJcXAZ7bXbE6ElFaksgN1Jpki5qIL8ndIBNS4QcgXCaByePbbGxm5wndrQdMIif41mqqmium894vRReqQqlrzFLScMWiMYDLHKCcVIV7Obxa79dguA9qr9NPOg28UzazmdKXBeDR9nrn(Lto1xkuRfxjia6pFMtE3zEnezQg4VCg54omxF)XO7Uqm)1LaL409alpd)4t8)x4VBquo60lErBWVCanakYFlkh1tphVnh3plx58LNeyDdtkD2aJZ1gJiKODYP(s)MCoghOmfL5sEQrWXJecIa(OR9c3FxH37TU3s)7Fco3Ffb3PdnGqnfjB2mjX3dLuGX7Ab86K4dyHzmzBREnDUv3ZxovAIL0izvzjxOAAZBlSdfM(VuG8XEiGjsJ0O3RQxKTRdisjZ0fNANPnmY9gT(2o1GNOfPSkOdtyik0nN41qqPPPW)6pKedsKC5xFPgDyhnD3WzJlEO3QAub3a()uYOPufRh3mZtgJt6n6pdTukAnZxQHqJo7RnDv2)QZhy5dugBWjQbsv7uTSH9vfv5q9AJHLmq)r)H3NBimZlU0PxzyWKyttSCrsCCE1gbDFsSDiBJ7dtEHx8j7he0iQK8wyPwWsIhKtu3TUGwwpsOAzjXWCGYUuCs8ZGHRZy0OhF0CgTznA0BUvJUirbXio2TFTZwOQFd6QZza9IGGon3RhP(8wdgldIXZQP67j9lDunoZQV84RwJoPL8gwjtJUd4MRw0dU3YHgJCvqJmtjoaFnAa6952giVoiKbk4zpfNQrE0jSE8XL(0ONhIVV5ybcbQaoGNgpbdOVYaAWiLbMdM7zlosuJx52g3LR3QoHXG6zd3cJRroEdOm5xBWvSzZh98nto5LJ)ERHhJjFyvtSGN0WwZ5(Dq1siRQVtGUwDNpNBCbNAc7INOjGsm(sgFsRDSgNLG7(y15OyxhTRU33Wnn89CndbUHbhTKq3IW8ARWcdFZboI)JU0H590DAB(UoHzulxomhP(BLDsoV8BilYeZmxfnpTz64INRRv)vcMLT9LaS0kC6PuYG2A7iBpA1JPNWfRCTTTWBRO98LNhjwpSpGzRVf2Gp9AVHlSDm0NrJ(6GA0Hl651Z5GJTX65RGnT4O7jh62Es9Qjnw7eN3l)ot0EB20O4BN7SAYwD0vGyJm81NIH7x6T6XCN8A8cEPs978(R6AErNVht0D5xZNe5jn1RkY)Rn(1nl3JOJ2q4O7j(6bs0JVCSUW7oLOPxbMJzF1tr4Q9Fj)l]] )
+spec:RegisterPack( "Elemental", 202508009, [[Hekili:vN16UTTnu4NLGcyKG2Q6eBNK2gBG1HcSgG1vm3H9JHklAjAlcljQjrfVmyON9DiPUlskNEjT7hTXsK8C)Y3HY(C7pAV0dXW2V)IXxmB81JFP15tp)Yz2lz3hJTxgJC3H2c)icfc))BdWH4igkGVY9buKhNaP0Sexyv7LRZibS3fzVwbvhF9SlTxIYy(0e7LldZ2Kq2zV0N45HLNaN6AV8J(K0Ch()q5ofSp3HUbE2LrOr5obKugS8gAsUZVG3rciw2lfVuimKOTb4vmuYwmdEX7f6iocToa7z)gjBsiXCAbIHy35oYTN7Kqzi5kWEy4ecYE5jWYe3DWoZDoCa2doerIaj4M55otavYvEInbGnAvQp1DNndu9o8TMGEuMvJnBvtWCNZNL7mk3XLsd8O7JSqPU4ipuKlU12MPLTt0YwWTb(oRSOamk1h7TAtwY9wLBTIEfRVcl91PCIovlrxNTzJva6o0Q0mWeALfxtjXRxNLKY40yMwAWnWugo0kfJsaZ8k5tzXctr1QBij4sPcf0B5q02qu1rRLIweLlixoSGahH53NxNwgOyXiGnNrx5rGGNfC32yzWHQ1b)1KzYLn6x505cGoNvl8DeKAL4QVprxx)Wz7I595BDKrlTFCnFRLmoBF5rZ2QmvP7seE2ql5oYM(HvjyGJTm5TJApF8q5t1oN1biqH6Lq1zdcQkkkPnJRb)4BwFLez2hzRplIhIN6tWbEwPmOSP0WFvPHyOaVlL2fv2REHJvrdNpPPAulhRPbS2kbJx3Ddkly4sYN(BIFGcGQ(X4iCc)Vq(e5FfvMFf0vib)84SaydTljiZoGgfrE5oDS6VO2TcDx4DtccO7XEpl3jcVfO8D8Uaax4XoruytPzXX0eggOLpobBDwUZVcMl19icP3jyNLh0hIB56gpNgtGnVhfSdNKUABcsgy311wUDxq8wjFyfV1MSb3kzx4sFzQ5698JFhyEIWHeCrI4KJKfikwvD)J6ST7al89GhZLgUgnS3FPpkeXDYvqnYDEoy5PFaklznZckp(7f2)CN3Gs5Uh(p)t6EFmcEyBgXdxedWbBa0G4wqG4ecfmpcRXhkfjr8umkrvFF15xT6X1zrZD(bsIJC9rrffTy0OTzyR9yuSOOxZIUY1wvSMrp9JCd0PnZ6JPfLgANTZdGgYx)t03wNnbvPM80Y(NPNPu9uRap(DLvv2XSJxvU4utM)b8C1YsJJzoi5RbUaXU6QlMHbRh64aig0HfqposLcwziIzu8TDVT1a94f1ZWJhwSEGCdr9VBT91dcuzyEh683zODdaQRV4016HrH1OZQ6k5d61Qk7sVAs19nhQY0pxUt50MMLTgMW6AcHaMdmmEv5YkRaXToJ7vk1yHKhm7Rj)6akvo0N5cfFjSaa3Gt4jzMt9)Ftf9JyO1F8NvuFbSHyX1hJOCJOvM6YinKUUboMl(jiLiInidgQYyAuUZfnrAZOjHb85PQmax3SkbxYszjGGKUNSHfHt7oW1XpT5NtpuT9zmmQ5NxRsrrV7Gus(sLxf3v2l3Js41htlVST4e6gc)wW4pesstfnjlM)P4I22YNeJdKMbyb3bi0SYDYDEhtEibwAW96XHJZ85GQXaJVVcYn8lsKBqMhVRaMaWYtEv(TcO9)1FKI5uchM(jyAS9(ex)M7gfDFnxlMnd)pXbexclOMUE8FXzoUMPVgMniPKnFuscWE9PIXdQF1fn48EcFYYknQGKSYTkSgIxfLfc174mona8p53(UWYbgN152kHf5JaIDb3WLxWNhsyXTx(KCNhYep3(KVOHEUvqa1t(KFRuItTQgw7PZFrxqgpJSz(j6Mksnj6pmJGi6NdsnzaRCZ5qe0q9qpJortVLYf6G0wj7K9If2Rh3lK41pGlKq6pBFRevQdOekU0bUDR3LvSyCZt1D4(NXhRFEf4PH3km7hNnTbdUy(KHpzRRoOq96GfR2DvjrvUlox73d6WbTixoCOFdLBMpDSAMudG6bZineScU0xjcQk8RrMs)mIt7R)la8jkTltMD4GHUBla8iNPwSuImPHC1hc1JLG11YYfktK6AZS6MPfUS2WNvY7o4uQIaAc6rP6EHMWtfaB0eLuJKGZvnGlU58zJmPQZ0ifv70aTxmhqljtV19f4QPERIc9f)tkgR)WHsjRrLMHo8xUU3LbDVmFoxyM(YB6jvDhIQGJwxPG(t(nVvzxg(dvg(JUp)OJ5hz4lG1Oj8arcA(MxJovvhK2FPldwPo4tAe32zLHdC7MdmuCtLRXWfBTy(vJo1umWLQk9AqFB)5QkQgz6kPRjfaW5hRMTsbQrYQk8xtvNuRTgqp99RtA0O2YvRQ1sgD0PtdiH9y0Otv1SONDSD2wFQyQsSKcDcR1rIVnb6nebXDTQmwqToJrHQrI2D7DVQv(vny)Fd]] )
 

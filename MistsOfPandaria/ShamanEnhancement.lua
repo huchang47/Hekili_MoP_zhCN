@@ -1301,9 +1301,23 @@ spec:RegisterAuras( {
     },
     -- Alias for APL condition compatibility (SimC uses debuff.frozen_power)
     frozen_power = {
-        id = 94794,
+        id = 94794, -- reuse frozen root aura ID
         duration = 5,
         max_stack = 1,
+        generate = function( t )
+            -- Treat as alias of 'frozen' aura; if frozen present, mirror it.
+            if buff.frozen.up then
+                t.count = 1
+                t.expires = buff.frozen.expires
+                t.applied = buff.frozen.applied
+                t.caster = 'player'
+                return
+            end
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = 'nobody'
+        end,
     },
     earthgrab = {
         id = 64695,
@@ -2094,6 +2108,47 @@ spec:RegisterAbilities( {
 spec:RegisterStateExpr( "mw_stacks", function()
     return buff.maelstrom_weapon.stack
 end )
+
+-- Weapon imbue / enchant tracking (dual wield aware)
+do
+    local _GetWeaponEnchantInfo = _G.GetWeaponEnchantInfo
+    spec:RegisterStateTable( "enchant", setmetatable( {}, {
+        __index = function( t, k )
+            local mh, mhExp, _, mhID, oh, ohExp, _, ohID
+            if _GetWeaponEnchantInfo then
+                mh, mhExp, _, mhID, oh, ohExp, _, ohID = _GetWeaponEnchantInfo()
+            end
+            local now = GetTime()
+            local function pack(active, expMS, id, buffName)
+                -- Provide backward compatible shape: .weapon boolean
+                if active then return { weapon = true, id = id or 0, expires = expMS and ( now + expMS/1000 ) or 0 } end
+                -- Fallback to self-buff aura check for that imbue if present
+                if buffName and state.buff[ buffName ] and state.buff[ buffName ].up then
+                    return { weapon = true, id = id or 0, expires = 0 }
+                end
+                return { weapon = false, id = id or 0, expires = 0 }
+            end
+            if k == "windfury" then
+                local active = (mh and mhID == 283) or (oh and ohID == 283)
+                local exp = (mhID == 283 and mhExp) or (ohID == 283 and ohExp) or 0
+                return pack( active, exp, 283, "windfury" )
+            elseif k == "flametongue" then
+                local active = (mh and mhID == 5) or (oh and ohID == 5)
+                local exp = (mhID == 5 and mhExp) or (ohID == 5 and ohExp) or 0
+                return pack( active, exp, 5, "flametongue" )
+            elseif k == "frostbrand" then
+                local active = (mh and mhID == 2) or (oh and ohID == 2)
+                local exp = (mhID == 2 and mhExp) or (ohID == 2 and ohExp) or 0
+                return pack( active, exp, 2, "frostbrand" )
+            elseif k == "rockbiter" then
+                local active = (mh and mhID == 1) or (oh and ohID == 1)
+                local exp = (mhID == 1 and mhExp) or (ohID == 1 and ohExp) or 0
+                return pack( active, exp, 1, "rockbiter" )
+            end
+            return { weapon = false, id = 0, expires = 0 }
+        end
+    } ) )
+end
 
 -- Range
 spec:RegisterRanges( "lightning_bolt", "flame_shock", "earth_shock", "frost_shock", "wind_shear" )
