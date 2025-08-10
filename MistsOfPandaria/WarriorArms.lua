@@ -550,7 +550,7 @@ spec:RegisterAuras( {
             t.caster = "nobody"
         end
     },
-    mortal_strike_debuff = {
+    mortal_wounds = {
         id = 12294,
         duration = 10,
         max_stack = 1,
@@ -562,8 +562,8 @@ spec:RegisterAuras( {
     },
     taste_for_blood = {
         id = 60503,
-        duration = 10,
-        max_stack = 3,
+        duration = 12,
+        max_stack = 5
     },
     sweeping_strikes = {
         id = 12328,
@@ -586,7 +586,7 @@ spec:RegisterAuras( {
     },
     berserker_rage = {
         id = 18499,
-        duration = function() return glyph.unending_rage.enabled and 8 or 6 end,
+        duration = 6,
         max_stack = 1,
     },
     
@@ -719,12 +719,6 @@ spec:RegisterAuras( {
         max_stack = 1,
     },
       -- DoTs and debuffs
-    rend = {
-        id = 772,
-        duration = 15,  -- WoW Sims: 5 ticks over 15 seconds
-        tick_time = 3,  -- WoW Sims: 3 second intervals
-        max_stack = 1,
-    },
     -- Arms signature: Colossus Smash damage window
     colossus_smash_window = {
         id = 86346, -- Same spell ID, but this is the player buff for damage calculations
@@ -805,8 +799,8 @@ spec:RegisterAuras( {
     },
     
     -- Missing auras referenced in action lists
-    mortal_wound = {
-        id = 12294,
+    mortal_wounds = {
+        id = 115804,
         duration = 10,
         max_stack = 1,
     },
@@ -1204,7 +1198,7 @@ spec:RegisterAuras( {
 -- MoP Stance System - Abilities no longer require specific stances
 spec:RegisterAbilities( {
     -- Core rotational abilities
-    mortal_strike = {
+       mortal_strike = {
         id = 12294,
         cast = 0,
         cooldown = 6,  -- MoP: 6 second cooldown
@@ -1220,17 +1214,18 @@ spec:RegisterAbilities( {
         texture = 132355,
         
         handler = function()
-            -- Apply 50% healing reduction debuff for 10 seconds
-            applyDebuff( "target", "mortal_strike_debuff", 10 )
-            
-            -- MoP: Each cast gives 2 charges of Overpower
+            -- Apply Mortal Strike debuff (healing reduction)
+            applyDebuff( "target", "mortal_wounds", 10 )
+            -- Also apply Deep Wounds debuff
+            applyDebuff( "target", "deep_wounds", 15 )
+            -- Always add 2 stacks of Taste for Blood, max 5
             if not buff.taste_for_blood.up then
                 applyBuff( "taste_for_blood" )
                 buff.taste_for_blood.stack = 2
             else
                 addStack( "taste_for_blood", nil, 2 )
-                if buff.taste_for_blood.stack > 3 then
-                    buff.taste_for_blood.stack = 3
+                if buff.taste_for_blood.stack > 5 then
+                    buff.taste_for_blood.stack = 5
                 end
             end
         end,
@@ -1241,7 +1236,9 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = function() return 1.0 end,  -- MoP: Reduced global cooldown
         
-        spend = 10,  -- MoP: 10 rage cost
+        spend = function()
+            return buff.sudden_execute.up and 0 or 10
+        end,
         spendType = "rage",
         
         startsCombat = true,
@@ -1289,46 +1286,29 @@ spec:RegisterAbilities( {
             -- Arms signature: Enhanced damage during Colossus Smash window
             applyBuff( "colossus_smash_window", 6 ) -- Player buff for damage calculations
         end,
-    },    execute = {
-        id = 5308,
-        cast = 0,
-        cooldown = 0,
-        gcd = "spell",
-        
-        spend = function() 
-            if buff.sudden_death.up then return 0 end
-            -- MoP: Execute costs 30 rage base, consumes up to 70 extra rage for more damage
-            return 30
-        end,
-        spendType = "rage",
-        
-        startsCombat = true,
-        texture = 135358,
-        
-        usable = function()
-            return target.health_pct < 20 or buff.sudden_death.up, "requires target below 20% health or sudden_death buff"
-        end,
-        
-        handler = function()
-            if buff.sudden_death.up then
-                removeBuff( "sudden_death" )
-            else
-                -- MoP: Consume extra rage for additional damage (up to 70 rage total)
-                local current_rage = (state.rage and state.rage.current) or 0
-                local extra_rage = math.min( current_rage, 70 )
-                if extra_rage > 0 then
-                    spend( extra_rage, "rage" )
-                end
-            end
-            
-            -- MoP: Execute grants Sudden Execute buff
-            applyBuff( "sudden_execute" )
-        end,
-    },slam = {
-        id = 1464,
-        cast = 0,  -- MoP: Slam is now instant cast
-        cooldown = 0,
-        gcd = "spell",
+    },  
+    
+
+        execute = {
+            id = 5308,
+            cast = 0,
+            cooldown = 0,
+            gcd = "spell",
+            spend = 30,
+            spendType = "rage",
+            startsCombat = true,
+            texture = 135358,
+            -- If hit on health less than 20% grant buff Sudden_death
+            handler = function()
+                applyBuff("sudden_execute")
+            end,
+        },
+
+        slam = {
+            id = 1464,
+            cast = 0,  -- MoP: Slam is now instant cast
+            cooldown = 0,
+            gcd = "spell",
         
         spend = 25,  -- MoP: 25 rage cost
         spendType = "rage",
@@ -1468,45 +1448,20 @@ spec:RegisterAbilities( {
         end,
     },
     
-    charge = {
-        id = 100,
+       charge = {
+         id = 1250619,
         cast = 0,
-        cooldown = function() 
-            if talent.juggernaut.enabled or talent.double_time.enabled then
-                return 20
-            end
-            return 20 
-        end,
-        charges = function()
-            if talent.juggernaut.enabled or talent.double_time.enabled then
-                return 2
-            end
-            return 1
-        end,
-        recharge = 20,
+    cooldown = state.talent.juggernaut and state.talent.juggernaut.enabled and 12 or 20,
         gcd = "off",
-        
         spend = function()
-            if talent.juggernaut.enabled then return -15 end
-            return 0
+            local yards = movement.distance or 0
+            if yards > 10 then yards = 10 end
+            return - (10 + yards)
         end,
         spendType = "rage",
-        
-        range = function() 
-            if glyph.long_charge.enabled then
-                return 30
-            end
-            return 25 
-        end,
-        
+        range = 25,
         startsCombat = true,
         texture = 132337,
-        
-        handler = function()
-            if talent.warbringer.enabled or glyph.bull_rush.enabled then
-                applyDebuff( "target", "charge_root" )
-            end
-        end,
     },
     
     hamstring = {
@@ -1552,10 +1507,8 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 30,
         gcd = "off",
-        
         spend = 0,
         spendType = "rage",
-        
         startsCombat = false,
         texture = 136009,
         
@@ -2072,7 +2025,7 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-        spend = 20,
+        spend = 30,
         spendType = "rage",
         startsCombat = true,
         texture = 132338,
@@ -2381,4 +2334,3 @@ end )
 spec:RegisterPack( "Arms", 20250809, [[Hekili:vV1EpUTns8pllcoJKEjUYYw7dG1lqtVE4AaU0IZP)RKPLOxlSYsgIYRZEWqF2VHK6bfFj6Bx0dhksZUsKZmCE8BgoJs4SWVfUkbvHd)QVNFG3TE3n1FU)mV7cxv9YbC4QdO4Nqpc)qoAp8))PY9e6dFjRaLq3mP4yzm8IWvBoMMv9R5HBuPOV)IGBH1Eahh(1BMfUAxAscMVumjoC132LsQxt)dQEDdlRxxSf(94Q0I861zPKk41BlkRx)pWpLMLonCf7HuPa)DC8rGNFl8RSJeohTjdNe(5WvXLPv4YueLvBoUD704IScc5ijIShr2nTeVhLMdK((61GKX5hSTbRkScoogj8v1RBO9(IYkuw0PIJ5jtpEOE95Z6FNixN3Z1M1qQktFctz68l80q55K61Lm93dlbI71t9wTeq3fgPlJQKJu7tuZgAPQUxz4GiWQaJSQxkN5PxmV(1E89deEW9smIKH2t5Yn2vgvisfoc88I2KvuKmLuboOnKNBH7i)TcuV4zC5HIt4sklU1bLGbt1DoS1anNQzEJSrqExiSVnOQQmCezxXXQq6)TIu9)NbulUGakk(tz6b(Q)Twtw96FSE93O29giNptT81R3JYbv3ECE1f5LyWPWCqOZE3QMDxc3U1JrOE1ScJuPR5qrryHemQANo8c(lghTWCSiyhb9oOxlk3hTPiRAAZYy8YHds3gThq2WNeqDvKhvwGkVqgjSt7XVTNODfXpDc9m(c5t3(CkA3imH547oyIBmbRnZCmC3Md6C2yhiryMbhhj8NVoZCUVMtu967eeSD4YI04OQDLfN44x7bzLfRAffRcv(igS3qTeO8yoDN5Rq3mm6GDulDe6wbaWD03BpP(JLfnXoG6IaME2pRvcfo5P5W2FgNpsMD7bqJi9dJEmdYOJmb2msj4TOJzJzJs3dKc8G94zaA4sjk)rl6zZMQwpdJYz5X8i(phrlYKxQzeVg4o3knMYoHaLLzKaXffzjfNYjJzVyhYDyugaDEiUIfo575Mu6ufy0n)mocCD2NIjkzRSrFuXivOjt7LdkhWgPjv6Ye4KQf8MW5eGVeDG8orIJvWLlQEXLsVKmhkiyUGjp3iMSkIRaT6aF1gznyHWX7qjoUypiF2dZmGrpa)gOdufusA(JoGHBTeptKZT0fYB0oW6vP5rTKIfWRkZ8h3gr2(2df8)wsH2hcRrHoOMY)GWUjBJBz96UDwVgNwTJwRjuruAc8kuo)(U0L9ZRQxFknhwjSBynN2HZ5pLDl5nWjgGbH8dBOB8WHSuCY0WrlH8nO48M0iONrvsLg9EZvTWHTBp72KQfdq4Pa)rvfrjPnHBW95(qVCZfc7M(g5Lvv(gArO)VvK7Kd7G)2LkdSselbI4Fkdti5WFSNeGXiCofsAk9O(2PyMZxAkPTDbrh2HOXdI6dCjbx(eUmIka2tP0wAogLK9seGIV3PsMLU101cAjbsPlNJRfp5qX6Vn3(41BwG6CUgmamQjNI((LdU88LErMnzia6JEqhiZ6kYyH7xaTNQAZP2Um4g(5pHRMrZIwuj(7VYGk6LShGO)noLjSMe8VqXPOm(p)78Cf6UuLKu6)MivdoO(H2VpgJhIGcUWbPSG2VvMlMsa7lA7Xsw1vZUC0pfydi9pJu276bGySnnoTQX3ti(hvgJYPh7YsEf9v8kBDQmjYjm(aRaew7LiTqn6C4fQQwEBoLULR6GcEGk8oMNGhclqdKkOaJ4d8(HraZzmv7yuGeA)sdfJIZ4xX9snXdkQWiWY12k3yS(r7OMwcatP7F2U36fdHzcIA88xga3hXmjbhBoxLzaxzNedDnv2HWC6kTgaHM)PA3e8cYWnnVYCMfRwF7nc1YTVCSqHMHhmIzXHgPzSdP6uF67lQfKDZ2GXNlHf4CDh7ajnKybNN2LwMrVYYiy7DcfdzEp671R)eLsUORvNrHWf(TIzl1fLR5SlnhUgj1ZkbThKMOaEbsnlMjB)q9AVPI(xq(XOnVaWWGCCQOmXo8TeFd0Z3fg4Rqmjzxkolj6eklZogTehNRNJZnDs75ygIuXUwCIDeA9nTuUTvInxdodVqLLyEHaxy)PUil3mrlhgsiGYs)3dAAG7DWQN7shUfDT4UT9NCaMTyaHxeYlnhQYknbvnqcmJKlBld6Hw5xyljQe)iiGLikdyxFta(qZsC62hpN(yAgTDidspzQ505pj3JsX5m0rl7a9kET9uG)ki9A(yt6qIi341RUEongYp)su5rPcjfFbhsPTbGJvdyJrMWZvIkbNlHUx18w83puqWdFRUcUPT0xmjMarTdW0Zkv3BhlivFCHJtPWTU4XQE9aWWr7HNJ4m6Ao4G3TROmpQyB0j20rS1LsMrhsksOVK)vRCJpCVXtOYCq0iHR(19hGkjPHb3j9fPmT(laDpwbClC1Q9h3cfOqB3AX20mC4Q39U3bxlSe)PF)yww9A6V(f((jt76j7FD5pkkrFmD7YR0D8MCLrDTwIkVWEcRHet0Ys7slRJPmQk3Dv97JFlY6Vu)fME5ZSwb93sjhqvXSgHkQFOha2KCOmGgQS078zX5(8WTIRvAEcFK2l)LTtQHscLr(8qWaEjnsaob6Bw7ySQPunMWkp3M799gD)WLoP7DyK6dl9hDJKk19TC24hT(cNgFTniIDwUFUVh2mtg8O)mBZDV3vhxyU7IvZtvkwVT69Z0tgElL52rnn6EY7nD5HZNhP3B3VOZbwa6)E)GpOxs66uSGWO0f7)eLhXMhzw9szSgQo3ZWHCq7FPKvO6gw9mVMt48ZNLB(SHdNqJGfu3A608etsZeQe)WYRnCq7BaSa9vBNSrYBqS77jGOyR2GHxHw8HR)WKH4l3VCHjx22gHmWNvUNktKH5wm5kZNBg(YinDvV4CeQ8cQEy)hPDkDzBhHVyFx)GlG8(VzKNNUSlKqQ3TxeP6B8QnPZAekuSWLV3HTxLUFX2Xc2DVUCk)cpifmO8re9EiR5F5ds1m1ej)6q77jYG(dYkKPHisF2HNpR75DGm6iTq9aJayiImQD)n3Yq6lYDIUh7QiX58mpTSM2qlhKB)a2pCVbQ01MPUJG2VqsGoNpZOZTJPhSPUALz(Ac0Ug5ISzCvWdeUD(Jzy639jnUc8aZlY)uZ2LDejvVoFq2(FBC)wWWhVGpDvjPWDdL0gD2pXW(4V(wpBy)d2OHyI2oQor9HAIh4IWBwYyg5CplSJeS7t7uu8K)mrDMygJnuT)SyIBKxI2iNaVXUZiBVIFxsDsXD9rD)0V9lqOg17QPVie5yn4Qr0tH0qayXlClU64bukWWxMCIJ4yqTkggZg4KQFaBkSAUmRUyycLQTUwMKkihoQigu4gNu)xxYMmHCpiyunMSXrH3tmmiR7vKk(qMujcOjMysPP461eazujRc0nCJJIqoUkzmSp5tNcbgeMRQlusbZ3v3qD0zgc0ubtJtLoaJ2598P5E6oVn4b)ZM(0ibc02(MEef6hKn3rBWxC8dZ81UlHMjjTHB1U(UpQA6wyTECYv0MEprHFEA3VRPyCtAKrrL3vqN(7V13xNHAW(g(qdwLgIfLMcnS6AVjQdy5H(HR8d0rIzG0cdQsIQbQuDHevxyGO9ZIsIMZvP5Czj1anfhdLSrwS5DMoOQTnxxqI)OAYzMyG60I0ZabHDbKuw7mOmWcDJiswdhWbknoWjdKUBWpc()kdwAYWiRbJs6EXsvgqAHjcP4oyuA6hZJ0EUXJFaLgruxe1F009ZHHtn9eL6WlmRgwvj6hmuxzUsJeAI694Fq0LONr6D4UY24FSviupH1nPGgdttIlJZlqCWo6iTCMarYQF(gkdUPZq83Ha2nS)v1jnOaTPBg209HfbpFW76snk(qL)LQe(Fo]] )
 
 -- Removed duplicate stance aura synthesis block; stance handled by early SyncStance logic.
-
