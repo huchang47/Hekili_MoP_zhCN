@@ -562,7 +562,7 @@ spec:RegisterAuras( {
     },
     taste_for_blood = {
         id = 60503,
-        duration = 10,
+        duration = 12,
         max_stack = 5
     },
     sweeping_strikes = {
@@ -1448,7 +1448,7 @@ spec:RegisterAbilities( {
         end,
     },
     
-    charge = {
+       charge = {
          id = 1250619,
         cast = 0,
     cooldown = state.talent.juggernaut and state.talent.juggernaut.enabled and 12 or 20,
