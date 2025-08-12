@@ -40,7 +40,7 @@ Subtlety ⚠️
 
 Shaman: https://discordapp.com/channels/307520968895627264/1391067437289701386
 Elemental  ✅
-Enhanceme❌
+Enhancement ⚠️
 
 Monk: https://discordapp.com/channels/307520968895627264/1391066374540890153
 Windwalker ✅ 
