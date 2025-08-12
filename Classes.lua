@@ -3005,6 +3005,18 @@ all:RegisterAbilities( {
         copy = { 155145, 129597, 50613, 69179, 25046, 80483, 202719, 232633 }
     },
 
+    -- Herbalist special ability
+    lifeblood = {
+        id = 121279,
+        cast = 0,
+        cooldown = 120,
+        gcd = "off",
+
+        toggle = "cooldowns",
+
+        copy = { 81708, 55428, 55480, 55500, 55501, 55502, 55503, 74497 },
+    },
+
     will_to_survive = {
         id = 59752,
         cast = 0,
