@@ -877,15 +877,10 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 15,
         gcd = "spell",
-        
         spend = 0.17,
         spendType = "mana",
-        
         startsCombat = true,
-        texture = 462650,
-        
         handler = function()
-            -- Unleash weapon imbue effects
             if state.buff.flametongue.up then
                 -- Flame damage and movement bonus
             elseif state.buff.frostbrand.up then
@@ -903,11 +898,8 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 120,
         gcd = "spell",
-    toggle = "defensives",
-        
+        toggle = "defensives",
         startsCombat = false,
-        texture = 451169,
-        
         handler = function()
             applyBuff( "spiritwalkers_grace" )
         end,
@@ -1072,5 +1064,5 @@ spec:RegisterOptions( {
     package = "Elemental",
 } )
 
-spec:RegisterPack( "Elemental", 202508009, [[Hekili:vN16UTTnu4NLGcyKG2Q6eBNK2gBG1HcSgG1vm3H9JHklAjAlcljQjrfVmyON9DiPUlskNEjT7hTXsK8C)Y3HY(C7pAV0dXW2V)IXxmB81JFP15tp)Yz2lz3hJTxgJC3H2c)icfc))BdWH4igkGVY9buKhNaP0Sexyv7LRZibS3fzVwbvhF9SlTxIYy(0e7LldZ2Kq2zV0N45HLNaN6AV8J(K0Ch()q5ofSp3HUbE2LrOr5obKugS8gAsUZVG3rciw2lfVuimKOTb4vmuYwmdEX7f6iocToa7z)gjBsiXCAbIHy35oYTN7Kqzi5kWEy4ecYE5jWYe3DWoZDoCa2doerIaj4M55otavYvEInbGnAvQp1DNndu9o8TMGEuMvJnBvtWCNZNL7mk3XLsd8O7JSqPU4ipuKlU12MPLTt0YwWTb(oRSOamk1h7TAtwY9wLBTIEfRVcl91PCIovlrxNTzJva6o0Q0mWeALfxtjXRxNLKY40yMwAWnWugo0kfJsaZ8k5tzXctr1QBij4sPcf0B5q02qu1rRLIweLlixoSGahH53NxNwgOyXiGnNrx5rGGNfC32yzWHQ1b)1KzYLn6x505cGoNvl8DeKAL4QVprxx)Wz7I595BDKrlTFCnFRLmoBF5rZ2QmvP7seE2ql5oYM(HvjyGJTm5TJApF8q5t1oN1biqH6Lq1zdcQkkkPnJRb)4BwFLez2hzRplIhIN6tWbEwPmOSP0WFvPHyOaVlL2fv2REHJvrdNpPPAulhRPbS2kbJx3Ddkly4sYN(BIFGcGQ(X4iCc)Vq(e5FfvMFf0vib)84SaydTljiZoGgfrE5oDS6VO2TcDx4DtccO7XEpl3jcVfO8D8Uaax4XoruytPzXX0eggOLpobBDwUZVcMl19icP3jyNLh0hIB56gpNgtGnVhfSdNKUABcsgy311wUDxq8wjFyfV1MSb3kzx4sFzQ5698JFhyEIWHeCrI4KJKfikwvD)J6ST7al89GhZLgUgnS3FPpkeXDYvqnYDEoy5PFaklznZckp(7f2)CN3Gs5Uh(p)t6EFmcEyBgXdxedWbBa0G4wqG4ecfmpcRXhkfjr8umkrvFF15xT6X1zrZD(bsIJC9rrffTy0OTzyR9yuSOOxZIUY1wvSMrp9JCd0PnZ6JPfLgANTZdGgYx)t03wNnbvPM80Y(NPNPu9uRap(DLvv2XSJxvU4utM)b8C1YsJJzoi5RbUaXU6QlMHbRh64aig0HfqposLcwziIzu8TDVT1a94f1ZWJhwSEGCdr9VBT91dcuzyEh683zODdaQRV4016HrH1OZQ6k5d61Qk7sVAs19nhQY0pxUt50MMLTgMW6AcHaMdmmEv5YkRaXToJ7vk1yHKhm7Rj)6akvo0N5cfFjSaa3Gt4jzMt9)Ftf9JyO1F8NvuFbSHyX1hJOCJOvM6YinKUUboMl(jiLiInidgQYyAuUZfnrAZOjHb85PQmax3SkbxYszjGGKUNSHfHt7oW1XpT5NtpuT9zmmQ5NxRsrrV7Gus(sLxf3v2l3Js41htlVST4e6gc)wW4pesstfnjlM)P4I22YNeJdKMbyb3bi0SYDYDEhtEibwAW96XHJZ85GQXaJVVcYn8lsKBqMhVRaMaWYtEv(TcO9)1FKI5uchM(jyAS9(ex)M7gfDFnxlMnd)pXbexclOMUE8FXzoUMPVgMniPKnFuscWE9PIXdQF1fn48EcFYYknQGKSYTkSgIxfLfc174mona8p53(UWYbgN152kHf5JaIDb3WLxWNhsyXTx(KCNhYep3(KVOHEUvqa1t(KFRuItTQgw7PZFrxqgpJSz(j6Mksnj6pmJGi6NdsnzaRCZ5qe0q9qpJortVLYf6G0wj7K9If2Rh3lK41pGlKq6pBFRevQdOekU0bUDR3LvSyCZt1D4(NXhRFEf4PH3km7hNnTbdUy(KHpzRRoOq96GfR2DvjrvUlox73d6WbTixoCOFdLBMpDSAMudG6bZineScU0xjcQk8RrMs)mIt7R)la8jkTltMD4GHUBla8iNPwSuImPHC1hc1JLG11YYfktK6AZS6MPfUS2WNvY7o4uQIaAc6rP6EHMWtfaB0eLuJKGZvnGlU58zJmPQZ0ifv70aTxmhqljtV19f4QPERIc9f)tkgR)WHsjRrLMHo8xUU3LbDVmFoxyM(YB6jvDhIQGJwxPG(t(nVvzxg(dvg(JUp)OJ5hz4lG1Oj8arcA(MxJovvhK2FPldwPo4tAe32zLHdC7MdmuCtLRXWfBTy(vJo1umWLQk9AqFB)5QkQgz6kPRjfaW5hRMTsbQrYQk8xtvNuRTgqp99RtA0O2YvRQ1sgD0PtdiH9y0Otv1SONDSD2wFQyQsSKcDcR1rIVnb6nebXDTQmwqToJrHQrI2D7DVQv(vny)Fd]] )
+spec:RegisterPack( "Elemental", 202508011, [[Hekili:DNvFVTTnt8plfdWibn112X2nTl2aRdfyTaTR4rDy)XqLfTeTnHLe1ePIxgm0N9NJK6Drs7SxskgkARSoY7DE3VJYDS7xCDcqCS7NMmAYSr3mE8WXxpB0Kx76WVpb76KG83J2cpeJIG)9DH4iCmhfkOCFiffi4aJML6duDDwNrc5Vp2DTg2o9MPVY1bLX3rtDDCIY2Ks276SJeeGv7aZ8DD(Yocl3t8xuUxH4Z9OBGF7Zj04CVqcJdK3qtZ9(j8EsiziOoP0nKqqj(UCpNDOiu8BY9Qu3CVxK79r6NZ9MnC2Wr5E)pkhj52hG1)wedhaYa49VspSdJGFSnJeaYffdpl0zGne)cEKKsOPeobZY)GKbFof7tJwJ4cA4euAbVvAmBysj9NV4LHKT74XK4TRy7i4WGRiBw8S1zB2mSlLHzj6zXMqiyWPXBZWRoGrj0yjtWX(7qX8HnipurwpByyuQqACkhhj5G8PHTEpOedkE)gskEfU0L2GqeABeQA56fwcTYDFXpNiEwevOj4yCQ4)5KiYFkDBVr6eFrswiSG2YujJIOs9BxhIy8xgIUdTADwkdIcer6syi9ao47Z9IXBboFheofsjEl8gkSiwwscnLlc97WP4Hxwen)iIazcPvzifMJWJLqG4(bu4ECkB12uKpw43IO3jvLHbqMjk2hVCuZD5dAYk1pxjYDVsCwAHpLggqpeZo9sruPyeV)oWBeJJGuVLlU(07KbwBiEfhLUfZlmVFSsWYts1HRknQkCjKQm1eX8XXbctdcWhpkFxT)pcC)407LKuIAi4ObXsxfqW3Uy6i9czDiLgSAtw69pybzGHqybNUhm6)HyOU0VgNu6FI4I(2)YXZgP1VC9SJhlfwt9mfhbzGSLJNm6s9QfCaLVZIE1H(JOI11ZkukBS6g7I62PfHSwHr9YMXPPrqLGD1Ud5wLzzHzmUP8ZjgspfsJXtbJHDGSHhJzmdzjIcUqrBQ)EHudOf1GvVQYwgpzGntDUvQgyQbnVA)w0NLlgpPOKGJSmbuEuvNOrTVA(3QuIgJglD2nLJqBoEudHsBc6OUFLisaR6jXN11MYIdXIeOI0yMWWGKzrP9csyv9QH4y06qOZHrwv3nQkru(kwgSGw5WD35)6TL7kWVPQM0v5o7u56mHAxFf9rNBGQRaePOWggCHUMjLsCvkg4UfJOduLgPvDOC68kvWO6yNEGJake)9lxmFWf2C8Z1vB1IvulM10Ws0e)a9DnQx4DX1pVSmcRbRaemFB1nvPqnoHOdG1u9NKmEWRN9(01xyqBB52gGfluUZ(G1jSQEcAWf6oeXwPy5IXABjimVEHN2hn7liBvvvCOZPftS4FNZpnuHFpdTxlg(P6Tzmkspc2UlhM4Jia8xyaUo3bqGb6LtEpcg5(akvqJvoBDXOYQHSJimMCKOIPHkMRERyUmXaVCONZE4W8WCVCV3ZvBsoxhK2hiMDIVtm3lge89vJgdprI9dZGr6bsey8503afmetH)B)cdl4eoI91RY9oSJ4VR5QrX3xl1Ij1W)rsiXNWdR5BG4jHWX1cfg1d09cX8fflY9g)1IbgRF1Kgs(armNzLfvWsE5sLEd5RIZIG5lecMfcj45F49rLJpoRZLtaeDDyjyFimmFIRJ8LYBkPzjv4fFsEdmff9DFRRJInUonoBOUyKusIIIjSAUoWAai3eKydApGL7D8yUNzaz5E3kgrUauwXQnGHsSuO2G3GCplNrKlB(zTkdcYLd(WooPAd1k4SAVzxCDcMETrM2VSsnNQljj4XuJ84zGJulQnPVOIA)wiTi3UVtTw0IPcfz2PvK(O4KY6IYmPMntZ9wcr3zJuPa6OdbSRNPiBnWk4dmFL3L1kVw4McJyUrJWys4Yf9Zc7d)tQgJQ1GAfvi2xD2ITamyPFtt15woefSWw2E70NBovETb0Hn8LTxGGPV(e51A71P8KZlTStfsNRmuDoGEbAvnmqXgpsOzvEIwGjBQXcRaQGTbLfATePMlJRtPYh3lA8QhWfn25ogBgL6DzIfzVAQdw6j6E3FQgoRuxzF19cyVOxBGjQ8HRptraqr0vn8S2B7oIYyF11gBl63npUBxYhWNa4VZ9)B4Q)7ub2017BV5gSrZxPFhOcT(Aa2J0pYTMM28uV6AL7DAxKazdmKMZMDI32gdvRXR38E06gAnWR7S4uBU)te5Q9Kn2M9KKNAyFY921pCB7AsnXiBfm2jGpycyGzqvAvSYeiBt)M7jKOrC4kq6xA0enJqYSgD(Oznde6uC)jdtHzeuApd1HpYPYpdmtTuNUEpyu9(OB6nwENcE1nLTu2RSyzRcDD(6D211gUuTFZlZf0eElTyo(BiUAlR(d)DgtI9xuevFkWZCqTN4gc2B29F)r8oLiU5CuLBL9j1xgXvZqtfjo2l(17JiA1LnPXCMD(IKvfSQA3e37dm2UsHLctp1nOn2Jsvi8HPZw7dx(h3))]] )
 

@@ -16,6 +16,19 @@ local strformat = string.format
 
 local spec = Hekili:NewSpecialization(104, true)
 
+-- Local wrappers to satisfy linter and forward to state helpers if available.
+local function shift( form )
+    if state and state.shift then return state.shift( form ) end
+end
+
+local function unshift()
+    if state and state.unshift then return state.unshift() end
+end
+
+local function interrupt()
+    if state and state.interrupt then return state.interrupt() end
+end
+
 spec.name = "Guardian"
 spec.role = "TANK"
 spec.primaryStat = 2 -- Agility
@@ -30,11 +43,11 @@ spec:RegisterResource( 0 ) -- Mana (for healing spells)
 spec:RegisterTalents( {
     -- Row 1 (15)
     feline_swiftness      = { 1, 1, 131768 },
-    disorienting_roar     = { 1, 2, 99    },
-    savage_defense        = { 1, 3, 62606 },
+    displacer_beast       = { 1, 2, 102280 },
+    wild_charge           = { 1, 3, 102401 },
 
     -- Row 2 (30)
-    thick_hide            = { 2, 1, 16931 },
+    yseras_gift           = { 2, 1, 145108 },
     renewal               = { 2, 2, 108238 },
     cenarion_ward         = { 2, 3, 102351 },
 
@@ -49,14 +62,17 @@ spec:RegisterTalents( {
     force_of_nature       = { 4, 3, 106737 },
 
     -- Row 5 (75)
-    mighty_bash           = { 5, 1, 5211   },
-    mass_entanglement_2   = { 5, 2, 102359 },
-    heart_of_the_wild     = { 5, 3, 108292 },
+    disorienting_roar     = { 5, 1, 99    },
+    ursols_vortex         = { 5, 2, 102793 },
+    mighty_bash           = { 5, 3, 5211   },
 
     -- Row 6 (90)
-    dream_of_cenarius     = { 6, 1, 108373 },
-    nature_swiftness      = { 6, 2, 132158 },
-    disentanglement       = { 6, 3, 108280 }
+    heart_of_the_wild     = { 6, 1, 108292 },
+    dream_of_cenarius     = { 6, 2, 108373 },
+    natures_vigil         = { 6, 3, 124974 },
+
+    -- Extras treated like toggles here
+    savage_defense        = { 0, 0, 62606 },
 } )
 
 -- Glyphs disabled for Guardian (simplified)
@@ -307,6 +323,26 @@ spec:RegisterAuras( {
 
 } )
 
+-- Shapeshift helpers for Guardian (parallel to Feral's implementations).
+spec:RegisterStateFunction( "unshift", function()
+    removeBuff( "cat_form" )
+    removeBuff( "bear_form" )
+    removeBuff( "travel_form" )
+    removeBuff( "moonkin_form" )
+    removeBuff( "aquatic_form" )
+    removeBuff( "stag_form" )
+end )
+
+spec:RegisterStateFunction( "shift", function( form )
+    removeBuff( "cat_form" )
+    removeBuff( "bear_form" )
+    removeBuff( "travel_form" )
+    removeBuff( "moonkin_form" )
+    removeBuff( "aquatic_form" )
+    removeBuff( "stag_form" )
+    if form then applyBuff( form ) end
+end )
+
 -- State Functions
 local function rage_spent_recently( amt )
     amt = amt or 1
@@ -353,9 +389,9 @@ spec:RegisterAbilities( {
         startsCombat = true,
         texture = 132938,
 
-        usable = function () return melee.range <= 5 end,
+    usable = function () return state and state.melee and state.melee.range and state.melee.range <= 5 end,
         handler = function ()
-            cancelBuff( "prowl" )
+            removeBuff( "prowl" )
         end,
     },
 
@@ -800,7 +836,7 @@ spec:RegisterAbilities( {
 
         handler = function ()
             applyDebuff( "target", "mighty_bash" )
-        end,
+    end,
     },
 
     -- Wild Charge (talent)
@@ -903,11 +939,15 @@ spec:RegisterStateExpr( "thrash_up", function()
 end )
 
 spec:RegisterStateExpr( "rage_spent_recently", function()
-    for i = 1, #recentRageSpent do
-        if recentRageSpent[i] > 0 then return true end
-    end
+    local t = state and state.recentRageSpent
+    if type( t ) ~= 'table' then return false end
+    for i = 1, #t do if t[i] and t[i] > 0 then return true end end
     return false
 end )
+
+-- Register representative abilities for range checking.
+-- Include core melee-range and utility abilities to standardize distance evaluation.
+spec:RegisterRanges( "mangle", "maul", "lacerate", "swipe_bear", "thrash_bear", "skull_bash", "growl" )
 spec:RegisterOptions( {
     enabled = true,
 

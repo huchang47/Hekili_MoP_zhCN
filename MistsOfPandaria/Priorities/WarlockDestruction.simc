@@ -1,25 +1,26 @@
-# Warlock: Destruction
+# Warlock: Destruction (Adapted from wowsims MoP APL)
 ## Precombat
 actions.precombat+=/dark_intent
 actions.precombat+=/summon_pet,pet_type=imp
 actions.precombat+=/snapshot_stats
 actions.precombat+=/grimoire_of_sacrifice,if=talent.grimoire_of_sacrifice.enabled
-actions.precombat+=/soul_fire
-actions.precombat+=/incinerate,if=buff.ember_master.down&time>0
+actions.precombat+=/immolate,if=time=0
 actions.precombat+=/potion
 
 ## Default
-actions+=/fel_flame,moving=1,if=movement.remains>gcd
-actions+=/immolate,if=remains<cast_time
-actions+=/conflagrate,if=ember_react
 actions+=/havoc,target=2,if=active_enemies>1
-actions+=/shadowburn,if=ember_react&target.health.pct<20
-actions+=/immolate,if=remains<5|!ticking
-actions+=/chaos_bolt,if=ember_react&buff.dark_soul.up&!target.health.pct<20
-actions+=/chaos_bolt,if=ember_react&(ember_master>3|burning_ember>=3.5|target.time_to_die<20)&!target.health.pct<20
-actions+=/fire_and_brimstone,if=active_enemies>3&burning_ember>=2.5
-actions+=/rain_of_fire,if=active_enemies>2&burning_ember>0
-actions+=/fel_flame,if=buff.fire_and_brimstone.up
-actions+=/incinerate,if=buff.fire_and_brimstone.up
+actions+=/fel_flame,moving=1,if=movement.remains>gcd
+actions+=/immolate,if=remains<tick_time|!ticking
+actions+=/conflagrate,if=charges=2|buff.backdraft.stack<2
+actions+=/shadowburn,if=target.health.pct<20&burning_embers>=1
+actions+=/dark_soul,if=(burning_embers>=2|burning_embers>=1&burning_embers.deficit<0.5)&target.health.pct>20
+# Chaos Bolt usage: prioritize inside Dark Soul; avoid casting with Backdraft to preserve faster Incinerates.
+actions+=/chaos_bolt,if=buff.dark_soul.up&burning_embers>=1&target.health.pct>20&buff.backdraft.down
+actions+=/chaos_bolt,if=burning_embers>=2&buff.backdraft.down
+actions+=/chaos_bolt,if=burning_embers.deficit<0.5&buff.backdraft.down
+actions+=/chaos_bolt,if=target.time_to_die<15&burning_embers>=1&buff.backdraft.down
+actions+=/fire_and_brimstone,if=active_enemies>=4&burning_embers>=2
+actions+=/rain_of_fire,if=active_enemies>=3&burning_embers>=1&target.time_to_die>8
+actions+=/incinerate,if=buff.backdraft.up
 actions+=/conflagrate
 actions+=/incinerate

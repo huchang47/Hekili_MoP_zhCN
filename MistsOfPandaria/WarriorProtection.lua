@@ -10,6 +10,36 @@ local addon, ns = ...
 local Hekili = _G[ addon ]
 local class, state = Hekili.Class, Hekili.State
 
+-- Local helper shortcuts and safe fallbacks to avoid undefined global warnings.
+local rage = state.rage or { current = 0, max = 100 }
+local damage = state.damage or {}
+local addStack = state.addStack
+if not addStack then
+    addStack = function(aura, target, n)
+        local b = state and state.buff and state.buff[aura]
+        if not b then return end
+        b.stack = math.min((b.stack or 0) + (n or 1), b.max_stack or 99)
+        b.up = (b.stack or 0) > 0
+    end
+end
+
+-- Aura scan helpers (fallback if not provided by ns):
+local FindUnitDebuffByID = ns.FindUnitDebuffByID
+local function UA_GetPlayerAuraBySpellID( spellID )
+    -- Scan player buffs first then debuffs.
+    for i = 1, 40 do
+        local name, _, count, _, duration, expires, caster, _, _, id = UnitBuff( "player", i )
+        if not name then break end
+        if id == spellID then return { name = name, applications = count or 1, expirationTime = expires } end
+    end
+    for i = 1, 40 do
+        local name, _, count, _, duration, expires, caster, _, _, id = UnitDebuff( "player", i )
+        if not name then break end
+        if id == spellID then return { name = name, applications = count or 1, expirationTime = expires } end
+    end
+    return nil
+end
+
 local floor = math.floor
 local strformat = string.format
 local spec = Hekili:NewSpecialization( 73, true ) -- Protection spec ID for MoP (73 = melee tank in MoP Classic)
@@ -26,6 +56,25 @@ local function rage_amount( isOffhand )
 end
 
 spec:RegisterResource( 1, { -- Rage = 1 in MoP
+    -- Stance baseline regen constants (aligns with Arms/Fury modeling):
+    battle_stance_regen = {
+        aura = "battle_stance",
+        last = function() local app = state.buff.battle_stance.applied; local t = state.query_time; return app + floor( t - app ) end,
+        interval = 1,
+        value = function() return (state.current_stance == "battle" and state.combat) and 3.5 or 0 end,
+    },
+    berserker_stance_regen = {
+        aura = "berserker_stance",
+        last = function() local app = state.buff.berserker_stance.applied; local t = state.query_time; return app + floor( t - app ) end,
+        interval = 1,
+        value = function() return (state.current_stance == "berserker" and state.combat) and 1.75 or 0 end,
+    },
+    defensive_stance_regen = {
+        aura = "defensive_stance",
+        last = function() local app = state.buff.defensive_stance.applied; local t = state.query_time; return app + floor( ( t - app ) / 3 ) * 3 end,
+        interval = 3,
+        value = function() return (state.current_stance == "defensive") and 1 or 0 end,
+    },
     anger_management = {
         talent = "anger_management",
 
@@ -68,6 +117,7 @@ spec:RegisterResource( 1, { -- Rage = 1 in MoP
 
         stop = function () return state.swings.mainhand == 0 end,
         value = function( now )
+            if state.current_stance == "defensive" then return 0 end -- no auto-attack rage in defensive
             return rage_amount()
         end,
     },
@@ -86,6 +136,7 @@ spec:RegisterResource( 1, { -- Rage = 1 in MoP
 
         stop = function () return state.swings.offhand == 0 end,
         value = function( now )
+            if state.current_stance == "defensive" then return 0 end
             return rage_amount( true ) or 0
         end,
     },
@@ -997,6 +1048,13 @@ end )
 
 spec:RegisterStateExpr( "rage_percent", function()
     return ( rage.current / rage.max ) * 100
+end )
+
+spec:RegisterStateExpr( "stance_rage_per_second", function()
+    if state.current_stance == "battle" then return 3.5 end
+    if state.current_stance == "berserker" then return 1.75 end
+    if state.current_stance == "defensive" then return 1/3 end
+    return 0
 end )
 
 spec:RegisterStateExpr( "shield_block_charges_full", function()

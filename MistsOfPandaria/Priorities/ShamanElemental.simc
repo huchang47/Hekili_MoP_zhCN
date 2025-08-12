@@ -23,32 +23,30 @@ actions.cooldowns+=/earth_elemental_totem,if=!totem.earth_elemental.up&(target.t
 actions.cooldowns+=/elemental_mastery,if=cooldown.ascendance.remains>85|cooldown.ascendance.remains<4|buff.ascendance.up
 actions.cooldowns+=/stormlash_totem,if=buff.bloodlust.up|target.time_to_die<20
 actions.cooldowns+=/ancestral_swiftness
-actions.cooldowns+=/flame_shock,if=dot.flame_shock.remains<15&cooldown.ascendance.remains<5
-actions.cooldowns+=/ascendance,if=dot.flame_shock.remains>=15
+actions.cooldowns+=/flame_shock,if=dot.flame_shock.remains<12&cooldown.ascendance.remains<6&cooldown.ascendance.remains<dot.flame_shock.remains
+actions.cooldowns+=/ascendance,if=dot.flame_shock.remains>=12
 
 # Single target rotation
-actions.single_target+=/flame_shock,if=!ticking|remains<=3
-actions.single_target+=/flame_shock,if=dot.flame_shock.remains<15&cooldown.ascendance.remains<5
+
+actions.single_target+=/flame_shock,if=debuff.flame_shock.down|debuff.flame_shock.remains<tick_time|dot.flame_shock.remains<12&cooldown.ascendance.remains<6&cooldown.ascendance.remains<dot.flame_shock.remains
 actions.single_target+=/unleash_elements,if=talent.unleashed_fury.enabled
 actions.single_target+=/lava_burst,if=buff.lava_surge.up
 actions.single_target+=/searing_totem,if=!totem.searing_totem.up&!totem.fire_elemental.up&!totem.magma_totem.up
 actions.single_target+=/earth_elemental_totem,if=!totem.earth_elemental.up&(target.time_to_die>150|target.time_to_die<35|cooldown.ascendance.remains>120)
-actions.single_target+=/flame_shock,if=dot.flame_shock.remains<15&cooldown.ascendance.remains<5
-actions.single_target+=/ascendance,if=dot.flame_shock.remains>=15&cooldown.lava_burst.remains>0
+actions.single_target+=/ascendance,if=dot.flame_shock.remains>=12&cooldown.lava_burst.remains>0
 actions.single_target+=/lava_burst,if=dot.flame_shock.ticking&(buff.ascendance.up|cooldown_react)
 actions.single_target+=/elemental_blast,if=talent.elemental_blast.enabled
-actions.single_target+=/unleash_elements
-actions.single_target+=/earth_shock,if=buff.lightning_shield.stack>=7&(cooldown.ascendance.remains>6|buff.ascendance.up)
+actions.single_target+=/earth_shock,if=buff.lightning_shield.stack>=6&(cooldown.ascendance.remains>6|buff.ascendance.up)
 actions.single_target+=/lightning_bolt
 
 # AoE rotation (3+ targets)
 actions.aoe+=/fire_elemental_totem,if=!totem.fire_elemental.up&(target.time_to_die>150|target.time_to_die<35|cooldown.ascendance.remains>120)
 actions.aoe+=/magma_totem,if=active_enemies>=4&!totem.magma_totem.up&!totem.fire_elemental.up
-actions.aoe+=/flame_shock,if=dot.flame_shock.remains<15&cooldown.ascendance.remains<5&active_enemies<=3
-actions.aoe+=/ascendance,if=dot.flame_shock.remains>=15
-actions.aoe+=/flame_shock,if=active_enemies<=3&(!ticking|remains<=3)
+actions.aoe+=/flame_shock,if=dot.flame_shock.remains<12&cooldown.ascendance.remains<6&cooldown.ascendance.remains<dot.flame_shock.remains&active_enemies<=3
+actions.aoe+=/ascendance,if=dot.flame_shock.remains>=12
+actions.aoe+=/flame_shock,if=active_enemies<=3&(dot.flame_shock.ticks_remain=1|debuff.flame_shock.down)
 actions.aoe+=/lava_burst,if=active_enemies<=3&buff.lava_surge.up
-actions.aoe+=/earth_shock,if=active_enemies<=3&buff.lightning_shield.stack>=7&(cooldown.ascendance.remains>6|buff.ascendance.up)
+actions.aoe+=/earth_shock,if=active_enemies<=3&buff.lightning_shield.stack>=6&(cooldown.ascendance.remains>6|buff.ascendance.up)
 actions.aoe+=/earthquake,if=active_enemies>=4
 actions.aoe+=/lava_beam,if=buff.ascendance.up
 actions.aoe+=/chain_lightning

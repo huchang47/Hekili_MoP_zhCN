@@ -1,46 +1,25 @@
 -- MonkWindwalker.lua July 2025
 -- Adapted from MonkBrewmaster.lua by Smufrik, Tacodilla, Uilyam
 
-local addon, ns = ...
-local _, playerClass = UnitClass('player')
-if playerClass ~= 'MONK' then return end
+if select(2, UnitClass('player')) ~= 'MONK' then return end
 
-local Hekili = _G["Hekili"]
-local class, state = Hekili.Class, Hekili.State
+    local addon, ns = ...
+local Hekili = _G[ "Hekili" ]
+    
+-- Early return if Hekili is not available
+if not Hekili or not Hekili.NewSpecialization then return end
+    
+local class = Hekili.Class
+local state = Hekili.State
 
-local floor = math.floor
 local strformat = string.format
+    local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+    local PTR = ns.PTR
 
-
--- Enhanced MoP Specialization Detection for Monks is provided in core (Hekili.lua).
-
--- Define FindUnitBuffByID and FindUnitDebuffByID from the namespace
-local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
-
--- Create frame for deferred loading and combat log events
-local wwCombatLogFrame = CreateFrame("Frame")
-local TryRegister -- forward declare for static analyzers
-
--- Define Windwalker specialization registration
-local function RegisterWindwalkerSpec()
-    -- Create the Windwalker spec (269 is Windwalker in MoP)
-    local spec = Hekili:NewSpecialization(269, true)
-
-    spec.name = "Windwalker"
-    spec.role = "DPS"
-    spec.primaryStat = 2 -- Agility
-
-    -- Ensure state is properly initialized
-    if not state then
-        state = Hekili.State
-    end
-
-
+    local spec = Hekili:NewSpecialization( 269 )
 
     -- Register Chi resource (ID 12 in MoP)
-    spec:RegisterResource(12, {}, {
-        max = function() return state.talent.ascension.enabled and 5 or 4 end
-    })
+    spec:RegisterResource(12)
 
     -- Register Energy resource (ID 3 in MoP)
     spec:RegisterResource(3, {
@@ -252,7 +231,14 @@ local function RegisterWindwalkerSpec()
             toggle = "cooldowns",
 
             handler = function()
-                removeBuff("tigereye_brew")
+                -- Consume current Tigereye Brew stacks (simplified MoP model: each stack grants damage buff percentage; we just track duration)
+                if buff.tigereye_brew.up and buff.tigereye_brew.stack > 0 then
+                    -- Apply a use buff; we can store the consumed stacks in v1 for scaling if needed later.
+                    local stacks = buff.tigereye_brew.stack
+                    removeBuff("tigereye_brew")
+                    applyBuff("tigereye_brew_use", 15)
+                    buff.tigereye_brew_use.v1 = stacks
+                end
             end
         },
         touch_of_death = {
@@ -494,6 +480,63 @@ local function RegisterWindwalkerSpec()
         }
     })
 
+    -- Combo tracking (basic SimC-style) to enable combo_strike / combo_break style conditions if desired.
+    spec:RegisterStateTable( "combos", {
+        jab = true,
+        tiger_palm = true,
+        blackout_kick = true,
+        rising_sun_kick = true,
+        fists_of_fury = true,
+        spinning_crane_kick = true
+    } )
+
+    local prev_combo, actual_combo = "none", "none"
+    spec:RegisterStateExpr( "last_combo", function() return actual_combo end )
+    spec:RegisterStateExpr( "combo_break", function() return state.this_action == last_combo end )
+    spec:RegisterStateExpr( "combo_strike", function()
+        local a = state.this_action
+        local c = state.combos
+        return not c[ a ] or a ~= last_combo
+    end )
+
+    -- Tigereye Brew stack accumulation + combo tracking hooks.
+    local chiSpentForBrew = 0
+
+    spec:RegisterHook( "spend", function( amt, resource )
+        if resource == "chi" and amt > 0 then
+            -- Track Tigereye Brew stacks: 1 stack per 4 chi spent (simplified), max 20.
+            chiSpentForBrew = chiSpentForBrew + amt
+            while chiSpentForBrew >= 4 do
+                chiSpentForBrew = chiSpentForBrew - 4
+                if buff.tigereye_brew.up then
+                    buff.tigereye_brew.stack = math.min( 20, ( buff.tigereye_brew.stack or 0 ) + 1 )
+                else
+                    applyBuff( "tigereye_brew" )
+                    buff.tigereye_brew.stack = 1
+                end
+                if buff.tigereye_brew.stack >= 20 then
+                    chiSpentForBrew = 0
+                    break
+                end
+            end
+        end
+    end )
+
+    spec:RegisterHook( "runHandler", function( key )
+        local c = state.combos
+        if c[ key ] then
+            if last_combo == key then
+                -- If we wanted to model a hit_combo style buff we could remove it here; placeholder for future.
+            else
+                prev_combo = actual_combo
+                actual_combo = key
+            end
+            last_combo = key
+        end
+    end )
+
+    spec:RegisterHook( "reset_precast", function() chiSpentForBrew = 0 end )
+
     spec:RegisterStateExpr("time_to_max_energy", function()
         if state.energy.active_regen and state.energy.active_regen > 0 then
             local deficit = state.energy.max - state.energy.current
@@ -505,39 +548,29 @@ local function RegisterWindwalkerSpec()
         return 3600 -- Large number indicating it will never be reached
     end)
 
+    -- Bare resource tokens handled via core state recursion guard; explicit expressions not required.
+
     -- Removed spec-level threat expression; rely on core state.threat
 
-    -- Consolidated event handler
-    wwCombatLogFrame:RegisterEvent("UNIT_POWER_UPDATE")
-    wwCombatLogFrame:RegisterEvent("ADDON_LOADED")
-
-    wwCombatLogFrame:SetScript("OnEvent", function(self, event, ...)
-        if event == "UNIT_POWER_UPDATE" then
-            local unit, powerTypeString = ...
-            if unit == "player" and state.spec.id == 269 then
-                if powerTypeString == "CHI" then
-                    local currentChi = UnitPower(unit, 12)
-                    if state.chi.current ~= currentChi then
-                        state.chi.current = currentChi
-                        state.chi.actual = currentChi
-                        Hekili:ForceUpdate(event)
-                    end
-                elseif powerTypeString == "ENERGY" then
-                    local currentEnergy = UnitPower(unit, 3)
-                    if state.energy.current ~= currentEnergy then
-                        state.energy.current = currentEnergy
-                        state.energy.actual = currentEnergy
-                        Hekili:ForceUpdate(event)
-                    end
-                end
+    -- Resource change monitoring using unified spec event registration.
+    spec:RegisterUnitEvent( "UNIT_POWER_UPDATE", "player", nil, function( event, unit, powerType )
+        if unit ~= "player" then return end
+        if powerType == "CHI" then
+            local current = UnitPower( unit, 12 )
+            if state.chi.current ~= current then
+                state.chi.current = current
+                state.chi.actual = current
+                Hekili:ForceUpdate( event )
             end
-        elseif event == "ADDON_LOADED" then
-            local addonName = ...
-            if addonName == "Hekili" or (TryRegister and TryRegister()) then
-                self:UnregisterEvent("ADDON_LOADED")
+        elseif powerType == "ENERGY" then
+            local current = UnitPower( unit, 3 )
+            if state.energy.current ~= current then
+                state.energy.current = current
+                state.energy.actual = current
+                Hekili:ForceUpdate( event )
             end
         end
-    end)
+    end )
 
     -- Options
     spec:RegisterOptions({
@@ -579,19 +612,4 @@ local function RegisterWindwalkerSpec()
         width = "full"
     })
 
-    spec:RegisterPack("Windwalker", 20250806, [[Hekili:TM1EVTTnq8plbdWijTrtYpsBhIcqxxbwl2kgGcW(pjrlrzZAzrbkQK6Ia9zFhPEr9GYQPRfDZMK37J)U7ODTCFW1jeXXUFzP5YnMV18ngMMwWhCD4NsXUoPOGdODWhsqhH)7)sscFcfFaZeBDkMIcfSiJMZcGTDih)adfXl83S(T3amzBojM)Pe3TJjMvwwUoOC(EkWT)KCeJCD2tcdXLNhNf468WEswHV4FOc)kLPWNgbFpGtOjf(XKmoSDeLv4)N4dKyIbOBmAejg0OFPW)VPjh(Tc)wvV4ZWQ9u1Ipl(lSU94)rU3)WW38b6XTiGkhmppDAkk1WmJugoqs1RS)1y8ouWjpAKhFp2dFmfZOSxtIS3MhfzKXr8mJq6tjlKFF0tl3FoC)P9eo2Jt2HBLqaJW1kafcMqiPuPJ)8UR)ahHtYipIHWZFbrP55TcBOcKvicS5eV9i2rHjWrX4eq)Bx1aNG2gJdxCH0E408G9cZ5aShYipDXEmkMV3inGFN9TM6edjkkpd7DeTJeOki11)Hf1zDqFGYWZYP041BIJBJP0W48mUbddh65N5i2om3GdxJ84uVqcUJ9cCqyiq89yM6IBXSmm7ajzN6Qb7jEBz4NuCf1l14fGfUZE5Il5msYbqYWvUadWpft4NQvQld2luRmBRfqcK8ZEcn8oBlZRE(56DxoQ6xT71Wrv1nz6Pxkk(yJZOAj6tqEldFersYUZELqdV32AaT4t4gJRL86v9a3KYfKo7jUFgCWEP5lMNsvcCA64nOVBg1zS28QfHyjzmsgeU8YYt8oqcoiY8g4feqtTQiobZ2r(UGQMOAfVpI(MNC7t3VrLKEcrqIgXRyx)aHjjvA4yvi8ERfJOLwJewjjpspG9(woorjJvz16K2owiiUYV5jkH8ArboBefl4Gy9hXcrEKGZU3E1zjuybXGUkJCdzXDRMbCGJKh38GKhf(x68WvZcDWOJWf((AOPqmIVVX)l)MxcLJf5ms34k9mzKmGEr5bKejkflKBuo7uJy7L9vg6hjYUEyACDMW6ZQTc4PNqpI7HyjwQbXAezoHXib8Yzz8(GGI1EH887qvRS09WT(xhCkOzhaFuriThAsPS4IqANdZHOKko(aPVngqyO58M4zzhbqDDQiYGGwJ82spucE3)k9WKSHxW7YkEAfNUu3Mvi1c4)HgO9YR6FvFGo8v02Q8sdGYBoNkpWbukQxv()mQUYYW7WjxhqPXImvTOt2RnB8rN9Q97bZ(gA0nFmkchiUB)E6hN5LBassc6KTxOgFffc9PbTYQKWmyVbWDvm5LM(D2mTs2pJ7GJrYzVKnWxmkYuDwq)tNLssseNpGHsWnuCX5CEUopc9gbmQzOLBDDEcXe8kZ15thtPmoOC(B6nlIrXNDDKFsoAKAoiSWxKZCvlJF31r0roMrqIHL6dsx4VOWhSRc)7Tl8xbtljfemCwhe(YHLyK0Yn1LsnAbgDjGUCWU1QQn60YwDQxyrWGvtBRJvzqAYdHdaPv4VwUPUQekhzmxwNItcLBTwLtxY7eQMIFOMmHm2mhz0nzF(crsNqk3EoPm8o9KIrU5ff(JFTVvjA3dKPkGIilh0R3mD4xtLNUrqfBUd8TG)V9hH)1LJKS)YQ0iDfLk8VZw6iE(znUPYTVQRYAPCdTP8OqtF3u3KKOw(3mUrdL4emWYulhQvPxv4psHSc)RbgFMIzLsDT5SD9CbKtekpEoqA9MvTYPoygNsF(TMTsTCM35IUjNM(SWz18UzAyvnVgYQXSBMoU3PMf2H64YTE2QeRYKq9dpx6LUuqKCmyWYG8ljDDgLUKHwMYCrbjQNF5e(ALtEDfd6bVaQ)0yy6rIf60QzE3qp61ets3Rsq3POlTDZEcS(mZazAcz2E7OdqYOAH0S3mzmyTzniI2P7hVOxE6eMNEGrnq(BAzwVIYtJEnXBcOflzK(eMaDB0xoykhMA3awtvMZAM5Nw6H30)sdTmtztj363uvJBP7ZkOkMk88Q3sOPZgXX8kFxEOvxjZ73W1lG531N3D7GvI938CWZa9V9nTBtK1)U2TQ8ONPxTGHpT)G31x7awJ8A(NT4Xe9Au)U66mY(VTUodv5CdkhvxpuTueVm4pzC48J60MN07iZT474d4(YCOt306)d9LQFSenD(pEZ9ZRja1M710)U(kSs0jBjkLOlXjbr1xh9cr5N5McmY8Ynn8v9lMmRSTr(rAQJFLy69)9tK72(BOmSDqfoo30Yb)eu)uzKJ(Zb9ZAuQ80TcFnlfha6ZTVt(v3)7]])
-
-end
-
--- Deferred loading mechanism
-function TryRegister()
-    if Hekili and Hekili.Class and Hekili.Class.specs and Hekili.Class.specs[0] then
-        RegisterWindwalkerSpec()
-        wwCombatLogFrame:UnregisterEvent("ADDON_LOADED")
-        return true
-    end
-    return false
-end
-
--- Attempt immediate registration or wait for ADDON_LOADED
-TryRegister()
+    spec:RegisterPack("Windwalker", 20250809, [[Hekili:fR1EVTnos8plbfWnPTrNLFKMUika71BbUnyVfhG7I7)KeTfLTQLf1rr1SzrG(SFZq9IsIuwjxbAlsBc58IdNz4VzCCTD)I7MaIG6(7lMVy98BTNBnF(QBx8j3nINsPUBsj7os2dFtc5e8V)NOKGhjXhPCCRNIzKauezSC(oyB3nBZJIf)AI7wnYD5hxSWDdjxCGbSV5uEip6O7Mdrbb0soOz7C38Ldrzf(4xKc)k9x4ZcHFENiILu4hhLjGTdz8c))j9yuCKL7g5IsJjkzFm1tq47PcyHFxEkPjKTX0a3)U7MD8ibLhrqRnm0kGseh8sycQvEAH)Sc)DhIk8V3PWFjyUsDcUdw(UdESqpj5L2kpkTCth9)PWFJ0wU(lsBPW)YnF5QcFdu7kaVLrtTXMw0At8i8S6LLN4DmA3rualh)SstO89r)fY1wo9rRa2JjYJSi6e4YyENi)PNKONaTv4VsUPKvr0Ek3lL9iLBXPNirjzkKOZLfI3iOllmN)eACRmACcsmnrybsX7rY3OwvenMPP4hQzd1X6POJT58mXRqjs(qTCZ50YFrt8Yspq5t7Si38Ic)awhwfWTkCx1AeT7b68PDnH5zyuoyxFC8R)DStBz4npbYG92Yoc3KGO7EdQCM3gdPFSCrt41TVe5lsve)LvHrAiPkw6ohPJ45Nn4Mk3(QUgRTsgAzakj(eAPFASmjlqWf(xR)q)vYwua2ZnkHAt69f(LFRfY73OEC6EkKp9oqWmwmMCz1lhvj1b06Q5t21lWsoHK84PusBBmJfeNdX4vxasNQmsXQ23gerl953mVvRPSY)FAv3(mJtpF5SAzNNr9aR8uMQLxxYQ5yt5zuEzqFhQMuTdznn18nPNTkWQmiuWJsocUHuoBNfzp82H4jvV0LitONcUIW4ljFCA5AEOZRuG2ZLXIilQ0VyeFTcLVRsa9kVaM)41WmxjgTPLtm3WC1Rw5tFIkThp4AR9zIH7BLjGa1YZ(8EkSMMjuzAeD2MD0PqIwRqESxp6DWQ51frcOsb1pdTceWaxDE6ihpZfgnuYFDRW69O84vVmy0A8wJItyKQBdo4nY2GUvrdyp2ZC2tm(02C5TQK9OKVXos9(ZCAsD(ERWu2ukT(GQAClWbO879qWJQQPQEoy7NIOzniBqY8krctys4g29bC9ke(D9LDxeSYA)Pqji4LtYuQ(d5cISE5SX09KDpHGXehavFkLYzL3STMSwA69wW)ILC8Nk8B7daX4E6ZCsiu)C9QBV(wJpiu4)V50R)S8uaCrfyIMbAhhlCjqc4hh9q(4bGEpzK1Ohuf6g8Cu97HQpfjkV8h9EOkmLNNDatv(kja0d4ZggSoGKP(47pdpADnl86FjmKIpED5pZ(LxBZfJdA97aUuZTLya5VEW9tdeGk4Ed43n)cRS6KJSkfIsC0IOMFh9c85NPgcKLgLKG0SJtsODb8rtYGAfztkAlGaPSjEagJt9V)kRPx3c7rGcs97ChOKyXbRumgQpCqfjo1WY)rJnx4)BqjT))IidIcdrCJNaKA7(EDOuLPBv91hjC8kidh)aGti6ukJlQgXWB7up(TiCW)BEehnKmgIhKKlyNicCbaHxcGWZQ4HFlkb2Ygkw(hjz5PO8qckTcqODhOWBB4yHro6fb2YYsJS0Pf8wgwzKH6STwAxpkTYmQwIVXiXTviAP(JgPUt3pTmCRzVzdaIwQ)KrQHw8AjZE(0ndzWriloMbPY7XBEobc0busW6qqfWCeWOajRwkXYSGT5IA6syYiR8KouheGehqeKTKm6pv8qzdQ97yx76I0QLBNLv1c9WwwTQc6oyLh0eYx1R5llyF8Wku)tjSs3vP54QoiXNsOLbgmhA1ZfoL4lJzQJeRP7yBBU8Hci3FibM9oIAdSAwP2DRBnSzpdbHnGEFzHHMDAAr4oLsVgrm(dX3R9yODpfl1GpgGY(9Y7oaQZu8S6ExW87zdFE6m1C6(8K5IogZynx5rdSnKntLtRqf99YzRanBkU5oGE(He02fOg6N(1t1M56U6ap)iSy6oaI4nFc7(Lfgfd9w8Mc)HDG(WBg2e6d4FFJ5ErX9g2o6OCuAHzwnvLEVZFtBM4hIcD61i(SZ0e(uKUsUCJgAAcwNc63aSELu2I7eCxdq2pjVvBKpOlLGw8iyUVLzxOhC)SwG935CZCtQrnyxvr66MyYQ6Soi54WNItPXR3Cp2BG9p)8WHx258csOzC6Ql2o(C1vRrFP4k6pT8zWc35Sy2LMNp(ZpFz18RDSN1zI435yp)QNFUE3fAn)QDFhqQQT1c7PXzOz(235SeTW7DShWBnoIUSpyuYZmn0yNfZF1YuAsGtZKSb7DTwNXQ5xnZ44NNPz0ZQMypaPYB1bdC9(1QS0tjilJmi5QZ1l4AsY14Jh(E7zASsBnxRkqBvIy1mY3oNWUZB9d4KuDaWnOeW1Bh469olplJD64FOiUB5ekhO7Z(FkvhS6OC033zsbn()o)Elu6gxAwiAIa6DlpGLodpOrT6(viq3n7QHHX1rcRoR1wJZRxfl1jeQtNJCyAqd2ViO60cFHYSf76h6m0thBfLmCOQA1YSl0pJvZAVZWjAreO)J4VFk9WGSHj46)08RQ2z6ZX)oz5)HhqNfx1pvFGn8vY2Q4sC0RxFotEGdOuvVxZNj)7o3Nh)9oRM34JoBQT(zVpPKBOKKSOtVwLucymoX4(c51g(D2iTsXpHCqDSC2KSb(cTvMQJc6tTMUUqoU4Cop5yED)Fp]])

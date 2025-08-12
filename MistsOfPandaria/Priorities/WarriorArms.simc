@@ -39,17 +39,19 @@ actions.cooldowns+=/arcane_torrent,if=rage.deficit>=40
 actions.execute+=/colossus_smash,if=debuff.colossus_smash.remains<1
 actions.execute+=/mortal_strike,if=!debuff.mortal_wound.up|debuff.mortal_wound.remains<3
 actions.execute+=/execute,if=debuff.colossus_smash.up&rage>=30
-actions.execute+=/execute,if=buff.sudden_execute.up&buff.sudden_execute.remains<3
+actions.execute+=/execute,if=buff.sudden_death.up&buff.sudden_death.remains<3
 actions.execute+=/execute,if=rage>=100
 actions.execute+=/slam,if=debuff.colossus_smash.up&rage>=25&rage<100
 actions.execute+=/overpower,if=buff.taste_for_blood.stack>=2|rage<80
 actions.execute+=/execute,if=rage>=30
 actions.execute+=/slam,if=rage>=50
+actions.execute+=/heroic_strike,use_off_gcd=1,if=(rage>=85&debuff.colossus_smash.down)|buff.deadly_calm.up
 actions.execute+=/battle_shout,if=rage<40
 
 ### Single Target (non-execute) ###
 actions.st+=/colossus_smash,if=debuff.colossus_smash.remains<1
 actions.st+=/mortal_strike,if=!debuff.mortal_wound.up|debuff.mortal_wound.remains<4
+actions.st+=/overpower,if=debuff.colossus_smash.up
 # Overpower / Taste for Blood management
 actions.st+=/overpower,if=buff.taste_for_blood.stack>=2
 actions.st+=/slam,if=debuff.colossus_smash.up&rage>=25
@@ -59,6 +61,7 @@ actions.st+=/storm_bolt,if=talent.storm_bolt.enabled&debuff.colossus_smash.up
 actions.st+=/dragon_roar,if=talent.dragon_roar.enabled&debuff.colossus_smash.up
 actions.st+=/shockwave,if=talent.shockwave.enabled&debuff.colossus_smash.up
 actions.st+=/slam,if=rage>=50
+actions.st+=/heroic_strike,use_off_gcd=1,if=(rage>=85&debuff.colossus_smash.down)|buff.deadly_calm.up
 actions.st+=/overpower,if=rage<70
 actions.st+=/battle_shout,if=rage<50&!buff.battle_shout.up
 actions.st+=/heroic_throw,if=rage>90
@@ -74,13 +77,14 @@ actions.aoe+=/thunder_clap,if=active_enemies>=4&dot.deep_wounds.remains<4
 actions.aoe+=/cleave,if=active_enemies<=4&buff.sweeping_strikes.up
 actions.aoe+=/slam,if=buff.sweeping_strikes.up&rage>=25
 actions.aoe+=/slam,if=debuff.colossus_smash.up&rage>=25&active_enemies>=3
+actions.aoe+=/heroic_strike,use_off_gcd=1,if=buff.sweeping_strikes.up&rage>=85
 actions.aoe+=/execute,if=buff.sudden_death.up&active_enemies<=3
 actions.aoe+=/overpower,if=active_enemies<=4&rage<80
 actions.aoe+=/whirlwind,if=active_enemies>=5&rage>=30
 actions.aoe+=/battle_shout,if=rage<rage.max-30&active_enemies>=3
 
 ### Movement ###
-actions.movement+=/heroic_leap,if=target.distance>12
+actions.movement+=/heroic_leap,if=target.distance>12|debuff.colossus_smash.up
 actions.movement+=/charge,if=target.distance>8
 actions.movement+=/intervene,if=group&!solo&target.distance>10
 actions.movement+=/storm_bolt,if=talent.storm_bolt.enabled&target.distance>8

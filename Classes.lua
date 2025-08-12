@@ -132,7 +132,7 @@ local specTemplate = {
         }
     },
 
-    placeboBar = 3,
+
 
     ranges = {},
     settings = {},
@@ -926,7 +926,15 @@ local HekiliSpecMixin = {
             end
         end
 
+        -- Store by ability key on the spec (existing behavior).
         self.abilities[ ability ] = a
+        -- Also store by ability key in the global class ability map so that import/parse
+        -- routines (which reference class.abilities[ key ]) can detect spec abilities.
+        -- Previously, only the localized spell name (a.name) was inserted which caused
+        -- "Unsupported action" warnings for valid spec ability keys during APL import.
+        if not class.abilities[ ability ] then
+            class.abilities[ ability ] = a
+        end
         self.abilities[ a.id ] = a
 
         if not a.unlisted then class.abilityList[ ability ] = class.abilityList[ ability ] or a.listName or a.name end
@@ -3646,6 +3654,27 @@ local function addStance( key, spellID )
     ns.commitKey( key )
 end
 ns.addStance = addStance
+
+-- Register Warrior stances so the generic stance metatable (state.stance)
+-- can resolve the player's current stance by comparing shapeshift form spellIDs.
+do
+    local playerClass = UnitClassBase and UnitClassBase("player") or select(2, UnitClass("player"))
+    if playerClass == "WARRIOR" then
+        -- Battle Stance (2457), Defensive Stance (71), Berserker Stance (2458) in MoP.
+        -- These IDs are returned from GetShapeshiftFormInfo(i) as the 5th return value (spellID).
+        addStance("battle", 2457)
+        addStance("defensive", 71)
+        addStance("berserker", 2458)
+
+        -- Register pseudo-auras so buff.battle_stance/defensive_stance/berserker_stance
+        -- can be toggled by detection logic without triggering unknown-buff warnings.
+        if all and all.RegisterAura then
+            all:RegisterAura( "battle_stance",    { id = 2457, duration = 3600, max_stack = 1 } )
+            all:RegisterAura( "defensive_stance", { id = 71,   duration = 3600, max_stack = 1 } )
+            all:RegisterAura( "berserker_stance", { id = 2458, duration = 3600, max_stack = 1 } )
+        end
+    end
+end
 
 
 local function setRole( key )

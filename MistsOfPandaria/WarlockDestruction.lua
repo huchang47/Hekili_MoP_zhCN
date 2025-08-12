@@ -36,28 +36,30 @@ end
 
 -- Advanced Combat Log Event Tracking for Destruction Warlock
 local destructionCombatLogFrame = CreateFrame("Frame")
-local destructionCombatLogEvents = {}
+local destructionCombatLogHandlers = {}
 
--- Burning Ember generation tracking
-local function RegisterDestructionCombatLogEvent(event, handler)
-    if not destructionCombatLogEvents[event] then
-        destructionCombatLogEvents[event] = {}
-        destructionCombatLogFrame:RegisterEvent(event)
-    end
-    table.insert(destructionCombatLogEvents[event], handler)
+local function RegisterDestructionCombatLogEvent(subEvent, handler)
+    destructionCombatLogHandlers[subEvent] = destructionCombatLogHandlers[subEvent] or {}
+    table.insert(destructionCombatLogHandlers[subEvent], handler)
 end
 
--- Combat log event handlers for Destruction mechanics
-local function HandleDestructionCombatLogEvent(self, event, ...)
-    local handlers = destructionCombatLogEvents[event]
+destructionCombatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+destructionCombatLogFrame:SetScript("OnEvent", function()
+    local timestamp, subEvent, hideCaster,
+        sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
+        destGUID, destName, destFlags, destRaidFlags,
+        spellId, spellName, spellSchool,
+        amount, overkill, school, resisted, blocked, absorbed, critical, glancing, crushing, isOffHand, multistrike = CombatLogGetCurrentEventInfo()
+
+    local handlers = destructionCombatLogHandlers[subEvent]
     if handlers then
-        for _, handler in ipairs(handlers) do
-            handler(...)
+        for _, h in ipairs(handlers) do
+            h(timestamp, subEvent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags,
+              destGUID, destName, destFlags, destRaidFlags, spellId, spellName, spellSchool,
+              amount, overkill, school, resisted, blocked, absorbed, critical, glancing, crushing, isOffHand, multistrike)
         end
     end
-end
-
-destructionCombatLogFrame:SetScript("OnEvent", HandleDestructionCombatLogEvent)
+end)
 
 -- Pet management system for Destruction Warlock
 local function summon_demon(demon_type)
@@ -91,31 +93,15 @@ end
 RegisterDestructionCombatLogEvent("SPELL_PERIODIC_DAMAGE", function(timestamp, eventType, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellId, spellName, spellSchool, amount, overkill, school, resisted, blocked, absorbed, critical, glancing, crushing)
     if sourceGUID == UnitGUID("player") then
         if spellId == 348 then -- Immolate DoT tick
-            -- Generate 0.1 Burning Ember per tick with chance for bonus
+            -- Generate a fractional ember; 10 ticks (30s) ~1 ember. Crits double the tick's contribution.
             local emberGenerated = 0.1
-            if critical then emberGenerated = emberGenerated + 0.1 end -- Critical ticks generate more
-            
-            if state and state.burning_embers then
-                state.burning_embers.generate(emberGenerated)
-            end
+            if critical then emberGenerated = emberGenerated * 2 end
+            if state and state.burning_embers then state.burning_embers.generate(emberGenerated) end
         end
     end
 end)
 
--- Backlash proc tracking from damage taken
-RegisterDestructionCombatLogEvent("SPELL_DAMAGE", function(timestamp, eventType, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellId, spellName, spellSchool, amount, overkill, school, resisted, blocked, absorbed, critical, glancing, crushing)
-    if destGUID == UnitGUID("player") and amount > 0 then
-        -- 25% chance for Backlash proc when taking damage
-        if math.random(100) <= 25 then
-            -- Set Backlash buff (reduces cast time of next Incinerate/Chaos Bolt by 30%)
-            if state and state.buff then
-                state.buff.backlash.applied = GetTime()
-                state.buff.backlash.expires = GetTime() + 8
-                state.buff.backlash.count = 1
-            end
-        end
-    end
-end)
+-- Backlash proc modeling removed (non-deterministic RNG not simulated here); rely on buff detection if present.
 
 -- Conflagrate usage and Backdraft proc tracking
 RegisterDestructionCombatLogEvent("SPELL_CAST_SUCCESS", function(timestamp, eventType, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellId, spellName, spellSchool)
@@ -127,20 +113,7 @@ RegisterDestructionCombatLogEvent("SPELL_CAST_SUCCESS", function(timestamp, even
                 state.buff.backdraft.expires = GetTime() + 15
                 state.buff.backdraft.count = 2
             end
-            
-            -- Generate 0.2 Burning Ember
-            if state and state.burning_embers then
-                state.burning_embers.generate(0.2)
-            end
-        elseif spellId == 116858 then -- Chaos Bolt
-            -- Generate 0.1-0.2 Burning Ember based on target's burning effects
-            local emberGenerated = 0.1
-            if state.debuff.immolate.up then emberGenerated = emberGenerated + 0.05 end
-            if state.debuff.shadowburn.up then emberGenerated = emberGenerated + 0.05 end
-            
-            if state and state.burning_embers then
-                state.burning_embers.generate(emberGenerated)
-            end
+            -- No direct ember generation (handled via Immolate/Incinerate baseline)
         end
     end
 end)
@@ -204,24 +177,24 @@ spec:RegisterResource( 0, {
     end,
 } )
 
+-- Add missing auras referenced by imported APLs if not present.
+if not spec.auras.dark_intent then
+    spec:RegisterAura( "dark_intent", { id = 109773, duration = 3600, max_stack = 1 } )
+end
+
 spec:RegisterResource( 14, {
     -- Burning Ember generation from Immolate ticks
     immolate_generation = {
         last = function ()
             return state.last_immolate_tick or 0
         end,
-        interval = 2, -- Immolate tick interval
+        interval = 3, -- Immolate tick interval (15s / 5 ticks)
         value = function()
-            -- Immolate generates 0.1 Burning Ember per tick
-            local embers_generated = 0.1
-            if state.debuff.immolate.up then
-                -- Critical ticks generate more embers
-                if state.last_critical_tick then
-                    embers_generated = embers_generated + 0.1
-                end
-                return embers_generated
-            end
-            return 0
+            -- Immolate generates 0.1 ember per tick (crit doubles) -> 10 ticks (~30s) ~1 ember overall.
+            if not state.debuff.immolate.up then return 0 end
+            local embers = 0.1
+            if state.last_critical_tick then embers = embers * 2 end
+            return embers
         end,
     },
     
@@ -231,10 +204,7 @@ spec:RegisterResource( 14, {
             return state.last_cast_time.conflagrate or 0
         end,
         interval = 1,
-        value = function()
-            -- Conflagrate generates 0.2 Burning Embers
-            return (state.last_ability and state.last_ability == "conflagrate") and 0.2 or 0
-        end,
+    value = function() return 0 end, -- Removed direct ember generation; maintain deterministic model
     },
     
     -- Incinerate Burning Ember generation
@@ -244,8 +214,13 @@ spec:RegisterResource( 14, {
         end,
         interval = 1,
         value = function()
-            -- Incinerate generates 0.1 Burning Ember per cast
-            return (state.last_ability and state.last_ability == "incinerate") and 0.1 or 0
+            -- Incinerate grants 0.2 ember (5 casts per ember baseline) crits double.
+            if state.last_ability and state.last_ability == "incinerate" then
+                local v = 0.2
+                if state.last_critical_cast == "incinerate" then v = v * 2 end
+                return v
+            end
+            return 0
         end,
     },
     
@@ -256,8 +231,8 @@ spec:RegisterResource( 14, {
         end,
         interval = 1,
         value = function()
-            -- Chaos Bolt consumes 4 Burning Embers
-            return (state.last_ability and state.last_ability == "chaos_bolt") and -4 or 0
+            -- Chaos Bolt consumes 1 full ember
+            return (state.last_ability and state.last_ability == "chaos_bolt") and -1 or 0
         end,
     },
     
@@ -274,9 +249,8 @@ spec:RegisterResource( 14, {
     },
 }, {
     -- Burning Ember generation modifiers
-    backlash_bonus = function ()
-        return state.buff.backlash.up and 0.1 or 0 -- 10% bonus from Backlash
-    end,
+    -- Backlash bonus removed from deterministic model
+    backlash_bonus = function () return 0 end,
     
     backdraft_bonus = function ()
         return state.buff.backdraft.up and 0.15 or 0 -- 15% bonus from Backdraft
@@ -697,6 +671,40 @@ spec:RegisterAuras( {    -- Core DoT/Debuff Mechanics with Advanced Generate Fun
         duration = 15,
         max_stack = 1,
     },
+
+    -- Fire and Brimstone (toggled spender enabling AoE application)
+    fire_and_brimstone = {
+        id = 108683, -- MoP Fire and Brimstone ID
+        cast = 0,
+        cooldown = 0,
+        gcd = "off",
+        toggle = "cooldowns",
+        startsCombat = false,
+        handler = function()
+            -- Toggle style aura for simplified modeling
+            if buff.fire_and_brimstone and buff.fire_and_brimstone.up then
+                removeBuff( "fire_and_brimstone" )
+            else
+                applyBuff( "fire_and_brimstone" )
+            end
+        end,
+    },
+
+    -- Dark Intent self-buff for precombat (import action)
+    dark_intent = {
+        id = 109773,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        startsCombat = false,
+        handler = function()
+            applyBuff( "dark_intent" )
+        end,
+        usable = function()
+            if buff.dark_intent.up then return false, "dark_intent active" end
+            return true
+        end,
+    },
     
     -- Utility
     dark_regeneration = {
@@ -922,7 +930,7 @@ spec:RegisterAbilities( {
         
         handler = function()
             -- Generate Burning Embers
-            generate( 0.1, "burning_embers" ) -- 0.1 fragment per cast
+            if state.burning_embers and state.burning_embers.generate then state.burning_embers.generate( 0.1 ) end -- 0.1 fragment per cast
             
             -- Consume Backdraft
             if buff.backdraft.up then
@@ -978,7 +986,7 @@ spec:RegisterAbilities( {
             buff.backdraft.stack = 3
             
             -- Generate Burning Embers
-            generate( 0.1, "burning_embers" )
+            if state.burning_embers and state.burning_embers.generate then state.burning_embers.generate( 0.1 ) end
             
             -- Remove Immolate if not using the glyph
             if not glyph.conflagrate.enabled then
@@ -1080,7 +1088,7 @@ spec:RegisterAbilities( {
             end
             
             -- Generate Burning Embers
-            generate( 0.1, "burning_embers" )
+            if state.burning_embers and state.burning_embers.generate then state.burning_embers.generate( 0.1 ) end
         end,
     },
     
@@ -1323,17 +1331,8 @@ spec:RegisterAbilities( {
 } )
 
 -- State Expressions for Destruction
-spec:RegisterStateExpr( "burning_embers", function()
-    return burning_embers.current
-end )
-
-spec:RegisterStateExpr( "burning_embers_deficit", function()
-    return burning_embers.max - burning_embers.current
-end )
-
-spec:RegisterStateExpr( "current_burning_embers", function()
-    return burning_embers.current or 0
-end )
+spec:RegisterStateExpr( "burning_embers_deficit", function() return state.burning_embers and ( state.burning_embers.max - state.burning_embers.current ) or 0 end )
+spec:RegisterStateExpr( "current_burning_embers", function() return state.burning_embers and state.burning_embers.current or 0 end )
 
 spec:RegisterStateExpr( "backlash_proc", function()
     return buff.backlash.up and 1 or 0
@@ -1352,11 +1351,13 @@ spec:RegisterStateExpr( "immolate_debuff_active", function()
 end )
 
 spec:RegisterStateExpr( "chaos_bolt_ready", function()
-    return burning_embers.current >= 4 and 1 or 0
+    local be = state.burning_embers and state.burning_embers.current or 0
+    return be >= 1 and 1 or 0
 end )
 
 spec:RegisterStateExpr( "ember_tap_ready", function()
-    return burning_embers.current >= 1 and 1 or 0
+    local be = state.burning_embers and state.burning_embers.current or 0
+    return be >= 1 and 1 or 0
 end )
 
 spec:RegisterStateExpr( "spell_power", function()
@@ -1386,6 +1387,6 @@ spec:RegisterOptions( {
 } )
 
 -- Default pack for MoP Destruction Warlock
-spec:RegisterPack( "Destruction", 20250515, [[Hekili:T3vBVTTn04FldjHr9LSgR2e75XVc1cbKzKRlvnTo01OEckA2IgxVSbP5cFcqifitljsBPIYPKQbbXQPaX0YCRwRNFAxBtwR37pZUWZB3SZ0Zbnu(ndREWP)8dyNF3BhER85x(jym5nymTYnv0drHbpz5IW1vZgbo1P)MM]] )
+spec:RegisterPack( "Destruction", 20250811, [[Hekili:TE17VTjst4)wQQusJUCCgsCs6vBl1(2pCnQxvLOv3hEvbwdlMvgy52DjU5ue)TFZS8RfBijUx)qITHN5zMD(5oE2EFXZnIOOEFYzMZ8z3yBBzF5Szox55QUVG65wqc3s2aFjNKb)xrLkbhF89PCsekUKxkcHx55UUKLQ(qU36X58saBbneE8vx75MWIIO1yPYqp3VKWKvb4FKQGgTwfWJHFhQy88QGuMubVoMlQc(d6wwkZYZv)q9PGgtktvWx)K(urZjRtPrEVZZnuWuubJ45IuDh1NMtZyuGRvvb21pLNdMe5ooyjkIydv5564PaBDpUQ)QFg)ow(MHKdpJMrZvwcAgHLxt)MWiRmY37vsmn1pov7mBibSxqrxmPr3r3IQaflCRVILbUMhEOk4f1pbzPtbSSmEk6(bsVCssdtWtjq6YQaNAYwxghBTg88rcsSYsQGVQvQtp5H8CW43iA4F(K8x7eTsOKuvIvrOQMPzvbNGAsKd2SpnBnvG(PLdIdYeseFhcc1XvtQJxnotDhNruYiQ3cYCyHSAdCM18QGZ0Og5eScpb92zerS1hs)trZ869mZopwcHl9xZHutDMUGvu)I)h(IQG3bVPkOucP7)oK4lyC48X(hiadXCwe857b1uf4c65COy4oolQkiKivWrOkyhtLaK0g1aZMJSqLuXDGSXaokuV8H8qwofdBsltxOoM3DoSklMo(8OoLgXgKabXqDa8MjdGte9MGQXCPa9V(zs)HX5Jtp2ZEQKDSU0xX9JyuTsSN)eEZJr7hrtnG)lNuZgfZXmb1NKh5VwWYKkEUUM2E)wEpUMU45LXmW3aPm30BgcO7Mpp2hnhTbmDRW9CyLfgT96YW1CO78nwxldIrCZnXzWXayqPlusfYZwtgDaZG66)Iis5HBHI53JdllBME9Q3grkuuO2nwWZGcx(oj41Rc(t(NRcE7N)4z71yHLRGHjDZGkOk)6rYSmJJTSeA3N7xGdSgCY2Zj(OdduKuCU1ginGJ5eqWqsGxd1luRwj6u5OWEIPb6jwqoXSXNtDLzuOGx)5WiaC(2r0jzs8Ycy)XScUq1CHGtBM)FAvGG(3LG5bEAjhvlPuXZiAxputLdt9SQU9JqGgsrHO0xZLLfitiG27ACQ(UaN2b8Ijb2Em6XE5KynYd7HpFs49Zb7rF1KO76I3d(6PTKUMl9OV5Oq)6JcT9SJd(0bMdBAziMZKIz2KXqGhjU21lWa(rgATNo2oKED(CmpnLVtpvNukiqRHDubfVBakjdKsHWAPaV5l24v1IlNRlgkZhGokcbd3hNSMiHRyCBvWVI)Ujzb(9TJun11U7Nv9KrlTE)Z0HR(2ApN6Qr7i9CQWmlEr)aU(rHGhZsP17IKXKsDePr6g)ZgyeOGfc(yblFlvbEGa4swQAH0(oytGiuxQec8y6DuX9DxV7EmafMwgHdrPWn4OI2aZ))RskYent(n46E7syHjMOj533R1Myo97fP4nBs751mfOvPVbwNs0QMVutbeY(gsAK5JCm08owAQXjQHsvluT3q)O8sC0VoljLRa)5hYAD3o7Tdh8sOBFPkHl8CDZkJfST4ewTF3Z9Lvb)WZqRU9LG4FUn7T62AflT6sO)LL)MrU44a6Z(oVDS7sO(ycW5Kczcx5dlmbHKrXmAc65S4LpNjVJtzBQRMfy86YzJJREAkMEJEM3xpLSdkaqpP786RPT0bPdFx)18wzBIUB91ZR3EDPnkX(R(Ucw71uktJTbYIUvzF4Hx0SeRPignurPA2xDPZdpm2EQlCmLTFWzTpEVDww4m7KHxyD1YbhYUUJO4VAFOAtypPpz8Dnwa7zC2jhyaRGfMUfIg)aRa(MFkRaoWr3n)fpThSq4HEQrppNmYUmpMw2ZL(FrCtN9XXZH7MSWE(ih4NG0dVsYivrlV8aIhKZAEbLXe)IPdeg2)QBgu21fY7cTMlpnr524mOVcU3)(]] )
 
 -- Register pack selector for Destruction

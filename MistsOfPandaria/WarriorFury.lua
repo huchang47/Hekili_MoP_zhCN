@@ -13,6 +13,17 @@ local Hekili = _G[ "Hekili" ]
 local class = Hekili.Class
 local state = Hekili.State
 
+-- Ensure helper references exist (mirrors pattern in Arms file) to avoid undefined global warnings.
+local addStack = state and state.addStack
+if not addStack then
+    addStack = function(aura, target, n)
+        local b = state and state.buff and state.buff[aura]
+        if not b then return end
+        b.stack = math.min((b.stack or 0) + (n or 1), b.max_stack or 99)
+        b.up = (b.stack or 0) > 0
+    end
+end
+
 local function getReferences()
     -- Legacy function for compatibility
     return class, state
@@ -36,87 +47,65 @@ end
 
 local spec = Hekili:NewSpecialization( 72 ) -- Fury spec ID for MoP
 
--- Enhanced resource registration for Fury Warrior with signature mechanics
-spec:RegisterResource( 1, { -- Rage with Fury-specific enhancements
-    -- Bloodthirst rage generation (Fury signature ability)
-    bloodthirst_regen = {
-        last = function ()
-            return (state.last_cast_time and state.last_cast_time.bloodthirst) or 0
+-- Stance + spec-based rage generation (aligned with Arms baseline + Fury spec extras)
+spec:RegisterResource( 1, {
+    -- Baseline stance constants (rage/sec approximations for prediction)
+    battle_stance_regen = {
+        aura = "battle_stance",
+        last = function()
+            local app = state.buff.battle_stance.applied
+            local t = state.query_time
+            return app + floor( t - app )
         end,
-        interval = 3, -- Bloodthirst cooldown
-        value = function()
-            -- Bloodthirst generates rage on crit in Fury
-            return (state.last_ability and state.last_ability == "bloodthirst") and 5 or 0
-        end,
+        interval = 1,
+        value = function() return (state.current_stance == "battle" and state.combat) and 3.5 or 0 end,
     },
-    
-    -- Berserker Rage enhancement (Fury gets more benefit)
+    berserker_stance_regen = {
+        aura = "berserker_stance",
+        last = function()
+            local app = state.buff.berserker_stance.applied
+            local t = state.query_time
+            return app + floor( t - app )
+        end,
+        interval = 1,
+        value = function() return (state.current_stance == "berserker" and state.combat) and 1.75 or 0 end,
+    },
+    defensive_stance_regen = {
+        aura = "defensive_stance",
+        last = function()
+            local app = state.buff.defensive_stance.applied
+            local t = state.query_time
+            return app + floor( ( t - app ) / 3 ) * 3
+        end,
+        interval = 3,
+        value = function() return (state.current_stance == "defensive") and 1 or 0 end,
+    },
+
+    -- Existing Fury-specific periodic/additive sources
+    bloodthirst_regen = {
+        last = function () return (state.last_cast_time and state.last_cast_time.bloodthirst) or 0 end,
+        interval = 3,
+        value = function() return (state.last_ability == "bloodthirst") and 5 or 0 end,
+    },
     berserker_rage = {
         aura = "berserker_rage",
-        last = function ()
-            local app = state.buff.berserker_rage.applied
-            local t = state.query_time
-            return app + floor( ( t - app ) / 1 ) * 1
-        end,
+        last = function () local app = state.buff.berserker_rage.applied; local t = state.query_time; return app + floor( ( t - app ) ) end,
         interval = 1,
-        value = function()
-            -- Berserker Rage grants extra rage for Fury
-            return state.buff.berserker_rage.up and 7 or 0 -- Higher than Arms/Prot
-        end,
+        value = function() return state.buff.berserker_rage.up and 7 or 0 end,
     },
-    
-    -- Enrage rage generation (when enraged from Bloodthirst)
     enrage_regen = {
         aura = "enrage",
-        last = function ()
-            local app = state.buff.enrage.applied
-            local t = state.query_time
-            return app + floor( ( t - app ) / 2 ) * 2
-        end,
+        last = function () local app = state.buff.enrage.applied; local t = state.query_time; return app + floor( ( t - app ) / 2 ) * 2 end,
         interval = 2,
-        value = function()
-            -- Extra rage generation while enraged
-            return state.buff.enrage.up and 3 or 0
-        end,
+        value = function() return state.buff.enrage.up and 3 or 0 end,
     },
-    
-    -- Bloodsurge proc efficiency (reduces Wild Strike cost effectively)
     bloodsurge_efficiency = {
         aura = "bloodsurge",
-        last = function ()
-            return state.query_time
-        end,
+        last = function () return state.query_time end,
         interval = 1,
-        value = function()
-            -- Bloodsurge makes next Wild Strike cost no rage (effective generation)
-            return state.buff.bloodsurge.up and 30 or 0 -- Wild Strike base cost in rage
-        end,
+        value = function() return state.buff.bloodsurge.up and 30 or 0 end,
     },
-}, {
-    -- Enhanced base rage generation for Fury (dual-wield mechanics)
-    base_regen = function ()
-        local base = 0
-        local weapon_bonus = 0
-        
-        -- Dual-wield rage generation from auto attacks
-        local mainhand_speed = state.main_hand.speed or 2.6
-        local offhand_speed = state.off_hand.speed or 2.6
-        
-        if state.combat then
-            weapon_bonus = (3.5 / mainhand_speed) * 2.0  -- Mainhand
-            if state.dual_wield then
-                weapon_bonus = weapon_bonus + (3.5 / offhand_speed) * 1.0  -- Offhand (50% rate)
-            end
-        end
-        
-        return base + weapon_bonus
-    end,
-    
-    -- Wild Strike rage efficiency when dual-wielding
-    wild_strike_proc = function ()
-        return state.dual_wield and 1 or 0 -- Extra rage generation from dual-wield mastery
-    end,
-} )
+}, { } )
 
 -- ===================
 -- ENHANCED COMBAT LOG EVENT TRACKING
@@ -136,11 +125,7 @@ end
 
 furyCombatLogFrame:SetScript("OnEvent", function(self, event, ...)
     local handlers = furyCombatLogEvents[event]
-    if handlers then
-        for _, handler in ipairs(handlers) do
-            handler(event, ...)
-        end
-    end
+    if handlers then for _, handler in ipairs(handlers) do handler(event, ...) end end
 end)
 
 -- Fury-specific tracking variables
@@ -1139,7 +1124,7 @@ spec:RegisterAbilities( {
             -- 20% chance to trigger Enrage
             if math.random() < 0.2 then
                 applyBuff( "enrage" )
-                if raging_blow.stack < 2 then
+                if buff.raging_blow and buff.raging_blow.stack < 2 then
                     addStack( "raging_blow" )
                 end
             end
@@ -1406,7 +1391,7 @@ spec:RegisterAbilities( {
         
         handler = function()
             applyBuff( "berserker_rage" )
-            if raging_blow.stack < 2 then
+            if buff.raging_blow and buff.raging_blow.stack < 2 then
                 addStack( "raging_blow" )
             end
         end,
@@ -1877,3 +1862,15 @@ spec:RegisterOptions( {
 spec:RegisterPack( "Fury", 20250515, [[Hekili:TznBVTTnu4FlXjHjMjENnWUYJaUcMLf8KvAm7nYjPPQonGwX2jzlkiuQumzkaLRQiQOeH9an1Y0YnpYoWgwlYFltwGtRJ(aiCN9tobHNVH)8TCgF)(5ElyJlFNlcDnPXD5A8j0)(MNZajDa3aNjp2QphnPtoKvyF)GcKKOzjI08QjnOVOCXMj3nE)waT58Pw(aFm0P)MM]] )
 
 -- Register pack selector for Fury
+
+spec:RegisterStateExpr( "stance_rage_per_second", function()
+    local stance = state.current_stance
+    if stance == "battle" then
+        return state.combat and 3.5 or 0
+    elseif stance == "berserker" then
+        return state.combat and 1.75 or 0
+    elseif stance == "defensive" then
+        return 1/3
+    end
+    return 0
+end )
