@@ -433,7 +433,7 @@ ns.getSpecializationID = function( specIndex )
         DEATHKNIGHT = { [1] = 250, [2] = 251, [3] = 252 },  -- Blood, Frost, Unholy
         DRUID = { [1] = 102, [2] = 103, [3] = 104, [4] = 105 }, -- Balance, Feral, Guardian, Restoration
         MAGE = { [1] = 62, [2] = 63, [3] = 64 },            -- Arcane, Fire, Frost
-        MONK = { [1] = 268, [2] = 269, [3] = 270 },         -- Brewmaster, Windwalker, Mistweaver
+        MONK = { [1] = 268, [2] = 270, [3] = 269 },         -- Brewmaster, Mistweaver, Windwalker
         PALADIN = { [1] = 65, [2] = 66, [3] = 70 },         -- Holy, Protection, Retribution
         PRIEST = { [1] = 256, [2] = 257, [3] = 258 },       -- Discipline, Holy, Shadow
         ROGUE = { [1] = 259, [2] = 260, [3] = 261 },        -- Assassination, Combat, Subtlety
