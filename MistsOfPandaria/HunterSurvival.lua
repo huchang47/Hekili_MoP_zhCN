@@ -19,6 +19,19 @@ local strformat = string.format
 
     local spec = Hekili:NewSpecialization( 255, true )
 
+    -- Lock and Load: implement an internal cooldown (ICD) using local state and expressions.
+    -- MoP behavior: LnL primarily procs from Black Arrow ticks and trap triggers; gate with ~10s ICD.
+    local lnl_icd_duration = 10
+    local lnl_last_proc = 0
+    local function lnl_icd_remains(now)
+        local t = now or GetTime()
+        local rem = (lnl_last_proc + lnl_icd_duration) - t
+        return rem > 0 and rem or 0
+    end
+    local function lnl_icd_ready(now)
+        return lnl_icd_remains(now) == 0
+    end
+
 
 
     -- Use MoP power type numbers instead of Enum
@@ -470,6 +483,10 @@ spec:RegisterAuras( {
             handler = function ()
                 if buff.thrill_of_the_hunt.up then
                     removeBuff( "thrill_of_the_hunt" )
+                end
+                -- Thrill of the Hunt can proc from focus-costing shots (not Auto Shot)
+                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
+                    applyBuff( "thrill_of_the_hunt", 20 )
                 end
             end,
         },
@@ -1311,35 +1328,7 @@ spec:RegisterAuras( {
             end,
         },
 
-
-
-        exhilaration = {
-            id = 109260,
-            cast = 0,
-            cooldown = 120,
-            gcd = "off",
-            
-            startsCombat = false,
-            toggle = "defensive",
-            
-            handler = function ()
-                -- Instantly heals you for 30% of your total health
-                applyBuff( "exhilaration" )
-            end,
-        },
-
-        tranquilizing_shot = {
-            id = 19801,
-            cast = 0,
-            cooldown = 8,
-            gcd = "spell",
-            
-            startsCombat = true,
-            
-            handler = function ()
-                -- Dispel magic effect
-            end,
-        },
+    -- Duplicate ability definitions removed: exhilaration, tranquilizing_shot
     } )
 
     -- Pet Registration
@@ -1356,28 +1345,19 @@ spec:RegisterAuras( {
 spec:RegisterCombatLogEvent( function( _, subtype, _, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags, _, spellID, spellName )
     if sourceGUID ~= state.GUID then return end
     
-    -- Track auto shot for Thrill of the Hunt procs
-    if ( subtype == "SPELL_CAST_SUCCESS" or subtype == "SPELL_DAMAGE" ) and spellID == 75 then -- Auto Shot
-        if state.talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then -- 30% chance
-            state.applyBuff( "thrill_of_the_hunt", 8 )
-        end
-    end
-    
-    -- Lock and Load procs from Auto Shot crits and other ranged abilities
-    if subtype == "SPELL_DAMAGE" and ( spellID == 75 or spellID == 2643 or spellID == 3044 ) then -- Auto Shot, Multi-Shot, Arcane Shot
-        if state.talent.lock_and_load.enabled then
-            local crit_chance = math.random()
-                            -- 15% chance for Lock and Load to proc on ranged crits in MoP
-                if crit_chance <= 0.15 then
-                    state.applyBuff( "lock_and_load", 8 )
-                end
+    -- Lock and Load from Black Arrow periodic ticks (ICD-gated, 20% chance per tick in MoP-like behavior)
+    if subtype == "SPELL_PERIODIC_DAMAGE" and spellID == 3674 and state.talent.lock_and_load.enabled then -- Black Arrow
+        if lnl_icd_ready() and math.random() <= 0.20 then
+            state.applyBuff( "lock_and_load", 8 )
+            lnl_last_proc = GetTime()
         end
     end
     
     -- Lock and Load procs from trap activation (important Survival mechanic)
     if subtype == "SPELL_CAST_SUCCESS" and ( spellID == 1499 or spellID == 13813 or spellID == 13809 ) then -- Freezing, Explosive, Ice Trap
-        if state.talent.lock_and_load.enabled and math.random() <= 0.25 then -- 25% chance from traps
+        if state.talent.lock_and_load.enabled and lnl_icd_ready() and math.random() <= 0.25 then -- 25% chance from traps
             state.applyBuff( "lock_and_load", 8 )
+            lnl_last_proc = GetTime()
         end
     end
 end )
@@ -1410,12 +1390,15 @@ end )
         return buff.bloodlust
     end )
 
-    -- Threat situation for misdirection logic
-    spec:RegisterStateExpr( "threat", function()
-        return {
-            situation = 0 -- Default to no threat situation
-        }
+    -- Publish Lock and Load ICD helpers for APL/visibility
+    spec:RegisterStateExpr( "lock_and_load_icd_remains", function()
+        return lnl_icd_remains( state.query_time )
     end )
+    spec:RegisterStateExpr( "lock_and_load_icd_up", function()
+        return lnl_icd_remains( state.query_time ) > 0
+    end )
+
+    -- Threat is managed by the engine; no spec-level override
 
     -- === SHOT ROTATION STATE EXPRESSIONS ===
     

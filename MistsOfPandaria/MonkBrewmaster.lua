@@ -70,6 +70,33 @@ local function RegisterBrewmasterSpec()
         end
     })
 
+    -- --- Compatibility wrappers for group/raid checks (MoP-era safe) ---
+            -- MoP-safe wrappers
+        local function BM_IsInGroup()
+            if IsInGroup then return IsInGroup() end
+            local raid  = (GetNumGroupMembers and GetNumGroupMembers()) or (GetNumRaidMembers and GetNumRaidMembers()) or 0
+            local party = (GetNumSubgroupMembers and GetNumSubgroupMembers()) or (GetNumPartyMembers and GetNumPartyMembers()) or 0
+            return (raid > 0) or (party > 0)
+        end
+
+        local function BM_IsInRaid()
+            if IsInRaid then return IsInRaid() end
+            local raid = (GetNumGroupMembers and GetNumGroupMembers()) or (GetNumRaidMembers and GetNumRaidMembers()) or 0
+            return raid > 0
+        end
+
+        local function BM_IsInInstance()
+            if IsInInstance then
+                local inInstance, instanceType = IsInInstance()
+                return inInstance, instanceType
+            end
+            -- Fallback: derive from GetInstanceInfo()
+            local _, instanceType = GetInstanceInfo()
+            local inInstance = instanceType and instanceType ~= "none"
+            return inInstance or false, instanceType or "none"
+        end
+
+
     -- Talents for MoP Brewmaster Monk
     spec:RegisterTalents({
         celerity = { 1, 1, 115173 },
@@ -95,6 +122,12 @@ local function RegisterBrewmasterSpec()
     -- Auras for Brewmaster Monk
     spec:RegisterAuras({
 
+         death_note = { 
+            id = 121125, -- This is the Spell ID for the buff
+            duration = 1, 
+            max_stack = 1, 
+            emulated = true,
+        },
          power_strikes = { 
             id = 129914, -- This is the Spell ID for the Tiger Power buff
             duration = 1, 
@@ -155,33 +188,41 @@ local function RegisterBrewmasterSpec()
             max_stack = 1, 
             emulated = true,
         },
+        dizzying_haze_dot = { 
+            id = 116330, 
+            duration = 15, 
+            max_stack = 1,
+            type = "debuff",
+            unit = "target", 
+        },
         breath_of_fire_dot = { 
             id = 123725, 
             duration = 8, 
             tick_time = 2, 
-            max_stack = 1, 
-            emulated = true,
+            max_stack = 1,
+            type = "debuff",
+            unit = "target", 
         },
-        heavy_stagger = { 
-            id = 124273, 
-            duration = 10, 
-            tick_time = 1, 
-            max_stack = 1, 
-            emulated = true,
+        heavy_stagger = {
+            id = 124273,
+            duration = 10,
+            type = "debuff",      -- important
+            unit = "player",      -- debuff on you
+            max_stack = 1,
         },
         moderate_stagger = { 
             id = 124274, 
-            duration = 10, 
-            tick_time = 1, 
-            max_stack = 1, 
-            emulated = true,
+            duration = 10,
+            type = "debuff",      -- important
+            unit = "player",      -- debuff on you
+            max_stack = 1,
         },
         light_stagger = { 
             id = 124275, 
-            duration = 10, 
-            tick_time = 1, 
-            max_stack = 1, 
-            emulated = true,
+            duration = 10,
+            type = "debuff",      -- important
+            unit = "player",      -- debuff on you
+            max_stack = 1,
         },
         zen_sphere = { 
             id = 124081, 
@@ -198,33 +239,89 @@ local function RegisterBrewmasterSpec()
     })
 
     -- State Expressions
+    spec:RegisterStateExpr("boss", function()
+        -- ENCOUNTER_START triggered (works for raids & dungeons)
+        if state.encounterID and state.encounterID ~= 0 then return true end
+
+        -- Boss frames active
+        for i = 1, 5 do
+            local u = "boss" .. i
+            if UnitExists(u) and UnitCanAttack("player", u) then return true end
+        end
+
+        -- World boss check
+        if UnitExists("target") and UnitClassification("target") == "worldboss" then return true end
+
+        -- Blizzard's internal boss flag (works for dungeon bosses)
+        if UnitExists("target") and UnitCanAttack("player", "target") and UnitIsBossMob and UnitIsBossMob("target") then
+            return true
+        end
+
+        return false
+    end)
+
+        spec:RegisterStateExpr("ingroup", function()
+            return BM_IsInGroup()
+        end)
+
+        spec:RegisterStateExpr("inraid", function()
+            return BM_IsInRaid()
+        end)
+
+        spec:RegisterStateExpr("ininstance", function()
+            local inInst = BM_IsInInstance()
+            return inInst
+        end)
+
+        spec:RegisterStateExpr("indungeon", function()
+            local _, t = BM_IsInInstance()
+            return t == "party" or t == "scenario"
+        end)
+
+        spec:RegisterStateExpr("inraidinstance", function()
+            local _, t = BM_IsInInstance()
+            return t == "raid"
+        end)
+
+
+
 
     spec:RegisterStateExpr("elusive_brew_stacks", function()
         -- This now points directly to the stack count of our new aura
         return state.buff.elusive_brew_stacks.count
     end)
 
+
     spec:RegisterStateExpr("stagger_level", function()
-        if state.buff.heavy_stagger and state.buff.heavy_stagger.up then
-            return 3 -- Heavy
-        elseif state.buff.moderate_stagger and state.buff.moderate_stagger.up then
-            return 2 -- Moderate
-        elseif state.buff.light_stagger and state.buff.light_stagger.up then
-            return 1 -- Light
-        end
-        return 0 -- None
+    if state.debuff.heavy_stagger and state.debuff.heavy_stagger.up then
+        return 3
+    elseif state.debuff.moderate_stagger and state.debuff.moderate_stagger.up then
+        return 2
+    elseif state.debuff.light_stagger and state.debuff.light_stagger.up then
+        return 1
+    end
+    return 0
     end)
 
     -- Abilities for Brewmaster Monk
     spec:RegisterAbilities({
         auto_attack = {
-            id  = 6603,
-            cast     = 0,
-            cooldown = 0,
-            gcd      = "spell",
-            handler  = function()
-        end,
-     },
+                id  = 6603,
+                cast     = 0,
+                cooldown = 0,
+                gcd      = "spell",
+                handler  = function()
+            end,
+         },
+        touch_of_death = {
+            id = 115080,
+            cast = 0,
+            cooldown = 90,
+            gcd = "on",
+            toggle = "cooldowns",
+            startsCombat = true,
+            handler = function() end
+        },
         spear_hand_strike = {
             id = 116705,
             cast = 0,
@@ -576,7 +673,7 @@ end)
         width = "full"
     })
 
-    spec:RegisterPack("Brewmaster", 20250728, [[Hekili:DZ16UTTrw4NfdJkl14OkzrFRRLbYTUnoPTbvPO)yrL4yYrsmMIulVehhyqS)DFe2)Vpz9jzpNzgEFgskAjNSTaUoMC4mNZ35(zgYPdN((Ptmjb0P)8rdo64bNn44(d10o9OJNoj4U10PtwtmUHSa(hoKvW))zMK1bwFKgP)Cp6TRi(buVi9FKEJLTvKU785wgweB8XUZ2LyItVVBONb8OtNCDOLDWRDMEDH1uR)anTZ0obg7AQbC5toB6KLwMMu(yP(gtN8(Lw(r64pKiDbvHRi83gbwUor62w(bWTN7Mqr9NoHDrKmmC9OWV)zgltDixBtnN(8Pt4pnqC2WC6ggm7glJB4lQN1A(9gl))I0FbmPr6DNSK4rnJ0FR7clJEr6kh)prSCcGFI0NSmC(CB4HVg(nWxWpRS89TCwaKQNfaRweG6PFKAhPFj8OJ0I07ePBS0QVrONh1jGF9JyxEp(e13NpT9dxpnaasf8k9tRP2ZaIEvbg938bk6v4DbieUnNWEjfKlEGedyakXp0JgljmqDHSemJimJh)SvIHd0tzQ)Ii9JJ0)2i9aInCH(eFdQJpqh9fKCK(tI01ydzVQgfmXuhQ3I76deuirayAdIrgXtU29wQ3m)apRBakkgwayAKcy6g6Iz(Go(szO0BOlaPiExybCJ0xGKadJEXsloUz7ElGroMi55gUyzmzMfWkIiJym9WAWfvCmYnAk4MaRfa7VMyxuONQu(ECir6VdbkqTwO9ns7j9YPHcMDWTbLilVA1x7kumfRooZ9nDVfwS7VxYT8ORakbuTUGRA3d5OJ3oQXwoFiKzMYejoUbcrLbz9AyIZWglPe7GL9bLyJy5YWbd(kwd(KVIriqJ(PTxJogb6kX13i2nz6q5rg0BdtZ50w4S)xPZbpwlZ4IMbnbhGo8UgEiU9ot9NYnfEiEU7wWZDolGrCZKYE3f83zk4pyTMDlbDnxwQZKO)o5JcgJlsOMhYcFdKPRRnAGEyd0ceIZ4vlN0mEEsVBoo7X1AcM6ZogbSZlayLeyxOwEn8b7qtdfBYCidu2WbTqx95UVjrpvzufMUgBjuL7ZghAGeGAh3bH4quB3hbyOQmzus5X0lChiLqlBB8VyPgMgvltuAU(sQk)swyoQnAWe6JlB1mzz9TrNirdh1Ia(jy6e3ps9MdlDLPK6rjblN5oF2CWvtJZjfTv)fX0xrUOmNbpNTe88O)bM)mwcFwF(Z3XqGFK8zkpxVW1hI2CElOb4fCoiafEEoWWIDvK6Weg)1eNBY7TihumElASl3)5LGnp72MuEwPcMcch(zACcPI7LhPzQNvL)8IqINPmFR)D8gr63UK6WnsIDCkqiEueMF2x8sa2a9ihoKZCZIgAMehqZ9Xd3y8schRkv4QCcX4rZWvR5CcpmHGHfacJ7c9396dCJlt6CsODqv2wgeB7z8)ygwJytTU(jM3WNjk58TWtQ0eJx85mEHZajHu6hP(vPyvMQYmfXru9RsqvEgsb8I5qTLWCwqTm0zIRTkkgPggf82vrE)vXJ8ssNb(JxzrJJIKB29dQkJ5nzUz()Zn3exAsANXZijmWDgjiGGgoPRitrDTh1WD11ePQQntH8DXtrKUpnaDRPyOPuKFaXXGIE7cwsHKMd9mVBM7N4KuQwwfwpSWDwFg9McUoVTP06lIN76cl9QK5N3OPmrQrZUCrRb3pzfsfJeNwfH0qXQnfH0wLWBPPqNsxXPqNsq8qGOnG8SLXjoF2Yfse(Ouh0u7q0Vb)z8r1i2ioNlU8R0l3hix3uzZeaSXy3VxeI)7qVBlwIXWSPSQf6(N)7)7rmWhv)RQnxxrUMJmZXzGjfN8EEPs2850GnNqeWLwP9fjopISTwbXruKhRwcwDd7pYVwtEvvuE2P5RojPhp5sCawIMw6Tk9NYq)UhvGmpSWS5wZZsxqTpEyv7ksxvOmfiilj(yGZqOBMKcvMkvt69g3zHFiR70aH1AarQJKTvq0MPUPkG6odS2Y6upcqyR0cdYLIwvH(Y4oUP(wFzYmxBGp(ShhDHxibZPp29jS(m01a4s4hFh3latoop02(WKKTXlNTdo35gIxW5p)x)hSSDBOwhtqeVKPlazaG30CHyRiMwSz(z53zCkjokeRPiC5zf9dSqvgYdSnJxIwn1DTo0ZA(DkY64DX3mg8EkUnqKpEhdaxWAhqxTbFd2m7S1MKGIC94kBJcVfqqEwO7Bq5XNolpnfRdM4ZKZ4ciVtcPmlBleQYj4gZY)KRPyFis56rCUojhku5bDiKbbYhnHHpjpVNvXUB2sGPReffHpbrBoLJB9ubDhvLlX6QsFTNlxKBFNWrjpSBcFZ2iraQG8EI0pDW3WrWFW1lipQl6gcFYI9xgWBa1AwdOkAzPOxWknvMNSM80atUB3sWY4KUgldQpDqmAwQXB8TmuvnxfOGcWAzm5PchAiIvWVuCOgaMOEPEY4z37Lb)XRYfj3sCWT2f77UXsSbjjTXdVezLBiYG2GAVxjhyfWtf6Ghl0blQKXqZEvvXOjz1AQJSnz5LS7eVblaI8wc2UaBlhkVJB8io0y)8Ws6DxUwpwaYap5hW6rN0(eXDHMsnnvhsgkj3mLhNelYTIaKEH(ilm7det6SBTCkAcQma4ZCFf6RsSLkSDwVb1A8SF5vFFK(VE1VZFUjRTCCyi4l8iio)glmufQgo6jXnW0VCk2vTnhsR7NbtIurkXYY3jKYdlnUGKuLoz3NQuDzBwmqCtWK9AiSiHJpDhZXkBu8W(N3iijTfkc1SzgOwgVROvefx2WZBvSJuJ38S3)lJGSvLbukzIMauncL(k2lqlqQk82xrse1BgOqVFoX2(AwduBI8OPkU12yJZvju2HvXklvJMW0QPYwjH3mGSaoOvRJsvhmdvTXqi)JZuI5NetokU1R8DxtEDmX90aVDZAc0gAAVx7TUfIOIYNTKUuSCSB1669eQ7AnkgOKJDYx3iPwBHHn3QjVISKZBYgQNBZdBha18a8XjcfAtxACplUXbRAAYlEtZecPhYfTt2ml86Cvk9yq8i4Qu5XMzZoziC4Uyl2Z4eP2ZeIAqVDy3f50PlCItWkvL1dgENmbFBqLKisLCeRh2F4jJgn8SPtULWoZg(4jQglLC1AOUqr)poa351dI09O)Zql2bb03DfmiClmxry7WfV8B)(rxXE85U2GokdyiHEeGJafwkFV(51PYAWixOWpI2O1tq844TVekFp3OnnDzv4gqUM4t)(ORyvpBw6yfd34kjCHy7)BkJ8ww94J(EC)jDaGJDBx2sbeTpNWoOBg8E84J)wvkLpr7B3t196bKe2WI8twBNR(ky)KnvEZaGHaa8Bo(HRX5chqSq7af7xSsciTr6BgfOvJiidOD54J6uOVfDu2LJoDZ1vNXJhD)95BWXfJpDqVosAjwSaBBT0BWk)LWeRul5viHJpIhBM8DyZLVT1cRJSkdV8SokodyDuF(VKi5)Yttjq5rpwqzQs(2gqYmZn2j8wGT2ESXxel08AfCZtmvL1EUqUmuEEljVNgcV5cZw2ROILbSaEwo3qdalt9i9xhWFiwuJvuhtKOHmodenKgNBlxiphSekhd7qtm9gE37JPQ)bRx)VoGUY)poeZMYYyz2rZoRWXRQGHPFATnukwGD68ML)Jx0)gRHyIL598PaCL8hI8YsV0rzw5BH06YWrIPmiEOm0GDjNWvxt5EVSDdab6Rxfh(7S8sm0ngEGTyW80j7RUL0xTVKtL1vv9a81XVFsK7Xkc5IY7Aw5m71CLdvmvFDSRZPqqAUdpzC2OrhAnFC5Dno7(rF54Hd6ui46WbdKhRw(EpNGkBP9swoB9D53zuKZYLEXWovSpQD2t2wK2jxwgxoEuf8XoBdI3fCB3IzlPn4(7Lcb9kIbhLvd)lZw(QaryuDjG4bKvjwvyJtSualFfTLTkGPcCEIhGmiuj1JJb1J86bJ6jy4hHDJvbJKzpztyII7tBfc7ImDztIgewi9O3wtuH9B3rWnL1toaXaNtZFoHrUpxBoqIVtgRGlgpmln08ZzR8L3qCuBX1vKfNrHtFBUv)OYbh4XwU48KqdkHU9l(Q30qGEx)k4KcnXvTbit(0il4lQTPwV9k0rIR7h(7uJuGqMV4hg)N5KuCvQwrdF)yKlSY(Y3SLO1MPpl9ZBqtsRSjFOdYAZ6rLXNXzZO1PqKY9YPPLetRvF(ckrgPV00PERL9fniNRJ2jf6KZB4LO3W9QAZxYYNpGpabLy5Kotxq76IrpzOsgRmXxs43QpOaLOU0w5NxPOBPSBqRU7VV0LfUIUy8r9QutP63)9AuuKu6XxwfKhv2B0t3efLo71nNf9iURZI7OwS0Q9Vs(paFmDLfn7cSdUf9(0RuolT)1RVebBiE95lKdt233(okFx7Vy82xj8IZog536TrVOiMoSfwSAXGB2x196LQ5LL14xk)BZEtyThK7hgTS1F)0BmzNxyo6e55FRma)(T5vfR(uHFeE5Osai)aaE(a5Aex45aeVTTGiQOZQZoTJ6nWfN4g5q(rG9KEs)2Dm9g5aFB9Ui1oUrBR4eSXI5TaFUnLLBjUFJK3kT13V6J5DtkTyxDsztqxIl6(S05HPmyJWGaWuE6z6u35zQO46KTJ4QoL18mRKtPNC2DVA53cSZPBf2rAJfg2)865ZDOctngP))oY2Cd()sz40C2MNlu1hy5DO6qLbOpFNefGXZk4yPgdpCCO1Lo2eemdGOLir3vh44IqG043nYYyVn10aqTUpCPFpysuQZ1du60Q3DmGW7m8Tr(J)cI6AnbaBMYDvQQn)md3ySHxoV2jnXMQkVsA7mVsQRPUDNS3Iqt(IPlJqBcBZ20RUjfKF)95BssASfLzcVV0Vdv1K8SGHWwkv4BC0H4hVOXMzo4i1nwJ0DtSUHgVpgiUTvodT1VKydqQFuWVLv(u9piOrivjiZtM7B(e8hlD9Mo53SSVJSID(SN()(d]])
+    spec:RegisterPack("Brewmaster", 20250728, [[Hekili:T3vwpUTrs4FldcIgP4XY6AUYoJbsI9UXoxgrtqEyXkPwKTgrpuKA5HNmgcc5188(0(E(L5FjBv9bp7MKI6ygeSbij28O7Q(Q7Q7MAu3r3mAOjjGo6h71P3PDUOZLT7E5Px078rddEyjD0WLeJ7i3c)bhYc4)(vMKLbwFGUEYx7rVFbXpG6TEY3sVZY2A9e3zZSmSi24R9GTlXehEF3qpd4vhnCAOLDWBCgnv9CoaE2Lud4YNDXOHZTmnP8NL6BmA4nZT8xpb)xY6jcQcNr4VBey56SEITLFaC7zUruuBGq8CNzzdt)NTEY1Q)N1VfU378OgUlMscwpXNgeUKDrTVaFk9BVu(wx7hqCmOJDNnoyoDSFqON5dJD)T1VT4bcU3ROZOo(aM6x8JkgQFXhy7xBh6hjfwp5(5uG)bsW4oeF8GBm3625Na4W74yMJlWyZcTTHR9pcjEM8lB6EVdCfId83FWneVGZN(9)l8SeBpkX8byGi48amfEtteZNgoBwmeygr(p7AkNSgpfOQtSMDn(KTtEXXCASn7)9YR72PXCkXoyE7LuqhXj4QUD60G9w3IezBK(AKFuyxbVxeQ8UqpRzpy5CResEoQdq(Wdmy52BrT0Md685pRLGBtacmSbzhGrvYwVyPC0J4mJ5wTnc98aAgyJgGktaCB)2H(0XPF6ghz46AJeRGNy4Adbvn2M(bQ9lVUFb8Xp4As9a7LKSsFoRybQ)2U3ZLZOEFc2cnjKtTGPJEFplFCo2dCBZmc0Rh0z1kLqqRSyqVKA4cgbmF5sg7hew2OIDcoHzSdm)N(J)C9KZ785Cm5V76fKghT8Doowmp5ERayucSyJXsI9IIuRFbJQZbe9uRPolAUzic)ontXRG58K(RwLfQoVtl(qWORXlDVN61gDfXGL880ZfyfYXzmQfcCkWMuVy3amDfeYIWp8QCi9EId6(mWfuBMtCqlDgXYVezHBOdaG2e0JVAykdNh5bibcLt94uq9iTEq)wcg(vKflr)AFlXBbJz)EiCd6M3r44Np5uP)p4T9EiyodGO2mGjnAaE4og9nAbxWe5qDmIjBMhphM4iMiX1ktyNLPZBsuHWc34gAasLFAggHGaARLeCa1qSqU7g3xbS4IfutlqwH2nO(bgyR)Zwp5BMBjqJfukkVN667)IapIpmzEH2yuijMe4AcGrasiyGntKmYzf0VrtCiwTkG4DlnOTKznqlKorYYWflftosngKLlPanmLcailKILTzkps85EQneNWnmy8Dwg3LBQp9lci2WFQnX3afEUoTPoKP2uZNn4los39eu03rb1KHly8DZN1JrCGh1p97)hmIaOGbAtazMLIUJE7yF8TYqnxvtQ559AKCu63G6q9U9H2WSgsaNIr6k)8B)vKq7Ec3agPyUtS3nScKTxOpAym(9et647TCyEZ4odhdZ4clQpkkfuzUNwsTnICKN)r4X1A2KP9Z8Dbr79SUJcXjw2yNavTwTQ5r7VXVBRwPfgcOF438DBb07V0YXbHkdpIdnstop4FuPOFoDJ)Ab3ChN(ZH)Rnf0NwqSC8Fz32xkKdV(3wIHJ4XdaBwP8O)gjpO4Oe5Bxr(NhwuU)EgL7PrP(TKPBHs97jtr07WcvhCfY8Xvj3sWShWOPSsIOyKu8kgewIiW)c(bnMJb36lc4nZZDHieh1BhgEno6Q20cG79ncp2LwDzuTLOm16JjZDwwLbwsbxKlYHa5Vi(rgBaZGIgnirPcMsxbtckTmRBsAGHBXtoxIHyA0SgLoRYPhg5O5viULxkouwIzVx(Im51OE1LrLyQf6(mbf9tGPYmgjvnGg4pmVowQSCvmKxFL1h)ipj)VL8rroSHlpbbbubiQsMPHEyufz17d5En5p)uIZDyIosOXvqzygvSjf13Mbtzg1TRRPLJAh3x0OPjLN7SGNaVUFKcwRRwP6gJnDdGB2QH4MPjv2DvKo9lHYMuu4iVKa0oLjBqxyCGYk4yFwNQG78Qtyvn4WrEwFauvBqc4tvLGBhQLT8X8Oy(Yef8lJZmzzwNmP6K93GXtqz6Augki966YvvZEHL1FZHquyKI)E3BTmAvMDd7()aakbmFWrA8Sc3ziWcl)091WaMhv8PSRldAKPI(JsjdIQ9M7ymz6hmtvQ)srNz(bkXp0Jk7qzMMjjiJ0zEWnaKdX4fIriBWS6jfuKeJ8zth6mDrrm(mzLryP)3IJfJlJQFJfnG3Hbh3qS7bIWczzzTLl1)zD1YyARbkw4FdVZnVd5fqrs0OI(dKnftQjWYTbWDlpv6fI(SqSxKwPOzUUWG2NRwL7YcJ0RUUNmu8x9tV(lffRHt9qrY)a2Hz)dGlObYjrSACUpD)tK9GHZ4NiSBLEUwM08vq6hSc6YRiTd0oRSUyoBolN3h6f5LRuyQ0K93bmZwyQDqzV(pFtm5ACuZmjIQmXBPE)ptNboVMNmrKzYGTKPGVxUVeMPiLBBS9ERBQkI5vx3F1QS(XBLl7YFLTUgjZU8erAbstItQQuatT8Ey4YKTjEP82zr3jIC39kHxDXPi)wU3URYIPDRHVVbTECYQvQUKlJ28UbZO3OUpdD3p5RgL6Yx7(DXCuPk9Pj5scaI55sCEq2X(ki53Q4CmArsbSfpzMLTn(3ylrtC04ezlKQUrWKkzF6d9rL4kt2P117FM6cj1Mjj2rpyYr1QBeAFVaYbfcaJ252uMJHMF6p(ZEmQg1Hkn3uzdvq2DgosmUB4nCpD28X2Gn25d2ZGKKzDLF57Ez329t06a)G4EWKwBherz9LFX5XEFIYhlr716xP4vha2t0aQLCDAbzS)y6nk(gJ9zA3sU2qOPev6yYqeYKJ568(HSngbmp1KBoCzDTR4ZDPSChX9BK8wRToMJV7RXLGxKfdRu2Q6N4WuJaX9XSeHZ2nIRYuwtZS7Vvzz3Wo6wAJY5Z9OctjgP7BK989mYwDd(NggohC)C8CHuRnnJyBpfYjDpQouya6l3lOdJN1WXkng2ECO2vwxfembGmisIYJHlPBrRWzEpWmVKL7Y7gU6nkMmGoEBvjVWHaLXVRKLXr1W0O52l9BbdIwDUwGs3GYDhdi8EdFRK)4hruFqvaWQPCxKQQnN)dMtG)YGZeyMPlvUznVZbROe3wgvfB4D7yWzvXMQiVsd2BEL0xtnhuYwavcTPsQMMdnPlMopcTjSnB1BBgvq(QvP7HuCSfTzcl6LbKAdJiXYV9dkl5zbdHDCd0ygZ)RJXT99j4Ut)AZe7K6YE2axZelcd23gafPSfFrcePxz(O930rau75cpO6n82QvnLpa8Ka8X2y4L)W4Q83Qv5eUr865x2JkxPpKrtAvw3L2RsuNhT8Nc()QQ7R8xeuLvQ9M4njHbUJjb4I3pAiaaideDsd62U7z9739IrdVNWA0OpEWcWIBxS01lqu57XixCmUto(3HwSUX77UaEiCOxqy7db(oK1V963YE9zU2aoZSbjHEeSvgupQyLxzRPmB3Iqek7idH96mq(C8TNVBOtQN200LTA0bKPeF6xcMa4UGn)sgI2gk4cWCGeAhuvg57z7R2bFjU6SoaWXUTlBQqKLtyhVt0JoMVyaPhS6owT1W(sT)nJ)7wc)Vdy)h7DlHe93EW)rNtIeB9ouIT6SDn21aETOHiOQ)(hQ2DmSwR74y9BM9Dz(3uTsr16eEu9Z3Hc0ARM6nyMFmIFL7KCPrchD262mbm6a)xC8dxIJfRd1cI(ynhrpPkgMuT40cYZWoApKigmbHX2omwgat6z5ChnaM6jRN8Ma(lXi6fuhtCQHkyceNlfCSTC9ScWQ(CmSdnXQz4NphjY8pzlG6BcOl8)xNG59BHNaK4NMTcFYzva60FBPnu9yGD84MugiN0)gRZHIP5g(qay1)subr8L6LyMVhkajbhjgYa5JYqd2LCcxmLYfp2G361V9nlKO)LP1Aq50OHS)eE2qHSWH)3pYogQcl(rF9OH83aVDYmW5NeupRL8BQRqH8NCgT1uSJoXmJgcuvaOuqG)uSr86jV8A2UaUX6jn5V26jRwjBqBIAb4pzVoRN0AuaKSQg4i1AeNbnQ4bSPqs901t(cz)luuK6eamgWEKJ0)ui93xd9hvzzgAVIhfhT0(v7iANzD0JjVsp(sPyQIG5y2GoihpqdhNRldz48n7q9KeasxcusvTYAWbN)kPtqsL2M8TxzU(3OaK2XcHwCBLMSh(XGg6YOHwQvhqH(PAe6k6mCgX(MDGIQMy)Okk5vQd))f3flUzxvvU2aacVA7lr9HZ0OpeVj9YOguVZZus1H055XO1UD68Kvo3)jGCUxzM1NRrm(EY0mYVn7iuLuU9uu48K3iefoxuNmf3PNFRDrYEX56faHlckkf48ADAtMDZ3uB6tmE)VBVkkQgQt1tNxSlopDgm5wVcHp5SHfvUIEfLUTgd(9kQOEjapCyvZm2DXk1ACh0QOe(1GGB)2lR2aIWlBwFl7ghyvtDtxTc7nWAhRtDaGWAPfIkfqTUf5mTOcO16ku9zvtVRZQCc1sc(IDlnJhhKhAFzKS4OmPGgUSiVxAZ6SwNLTKemVd(Qo4A7xfd96IvWQBt7jX2Es403ScMQ8Zy56uiUOJJlYhs8I8NHD2YtoxX6RYewZEqc4jaL7wrHEeUzAvuX0L1bL90wJSA1CxPcURuRwEC8ZwMrZgxrBDouBvSE29goSvUv0vS4tbeQVSKQA5MzRIfRToTIIax)JqyTcN2uxhDUIZHOVR8HCf83LA4pdXP7tLuFlp2HjzsH40iZPmmT)gJmN0qoNDyTMGH(ItraRBNmiwoj2v6fyD36Wmdq5MQWKiPPnDXuBebvI099HDSAHH0OGRVFLr4PM9PbhrlyVAi7rtX7ydg4wNfZk5jLSW(T0Jnf6YTBJZgk9XOC)N0t3nopUD(HUSyMmV1C)Zu4)anr5vGj2ZzQkcRAvBPyxHQRuReEDZSzb5RW8y(NS44DkIQYLYvwtITcAA3PQ2oOsnbEhtT4BLtrQH6xJ3OUSM8fyVVC7IwVHG30XwPC1vi0Gl)Eb1gv47gTpuvvpsmQMn9HR3vXAQkpk3gGfvKrjmk47xrYWL0(Kko6(bQsJSeV(vCSjU0OCXKVqQThB8mYmEJ2Xn138n3Nr7YnE1STCKD0rQLvqBDyEPI)yJvvAn(lJM(M5uNViAJ0VqpxPRUoHhuTDZXq81ltBELv6JLMMuit(zrtz2HjYNi)Nin2tCjxCfzSvut4kkRkTcI0FH1krGDitlB)4DRO03U4WK9g7rYwUj6(58ofPPY2XIQut3zFy2oCOF8UVSksKCLMhHv6cWwuoWBYh3T9nIeLBNmrQICgNWbrvnUt8tGqzUIFS)HpixgJA)5nqu6Ah16gXTTrRMM6FYdkY2l93I)mO)o6NiHcRhJxyzb)(ait1nkR6e)GaWF3KBLzz6ofycTXS8E7xtHDaW0uTtemJbr3OuJBT0bD9uLCEv9uFG)TxO4c9l2ur12IxIOzGLRJAUNA)1s0mxf88LBtxjezOGS7aLNo)2nKZbwg8uJo4PcDWSkz8n1LQ6JKitIF4eYGkhGFGhYxGFMFghQGoKkusTzkpojw2vbbilBfT0gaSOp7m6dB(x3fi7S9CRSRWY)OVBs6XKJQiS8iWX67yC7lReKexuVI9aDbrXlFltVNuJ389gZorqE(tabz9wyp9D67rYlWbyzYRbsvG3(csIOCZGs(y9un5rvvClDBdE5JGqzZAfBmtVJxK7ndiZGddk1r5gUj03dFmAQgQwj2)OT26oR8zhPljLJnlwxVLqDFqLIbQy3p80gjhuxyyZTAsRixW(OOI65v)lfu1ecXBfHbNTzw4L5Qu56PEaCvMBFxir4nBjMR33GOQb61d7UkLoDMLUgRuvvpy47tySgTWG5Uq1H)IL9dKfSRn6)9d]])
 end
 
 -- Deferred loading mechanism
