@@ -4,7 +4,7 @@
 actions.precombat+=/windfury_weapon,if=!enchant.windfury.weapon
 actions.precombat+=/flametongue_weapon,if=!enchant.flametongue.weapon
 actions.precombat+=/lightning_shield,if=buff.lightning_shield.down
-actions.precombat+=/potion
+actions.precombat+=/potion,name=virmens_bite_potion
 
 
 ##Opener
@@ -12,7 +12,7 @@ actions.precombat+=/potion
 actions+=/bloodlust,if=target.health.pct<25|time_to_die>30
 actions+=/use_items
 actions+=/stormlash_totem,if=totem.stormlash_totem.down&buff.stormlash_totem.down&(buff.bloodlust.up|time_to_die>=60)
-actions+=/potion,if=time>60&(pet.primal_fire_elemental.active|pet.greater_fire_elemental.active|time_to_die<=60)
+actions+=/potion,name=virmens_bite_potion,if=time>60&(pet.primal_fire_elemental.active|pet.greater_fire_elemental.active|time_to_die<=60)
 actions+=/blood_fury
 actions+=/arcane_torrent
 actions+=/berserking

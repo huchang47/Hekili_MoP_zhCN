@@ -104,7 +104,7 @@ actions.cooldowns+=/arcane_torrent,if=focus<35
 actions.cooldowns+=/berserking
 
 # Agility potion during heroism/bloodlust
-actions.cooldowns+=/potion,name=virmens_bite,if=buff.bloodlust.up
+actions.cooldowns+=/potion,name=virmens_bite_potion,if=buff.bloodlust.up
 
 # AOE ROTATION (3+ TARGETS) - Based on official guide
 # PRIORITY: Lock and Load takes precedence over AoE abilities for maximum damage

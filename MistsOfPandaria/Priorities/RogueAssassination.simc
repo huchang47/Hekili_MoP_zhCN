@@ -3,7 +3,7 @@
 # Precombat
 actions.precombat+=/apply_poison,lethal=deadly,nonlethal=crippling
 actions.precombat+=/tricks_of_the_trade,if=settings.use_tricks_of_the_trade&group
-actions.precombat+=/jade_serpent_potion
+actions.precombat+=/potion,name=virmens_bite_potion
 actions.precombat+=/stealth,if=!stealthed.all
 
 # Opener while stealthed

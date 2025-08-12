@@ -18,7 +18,7 @@ actions.cooldowns+=/berserking,if=buff.icy_veins.up|buff.brain_freeze.react
 actions.cooldowns+=/blood_fury,if=buff.icy_veins.up|buff.brain_freeze.react
 
 # Enhanced potion usage with state conditions
-actions+=/potion,if=buff.fingers_of_frost.stack=2&buff.brain_freeze.up
+actions+=/potion,name=jade_serpent_potion,if=buff.fingers_of_frost.stack=2&buff.brain_freeze.up
 
 # Alter Time with complex conditions
 actions+=/alter_time,if=buff.fingers_of_frost.stack=2&buff.brain_freeze.up&(buff.bloodlust.up|buff.sated.remains>=180)

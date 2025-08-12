@@ -432,7 +432,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 136015,
         
         handler = function()
             removeBuff( "clearcasting" )
@@ -452,7 +451,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 237582,
         
         handler = function()
             removeBuff( "lava_surge" )
@@ -472,7 +470,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 136026,
         
         handler = function()
             -- Can proc Lava Surge
@@ -492,7 +489,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135813,
         
         handler = function()
             applyDebuff( "target", "flame_shock" )
@@ -509,7 +505,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135849,
         
         handler = function()
             applyDebuff( "target", "frost_shock" )
@@ -525,7 +520,6 @@ spec:RegisterAbilities( {
     toggle = "cooldowns",
         
         startsCombat = false,
-        texture = 237577,
         
         handler = function()
             applyBuff( "ascendance" )
@@ -540,7 +534,6 @@ spec:RegisterAbilities( {
         gcd = "spell",
         
         startsCombat = true,
-        texture = 237588,
         
         handler = function()
             -- Mana restore and knockback handled elsewhere if needed
@@ -689,7 +682,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 651244,
         
         handler = function()
             -- Buffs a random stat
@@ -751,7 +743,6 @@ spec:RegisterAbilities( {
         gcd = "off",
         
         startsCombat = true,
-        texture = 136018,
         
         toggle = "interrupts",
         interrupt = true,
@@ -770,8 +761,6 @@ spec:RegisterAbilities( {
         gcd = "spell",
         
         startsCombat = false,
-        texture = 136095,
-        
         handler = function()
             applyBuff( "ghost_wolf" )
         end,
@@ -788,7 +777,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135825,
         
         usable = function()
             -- Don't suggest if Searing Totem already active
@@ -810,7 +798,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135826,
         
         handler = function()
             -- Magma Totem provides AoE damage pulses
@@ -828,7 +815,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135790,
         
         handler = function()
             -- Summons Fire Elemental for 120 seconds
@@ -846,7 +832,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = false,
-        texture = 136024,
         
         handler = function()
             -- Summons Earth Elemental for 120 seconds
@@ -864,7 +849,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = false,
-        texture = 839977,
         
         handler = function()
             -- Stormlash Totem buffs raid damage
@@ -916,7 +900,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 451165,
         
         handler = function()
             -- Earthquake channeled AoE
@@ -933,7 +916,6 @@ spec:RegisterAbilities( {
         talent = "call_of_the_elements",
         
         startsCombat = false,
-        texture = 136792,
         
         handler = function()
             -- Reduces totem cooldowns
@@ -949,7 +931,6 @@ spec:RegisterAbilities( {
         talent = "astral_shift",
         toggle = "defensives",
         startsCombat = false,
-        texture = 538565,
         handler = function()
             applyBuff( "astral_shift" )
         end,
@@ -963,7 +944,6 @@ spec:RegisterAbilities( {
         talent = "stone_bulwark_totem",
         toggle = "defensives",
         startsCombat = false,
-        texture = 538576,
         handler = function()
             applyBuff( "stone_bulwark_totem" )
         end,
@@ -980,7 +960,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 451165,
         
         usable = function() return buff.ascendance.up end,
         

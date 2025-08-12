@@ -5,7 +5,7 @@ actions.precombat+=/summon_pet,pet_type=imp
 actions.precombat+=/snapshot_stats
 actions.precombat+=/grimoire_of_sacrifice,if=talent.grimoire_of_sacrifice.enabled
 actions.precombat+=/immolate,if=time=0
-actions.precombat+=/potion
+actions.precombat+=/potion,name=jade_serpent_potion
 
 ## Default
 actions+=/havoc,target=2,if=active_enemies>1

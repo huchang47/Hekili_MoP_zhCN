@@ -23,7 +23,7 @@ actions.cooldowns+=/use_item,slot=trinket1
 actions.cooldowns+=/use_item,slot=trinket2
 actions.cooldowns+=/blood_fury
 actions.cooldowns+=/berserking
-actions.cooldowns+=/potion,name=${potion_name},if=buff.berserk.up|target.time_to_die<=26
+actions.cooldowns+=/potion,name=virmens_bite_potion,if=buff.berserk.up|target.time_to_die<=26
 actions.cooldowns+=/incarnation,if=talent.incarnation.enabled&buff.tigers_fury.up
 actions.cooldowns+=/berserk,if=buff.tigers_fury.up
 
@@ -81,7 +81,7 @@ actions.tendon+=/cat_form
 actions.tendon+=/savage_roar,if=!buff.savage_roar.up
 actions.tendon+=/tigers_fury
 actions.tendon+=/berserk
-actions.tendon+=/potion,name=${potion_name}
+actions.tendon+=/potion,name=virmens_bite_potion
 actions.tendon+=/rake
 actions.tendon+=/rip,if=combo_points.current>=5
 actions.tendon+=/ferocious_bite,if=combo_points.current>=5

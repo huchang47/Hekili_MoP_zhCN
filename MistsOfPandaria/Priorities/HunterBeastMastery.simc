@@ -10,7 +10,7 @@ actions.precombat+=/call_pet_1,if=!pet_alive
 actions.precombat+=/hunters_mark,if=(settings.mark_any|target.is_boss)&active_dot.hunters_mark=0&target.time_to_die>15
 
 # Main combat priority system
-actions+=/potion,if=buff.bestial_wrath.up&buff.bloodlust.up|target.time_to_die<=60 & target.is_boss
+actions+=/potion,name=virmens_bite_potion,if=buff.bestial_wrath.up&buff.bloodlust.up|target.time_to_die<=60 & target.is_boss
 
 # Emergency pet management
 actions+=/call_pet_1,if=!pet.alive&settings.pet_to_call=1

@@ -6,7 +6,7 @@ actions.precombat+=/lightning_shield,if=!buff.lightning_shield.up
 actions.precombat+=/flametongue_weapon,if=!enchant.flametongue.weapon
 actions.precombat+=/fire_elemental_totem,if=!totem.fire_elemental.up
 actions.precombat+=/searing_totem,if=!totem.searing_totem.up&!totem.fire_elemental.up&!totem.magma_totem.up
-actions.precombat+=/potion
+actions.precombat+=/potion,name=jade_serpent_potion
 # Precast Lava Burst ~1s before pull
 actions.precombat+=/lava_burst
 
@@ -18,7 +18,7 @@ actions+=/call_action_list,name=aoe,if=active_enemies>=3
 actions+=/call_action_list,name=single_target
 
 # Cooldowns list
-actions.cooldowns+=/potion,if=buff.ascendance.up|buff.elemental_mastery.up|target.time_to_die<=40
+actions.cooldowns+=/potion,name=jade_serpent_potion,if=buff.ascendance.up|buff.elemental_mastery.up|target.time_to_die<=40
 actions.cooldowns+=/blood_fury,if=buff.ascendance.up|buff.elemental_mastery.up
 actions.cooldowns+=/berserking,if=buff.ascendance.up|buff.elemental_mastery.up
 actions.cooldowns+=/fire_elemental_totem,if=!totem.fire_elemental.up&(target.time_to_die>150|target.time_to_die<35|cooldown.ascendance.remains>120)

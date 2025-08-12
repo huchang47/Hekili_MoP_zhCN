@@ -1101,6 +1101,19 @@ spec:RegisterAbilities( {
         end,
     },
 
+    -- Curse of the Elements: Magic vulnerability debuff (utility/raid-assigned)
+    curse_of_elements = {
+        id = 1490,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        school = "shadow",
+        startsCombat = true,
+        handler = function()
+            applyDebuff( "target", "curse_of_elements" )
+        end,
+    },
+
     -- metamorphosis ability likely already defined later; only add cancel helper.
     cancel_metamorphosis = {
         id = 103958, -- reuse spell id for icon
@@ -1276,6 +1289,32 @@ spec:RegisterAbilities( {
         end,
     },
 
+    -- Grimoire of Service: Summon a second demon temporarily.
+    grimoire_of_service = {
+        id = 108501,
+        cast = 0,
+        cooldown = 120,
+        gcd = "spell",
+        school = "shadow",
+        startsCombat = false,
+        toggle = "cooldowns",
+        handler = function()
+            -- Simplified: no separate pet modeling, assume immediate damage gain.
+        end,
+    },
+
+    -- Imp Swarm (via glyph): converts Wild Imps into a burst (CD ability).
+    imp_swarm = {
+        id = 104316,
+        cast = 0,
+        cooldown = 120,
+        gcd = "spell",
+        school = "shadow",
+        startsCombat = true,
+        toggle = "cooldowns",
+        handler = function() end,
+    },
+
     -- Summon abilities using soul shards
     summon_imp = {
         id = 688,
@@ -1304,6 +1343,22 @@ spec:RegisterAbilities( {
         essential = true,
         handler = function()
             summon_demon("felguard")
+        end,
+    },
+
+    -- Summon Infernal (AoE guardian alternative to Doomguard)
+    summon_infernal = {
+        id = 1122,
+        cast = 6.0,
+        cooldown = 600,
+        gcd = "spell",
+        school = "shadow",
+        spend = 1,
+        spendType = "soul_shards",
+        startsCombat = false,
+        toggle = "cooldowns",
+        handler = function()
+            -- Placeholder aura to reflect active guardian if needed
         end,
     },
 
@@ -1633,4 +1688,4 @@ end )
 
 
 -- TODO: Re-export / update pack after ability additions if needed.
-spec:RegisterPack( "Demonology", 20250812, [[Hekili:LIvBVTTnq4FlbfW1bnZtkX2nTlkaTRBynOTOyod7ddvsms0wersuJIkPbWq)23DuVr9QDw)qBKPo(ChV34ZjBt7BT34tKu7VCUX5RmU088fggMglnT3iFkHAVjH4Dpzh8qmjc()pqJ4X8q(UNWx9uiN4JqKYZeEWRT3Cxglu(Xy776GR5cZvgV2yjiBc1dwE9A7nbmFFAHS0up7n3gWsZDX)rYDl1CUlFl8BpjJhN7gYsLWR3Yf5U)b9EwiBH9g1IkZq6erLe4XVOoz0yYDHuF73BVXtWKubJyVrqJiSyaKRYDLmV7DKSiql73N7op3v)TMRYDNL7Ex22Tl8jI7DGJz4ISKC3tT3uyrGLZ5r2s4aHkSArjpZlWHV1XlGWt1neqYlg10uAkIhkPXoECbDHGciQmcF0XZ8C2MjEk39ARC31gn6dnmNTmbfXF5O4pV3HXN)y8a4FfG)LgW5S2V0Z0sLq8j3fe0yeamnmA5P8iXE0qvekIlsc4PSuWELy0FljluoDCZJZdrZvZ61dwRQsrLcw89uPPw0OALQW04oF9WCdajC1FpCSB4TFhvKsf3ZI3nD4zkic5CFLVfHy1OqCcKttcPXYfeHxadcjqLLZd04Du07VOCtfH1IyQE4qLCdbZAF9WOu73Vgls0QfQSD0ixpQrII)a1HgtJy00YS5guezXofp7Gv2f13ofbxcxLI)6duc15mDCyx19aW)YPCW)qQar)ni6r8hWeciHVuroLR8(gO2cLlBdv7uVdcGzIG6XJUJmynd2mvWskW4VjIqU39Vn3TP3nur)oFsIete2k4r5UpYFmLfbXIpZ)AU77(6NoTtuLfdv(Y6kOeQ0P4ccWg3Lre(J5VajxqcH4Tw3QSiWsCG3mqj1KviL527eqoj0Td7WMsGxVL1KB3ONbfB66NI7cWMAJ0CDTEB(Y(cTT(xRlrtfr3iiMjxf70I3kF5BHhsLCruhOhV5v)UVxyODeciX(Oxyxw4l9jhOtwejMSibV3bARUudLq2wQJKKmumQUjpxiYkt90JBIDqEqwmdq9el8cCVSuvRMbVog27tEHOYW9LIUPjdB9VD8c8YN6MCTV9EWRtbwknNIU3rnrZSXBI20lg8OXCbxgKQuy)m1aAyyvg2ZS3MsvhREyqHxir1BIKjAA1vNQhqG2(o3b3Z3lHn9a3p3CCpYYZY2aibQIoiDzrDOYHXtHRV)QANTVYYqpFnkcloujet38zKm1bY8Fg5QhtP6bs((HtUhpJ7OAfm(LL9inwAGdXNSfxoD(j95CINOLTOw2Qf9BoE7PHF98HyWcUTclPS)fgWDKChFgvzNNVACRasYoUma1PXyQ4J54fDdzrdNbmTgo)i7cal8aWMffRyYUxBEH9MhjIyG6skobhyhSOeUqwoL2ltLVe7Y)VzGJb4BKYXByjzsEerrabgrc4vMUi)MpXIHxDbqv5x5XGAuV(LibIQoblgTWg0HKdspLaZn)(PGAYVPyoZebFllKwmWzelnfocG9LLOz97asQcMhaEXmeGz6M7(rzXMuKWIOa7yWqLbeyzky3pHyZ4qqcEIf7fM5J0CPmzav8wWaC)PC3)5VsPis0O0VDgqalG5fOlnj(PgTM7gZrW)EsiZJjdBW1hFcvoTrP)cmZSOsn3wab017BiO(6lDUMMFKfgQDIkHuwjQYBOwkolcgOrfkd5sWF(rv4gxyvNb1HxIuvvUz7nVi39)lz08BEbS7Vwr6n)Mc1KUOMh8RS(znEQdlqdVZZQ4VAvLznYoIjjPbCPd05bIcdkZG32DgBR1XCB4iQTQrIcgOe3YyybliGoH7arcZ4r33hkMYUwAqMSuQd0kj6mC8eRQ5KrTo(02xTshHcla3r)7I0eRze4dlA9OUhu061rjp5yg8D)(bjrn74g49AZwN9ot6v4ebE9O1GR3mJ71wRp4glh)S(q3JO3Hbq5go4MRNQ8SIjoTmRYq2a)cBiER66UC3Va9pjqxHFh(BtswQwTun5n9iWrMXRWPhhVoVVf)mujh31bxBA0dOk6zikv5YnFaW2s3HfgUf97uVYcNVO9wA5Yhm1DMoexBHSlAdrfRkC3vuVUAzxPA1DyakwZMpg5QRwvL)3Lu11wlp9zPgfZPzZB7uGt0(995kD15R6cEpNvBxZYd7DBJFxxBV9RXPzSS9pdQOFUUQOe71az6dM5SF)8Q1mxnRxq)0HaR93hEijogVF7Z8AJHWzOp6kc58b(qWZAhnV04u4SnC(ILrhHnnmoTYX(o(VL7(NCPAqt4691VQIbDQM3aAuoD9FHapVkXI9CW6OcX0Aj06ZnyzwC9n(JtSuFQIzt0WOaSdKrdwzzT3X2rO84x(Lbg9AHzNm9W)DbSZNayCCFEW2AMbGDFaxyV5taxpi8rJvtoy)Fp]])
+spec:RegisterPack( "Demonology", 20250812, [[Hekili:TI16koUnu4NLHcPjmBtTNmjD2LKb62wO7a7fil0)zBfB5e1yBfKLNHbcM(q0NW(K0JKVljBNz2LLDij(OVJo3)o2X25RoBdqCSZNUX6MLw3zVyULT9cRvoB5pFc7S9eY)iAp8Heum83FhhttOr09plE0ZruuGaIuAgZhESZ2DzKi(hsC2zg3foBrz8duMZ2TXzHmYrNThibb4ItGt9D2(1dK0CpX)r5EL6p3JgcF3NtOj5ErKuo84qkl37pXhjrK5oBL)O4YqpHtWm4tFsAE4e0UiCGZ7lWNrojaXz7NLIL7nDFgja)tOiY(eCWm4c6xiWbusGln0DFw0pgGsC4GXiaS65bi2rxWYJARdqOfkAfujhZiiH(3Lfgo3NYyzYBX8a6tjni28abo32loCueoHpFpJetjmS4sMIzps8XZRKVgtdcjaFzBljehTpdXcEh8HuoLfRyrRAlmj(KB6tinH(L2cLMfdjkUbuASezfzVRTSQ(5UI(22IgJ5Oyk70bAkjvrqBRX87IBJIhx8tYdRMQy(WmCmIKaPERZ927h089RZ9S1qLloCiklIpAY4hbyAopllXT4ZUIS6oHEsmwQEWCLP8UffMLj9v5OgTebKpIDbbJjy4sF)MCVvdO1wWJO4HtTL(OoHN5zNUmSfNYu((LC2uEDYCm9rsYEHFUee3YF59Ds0DdJKNupb3GQZsXUGfgNQeU(nknsKiboXPPhqmzFdfNrD7bHJOQ(WGoorll(h44LDF)BuawuedXAUB55QQM6pQ0fPk1UlIsdCdZypxxL9IHaZGlZrHpwMSFIH9PX7qJNU)xiwe1)47Y9AgOaUYps)YSCV)7F(3CpgwojbAYZOX5EprFIVZF((9Ysn4BPKyW5)W2p)PCVVuR3U9MjjCWrnCnXvWigmFo09)rSw7l4jMY6)(f5UTtpZdiiNYDhf6x0j9KxwJyWR2PJJslL2fJGZvaHCMz8SH6nM7D(miDUxF99SxM7nj3tZuZ9MPnIKtZ8pi6T7FarvBypwZeWpGtCHzIyj6texjiQq8LzTLTVSA5)G7HBimQB4HNt1U7fMTg(Rb8VZcmRAxI29kLd0tY9abT6baBlbcTgXJs8HMqDhKjdXPglBQpxguRj8K4iCmKeP2rAlufgbtg4i2Emu2m1hLYf0B6lGRbyXKXx0aeHbUyGH(dgK1MgzclssiMLGIgHpeDpy8aVQYUYMiRunM4vsOsgE7xp9WYQdXPXyzPoGyiEJTli5e)JUcEbTYw6qKS)5dqzjKUusf4MI88sLv0nsoSSJ2w0pXTx2CKEQOHTf6JV3WK86RPHP622g0YcZUVABXD6TDkH70NzaIJtRQgNFaJI4hMFYNl14nlLnvMyqPThV2vp9xvQ7dV1AqFy)1KL3xrYKlN6gqW1xyZbRHvu)vSXOeuT)42wGercbvJKmMSxEPJhf0thJZXVs)dizy11vrL0zdvAoyFWoLn2dwq0VV(ICb9XjUvb(RPpH)Z(rcDi9dc)2GDh1J7let1QRA(MRQvPFpYAff9IlAzdEXekJYpivM(6Veymses8zxugdnCF2(12vxScpGJIQkAV7cZFHF4rGlTqSQ3xYnoBHXwjWuDykZhIprzCXqOvkVeK55paiFc7dhC1kbfCAijcIW)qU33vs2pK)Wp0IPD(dfxJ051K(VEZp3I1TzbA4v)gs4MRQzEBw6cEYVrWGEJbc0ci0Z)mR3gFFPLiw4UwwqcLLmluAXs1c9ikBwBBn6jGgrcX7YT5(nRg9GISUAdslfCStNYBls9wUVPyd4n2LgDpVYRgFwHbdqO0jZGe1oDdpRPbKWKm)wVmCmdKOK((XjNPJLwhDdYuto0WZu5Y(Q8rDIJM8Ha6T8qn7GDzIw2CFDR3e11vHAdVHI2Pi1VyJHlI(wlcHZ38Eggx063NqpIkTSH30PX1Lkk812YPDcPXnGuaqnpqV6E9MfMpt1UlgAiOEI6mrz(UYwgkY(QRsMmcWduYu4lhPQUkDSMNHY5vQxeGusK6(n3C(C)7DSw1D1PUYyUYK2uqa4xAPgJQix300Tdn8jt7BPH1lpF28Yc3V5TQ5FDuZuT1bwFZYztmT4Yi2BxRdO7p2b0j2dQw1jPbtftubcv0vxFRMRuF4A)V6PMZk(Xb6bE(8ut96SxorlyRdA337K2Jhn431XSYsdbtVghziw5YjSKoOTEZDwZaBZCg0glfHTTSMv6u13FP5wb0ogUaUqGHQaTvfE0GFHyT6k0zRIn2V4UefaosYoS6rz93LwVxaRYIa9Y1AYG8818OLS97hUREr41EjbX)C()p]])

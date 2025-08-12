@@ -19,7 +19,7 @@ actions+=/berserking,if=debuff.colossus_smash.up
 actions+=/arcane_torrent,if=rage<rage.max-40
 actions+=/lights_judgment,if=debuff.colossus_smash.down&cooldown.bloodthirst.remains
 actions+=/bag_of_tricks,if=debuff.colossus_smash.down&cooldown.bloodthirst.remains
-actions+=/potion,if=buff.recklessness.up|target.time_to_die<25
+actions+=/potion,name=mogu_power_potion,if=buff.recklessness.up|target.time_to_die<25
 actions+=/run_action_list,name=single_target,if=active_enemies=1
 actions+=/run_action_list,name=aoe,if=active_enemies>=2
 
