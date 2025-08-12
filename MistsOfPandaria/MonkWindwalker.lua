@@ -27,9 +27,9 @@ function Hekili:GetMoPSpecialization()
     end
 
     -- Mistweaver check (currently not implemented, but placeholder for completeness)
-    -- if IsPlayerSpell(115175) or IsPlayerSpell(115151) then -- Soothing Mist or Renewing Mist
-    --     return 270
-    -- end
+    if IsPlayerSpell(115175) or IsPlayerSpell(115151) then -- Soothing Mist or Renewing Mist
+        return 270
+    end
 
     return nil -- Return nil if no specific spec is detected, to allow fallbacks
 end
@@ -510,6 +510,13 @@ local function RegisterWindwalkerSpec()
             toggle = "interrupts",
 
             handler = function() end
+        },
+        chi_torpedo = {
+            id = 115008,
+            cooldown = 20,
+            charges = 2,
+
+            talent = "chi_torpedo"
         }
     })
 
