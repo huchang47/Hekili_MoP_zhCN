@@ -430,13 +430,26 @@ local HekiliSpecMixin = {
     end,
 
     RegisterGlyphs = function( self, glyphs )
-        -- Glyphs in MoP Classic are handled differently than in retail
-        -- For now, just store them for potential future use
+        -- Normalize glyph mappings so lookups work by name -> spellID.
+        -- Many specs register as [spellID] = "glyph_name". We store both
+        -- directions, but consumers (like state.glyph.<name>.enabled) rely on
+        -- name -> spellID being present.
         if not self.glyphs then
             self.glyphs = {}
         end
-        for glyphID, glyphName in pairs( glyphs ) do
-            self.glyphs[ glyphID ] = glyphName
+        for key, value in pairs( glyphs ) do
+            if type( key ) == "number" and type( value ) == "string" then
+                -- Registered as [id] = name
+                self.glyphs[ value ] = key   -- primary: name -> id
+                self.glyphs[ key ] = value   -- secondary: id -> name (for debugging/tools)
+            elseif type( key ) == "string" and type( value ) == "number" then
+                -- Registered as name -> id
+                self.glyphs[ key ] = value   -- primary: name -> id
+                self.glyphs[ value ] = key   -- secondary: id -> name
+            else
+                -- Fallback: keep whatever was provided
+                self.glyphs[ key ] = value
+            end
         end
     end,
 

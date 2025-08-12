@@ -372,55 +372,26 @@ local function GetTargetDebuffByID(spellID, caster)
     return nil
 end
 
--- Create custom Blessings aura
-spec:RegisterAuras({
-    blessing = {
-        id = 20217, -- Use Blessing of Kings as primary ID
-        duration = 3600,
-        max_stack = 1,
-        generate = function( t )
-            -- Blessing of Kings
-            local nameKings, iconKings, countKings, debuffTypeKings, durationKings, expirationTimeKings, casterKings = FindUnitBuffByID("player", 20217)
-            if nameKings then
-                t.name = nameKings
-                t.count = 1
-                t.expires = expirationTimeKings or 0
-                t.applied = (expirationTimeKings and durationKings) and (expirationTimeKings - durationKings) or 0
-                t.caster = casterKings
-                t.up = true
-                t.down = false
-                t.remains = expirationTimeKings and (expirationTimeKings - GetTime()) or 0
-                return
-            end
-
-            -- Blessing of Might
-            local nameMight, iconMight, countMight, debuffTypeMight, durationMight, expirationTimeMight, casterMight = FindUnitBuffByID("player", 19740)
-            if nameMight then
-                t.name = nameMight
-                t.count = 1
-                t.expires = expirationTimeMight or 0
-                t.applied = (expirationTimeMight and durationMight) and (expirationTimeMight - durationMight) or 0
-                t.caster = casterMight
-                t.up = true
-                t.down = false
-                t.remains = expirationTimeMight and (expirationTimeMight - GetTime()) or 0
-                return
-            end
-
-            -- No blessing found
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.up = false
-            t.down = true
-            t.remains = 0
-        end
-    }
-})
-
 -- Advanced Retribution Paladin Auras with Enhanced Generate Functions
 spec:RegisterAuras({
+    blessing_of_kings = {
+        id = 20217,
+        duration = 3600,
+        max_stack = 1,
+    },
+
+    blessing_of_might = {
+        id = 19740,
+        duration = 3600,
+        max_stack = 1,
+    },
+
+    -- Alias aura that represents any blessing being active
+    blessing = {
+        alias = { "blessing_of_kings", "blessing_of_might" },
+        aliasMode = "first",
+        aliasType = "buff",
+    },
 
     -- Inquisition: Key damage buff with enhanced tracking
     inquisition = {
@@ -1535,7 +1506,13 @@ spec:RegisterAbilities( {
     },
 
     exorcism = {
-        id = 879,
+        id = function()
+            -- Use Mass Exorcism spell ID when glyph is active
+            if state.glyph.mass_exorcism.enabled then
+                return 122032
+            end
+            return 879
+        end,
         cast = 0,
 		cooldown = 15,
         gcd = "spell",
@@ -1549,7 +1526,17 @@ spec:RegisterAbilities( {
         startsCombat = true,
         texture = 135903,
 
-        copy = { 122032 },
+        copy = { 122032, 879 },
+
+        usable = function()
+            -- Debug glyph detection
+            if Hekili.ActiveDebug then
+                Hekili:Debug("Exorcism usability check - Glyph enabled: %s, Current spell ID: %s",
+                    tostring(state.glyph.mass_exorcism.enabled),
+                    tostring(state.glyph.mass_exorcism.enabled and 122032 or 879))
+            end
+            return true
+        end,
 
         handler = function()
             -- Exorcism mechanic
@@ -2128,6 +2115,7 @@ spec:RegisterAbilities( {
 
         handler = function()
             applyBuff("blessing_of_kings")
+            removeBuff("blessing_of_might")
         end
     },
 
@@ -2145,6 +2133,7 @@ spec:RegisterAbilities( {
 
         handler = function()
             applyBuff("blessing_of_might")
+            removeBuff("blessing_of_kings")
         end
     },
 

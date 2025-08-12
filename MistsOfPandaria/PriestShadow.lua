@@ -959,47 +959,35 @@ spec:RegisterTalents( {
 -- Enhanced Glyphs System for Shadow Priest
 spec:RegisterGlyphs( {
     -- Major Glyphs (affecting DPS and mechanics)
-    [55687] = "Glyph of Dispersion",          -- Reduces the cooldown on Dispersion by 60 sec, but reduces the healing you receive while in Dispersion by 50%.
-    [55680] = "Glyph of Dispel Magic",        -- Your Dispel Magic can be cast on hostile targets and will now always hit, but costs 8% more mana.
-    [42408] = "Glyph of Fade",                -- Reduces the cooldown of your Fade spell by 9 sec.
-    [55684] = "Glyph of Fortitude",           -- Your Power Word: Fortitude spell is now also cast on you when cast on a party or raid member.
-    [55675] = "Glyph of Holy Nova",           -- Increases the radius of your Holy Nova spell by 5 yards, but increases its cooldown by 2 sec.
-    [55678] = "Glyph of Inner Fire",          -- Increases the spell power gained from your Inner Fire spell by an additional 264.
-    [42414] = "Glyph of Levitate",            -- Your Levitate spell no longer requires a reagent.
-    [55682] = "Glyph of Mass Dispel",         -- Reduces the cast time of Mass Dispel by 1 sec.
-    [42415] = "Glyph of Mind Control",        -- Increases the duration of your Mind Control spell by 8 sec.
-    [55688] = "Glyph of Mind Flay",           -- Increases the damage done by your Mind Flay spell by 20% when your target is afflicted with Shadow Word: Pain.
-    [55679] = "Glyph of Mind Spike",          -- Your Mind Spike also increases spell power by 30% for your next Mind Blast.
-    [55689] = "Glyph of Psychic Horror",      -- Your Psychic Horror spell no longer causes enemies to flee, but now reduces their movement speed by 70%.
-    [55681] = "Glyph of Psychic Scream",      -- Targets of your Psychic Scream spell now flee 8 yards further.
-    [42413] = "Glyph of Shadow Word: Death",  -- Shadow Word: Death can now be used on targets at or below 25% health.
-    [55676] = "Glyph of Shadow Word: Pain",   -- Your Shadow Word: Pain spell is instantly applied to all targets within 10 yards of your target.
-    [42416] = "Glyph of Spirit of Redemption", -- When you enter Spirit of Redemption, you gain 100% spell haste for the duration.
-    [55690] = "Glyph of Vampiric Embrace",    -- Your Vampiric Embrace also affects 2 additional nearby party members.
-    [55691] = "Glyph of Prayer of Mending",   -- Your Prayer of Mending spell bounces 2 additional times.
-    [55692] = "Glyph of Renew",               -- Your Renew spell heals for 25% more when cast on yourself.
-    [55693] = "Glyph of Smite",               -- Your Smite spell reduces the target's movement speed by 50% for 5 sec.
-    [55694] = "Glyph of Inner Sanctum",       -- Increases the movement speed bonus of your Inner Will by an additional 10%.
-    [55695] = "Glyph of Lightwell",           -- Your Lightwell gains 5 additional charges.
-    [55696] = "Glyph of Circle of Healing",   -- Your Circle of Healing spell heals 1 additional target.
-    [55697] = "Glyph of Guardian Spirit",     -- When Guardian Spirit expires or is cancelled, 50% of the health lost while Guardian Spirit was active is restored.
-    [55698] = "Glyph of Prayer of Healing",   -- Your Prayer of Healing spell also heals an additional 20% over 6 sec.
-    [55699] = "Glyph of Scourge Imprisonment", -- Your Shackle Undead spell has 100% chance to break early when the target takes damage.
-    [55700] = "Glyph of Shadow",              -- While in Shadowform, your non-damaging spells cost 10% less mana.
-    [55701] = "Glyph of Mind Blast",          -- Your Mind Blast spell also slows the target's movement speed by 50% for 4 sec.
-    [55702] = "Glyph of Devouring Plague",    -- Your Devouring Plague instantly deals damage equal to 1 tick when applied.
-    [55703] = "Glyph of Vampiric Touch",      -- Your Vampiric Touch spell also silences the target for 3 sec when applied.
+    [63229] = "dispersion",          -- Reduces the cooldown on Dispersion by 60 sec, but reduces the healing you receive while in Dispersion by 50%.
+    [119864] = "dispel_magic",        -- Your Dispel Magic can be cast on hostile targets and will now always hit, but costs 8% more mana.
+    [55684] = "fade",                -- Reduces the cooldown of your Fade spell by 9 sec.
+    [125045] = "holy_nova",           -- Increases the radius of your Holy Nova spell by 5 yards, but increases its cooldown by 2 sec.
+    [55686] = "inner_fire",          -- Increases the spell power gained from your Inner Fire spell by an additional 264.
+    [108939] = "levitate",            -- Your Levitate spell no longer requires a reagent.
+    [55691] = "mass_dispel",         -- Reduces the cast time of Mass Dispel by 1 sec.
+    [120585] = "mind_flay",           -- Increases the damage done by your Mind Flay spell by 20% when your target is afflicted with Shadow Word: Pain.
+    [33371] = "mind_spike",          -- Your Mind Spike also increases spell power by 30% for your next Mind Blast.
+    [55688] = "psychic_horror",      -- Your Psychic Horror spell no longer causes enemies to flee, but now reduces their movement speed by 70%.
+    [55676] = "psychic_scream",      -- Targets of your Psychic Scream spell now flee 8 yards further.
+    [120583] = "shadow_word_death",  -- Shadow Word: Death can now be used on targets at or below 25% health.
+    [119873] = "spirit_of_redemption", -- When you enter Spirit of Redemption, you gain 100% spell haste for the duration.
+    [120584] = "vampiric_embrace",    -- Your Vampiric Embrace also affects 2 additional nearby party members.
+    [55685] = "prayer_of_mending",   -- Your Prayer of Mending spell bounces 2 additional times.
+    [119872] = "renew",               -- Your Renew spell heals for 25% more when cast on yourself.
+    [55692] = "smite",               -- Your Smite spell reduces the target's movement speed by 50% for 5 sec.
+    [14771] = "inner_sanctum",       -- Increases the movement speed bonus of your Inner Will by an additional 10%.
+    [126133] = "lightwell",           -- Your Lightwell gains 5 additional charges.
+    [55675] = "circle_of_healing",   -- Your Circle of Healing spell heals 1 additional target.
+    [55690] = "scourge_imprisonment", -- Your Shackle Undead spell has 100% chance to break early when the target takes damage.
+    [107906] = "shadow",              -- While in Shadowform, your non-damaging spells cost 10% less mana.
+    [87195] = "mind_blast",          -- Your Mind Blast spell also slows the target's movement speed by 50% for 4 sec.
 
     -- Minor Glyphs (convenience and visual)
-    [57985] = "Glyph of Shadowfiend",         -- Your Shadowfiend appears as a Shadow Orb.
-    [57986] = "Glyph of Shackle Undead",      -- Your Shackle Undead spell glows with a different color.
-    [57987] = "Glyph of Fading",              -- Your character becomes more transparent when using Fade.
-    [57988] = "Glyph of Fortitude",           -- Your Power Word: Fortitude creates a visual shield effect.
-    [57989] = "Glyph of Shadow Protection",   -- Your Shadow Protection creates a dark aura around the target.
-    [57990] = "Glyph of Shadowform",          -- Your Shadowform appearance is even more dramatic.
-    [57991] = "Glyph of the Heavens",         -- Your appearance when casting spells creates sparkles.
-    [57992] = "Glyph of Angels",              -- Your Guardian Spirit appears as a different type of angel.
-    [57993] = "Glyph of the Val'kyr",         -- Your Spirit of Redemption takes on a Val'kyr appearance.
+    [57986] = "shackle_undead",      -- Your Shackle Undead spell glows with a different color.
+    [120581] = "the_heavens",         -- Your appearance when casting spells creates sparkles.
+    [145722] = "angels",              -- Your Guardian Spirit appears as a different type of angel.
+    [126094] = "the_valkyr",         -- Your Spirit of Redemption takes on a Val'kyr appearance.
 } )
 
 -- Advanced Aura System for Shadow Priest

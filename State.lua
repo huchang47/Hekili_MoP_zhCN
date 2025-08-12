@@ -712,14 +712,22 @@ state.glyph = setmetatable( {}, {
     __index = function( t, k )
         -- First check if we have this glyph in our registered glyphs
         local spec = state.spec
-        if spec and spec.glyphs then
-            local glyphID = spec.glyphs[ k ]
+        -- Use class spec glyphs if state spec glyphs is not a table
+        local glyphsTable = (spec and type(spec.glyphs) == "table") and spec.glyphs or
+                           (Hekili.Class and Hekili.Class.specs and Hekili.Class.specs[spec.id] and Hekili.Class.specs[spec.id].glyphs)
+
+        if glyphsTable then
+            local glyphID = glyphsTable[ k ]
             if glyphID and type( glyphID ) == "number" then
-                -- Check if player has this glyph active
-                for i = 1, 6 do -- MoP has 6 glyph slots
-                    local GetGlyphSocketInfo = (type(_G)=="table" and _G.GetGlyphSocketInfo) or function(...) return nil end
-                    local enabled, glyphType, glyphSpell = GetGlyphSocketInfo( i )
-                    if enabled and glyphSpell == glyphID then
+                -- Use the GetGlyphSocketInfo API with return values
+                local GetGlyphSocketInfo = (type(_G)=="table" and _G.GetGlyphSocketInfo) or function(...) return nil end
+                local GetNumGlyphSockets = (type(_G)=="table" and _G.GetNumGlyphSockets) or function() return 6 end
+
+                local numSockets = GetNumGlyphSockets()
+                for i = 1, numSockets do
+                    -- API: enabled, glyphType, glyphTooltipIndex, glyphSpellID, icon = GetGlyphSocketInfo(socketID)
+                    local enabled, glyphType, glyphTooltipIndex, glyphSpellID, icon = GetGlyphSocketInfo(i)
+                    if enabled and glyphSpellID == glyphID then
                         return { enabled = true }
                     end
                 end
@@ -2191,7 +2199,7 @@ do
             -- Calculated from real event data.
             elseif k == "aggro" then t[k] = ( UnitThreatSituation( "player" ) or 0 ) > 1
             elseif k == "threat_situation" then t[k] = UnitThreatSituation( "player" ) or 0
-            elseif k == "threat_percent" then 
+            elseif k == "threat_percent" then
                 local status, percent = UnitThreatSituation( "player" )
                 t[k] = percent or 0
             elseif k == "has_aggro" then t[k] = ( UnitThreatSituation( "player" ) or 0 ) >= 3
@@ -2240,7 +2248,7 @@ do
                     while true do
                         local name, _, _, _, _, dispelType = UnitDebuff("target", i)
                         if not name then break end
-                        
+
                         -- Check if the debuff is dispellable (Magic, Curse, Poison, Disease)
                         if dispelType and (dispelType == "Magic" or dispelType == "Curse" or dispelType == "Poison" or dispelType == "Disease") then
                             hasDispellable = true
@@ -2596,7 +2604,7 @@ do
             if t:GetVariableIDs( k ) then return t.variable[ k ] end
             if t.settings[ k ] ~= nil then return t.settings[ k ] end
             if t.toggle[ k ]   ~= nil then return t.toggle[ k ] end
-            
+
             -- Check for state tables
             if state.class.stateTables and state.class.stateTables[ k ] then
                 return state.class.stateTables[ k ]
