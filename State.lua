@@ -3803,7 +3803,7 @@ end
 
 
 function state:CombinedResourceRegen( t )
-    local regen = t.regen
+    local regen = tonumber( t.regen ) or 0
     if regen == 0.001 then regen = 0 end
 
     local model = t.regenModel
@@ -3812,14 +3812,18 @@ function state:CombinedResourceRegen( t )
     for _, source in pairs( model ) do
         local value = type( source.value ) == "function" and source.value() or source.value
         local interval = type( source.interval ) == "function" and source.interval() or source.interval
+        value = tonumber( value ) or 0
+        interval = tonumber( interval ) or 0
 
         local aura = source.aura
 
         if aura then
-            aura = source.debuff and state.debuff[ aura ] or state.buff[ aura ]
+            local auraRef = source.debuff and state.debuff[ aura ] or state.buff[ aura ]
 
-            if aura.up then
-                regen = regen + ( value / interval )
+            if auraRef and auraRef.up then
+                if interval > 0 then
+                    regen = regen + ( value / interval )
+                end
             end
         end
     end
@@ -3832,7 +3836,7 @@ function state:TimeToResource( t, amount )
     if not amount or amount > t.max then return 3600 end
     if t.current >= amount then return 0 end
 
-    local regen, lastTick, pad = t.regen, nil, 0
+    local regen, lastTick, pad = tonumber( t.regen ) or 0, nil, 0
     local queryTime = state.query_time
     local deficit = amount - t.current
 
@@ -3943,7 +3947,7 @@ local mt_resource = {
             return 100 - t.pct
 
         elseif k == "current" then
-            local regen = t.regen
+            local regen = tonumber( t.regen ) or 0
             if regen == 0.001 then regen = 0 end
 
             -- If this is a modeled resource, use our lookup system.
@@ -4005,7 +4009,7 @@ local mt_resource = {
             return ( state.time > 0 and t.active_regen or t.inactive_regen ) or 0
 
         elseif k == "regen_combined" then
-            local regen = t.regen
+            local regen = tonumber( t.regen ) or 0
             if regen == 0.001 then regen = 0 end
             return max( regen, state:CombinedResourceRegen( t ) )
 
