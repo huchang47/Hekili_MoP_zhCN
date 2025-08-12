@@ -97,43 +97,6 @@ end)
 
 -- Enhanced resource systems
 spec:RegisterResource( 0, { -- Mana = 0 in MoP
-    -- divine_plea = {
-    --     last = function ()
-    --         return state.buff.divine_plea.applied
-    --     end,
-
-    --     interval = 3.0,
-
-    --     stop = function ()
-    --         return state.buff.divine_plea.down
-    --     end,
-
-    --     value = function ()
-    --         return 0.12 * state.mana.max -- 12% mana per tick
-    --     end,
-    -- },
-
-    -- guarded_by_the_light = {
-    --     last = function ()
-    --         return state.combat
-    --     end,
-
-    --     interval = 2.0,
-
-    --     stop = function ()
-    --         return false
-    --     end,
-
-    --     value = function ()
-    --         local regen = 0.02 * state.mana.max -- 2% base
-    --         -- Enhanced by Word of Glory usage
-    --         if state.buff.guarded_by_the_light.up then
-    --             regen = regen * 2
-    --         end
-    --         return regen
-    --     end,
-    -- },
-
     seal_of_insight = {
         last = function ()
             return state.swing.last_taken
@@ -2147,6 +2110,9 @@ spec:RegisterAbilities( {
         texture = 135969,
 
         handler = function()
+            removeBuff("seal_of_righteousness")
+            removeBuff("seal_of_justice")
+            removeBuff("seal_of_insight")
             applyBuff("seal_of_truth")
         end
     },
@@ -2161,6 +2127,9 @@ spec:RegisterAbilities( {
         texture = 135960,
 
         handler = function()
+            removeBuff("seal_of_truth")
+            removeBuff("seal_of_justice")
+            removeBuff("seal_of_insight")
             applyBuff("seal_of_righteousness")
         end
     },
@@ -2175,6 +2144,9 @@ spec:RegisterAbilities( {
         texture = 135971,
 
         handler = function()
+            removeBuff("seal_of_truth")
+            removeBuff("seal_of_righteousness")
+            removeBuff("seal_of_insight")
             applyBuff("seal_of_justice")
         end
     },
@@ -2189,6 +2161,9 @@ spec:RegisterAbilities( {
         texture = 135917,
 
         handler = function()
+            removeBuff("seal_of_truth")
+            removeBuff("seal_of_righteousness")
+            removeBuff("seal_of_justice")
             applyBuff("seal_of_insight")
         end
     }
@@ -2229,5 +2204,20 @@ spec:RegisterOptions( {
     execution_sentence_heal = false,
 } )
 
+spec:RegisterSetting("recommend_seals", true, {
+    name = "Recommend Seals",
+    desc = "If checked, the addon will recommend the best seal to use based on the current number of targets.",
+    type = "toggle",
+    width = "full"
+} )
+-- Slider option to set number of targets to recommend Seal of Righteousness, default is 4
+spec:RegisterSetting("seal_of_righteousness_threshold", 4, {
+    name = "Seal of Righteousness Threshold",
+    desc = "The number of targets to recommend Seal of Righteousness (recommended: 4). " ..
+        "This setting will be disregarded if 'Recommend Seals' is unchecked.",
+    type = "range", min = 1, max = 6, step = 1,
+    width = "full"
+} )
+
 -- Register default pack for MoP Retribution Paladin
-spec:RegisterPack( "Retribution", 20250720, [[Hekili:9M1xVTTnq8plfdWOPRtZw2UjDiYpS9sBEOyyQpljAjABUO)nsQKAad9zFKuwsKuKskPO9H2MY74D)U)Y7Icwf81a)eafg8f3LUBxER7DoRwU1D96aF65syGFji(rWr2pKdYy)9)aPy0(kkQiNt7CAbiHldsrfoMr3hL9xyWbAD02n39B3f4VVcLs)CEWEd6z9MvRyxTegh8LBxg4FcLKaByfsId8)6jePoI)hqD0vGuhvCG9)J5iOokfrOmYhkW1rFc(ikf5WGfU4akLbMFPo6VbPGeu(FuhjH86hyu0qA9d1p0ivItjggxKThq)vVFFFkKqq5hdloe(i7FjVhDW7n7RoCWHqbuItv5IM)BlNStMwuzOJNO9IkdqOq85xGWiqqkxquCf9KeMKpMlo(DFcgcZHzii5(nJlnmhwWIksot9dLQc5HsFNNfXxw042nr7FRsoMbZP8aqhhD3HJH3E1JuuKKwrOoyiJRlxAogKhJy3oSS4ziMdPMtFcMFK7QFgde(HBUCHcWhHuhkkdgslctqW792S8gzDIY)VkebPQyPdDskEo)YLbhJHzauo5Ep3Bw82tfPNBGZoV1gvBphVZD5vXLGEcLddlRWLfeyJnQGnvtIdVbWqkxHDHJvaCccKZdCTEPUm4jURaHcncXC2PGu21DKp2bMdyzPjlg6LyrHEtK7uKfDfbgIOWS3ZBO4XQjZFesxXvYtamIlsNRhgsoNhhsslOERwysjMYaKIqQeyvRXp6TAgGXDcW4(dcmIm8Wdv4ZkNcXeiMh4uYgWXGCEcfglQD6Pa)gmw0LlKWOaZJHsbWHehpm(6mkfRkL3ZGeEcKLPKlPC(pCuCT8IWCyzCqO34YvUU1B7ifLTnEuQfuY4zL9JRCzzhJRiGeMiecFHmiKfblhTmfGjHpbzf1XINoma4rb1uYZQjVWmLMEEBu6BiIM8ooIUuYKEgGOVNaJ9Ilks5rphnMBLihktXZULlMIL79w64(kJcMFdzw(VrVvpuPNG9VMAkHuXT2(g580sRXWmvm6r44bbnMngeSWJCqWcldccWVvGJrel1GQNWEEUjsGzTFPiiE12q3YyEE9X0ZLN4tnrcBLyBlet(TXDbTCz021jkB060(os5MvULPAtto3Xn3ohMjZvNOS5QtBG5Af4sbWnnbqTi9MxwVABdGTBZSGZK3SPTj(AEQ8WpIdBt1c8zsMWUt3wnSLyEgGZ5tzf4)5SYcmLLrg5QTXIt9db(IFsS)f8aOkLY(XVi2hRv6)zGFmMnDcBqKa)3whjWU2yW1rxUuh1suFy46OfTug0Wi6MM7oC(06O79QJ2SKXsGFdUzlvjghpGYm1jXO(eZnkYMRVrDUcaTqyl9VAvhTJrB9iivL73Xe0sj1zSIr2SKWd32wB12mmxsVuu9UCbT51jiRZSZL5wRYCKXZB9PguRGKS3Rno0JhzjYHWh0GqlFTJXldk7tqxhXu0Q(KtdWYCgTwYKHb)AeDJr08BSOdAm4F74W39faF3FUW3Ld)74WVfZ9BliBsmU(OcxDBpOX1QLYSPUoHoR27kn5AftL(997OuYxhceHbyVL1ylJ8tg7kyqaB7DJuFsSPlPRP2NSZ3oz)q5Nq02GyqpIR9JvHU8l2cKpr7pZJaPRko2hrh2BhoIdywMNuJbTriekwVjOzJtZhVWweO9nq2lUtO3BLRy126rVK9onmYMaKb0jwzQx68PgLnSPUjZXvhTuyLtZk)zg2KJcC(Xz5lnKOyEQg7PlUlhxtJiktbdx79envBUXuGtzhqHqT3NAkm2UkIqmRLtu02mtlrXvVsvnrXYADZirXYnnLOyLvPefx7v727fQtrmwBF2ZG1kfKgz1s53zAOiG2hKD3Dbcn)S(OhQ(z9njNHdw)kM8Sd5r2LQ3Jyo1EJuGnVszL2IJxJTwzeLoxUQJDTEHOQJvFN1z4y1VIjh7qEKCSRNOmEW2WMtwN8bH1VM5dSVf2offQhEx)c2OXIinAdZBPgT1U76L2rlGln)UVRuGHDPBV0E9VOxZNBeJkBOB(tgQ)9cLr6BU6wB)GGch9B6wyV7l5jktSAVTxO)BbAvogTfXNuu4tNuf6FLWzKaQCfUwSNpORf9VAOrTP9kPX7Yv7w5Ecx)LsO2rygTJfjlaMHuGd8)ekdcehf8)d]] )
+spec:RegisterPack( "Retribution", 20250720, [[Hekili:9M1xVTTnq8plfdWOPRtZw2EnDikpS9YAEOyyQpljAjABUilPrsLudyOp77iLLfjfPKtkArrBt4D8UF3F1DsrlI(suygIJJ(S)C)1ZVDHV38fl(O)IOq(XkCuyfk9r0o4hkqhG)9FWCkztnNuwiODmVeLjKbRSMMc0djh(tkAlVjz9QB)LBJc3utY5FQiAJn9CRqpSkCA0N)W8OW9KSmClRywAu4x2tynjI)IAsodKMKYTWVNkqqtsoHXbYBlPnj)f(rsoXdGfTCljhaZp1K83OCugP43BsuqEZdafdK28qZdTsL5vrXPLh2G4)CWVUjhZyKIDXLBJFe(F27jBd2uVDRhJJ4mVSYNlMj)9ooLhnTWoq2TNFryhqmoME8LjUQYwRXgT)ToB3bCbxyxx4aoNHr5c1ZP18992I6PTGqCLNWX4c8bcMD3QzTI(nbZNjvdi8SyX9ybWTW20bvyI4YAwbykd0LgvB68(aRSgZ3tXS9L5ztcKwhKqZV9SpTSmlVMX9OyGRtNApgvKsaxvCv5ZyQxDvBaa9eUyNiy9mfboL6QBoDIJO7WCpo5aoMxgNrW3fSA(nQ6Ku8F1egrxXkhkT0tNgCmfFarky3f4FZS3cw3Xw4CFWsRQTNJ35p)S4YiprkWXv10QsgU1g1WMUjDjIOcJ6k1lSRgrZiOcrqOZlPxf4(Usek1iMkyNJYHR7PEShUab55zZg6LGOqVjkCkQIUMHJjC8H3lAkbrDsXJy(cHsEcrjcr6D(Wy2XI0ywEjpyXmBkXwgGsesNauYN(yWIRam(tag)VtGrMHhVTMEu7umLHPIaNw2anfvisOOuzJIEk4VItLDkH6QcoUifReahsC8W4RZO0SQCr9plEpck2vZL0o)7okoxEXah2bbim7w5Rw3gSEKIYUgpA1cAz8qz)4kxv2P0AgkdeHu4ZubHQiGC0QCeLf)egkQtLp8XcGhfutjpNM8m7uA75TsRVHmAk64i7sPs6zeH)EgoniTeA)drppdM7KOaktXZ9ZNnfl3fm3Z)vgfS)mKRY)n6T6HkFpU)jJ2si1CRDdeCDAPZyatLsEepEqWGzRbbh8OgeCWYGGa(RL0ucZrnO(jWJNBJeuO9lNGPlwh7xLkYR3LFSAVyWlwCNe7AHyZVnUlOJlR2UjrvJ2K23qk3vLBzR20MZDCZ9IdZM5Asu1CnPnWCDcCLa4Q2aOrKE1lRxTRbWUF1vbNjVzBBt658u1HFKh2LQffcsMb358MrFWhwe6zeTqmLvu4Nouvs5qgzIVXwpEnpefIGX1lPrH)fmzikkusqUshElQoNd)4NLR41PS)ikmLcdRaZLiwnBRTj)BsM1QQE)vtYDnjRKeA3cOj5nbnjZLNymeEtcqrmioGojEHn8u1rehS0Rdtd3qWk2Uhu4eBk8cbQMueaEPta)2MejMnwTOj50PMKoIMlyiHJJMWj30E3HZ8drbaXRaV(n9qUDfhbgxnjgn3cPvrUsNBvNVeqZK2s)KaTo9LJGuDUFhiO5kQZAxivZsbpcBB94jm6Z61lfDVRqq)2Rtqo3dsiZp4uMJSYtNp1IALKu9EDXHE8OkrbeU1acD81TAKkOCVvISIyrFYPfyzpJ2izYYW0TIU1iAFtsxGga)poo89FbW3)hl89fWFXCb(7aD)kyQ2KGTfASDzNmt28vztFjntwD3xAYL1Mkb8B3vPLXoeisdWDtRXwX7hm21WGe2U7hz7Ht(2AGcNVEYoIQpeXyVSbDjo3rwh6QZbjr(enaTpyPPQeyFeD4UH4ioGRY8uAnymyMuXMTbTBCg(4zUIaDpfeEM7e69JQvSg7sAuY6p3aJWC1aqNyr0EPlMfx1WM6MGJRBqTPzv8GgyECjoNyUr3jk2NRXD6I)etdoIOSfm8D3t0wT5kBboTnRLc1DFQPWy3cEsXSwnrXyFxZefZkv9efhllFfjkoUPTefNSQMO4UA3DVqtkYbB7ZEgSSUK0ilSR(CMwksODRQ7(sGWWpBo8HUF2C)8RWbBEfBE2H8O4sxA2J4AQ9CxGT86kL1AloEn2sTruU4Y1DSlnle1DSMVjGRWXAEfBo2H8O6yNOmEW7yW5UWt4FEnZh4EpS71u4GW7lyNghI0QnCDR1y8YmU0l9cTiH0cV8PjJS8kj6U0gZV1A7hcMsQAPB)J5A(LCh4a6)qT9(5nQFDvzBGXDIQFFwxsXQDi)mVs)PAjZ5T21lywnD3QU)e9)d]] )
