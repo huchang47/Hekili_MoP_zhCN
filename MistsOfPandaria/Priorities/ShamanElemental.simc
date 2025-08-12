@@ -4,11 +4,14 @@
 # Precombat preparation
 actions.precombat+=/lightning_shield,if=!buff.lightning_shield.up
 actions.precombat+=/flametongue_weapon,if=!enchant.flametongue.weapon
+actions.precombat+=/fire_elemental_totem,if=!totem.fire_elemental.up
 actions.precombat+=/searing_totem,if=!totem.searing_totem.up&!totem.fire_elemental.up&!totem.magma_totem.up
 actions.precombat+=/potion
-# (Optional opener optimization: pre-pull fire_elemental_totem and elemental_blast/lava_burst if allowed; negative timing not supported here.)
+# Precast Lava Burst ~1s before pull
+actions.precombat+=/lava_burst
 
 # Main rotation
+actions+=/run_action_list,name=opener,if=time<5
 actions+=/spiritwalkers_grace,if=movement.distance>0
 actions+=/call_action_list,name=cooldowns
 actions+=/call_action_list,name=aoe,if=active_enemies>=3
@@ -25,6 +28,24 @@ actions.cooldowns+=/stormlash_totem,if=buff.bloodlust.up|target.time_to_die<20
 actions.cooldowns+=/ancestral_swiftness
 actions.cooldowns+=/flame_shock,if=dot.flame_shock.remains<12&cooldown.ascendance.remains<6&cooldown.ascendance.remains<dot.flame_shock.remains
 actions.cooldowns+=/ascendance,if=dot.flame_shock.remains>=12
+## Optional: refresh FS near the end of Elemental Mastery to snapshot haste
+actions.cooldowns+=/flame_shock,if=buff.elemental_mastery.up&dot.flame_shock.ticking&dot.flame_shock.remains<3&buff.elemental_mastery.remains<=2
+
+# Opener (time < 5s)
+## On pull: EM + FS; Stormlash only if lust is active on pull
+actions.opener+=/stormlash_totem,if=buff.bloodlust.up&!totem.stormlash_totem.up&time<=1
+actions.opener+=/elemental_mastery,if=time<=0.5
+actions.opener+=/flame_shock,if=debuff.flame_shock.down&buff.elemental_mastery.up
+## +1s after pull: cast Lava Burst if Ascendance not yet active
+actions.opener+=/lava_burst,if=time>=1&!buff.ascendance.up
+## +2s after pull: Ascendance and on-use items
+actions.opener+=/ascendance,if=time>=2&dot.flame_shock.ticking
+actions.opener+=/use_items,if=time>=2
+## +3s after pull and beyond: pump Lava Burst and maintain Unleash on CD if talented
+actions.opener+=/lava_burst,if=buff.ascendance.up
+actions.opener+=/lava_burst,if=cooldown_react&dot.flame_shock.ticking
+actions.opener+=/unleash_elements,if=talent.unleashed_fury.enabled
+actions.opener+=/lightning_bolt
 
 # Single target rotation
 

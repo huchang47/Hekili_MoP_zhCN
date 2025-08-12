@@ -5304,6 +5304,27 @@ found = true end
                                         p.performance.mode = v
                                     end,
                                 },
+                                frameCapPct = {
+                                    type = "range",
+                                    name = "Frame Cap %",
+                                    desc = "Set the fraction of your frame time budget the engine may use. This scales the per-frame work cap.\n\n" ..
+                                           "Example: 80% means the addon targets using up to 80% of the available frame time (subject to presets and dynamic limits).",
+                                    order = 2,
+                                    width = 1.5,
+                                    min = 0.3,
+                                    max = 1.0,
+                                    step = 0.05,
+                                    get = function(info)
+                                        local p = Hekili.DB.profile
+                                        p.performance = p.performance or {}
+                                        return p.performance.frameCapPct or 0.8
+                                    end,
+                                    set = function(info, v)
+                                        local p = Hekili.DB.profile
+                                        p.performance = p.performance or {}
+                                        p.performance.frameCapPct = v
+                                    end,
+                                },
                             }
                         }
                     },

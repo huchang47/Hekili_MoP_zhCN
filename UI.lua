@@ -2384,10 +2384,14 @@ if self.HasRecommendations then
                     local spf = 1000 / ( rate > 0 and rate or 100 )
                     -- Use perf ceiling to bound per-frame work budget.
                     local ceiling = perf.frameCeiling or 15
+                    -- Apply user-configured percentage of the frame cap (defaults to 0.8 if unset).
+                    local capPct = (p.performance and p.performance.frameCapPct) or 0.8
                     if HekiliEngine.threadUpdates then
-                        Hekili.maxFrameTime = 0.8 * max( ceiling, min( 16.667, spf, 1.1 * HekiliEngine.threadUpdates.meanWorkTime / floor( HekiliEngine.threadUpdates.meanFrames ) ) )
+                        -- One min() with all candidates; guard against division by zero.
+                        local dyn = 1.1 * HekiliEngine.threadUpdates.meanWorkTime / max( 1, floor( HekiliEngine.threadUpdates.meanFrames or 1 ) )
+                        Hekili.maxFrameTime = capPct * min( ceiling, 16.667, spf, dyn )
                     else
-                        Hekili.maxFrameTime = 0.8 * max( ceiling, min( 16.667, spf ) )
+                        Hekili.maxFrameTime = capPct * min( ceiling, 16.667, spf )
                     end
                 end
 
