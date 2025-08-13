@@ -27,34 +27,35 @@ spec:RegisterResource( 0 ) -- Mana = 0 in MoP (use simple registration like othe
 
 -- Talents (MoP Elemental Shaman talents)
 spec:RegisterTalents( {
-    -- Tier 1 (Level 15)
-    nature_guardian = { 1, 1, 30884 }, -- When you are below 30% health, all damage taken is reduced by 30% and your movement speed is increased by 30%.
-    stone_bulwark_totem = { 1, 2, 108270 }, -- Summons a Stone Bulwark Totem with 5 health at your feet for 30 sec. When damaged, the totem absorbs the damage instead of the player.
-    astral_shift = { 1, 3, 108271 }, -- You shift into the astral plane, reducing all damage taken by 40% for 6 sec.
-    
-    -- Tier 2 (Level 30)
-    frozen_power = { 2, 1, 63374 }, -- Reduces the cooldown of your Frost Shock by 1 sec and your Frost Shock also reduces the target's movement speed by an additional 30%.
-    earthgrab_totem = { 2, 2, 51485 }, -- Summons an Earthgrab Totem that grasps the legs of enemies within 8 yards, preventing movement for 8 sec.
-    windwalk_totem = { 2, 3, 108273 }, -- Summons a Windwalk Totem that removes all movement impairing effects from party and raid members within 30 yards.
-    
-    -- Tier 3 (Level 45)  
-    call_of_the_elements = { 3, 1, 108285 }, -- Reduces the cooldown of your totems by 4 sec.
-    totemic_restoration = { 3, 2, 108284 }, -- You may have 1 additional totem of each element active at one time.
-    totemic_projection = { 3, 3, 108287 }, -- Relocates your active totems to the target location.
-    
-    -- Tier 4 (Level 60)
-    lashing_lava = { 4, 1, 108291 }, -- Your Lava Lash ability will spread Flame Shock from your target to up to 4 nearby enemies.
-    conductivity = { 4, 2, 108282 }, -- When you cast Lightning Bolt or Chain Lightning on a target affected by your Flame Shock, it triggers a Lightning Blast at that target.
-    unleashed_fury = { 4, 3, 117012 }, -- Unleash Elements enhances your next spell cast.
-    
-    -- Tier 5 (Level 75)
-    unleash_life = { 5, 1, 73685 }, -- Unleashes elemental forces of Life, healing the Shaman and nearby allies for 30% of the Shaman's maximum health.
-    ancestral_swiftness = { 5, 2, 16188 }, -- Your next spell with a base casting time less than 10 sec becomes an instant cast spell.
-    echo_of_the_elements = { 5, 3, 108283 }, -- When you cast Earth Shock, Fire Nova, Lightning Bolt, or Chain Lightning, there is a 6% chance to not trigger the global cooldown.
-    
-    -- Tier 6 (Level 90)
-    primal_elementalist = { 6, 1, 117013 }, -- Your Fire and Earth Elementals are infused with raw primal essence, granting them additional abilities.
-    elemental_blast = { 6, 2, 117014 }, -- Harnesses the raw power of the elements, dealing elemental damage and increasing your critical strike, haste, or mastery by 5% for 8 sec.
+    -- Tier 1 (Level 15) - Survivability
+    nature_guardian       = { 1, 1, 31616  }, -- When you fall below 30% health, you instantly heal for a percentage of your maximum health. 30 sec internal cooldown.
+    stone_bulwark_totem   = { 1, 2, 108270 }, -- Summons a Stone Bulwark Totem for 30 sec that grants you a damage-absorbing shield that periodically strengthens.
+    astral_shift          = { 1, 3, 108271 }, -- Reduces all damage you take by 40% for 6 sec.
+
+    -- Tier 2 (Level 30) - Control/Mobility
+    frozen_power          = { 2, 1, 63374  }, -- Frost Shock roots the target in place for 5 sec. Internal cooldown applies per target.
+    earthgrab_totem       = { 2, 2, 51485  }, -- Summons an Earthgrab Totem that roots enemies within 8 yards for 8 sec, then slows them.
+    windwalk_totem        = { 2, 3, 108273 }, -- Summons a Windwalk Totem that grants immunity to movement-impairing effects to allies for 6 sec.
+
+    -- Tier 3 (Level 45) - Totem Utility
+    call_of_the_elements  = { 3, 1, 108285 }, -- Resets the cooldown of totems with a base CD shorter than 3 min.
+    totemic_persistence   = { 3, 2, 108294 }, -- Allows one additional totem of the same element to be active concurrently.
+    totemic_projection    = { 3, 3, 108287 }, -- Relocate your active totems to the targeted location.
+
+    -- Tier 4 (Level 60) - Throughput/Haste
+    elemental_mastery     = { 4, 1, 16166  }, -- Increases your spell haste by 30% and grants burst casting for a short duration.
+    ancestral_swiftness   = { 4, 2, 16188  }, -- Grants 5% passive haste and an on-use effect making your next spell instant.
+    echo_of_the_elements  = { 4, 3, 108283 }, -- Your spells and abilities have a chance to trigger an additional duplicate cast.
+
+    -- Tier 5 (Level 75) - Healing/Support
+    healing_tide_totem    = { 5, 1, 108280 }, -- Summons a totem that heals nearby allies over 10 sec.
+    ancestral_guidance    = { 5, 2, 108281 }, -- Converts a portion of your damage and healing into healing on up to 3 injured allies.
+    conductivity          = { 5, 3, 108282 }, -- While you damage enemies within your Healing Rain, allies standing in it are healed for a portion of the damage dealt.
+
+    -- Tier 6 (Level 90) - Capstone
+    unleashed_fury        = { 6, 1, 117012 }, -- Empowers Unleash Elements, enhancing the following spell based on your weapon imbue.
+    primal_elementalist   = { 6, 2, 117013 }, -- Your Fire and Earth Elementals become powerful guardians with additional abilities and grant you increased damage.
+    elemental_blast       = { 6, 3, 117014 }, -- A strong elemental attack that also grants a random secondary stat bonus for a short time.
 } )
 
 -- Glyphs (Enhanced System - authentic MoP 5.4.8 glyph system)
