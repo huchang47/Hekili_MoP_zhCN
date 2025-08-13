@@ -6,17 +6,17 @@ local _, playerClass = UnitClass('player')
 if playerClass ~= 'DEATHKNIGHT' then return end
 
 local addon, ns = ...
-local Hekili = _G[ addon ]
+local Hekili = _G[addon]
 local class, state = Hekili.Class, Hekili.State
 
 -- Safe local references to WoW API (helps static analyzers and emulation)
-local GetRuneCooldown = rawget( _G, "GetRuneCooldown" ) or function() return 0, 10, true end
-local GetRuneType = rawget( _G, "GetRuneType" ) or function() return 1 end
+local GetRuneCooldown = rawget(_G, "GetRuneCooldown") or function() return 0, 10, true end
+local GetRuneType = rawget(_G, "GetRuneType") or function() return 1 end
 
 local FindUnitBuffByID = ns.FindUnitBuffByID
 local strformat = string.format
 
-local spec = Hekili:NewSpecialization( 252, true )
+local spec = Hekili:NewSpecialization(252, true)
 
 spec.name = "Unholy"
 spec.role = "DAMAGER"
@@ -55,10 +55,13 @@ local function spend(amount, resource, noforecast)
 end
 
 -- Local aliases for core state helpers and tables (improves static checks and readability).
-local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
+local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff,
+    state.removeDebuff
 local removeDebuffStack = state.removeDebuffStack
-local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance, state.interrupt
-local buff, debuff, cooldown, active_dot, pet, totem, action = state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
+local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance,
+    state.interrupt
+local buff, debuff, cooldown, active_dot, pet, totem, action = state.buff, state.debuff, state.cooldown, state
+    .active_dot, state.pet, state.totem, state.action
 
 -- Runes (unified model on the resource itself to avoid collision with a state table)
 do
@@ -90,7 +93,7 @@ do
         })
     end
 
-    spec:RegisterResource( 5, {}, setmetatable({
+    spec:RegisterResource(5, {}, setmetatable({
         expiry = { 0, 0, 0, 0, 0, 0 },
         cooldown = 10,
         max = 6,
@@ -113,9 +116,9 @@ do
                 local e = t.expiry[i] or 0
                 return math.max(0, e - state.query_time)
             end
-            if k == "blood" then return buildTypeCounter({1,2}, 1) end
-            if k == "frost" then return buildTypeCounter({3,4}, 2) end
-            if k == "unholy" then return buildTypeCounter({5,6}, 3) end
+            if k == "blood" then return buildTypeCounter({ 1, 2 }, 1) end
+            if k == "frost" then return buildTypeCounter({ 5, 6 }, 2) end
+            if k == "unholy" then return buildTypeCounter({ 3, 4 }, 3) end
             if k == "death" then return buildTypeCounter({}, 4) end
             if k == "count" or k == "current" then
                 local c = 0
@@ -126,28 +129,28 @@ do
             end
             return rawget(t, k)
         end
-    }) ) -- Runes = 5 in MoP with unified state
+    })) -- Runes = 5 in MoP with unified state
 
     -- Keep expiry fresh when we reset the simulation step
     spec:RegisterHook("reset_precast", function()
         if state.runes and state.runes.reset then state.runes.reset() end
     end)
 end
-spec:RegisterResource( 6 ) -- RunicPower = 6 in MoP
+spec:RegisterResource(6) -- RunicPower = 6 in MoP
 
 -- Register individual rune types for MoP 5.5.0
-spec:RegisterResource( 20, { -- Blood Runes = 20 in MoP
+spec:RegisterResource(20, { -- Blood Runes = 20 in MoP
     rune_regen = {
-        last = function () return state.query_time end,
-        stop = function( x ) return x == 2 end,
-        interval = function( time, val )
+        last = function() return state.query_time end,
+        stop = function(x) return x == 2 end,
+        interval = function(time, val)
             local r = state.blood_runes
             if val == 2 then return -1 end
-            return r.expiry[ val + 1 ] - time
+            return r.expiry[val + 1] - time
         end,
         value = 1,
     }
-}, setmetatable( {
+}, setmetatable({
     expiry = { 0, 0 },
     cooldown = 10,
     regen = 0,
@@ -161,45 +164,45 @@ spec:RegisterResource( 20, { -- Blood Runes = 20 in MoP
     reset = function()
         local t = state.blood_runes
         for i = 1, 2 do
-            local start, duration, ready = GetRuneCooldown( i )
+            local start, duration, ready = GetRuneCooldown(i)
             start = start or 0
-            duration = duration or ( 10 * state.haste )
-            t.expiry[ i ] = ready and 0 or ( start + duration )
+            duration = duration or (10 * state.haste)
+            t.expiry[i] = ready and 0 or (start + duration)
             t.cooldown = duration
         end
-        table.sort( t.expiry )
+        table.sort(t.expiry)
         t.actual = nil
     end,
 
-    gain = function( amount )
+    gain = function(amount)
         local t = state.blood_runes
         for i = 1, amount do
-            table.insert( t.expiry, 0 )
-            t.expiry[ 3 ] = nil
+            table.insert(t.expiry, 0)
+            t.expiry[3] = nil
         end
-        table.sort( t.expiry )
+        table.sort(t.expiry)
         t.actual = nil
     end,
 
-    spend = function( amount )
+    spend = function(amount)
         local t = state.blood_runes
         for i = 1, amount do
-            local nextReady = ( t.expiry[ 1 ] > 0 and t.expiry[ 1 ] or state.query_time ) + t.cooldown
-            table.remove( t.expiry, 1 )
-            table.insert( t.expiry, nextReady )
+            local nextReady = (t.expiry[1] > 0 and t.expiry[1] or state.query_time) + t.cooldown
+            table.remove(t.expiry, 1)
+            table.insert(t.expiry, nextReady)
         end
         t.actual = nil
     end,
 
-    timeTo = function( x )
-        return state:TimeToResource( state.blood_runes, x )
+    timeTo = function(x)
+        return state:TimeToResource(state.blood_runes, x)
     end,
 }, {
-    __index = function( t, k )
+    __index = function(t, k)
         if k == "actual" then
             local amount = 0
             for i = 1, 2 do
-                if t.expiry[ i ] <= state.query_time then
+                if t.expiry[i] <= state.query_time then
                     amount = amount + 1
                 end
             end
@@ -207,22 +210,22 @@ spec:RegisterResource( 20, { -- Blood Runes = 20 in MoP
         elseif k == "current" then
             return t.actual
         end
-        return rawget( t, k )
+        return rawget(t, k)
     end
-} ) )
+}))
 
-spec:RegisterResource( 21, { -- Frost Runes = 21 in MoP
+spec:RegisterResource(21, { -- Frost Runes = 21 in MoP
     rune_regen = {
-        last = function () return state.query_time end,
-        stop = function( x ) return x == 2 end,
-        interval = function( time, val )
+        last = function() return state.query_time end,
+        stop = function(x) return x == 2 end,
+        interval = function(time, val)
             local r = state.frost_runes
             if val == 2 then return -1 end
-            return r.expiry[ val + 1 ] - time
+            return r.expiry[val + 1] - time
         end,
         value = 1,
     }
-}, setmetatable( {
+}, setmetatable({
     expiry = { 0, 0 },
     cooldown = 10,
     regen = 0,
@@ -235,46 +238,46 @@ spec:RegisterResource( 21, { -- Frost Runes = 21 in MoP
 
     reset = function()
         local t = state.frost_runes
-        for i = 3, 4 do -- Frost runes are at positions 3-4
-            local start, duration, ready = GetRuneCooldown( i )
+        for i = 5, 6 do -- Frost runes are at positions 5-6
+            local start, duration, ready = GetRuneCooldown(i)
             start = start or 0
-            duration = duration or ( 10 * state.haste )
-            t.expiry[ i - 2 ] = ready and 0 or ( start + duration )
+            duration = duration or (10 * state.haste)
+            t.expiry[i - 4] = ready and 0 or (start + duration)
             t.cooldown = duration
         end
-        table.sort( t.expiry )
+        table.sort(t.expiry)
         t.actual = nil
     end,
 
-    gain = function( amount )
+    gain = function(amount)
         local t = state.frost_runes
         for i = 1, amount do
-            table.insert( t.expiry, 0 )
-            t.expiry[ 3 ] = nil
+            table.insert(t.expiry, 0)
+            t.expiry[3] = nil
         end
-        table.sort( t.expiry )
+        table.sort(t.expiry)
         t.actual = nil
     end,
 
-    spend = function( amount )
+    spend = function(amount)
         local t = state.frost_runes
         for i = 1, amount do
-            local nextReady = ( t.expiry[ 1 ] > 0 and t.expiry[ 1 ] or state.query_time ) + t.cooldown
-            table.remove( t.expiry, 1 )
-            table.insert( t.expiry, nextReady )
+            local nextReady = (t.expiry[1] > 0 and t.expiry[1] or state.query_time) + t.cooldown
+            table.remove(t.expiry, 1)
+            table.insert(t.expiry, nextReady)
         end
         t.actual = nil
     end,
 
-    timeTo = function( x )
-        return state:TimeToResource( state.frost_runes, x )
+    timeTo = function(x)
+        return state:TimeToResource(state.frost_runes, x)
     end,
 }, {
-    __index = function( t, k )
+    __index = function(t, k)
         if k == "actual" then
             local amount = 0
             for i = 1, 2 do
-                if t.expiry[ i ] <= state.query_time then
+                if t.expiry[i] <= state.query_time then
                     amount = amount + 1
                 end
             end
@@ -282,22 +285,22 @@ spec:RegisterResource( 21, { -- Frost Runes = 21 in MoP
         elseif k == "current" then
             return t.actual
         end
-        return rawget( t, k )
+        return rawget(t, k)
     end
-} ) )
+}))
 
-spec:RegisterResource( 22, { -- Unholy Runes = 22 in MoP
+spec:RegisterResource(22, { -- Unholy Runes = 22 in MoP
     rune_regen = {
-        last = function () return state.query_time end,
-        stop = function( x ) return x == 2 end,
-        interval = function( time, val )
+        last = function() return state.query_time end,
+        stop = function(x) return x == 2 end,
+        interval = function(time, val)
             local r = state.unholy_runes
             if val == 2 then return -1 end
-            return r.expiry[ val + 1 ] - time
+            return r.expiry[val + 1] - time
         end,
         value = 1,
     }
-}, setmetatable( {
+}, setmetatable({
     expiry = { 0, 0 },
     cooldown = 10,
     regen = 0,
@@ -310,47 +313,47 @@ spec:RegisterResource( 22, { -- Unholy Runes = 22 in MoP
 
     reset = function()
         local t = state.unholy_runes
-        for i = 5, 6 do -- Unholy runes are at positions 5-6
-            local start, duration, ready = GetRuneCooldown( i )
+        for i = 3, 4 do -- Unholy runes are at positions 3-4
+            local start, duration, ready = GetRuneCooldown(i)
             start = start or 0
-            duration = duration or ( 10 * state.haste )
-            t.expiry[ i - 4 ] = ready and 0 or ( start + duration )
+            duration = duration or (10 * state.haste)
+            t.expiry[i - 2] = ready and 0 or (start + duration)
             t.cooldown = duration
         end
-        table.sort( t.expiry )
+        table.sort(t.expiry)
         t.actual = nil
     end,
 
-    gain = function( amount )
+    gain = function(amount)
         local t = state.unholy_runes
         for i = 1, amount do
-            table.insert( t.expiry, 0 )
-            t.expiry[ 3 ] = nil
+            table.insert(t.expiry, 0)
+            t.expiry[3] = nil
         end
-        table.sort( t.expiry )
+        table.sort(t.expiry)
         t.actual = nil
     end,
 
 
-    spend = function( amount )
+    spend = function(amount)
         local t = state.unholy_runes
         for i = 1, amount do
-            local nextReady = ( t.expiry[ 1 ] > 0 and t.expiry[ 1 ] or state.query_time ) + t.cooldown
-            table.remove( t.expiry, 1 )
-            table.insert( t.expiry, nextReady )
+            local nextReady = (t.expiry[1] > 0 and t.expiry[1] or state.query_time) + t.cooldown
+            table.remove(t.expiry, 1)
+            table.insert(t.expiry, nextReady)
         end
         t.actual = nil
     end,
 
-    timeTo = function( x )
-        return state:TimeToResource( state.unholy_runes, x )
+    timeTo = function(x)
+        return state:TimeToResource(state.unholy_runes, x)
     end,
 }, {
-    __index = function( t, k )
+    __index = function(t, k)
         if k == "actual" then
             local amount = 0
             for i = 1, 2 do
-                if t.expiry[ i ] <= state.query_time then
+                if t.expiry[i] <= state.query_time then
                     amount = amount + 1
                 end
             end
@@ -358,32 +361,32 @@ spec:RegisterResource( 22, { -- Unholy Runes = 22 in MoP
         elseif k == "current" then
             return t.actual
         end
-        return rawget( t, k )
+        return rawget(t, k)
     end
-} ) )
+}))
 
 -- Unified DK Runes interface across specs
 -- Removed duplicate RegisterStateTable("runes"); unified model lives on the resource.
 
 -- Death Runes State Table for MoP 5.5.0 - Removed duplicate registration
 
-spec:RegisterResource( 6, {
+spec:RegisterResource(6, {
     -- Frost Fever Tick RP (20% chance to generate 4 RP)
     frost_fever_tick = {
 
         aura = "frost_fever",
 
-        last = function ()
+        last = function()
             local app = state.dot.frost_fever.applied
 
-            return app + floor( state.query_time - app )
+            return app + floor(state.query_time - app)
         end,
 
         interval = 1,
-        value = function ()
+        value = function()
             -- 20% chance * 4 RP = 0.8 RP per tick
             -- We'll lowball to 0.6 RP for conservative estimate
-            return 0.6 * min( state.active_dot.frost_fever or 0, 5 )
+            return 0.6 * min(state.active_dot.frost_fever or 0, 5)
         end,
     },
 
@@ -392,72 +395,72 @@ spec:RegisterResource( 6, {
         talent = "runic_attenuation",
         swing = "mainhand",
 
-        last = function ()
+        last = function()
             local swing = state.swings.mainhand
             local t = state.query_time
             if state.mainhand_speed == 0 then
                 return 0
             else
-                return swing + floor( ( t - swing ) / state.mainhand_speed ) * state.mainhand_speed
+                return swing + floor((t - swing) / state.mainhand_speed) * state.mainhand_speed
             end
         end,
 
         interval = "mainhand_speed",
 
-        stop = function () return state.swings.mainhand == 0 end,
+        stop = function() return state.swings.mainhand == 0 end,
 
-        value = function ()
+        value = function()
             -- 50% chance * 3 RP = 1.5 RP per swing
             -- We'll lowball to 1.0 RP
             return state.talent.runic_attenuation.enabled and 1.0 or 0
         end,
     }
-} )
+})
 
 
-local spendHook = function( amt, resource, noHook )
+local spendHook = function(amt, resource, noHook)
     if amt > 0 and resource == "runes" and active_dot.shackle_the_unworthy > 0 then
-        reduceCooldown( "shackle_the_unworthy", 4 * amt )
+        reduceCooldown("shackle_the_unworthy", 4 * amt)
     end
 end
 
-spec:RegisterHook( "spend", spendHook )
+spec:RegisterHook("spend", spendHook)
 
 -- Talents
-spec:RegisterTalents( {
+spec:RegisterTalents({
     -- Tier 1 (Level 56)
-    roiling_blood             = { 1, 1, 108170 }, -- Your Blood Boil ability now also triggers Pestilence if it strikes a diseased target.
-    plague_leech              = { 1, 2, 123693 }, -- Extract diseases from an enemy target, consuming up to 2 diseases on the target to gain 1 Rune of each type that was removed.
-    unholy_blight             = { 1, 3, 115989 }, -- Causes you to spread your diseases to all enemy targets within 10 yards.
+    roiling_blood      = { 1, 1, 108170 }, -- Your Blood Boil ability now also triggers Pestilence if it strikes a diseased target.
+    plague_leech       = { 1, 2, 123693 }, -- Extract diseases from an enemy target, consuming up to 2 diseases on the target to gain 1 Rune of each type that was removed.
+    unholy_blight      = { 1, 3, 115989 }, -- Causes you to spread your diseases to all enemy targets within 10 yards.
 
     -- Tier 2 (Level 57)
-    lichborne                 = { 2, 1,  49039 }, -- Draw upon unholy energy to become undead for 10 sec. While undead, you are immune to Charm, Fear, and Sleep effects.
-    anti_magic_zone           = { 2, 2,  51052 }, -- Places a large, stationary Anti-Magic Zone that reduces spell damage taken by party or raid members by 40%. The Anti-Magic Zone lasts for 30 sec or until it absorbs a massive amount of spell damage.
-    purgatory                 = { 2, 3, 114556 }, -- An unholy pact that prevents fatal damage, instead absorbing incoming healing equal to the damage that would have been fatal for 3 sec.
+    lichborne          = { 2, 1, 49039 },  -- Draw upon unholy energy to become undead for 10 sec. While undead, you are immune to Charm, Fear, and Sleep effects.
+    anti_magic_zone    = { 2, 2, 51052 },  -- Places a large, stationary Anti-Magic Zone that reduces spell damage taken by party or raid members by 40%. The Anti-Magic Zone lasts for 30 sec or until it absorbs a massive amount of spell damage.
+    purgatory          = { 2, 3, 114556 }, -- An unholy pact that prevents fatal damage, instead absorbing incoming healing equal to the damage that would have been fatal for 3 sec.
 
     -- Tier 3 (Level 58)
-    deaths_advance            = { 3, 1,  96268 }, -- For 8 sec, you are immune to movement impairing effects and your movement speed is increased by 50%.
-    chilblains                = { 3, 2,  50041 }, -- Victims of your Chains of Ice take 5% increased damage from your abilities for 8 sec.
-    asphyxiate                = { 3, 3, 108194 }, -- Lifts the enemy target off the ground, crushing their throat and stunning them for 5 sec.
+    deaths_advance     = { 3, 1, 96268 },  -- For 8 sec, you are immune to movement impairing effects and your movement speed is increased by 50%.
+    chilblains         = { 3, 2, 50041 },  -- Victims of your Chains of Ice take 5% increased damage from your abilities for 8 sec.
+    asphyxiate         = { 3, 3, 108194 }, -- Lifts the enemy target off the ground, crushing their throat and stunning them for 5 sec.
 
     -- Tier 4 (Level 60)
-    death_pact                = { 4, 1,  48743 }, -- Drains 50% of your summoned minion's health to heal you for 25% of your maximum health.
-    death_siphon              = { 4, 2, 108196 }, -- Deals Shadow damage to the target and heals you for 150% of the damage dealt.
-    conversion                = { 4, 3, 119975 }, -- Continuously converts 2% of your maximum health per second into 20% of maximum health as healing.
+    death_pact         = { 4, 1, 48743 },  -- Drains 50% of your summoned minion's health to heal you for 25% of your maximum health.
+    death_siphon       = { 4, 2, 108196 }, -- Deals Shadow damage to the target and heals you for 150% of the damage dealt.
+    conversion         = { 4, 3, 119975 }, -- Continuously converts 2% of your maximum health per second into 20% of maximum health as healing.
 
     -- Tier 5 (Level 75)
-    blood_tap                 = { 5, 1,  45529 }, -- Consume 5 charges from your Blood Charges to immediately activate a random depleted rune.
-    runic_empowerment         = { 5, 2,  81229 }, -- When you use a rune, you have a 45% chance to immediately regenerate that rune.
-    runic_corruption          = { 5, 3,  51462 }, -- When you hit with a Death Coil, Frost Strike, or Rune Strike, you have a 45% chance to regenerate a rune.
+    blood_tap          = { 5, 1, 45529 }, -- Consume 5 charges from your Blood Charges to immediately activate a random depleted rune.
+    runic_empowerment  = { 5, 2, 81229 }, -- When you use a rune, you have a 45% chance to immediately regenerate that rune.
+    runic_corruption   = { 5, 3, 51462 }, -- When you hit with a Death Coil, Frost Strike, or Rune Strike, you have a 45% chance to regenerate a rune.
 
     -- Tier 6 (Level 90)
-    gorefiends_grasp          = { 6, 1, 108199 }, -- Shadowy tendrils coil around all enemies within 20 yards of a hostile target, pulling them to the target's location.
-    remorseless_winter        = { 6, 2, 108200 }, -- Surrounds the Death Knight with a swirling blizzard that grows over 8 sec, slowing enemies by up to 50% and reducing their melee and ranged attack speed by up to 20%.
-    desecrated_ground         = { 6, 3, 108201 }, -- Corrupts the ground beneath you, causing all nearby enemies to deal 10% less damage for 30 sec.
-} )
+    gorefiends_grasp   = { 6, 1, 108199 }, -- Shadowy tendrils coil around all enemies within 20 yards of a hostile target, pulling them to the target's location.
+    remorseless_winter = { 6, 2, 108200 }, -- Surrounds the Death Knight with a swirling blizzard that grows over 8 sec, slowing enemies by up to 50% and reducing their melee and ranged attack speed by up to 20%.
+    desecrated_ground  = { 6, 3, 108201 }, -- Corrupts the ground beneath you, causing all nearby enemies to deal 10% less damage for 30 sec.
+})
 
 -- Glyphs (Enhanced System - authentic MoP 5.4.8 glyph system)
-spec:RegisterGlyphs( {
+spec:RegisterGlyphs({
     -- Major glyphs - Unholy Combat
     [58616] = "anti_magic_shell",    -- Reduces the cooldown on Anti-Magic Shell by 5 sec, but the amount it absorbs is reduced by 50%
     [58617] = "army_of_the_dead",    -- Your Army of the Dead spell summons an additional skeleton, but the cast time is increased by 2 sec
@@ -490,22 +493,22 @@ spec:RegisterGlyphs( {
     [58644] = "disease",             -- Your diseases last 50% longer but deal 25% less damage
     [58645] = "resilient_grip",      -- Your Death Grip removes one movement impairing effect from yourself
     [58646] = "shifting_presences",  -- Reduces the rune cost to change presences by 1, but you cannot change presences while in combat
-    
+
     -- Minor glyphs - Cosmetic and convenience
-    [58647] = "corpse_walker",       -- Your undead minions appear to be spectral
-    [58648] = "the_geist",           -- Your ghoul appears as a geist
-    [58649] = "deaths_embrace",      -- Your death grip has enhanced visual effects
-    [58650] = "bone_spikes",         -- Your abilities create bone spike visual effects
-    [58651] = "unholy_vigor",        -- Your character emanates an unholy aura
-    [58652] = "the_bloodied",        -- Your weapons appear to be constantly dripping blood
-    [58653] = "runic_mastery",       -- Your runes glow with enhanced energy when available
-    [58654] = "the_forsaken",        -- Your character appears more skeletal and undead
-    [58655] = "shadow_walk",         -- Your movement leaves shadowy footprints
-    [58656] = "deaths_door",         -- Your abilities create portal-like visual effects
-} )
+    [58647] = "corpse_walker",  -- Your undead minions appear to be spectral
+    [58648] = "the_geist",      -- Your ghoul appears as a geist
+    [58649] = "deaths_embrace", -- Your death grip has enhanced visual effects
+    [58650] = "bone_spikes",    -- Your abilities create bone spike visual effects
+    [58651] = "unholy_vigor",   -- Your character emanates an unholy aura
+    [58652] = "the_bloodied",   -- Your weapons appear to be constantly dripping blood
+    [58653] = "runic_mastery",  -- Your runes glow with enhanced energy when available
+    [58654] = "the_forsaken",   -- Your character appears more skeletal and undead
+    [58655] = "shadow_walk",    -- Your movement leaves shadowy footprints
+    [58656] = "deaths_door",    -- Your abilities create portal-like visual effects
+})
 
 -- Auras
-spec:RegisterAuras( {
+spec:RegisterAuras({
     -- Talent: Absorbing up to $w1 magic damage. Immune to harmful magic effects.
     -- https://wowhead.com/spell=48707
     antimagic_shell = {
@@ -553,8 +556,9 @@ spec:RegisterAuras( {
         duration = 30,
         type = "Magic",
         max_stack = 1,
-        generate = function( t )
-            local name, _, count, _, duration, expires, caster, _, _, spellID, _, _, _, _, timeMod, v1, v2, v3 = FindUnitBuffByID( "pet", 63560 )
+        generate = function(t)
+            local name, _, count, _, duration, expires, caster, _, _, spellID, _, _, _, _, timeMod, v1, v2, v3 =
+                FindUnitBuffByID("pet", 63560)
 
             if name then
                 t.name = t.name or name or class.abilities.dark_transformation.name
@@ -647,8 +651,7 @@ spec:RegisterAuras( {
     },
     -- TODO: Is a pet.
     raise_dead = {
-        id = 46585,
-        duration = 60,
+        id = 46584,
         max_stack = 1
     },
     -- Frost damage taken from the Death Knight's abilities increased by $s1%.
@@ -663,7 +666,7 @@ spec:RegisterAuras( {
     -- Increases your rune regeneration rate for 3 sec.
     runic_corruption = {
         id = 51460,
-        duration = function () return 3 * haste end,
+        duration = function() return 3 * haste end,
         max_stack = 1
     },
     -- Talent: Afflicted by Soul Reaper, if the target is below $s3% health this effect will explode dealing additional Shadowfrost damage.
@@ -699,14 +702,26 @@ spec:RegisterAuras( {
         duration = 5,
         max_stack = 1
     },
-    -- The presence of the Unholy, increasing attack speed by 15% and movement speed by 15%.
+    -- Presence Tracking
+    blood_presence = {
+        id = 48263,
+        duration = 3600,
+        max_stack = 1,
+    },
+
     unholy_presence = {
         id = 48265,
         duration = 3600,
-        max_stack = 1
+        max_stack = 1,
+    },
+
+    frost_presence = {
+        id = 48266,
+        duration = 3600,
+        max_stack = 1,
     },
     -- Suffering $w1 Shadow damage every $t1 sec. Erupts for damage split among all nearby enemies when the infected dies.
-    -- https://wowhead.com/spell=191587  
+    -- https://wowhead.com/spell=191587
     virulent_plague = {
         id = 191587,
         duration = 21,
@@ -757,6 +772,13 @@ spec:RegisterAuras( {
         max_stack = 1
     },
 
+    -- Unholy Frenzy buff - increase Attack Speed
+    unholy_frenzy = {
+        id = 49016,
+        duration = 30,
+        max_stack = 1
+    },
+
     -- Festering Wounds that burst when consumed by abilities
     festering_wound = {
         id = 194310,
@@ -779,8 +801,22 @@ spec:RegisterAuras( {
         tick_time = 3,
         type = "Disease",
         max_stack = 1
+    },
+    fallen_crusader = {
+        id = 53344,
+        duration = 15,
+        max_stack = 1,
+        type = "Physical"
+    },
+    -- Unholy Strength buff - increases Strength by 15% for 15 seconds, procs from Fallen Crusader
+    -- Used for snapshotting other abilities
+    unholy_strength = {
+        id = 53365,
+        duration = 15,
+        max_stack = 1,
+        type = "Physical"
     }
-} )
+})
 
 -- Pets
 spec:RegisterPets({
@@ -797,7 +833,7 @@ spec:RegisterPets({
 })
 
 -- Totems (which are sometimes pets in MoP)
-spec:RegisterTotems( {
+spec:RegisterTotems({
     gargoyle = {
         id = 49206,
         duration = 30,
@@ -810,7 +846,7 @@ spec:RegisterTotems( {
         id = 24207,
         duration = 40,
     }
-} )
+})
 
 
 
@@ -841,34 +877,34 @@ local doomed_biddings = {}
 local last_bb_summon = 0
 
 -- 20250426: Decouple Death and Decay *buff* from dot.death_and_decay.ticking
-spec:RegisterCombatLogEvent( function( _, subtype, _, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags, _, spellID, spellName )
+spec:RegisterCombatLogEvent(function(_, subtype, _, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags,
+                                     _, spellID, spellName)
     if sourceGUID ~= state.GUID then return end
 
-    if dnd_damage_ids[ spellID ] and dmg_events[ subtype ] then
+    if dnd_damage_ids[spellID] and dmg_events[subtype] then
         last_dnd_tick = GetTime()
-        dnd_spell = dnd_damage_ids[ spellID ]
+        dnd_spell = dnd_damage_ids[spellID]
         return
     end
 
     if state.talent.doomed_bidding.enabled then
         if subtype == "SPELL_CAST_SUCCESS" then
-            local consumer = class.abilities[ spellID ]
+            local consumer = class.abilities[spellID]
             if not consumer then return end
             consumer = consumer and consumer.key
 
-            if sd_consumers[ consumer ] then
-                db_casts[ GetTime() ] = consumer
-
+            if sd_consumers[consumer] then
+                db_casts[GetTime()] = consumer
             end
             return
         end
 
-        if spellID == class.auras.sudden_doom.id and aura_removals[ subtype ] and #doomed_biddings > 0 then
+        if spellID == class.auras.sudden_doom.id and aura_removals[subtype] and #doomed_biddings > 0 then
             local now = GetTime()
-            for time, consumer in pairs( db_casts ) do
+            for time, consumer in pairs(db_casts) do
                 if now - time < 0.5 then
-                    doomed_biddings[ now + 6 ] = sd_consumers[ consumer ]
-                    db_casts[ time ] = nil
+                    doomed_biddings[now + 6] = sd_consumers[consumer]
+                    db_casts[time] = nil
                 end
             end
             return
@@ -879,62 +915,72 @@ spec:RegisterCombatLogEvent( function( _, subtype, _, sourceGUID, sourceName, so
         last_bb_summon = GetTime()
         return
     end
-end )
+end)
 
 
-local dnd_model = setmetatable( {}, {
-    __index = function( t, k )
+local dnd_model = setmetatable({}, {
+    __index = function(t, k)
         if k == "ticking" then
             -- Disabled
             -- if state.query_time - class.abilities.any_dnd.lastCast < 10 then return true end
             return debuff.death_and_decay.up
-
         elseif k == "remains" then
             return debuff.death_and_decay.remains
-
         end
 
         return false
     end
-} )
+})
 
-spec:RegisterStateTable( "death_and_decay", dnd_model )
-spec:RegisterStateTable( "defile", dnd_model )
+spec:RegisterStateTable("death_and_decay", dnd_model)
+spec:RegisterStateTable("defile", dnd_model)
 
 -- Death Knight state table with runeforge support
 local mt_runeforges = {
-    __index = function( t, k )
+    __index = function(t, k)
         return false
     end,
 }
 
-spec:RegisterStateTable( "death_knight", setmetatable( {
+spec:RegisterStateTable("death_knight", setmetatable({
     disable_aotd = false,
     delay = 6,
-    runeforge = setmetatable( {}, mt_runeforges )
+    runeforge = setmetatable({}, mt_runeforges)
 }, {
-    __index = function( t, k )
+    __index = function(t, k)
         if k == "fwounded_targets" then return state.active_dot.festering_wound end
         if k == "disable_iqd_execute" then return state.settings.disable_iqd_execute and 1 or 0 end
         return 0
     end,
-} ) )
+}))
 
-spec:RegisterStateExpr( "dnd_ticking", function ()
+spec:RegisterStateExpr("dnd_ticking", function()
     return state.debuff.death_and_decay.up
-end )
+end)
 
-spec:RegisterStateExpr( "dnd_remains", function ()
+spec:RegisterStateExpr("unholy_frenzy_haste", function()
+    if buff.unholy_frenzy.up and buff.unholy_frenzy.on_self then
+        -- TODO: Add haste increase
+    end
+end)
+
+spec:RegisterStateExpr("fallen_crusader_up", function()
+    return buff.unholy_strength.up
+end)
+
+spec:RegisterStateExpr("dnd_remains", function()
     return state.debuff.death_and_decay.remains
-end )
+end)
 
-spec:RegisterStateExpr( "spreading_wounds", function ()
+spec:RegisterStateExpr("spreading_wounds", function()
     if state.talent.infected_claws.enabled and state.pet.ghoul.up then return false end
     -- MoP: No azerite/festermight logic; keep a simple cycling heuristic.
-    return state.settings.cycle and state.cooldown.death_and_decay.remains < 9 and state.active_dot.festering_wound < (state.spell_targets and state.spell_targets.festering_strike or state.active_enemies)
-end )
+    return state.settings.cycle and state.cooldown.death_and_decay.remains < 9 and
+        state.active_dot.festering_wound <
+        (state.spell_targets and state.spell_targets.festering_strike or state.active_enemies)
+end)
 
-spec:RegisterStateFunction( "time_to_wounds", function( x )
+spec:RegisterStateFunction("time_to_wounds", function(x)
     if debuff.festering_wound.stack >= x then return 0 end
     return 3600
     --[[No timeable wounds mechanic in SL?
@@ -948,11 +994,14 @@ spec:RegisterStateFunction( "time_to_wounds", function( x )
 
     if fw > buff.unholy_frenzy.remains then return 3600 end
     return fw--]]
-end )
+end)
 
-spec:RegisterHook( "step", function ( time )
-    if Hekili.ActiveDebug then Hekili:Debug( "Rune Regeneration Time: 1=%.2f, 2=%.2f, 3=%.2f, 4=%.2f, 5=%.2f, 6=%.2f\n", runes.time_to_1, runes.time_to_2, runes.time_to_3, runes.time_to_4, runes.time_to_5, runes.time_to_6 ) end
-end )
+spec:RegisterHook("step", function(time)
+    if Hekili.ActiveDebug then
+        Hekili:Debug("Rune Regeneration Time: 1=%.2f, 2=%.2f, 3=%.2f, 4=%.2f, 5=%.2f, 6=%.2f\n",
+            runes.time_to_1, runes.time_to_2, runes.time_to_3, runes.time_to_4, runes.time_to_5, runes.time_to_6)
+    end
+end)
 
 local Glyphed = IsSpellKnownOrOverridesKnown
 
@@ -990,38 +1039,42 @@ spec:RegisterGear({
     }
 })
 
-local wound_spender_set = false
+-- not until BFA
+-- local wound_spender_set = false
 
-local TriggerInflictionOfSorrow = setfenv( function ()
-    applyBuff( "infliction_of_sorrow" )
-end, state )
+local TriggerInflictionOfSorrow = setfenv(function()
+    applyBuff("infliction_of_sorrow")
+end, state)
 
-local ApplyFestermight = setfenv( function ( woundsPopped )
+local ApplyFestermight = setfenv(function(woundsPopped)
     -- Festermight doesn't exist in MoP, removing this function but keeping structure for compatibility
     return woundsPopped
-end, state )
+end, state)
 
-local PopWounds = setfenv( function ( attemptedPop, targetCount )
+local PopWounds = setfenv(function(attemptedPop, targetCount)
     targetCount = targetCount or 1
     local realPop = targetCount
-    realPop = ApplyFestermight( removeDebuffStack( "target", "festering_wound", attemptedPop ) * targetCount )
-    gain( realPop * 10, "runic_power" ) -- MoP gives 10 RP per rune spent, not 3 per wound
+    realPop = ApplyFestermight(removeDebuffStack("target", "festering_wound", attemptedPop) * targetCount)
+    gain(realPop * 10, "runic_power") -- MoP gives 10 RP per rune spent, not 3 per wound
 
     -- Festering Scythe doesn't exist in MoP
-end, state )
+end, state)
 
-spec:RegisterHook( "TALENTS_UPDATED", function()
+spec:RegisterHook("TALENTS_UPDATED", function()
     class.abilityList.any_dnd = "|T136144:0|t |cff00ccff[Any " .. class.abilities.death_and_decay.name .. "]|r"
     local dnd = talent.defile.enabled and "defile" or "death_and_decay"
 
-    class.abilities.any_dnd = class.abilities[ dnd ]
-    rawset( cooldown, "any_dnd", nil )
-    rawset( cooldown, "death_and_decay", nil )
-    rawset( cooldown, "defile", nil )
+    class.abilities.any_dnd = class.abilities[dnd]
+    rawset(cooldown, "any_dnd", nil)
+    rawset(cooldown, "death_and_decay", nil)
+    rawset(cooldown, "defile", nil)
 
-    if dnd == "defile" then rawset( cooldown, "death_and_decay", cooldown.defile )
-    else rawset( cooldown, "defile", cooldown.death_and_decay ) end
-end )
+    if dnd == "defile" then
+        rawset(cooldown, "death_and_decay", cooldown.defile)
+    else
+        rawset(cooldown, "defile", cooldown.death_and_decay)
+    end
+end)
 
 -- MoP ghoul/pet summoning system - much simpler than later expansions
 local ghoul_applicators = {
@@ -1033,27 +1086,27 @@ local ghoul_applicators = {
     }
 }
 
-spec:RegisterHook( "reset_precast", function ()
+spec:RegisterHook("reset_precast", function()
     if totem.gargoyle.remains > 0 then
-        summonPet( "gargoyle", totem.gargoyle.remains )
+        summonPet("gargoyle", totem.gargoyle.remains)
     end
 
     local control_expires = action.control_undead.lastCast + 300
     if control_expires > state.query_time and pet.up and not pet.ghoul.up then
-        summonPet( "controlled_undead", control_expires - state.query_time )
+        summonPet("controlled_undead", control_expires - state.query_time)
     end
 
-    for spell, ghouls in pairs( ghoul_applicators ) do
-        local cast_time = action[ spell ].lastCast
+    for spell, ghouls in pairs(ghoul_applicators) do
+        local cast_time = action[spell].lastCast
 
-        for ghoul, info in pairs( ghouls ) do
-            dismissPet( ghoul )
+        for ghoul, info in pairs(ghouls) do
+            dismissPet(ghoul)
 
             if cast_time > 0 then
-                local expires = cast_time + info[ 1 ]
+                local expires = cast_time + info[1]
 
                 if expires > state.query_time then
-                    summonPet( ghoul, expires - state.query_time )
+                    summonPet(ghoul, expires - state.query_time)
                 end
             end
         end
@@ -1062,18 +1115,25 @@ spec:RegisterHook( "reset_precast", function ()
     if buff.death_and_decay.up then
         local duration = buff.death_and_decay.duration
         if duration > 4 then
-            if Hekili.ActiveDebug then Hekili:Debug( "Death and Decay buff extended by 4; %.2f to %.2f.", buff.death_and_decay.remains, buff.death_and_decay.remains + 4 ) end
+            if Hekili.ActiveDebug then
+                Hekili:Debug("Death and Decay buff extended by 4; %.2f to %.2f.",
+                    buff.death_and_decay.remains, buff.death_and_decay.remains + 4)
+            end
             buff.death_and_decay.expires = buff.death_and_decay.expires + 4
         else
-            if Hekili.ActiveDebug then Hekili:Debug( "Death and Decay buff with duration of %.2f not extended; %.2f remains.", duration, buff.death_and_decay.remains ) end
+            if Hekili.ActiveDebug then
+                Hekili:Debug(
+                    "Death and Decay buff with duration of %.2f not extended; %.2f remains.", duration,
+                    buff.death_and_decay.remains)
+            end
         end
     end
 
     -- Death and Decay tick time is 1s; if we haven't seen a tick in 2 seconds, it's not ticking.
-    local last_dnd = action[ dnd_spell ].lastCast
+    local last_dnd = action[dnd_spell].lastCast
     local dnd_expires = last_dnd + 10
     if state.query_time - last_dnd_tick < 2 and dnd_expires > state.query_time then
-        applyDebuff( "target", "death_and_decay", dnd_expires - state.query_time )
+        applyDebuff("target", "death_and_decay", dnd_expires - state.query_time)
         debuff.death_and_decay.duration = 10
         debuff.death_and_decay.applied = debuff.death_and_decay.expires - 10
     end
@@ -1081,20 +1141,21 @@ spec:RegisterHook( "reset_precast", function ()
     -- MoP doesn't have vampiric strike or gift of the sanlayn
 
     -- In MoP, scourge strike is the primary wound spender
-    class.abilities.wound_spender = class.abilities.scourge_strike
-    cooldown.wound_spender = cooldown.scourge_strike
+    -- Not until BfA???
+    --class.abilities.wound_spender = class.abilities.scourge_strike
+    --cooldown.wound_spender = cooldown.scourge_strike
 
-    if not wound_spender_set then
-        class.abilityList.wound_spender = "|T237530:0|t |cff00ccff[Wound Spender]|r"
-        wound_spender_set = true
-    end
+    -- if not wound_spender_set then
+    --     class.abilityList.wound_spender = "|T237530:0|t |cff00ccff[Wound Spender]|r"
+    --     wound_spender_set = true
+    -- end
 
     -- MoP doesn't have infliction of sorrow
 
-    if Hekili.ActiveDebug then Hekili:Debug( "Pet is %s.", pet.alive and "alive" or "dead" ) end
+    if Hekili.ActiveDebug then Hekili:Debug("Pet is %s.", pet.alive and "alive" or "dead") end
 
     -- MoP doesn't have festering scythe (spell ID 458128)
-end )
+end)
 
 -- MoP runeforges are different
 local runeforges = {
@@ -1110,32 +1171,36 @@ local function ResetRuneforges()
     if not state.death_knight.runeforge then
         state.death_knight.runeforge = {}
     end
-    table.wipe( state.death_knight.runeforge )
+    table.wipe(state.death_knight.runeforge)
 end
 
-local function UpdateRuneforge( slot, item )
-    if ( slot == 16 or slot == 17 ) then
+local function UpdateRuneforge(slot, item)
+    if (slot == 16 or slot == 17) then
         if not state.death_knight then
             state.death_knight = {}
         end
         if not state.death_knight.runeforge then
             state.death_knight.runeforge = {}
         end
-        
-    local link = GetInventoryItemLink( "player", slot )
-    local enchant = link and link:match( "item:%d+:(%d+)" )
+
+        local link = GetInventoryItemLink("player", slot)
+        local enchant = link and link:match("item:%d+:(%d+)")
 
         if enchant then
-            enchant = tonumber( enchant )
-            local name = runeforges[ enchant ]
+            enchant = tonumber(enchant)
+            local name = runeforges[enchant]
 
             if name then
-                state.death_knight.runeforge[ name ] = true
+                state.death_knight.runeforge[name] = true
 
                 if name == "razorice" and slot == 16 then
                     state.death_knight.runeforge.razorice_mh = true
                 elseif name == "razorice" and slot == 17 then
                     state.death_knight.runeforge.razorice_oh = true
+                elseif name == "fallen_crusader" and slot == 16 then
+                    state.death_knight.runeforge.fallen_crusader_mh = true
+                elseif name == "fallen_crusader" and slot == 17 then
+                    state.death_knight.runeforge.fallen_crusader_oh = true
                 end
             end
         end
@@ -1163,10 +1228,10 @@ do
     end)
 end
 
-Hekili:RegisterGearHook( ResetRuneforges, UpdateRuneforge )
+Hekili:RegisterGearHook(ResetRuneforges, UpdateRuneforge)
 
 -- Abilities
-spec:RegisterAbilities( {
+spec:RegisterAbilities({
     -- Talent: Surrounds you in an Anti-Magic Shell for $d, absorbing up to $<shield> magic ...
     antimagic_shell = {
         id = 48707,
@@ -1181,8 +1246,8 @@ spec:RegisterAbilities( {
             return "defensives"
         end,
 
-        handler = function ()
-            applyBuff( "antimagic_shell" )
+        handler = function()
+            applyBuff("antimagic_shell")
         end,
     },
 
@@ -1198,8 +1263,8 @@ spec:RegisterAbilities( {
 
         toggle = "cooldowns",
 
-        handler = function ()
-            applyBuff( "antimagic_zone" )
+        handler = function()
+            applyBuff("antimagic_zone")
         end,
     },
 
@@ -1210,17 +1275,16 @@ spec:RegisterAbilities( {
         cooldown = 600,
         gcd = "spell",
 
-        spend_runes = {1, 1, 1}, -- 1 Blood, 1 Frost, 1 Unholy
+        spend_runes = { 1, 1, 1 }, -- 1 Blood, 1 Frost, 1 Unholy
 
-        talent = "army_of_the_dead",
         startsCombat = false,
         texture = 237511,
 
         toggle = "cooldowns",
 
-        handler = function ()
-            applyBuff( "army_of_the_dead", 4 )
-            summonPet( "army_ghoul", 40 )
+        handler = function()
+            applyBuff("army_of_the_dead", 4)
+            summonPet("army_ghoul", 40)
         end,
     },
 
@@ -1239,12 +1303,13 @@ spec:RegisterAbilities( {
         debuff = "casting",
         readyTime = state.timeToInterrupt,
 
-        handler = function ()
-            applyDebuff( "target", "asphyxiate" )
+        handler = function()
+            applyDebuff("target", "asphyxiate")
         end,
     },
 
     -- Talent: Convert Blood Charges to Death Runes.
+    -- TODO: Redo this entirely
     blood_tap = {
         id = 45529,
         cast = 0,
@@ -1254,11 +1319,11 @@ spec:RegisterAbilities( {
         talent = "blood_tap",
         startsCombat = false,
 
-        usable = function () return buff.blood_charge.stack >= 5 end,
+        usable = function() return buff.blood_charge.stack >= 5 end,
 
-        handler = function ()
-            removeBuff( "blood_charge", 5 )
-            gain( 1, "runes" )
+        handler = function()
+            removeBuff("blood_charge", 5)
+            gain(1, "runes")
         end,
     },
 
@@ -1272,9 +1337,9 @@ spec:RegisterAbilities( {
         startsCombat = false,
         toggle = "cooldowns",
 
-        handler = function ()
-            gain( 6, "runes" )
-            gain( 25, "runic_power" )
+        handler = function()
+            gain(6, "runes")
+            gain(25, "runic_power")
         end,
     },
 
@@ -1285,14 +1350,13 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {1, 1, 0}, -- 1 Blood, 1 Frost, 0 Unholy
+        spend_runes = { 1, 1, 0 }, -- 1 Blood, 1 Frost, 0 Unholy
 
         startsCombat = true,
 
-        handler = function ()
-            gain(10, "runic_power")
-            applyDebuff( "target", "festering_wound", nil, math.min( 6, debuff.festering_wound.stack + 2 ) )
-        end,
+        --handler = function()
+        --TODO: Increase the duration of Blood Plague, Frost Fever, and Chains of Ice effects on the target by up to 6 seconds
+        --end,
     },
 
     -- Outbreak: Instantly applies both Frost Fever and Blood Plague to the target
@@ -1304,9 +1368,9 @@ spec:RegisterAbilities( {
 
         startsCombat = true,
 
-        handler = function ()
-            applyDebuff( "target", "frost_fever" )
-            applyDebuff( "target", "blood_plague" )
+        handler = function()
+            applyDebuff("target", "frost_fever")
+            applyDebuff("target", "blood_plague")
         end,
     },
 
@@ -1317,19 +1381,19 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
+        spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
 
         startsCombat = true,
 
-        usable = function () return debuff.frost_fever.up or debuff.blood_plague.up end,
+        usable = function() return debuff.frost_fever.up or debuff.blood_plague.up end,
 
-        handler = function ()
+        handler = function()
             gain(10, "runic_power")
             if debuff.frost_fever.up then
-                active_dot.frost_fever = min( active_enemies, active_dot.frost_fever + active_enemies - 1 )
+                active_dot.frost_fever = min(active_enemies, active_dot.frost_fever + active_enemies - 1)
             end
             if debuff.blood_plague.up then
-                active_dot.blood_plague = min( active_enemies, active_dot.blood_plague + active_enemies - 1 )
+                active_dot.blood_plague = min(active_enemies, active_dot.blood_plague + active_enemies - 1)
             end
         end,
     },
@@ -1344,25 +1408,25 @@ spec:RegisterAbilities( {
         talent = "plague_leech",
         startsCombat = true,
 
-        usable = function () 
+        usable = function()
             -- MoP: Can only use when diseases are about to expire or for rune generation
             local deficit = state.rune_deficit
-            return (debuff.frost_fever.up and debuff.frost_fever.remains < 3) or 
-                   (debuff.blood_plague.up and debuff.blood_plague.remains < 3) or
-                   (deficit >= 2 and (debuff.frost_fever.up or debuff.blood_plague.up))
+            return (debuff.frost_fever.up and debuff.frost_fever.remains < 3) or
+                (debuff.blood_plague.up and debuff.blood_plague.remains < 3) or
+                (deficit >= 2 and (debuff.frost_fever.up or debuff.blood_plague.up))
         end,
 
-        handler = function ()
+        handler = function()
             local runes_gained = 0
             if debuff.frost_fever.up then
-                removeDebuff( "target", "frost_fever" )
+                removeDebuff("target", "frost_fever")
                 runes_gained = runes_gained + 1
             end
             if debuff.blood_plague.up then
-                removeDebuff( "target", "blood_plague" )
+                removeDebuff("target", "blood_plague")
                 runes_gained = runes_gained + 1
             end
-            gain( runes_gained, "runes" )
+            gain(runes_gained, "runes")
         end,
     },
 
@@ -1376,10 +1440,10 @@ spec:RegisterAbilities( {
         talent = "unholy_blight",
         startsCombat = true,
 
-        handler = function ()
-            applyBuff( "unholy_blight" )
-            applyDebuff( "target", "frost_fever" )
-            applyDebuff( "target", "blood_plague" )
+        handler = function()
+            applyBuff("unholy_blight")
+            applyDebuff("target", "frost_fever")
+            applyDebuff("target", "blood_plague")
         end,
     },
 
@@ -1390,12 +1454,12 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {0, 1, 0}, -- 0 Blood, 1 Frost, 0 Unholy
+        spend_runes = { 0, 1, 0 }, -- 0 Blood, 1 Frost, 0 Unholy
 
         startsCombat = true,
 
-        handler = function ()
-            applyDebuff( "target", "chains_of_ice" )
+        handler = function()
+            applyDebuff("target", "chains_of_ice")
         end,
     },
 
@@ -1408,8 +1472,8 @@ spec:RegisterAbilities( {
 
         startsCombat = true,
 
-        handler = function ()
-            applyDebuff( "target", "dark_command" )
+        handler = function()
+            applyDebuff("target", "dark_command")
         end,
     },
 
@@ -1426,12 +1490,12 @@ spec:RegisterAbilities( {
         startsCombat = false,
         texture = 135888,
 
-        usable = function ()
+        usable = function()
             if not target.is_player then return false, "target is not a player" end
             return true
         end,
-        handler = function ()
-            applyDebuff( "target", "dark_simulacrum" )
+        handler = function()
+            applyDebuff("target", "dark_simulacrum")
         end,
     },
 
@@ -1445,15 +1509,15 @@ spec:RegisterAbilities( {
         talent = "dark_transformation",
         startsCombat = false,
 
-        usable = function ()
-            if Hekili.ActiveDebug then Hekili:Debug( "Pet is %s.", pet.alive and "alive" or "dead" ) end
+        usable = function()
+            if Hekili.ActiveDebug then Hekili:Debug("Pet is %s.", pet.alive and "alive" or "dead") end
             return pet.alive, "requires a living ghoul"
         end,
-        handler = function ()
-            applyBuff( "dark_transformation" )
+        handler = function()
+            applyBuff("dark_transformation")
 
             if talent.shadow_infusion.enabled then
-                applyBuff( "dark_empowerment" )
+                applyBuff("dark_empowerment")
             end
         end,
     },
@@ -1465,16 +1529,16 @@ spec:RegisterAbilities( {
         cooldown = 30,
         gcd = "spell",
 
-        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
+        spend_runes = { 0, 0, 1 }, -- 0 Blood, 0 Frost, 1 Unholy
 
         startsCombat = true,
         notalent = "defile",
 
-        usable = function () return ( settings.dnd_while_moving or not moving ), "cannot cast while moving" end,
+        usable = function() return (settings.dnd_while_moving or not moving), "cannot cast while moving" end,
 
-        handler = function ()
-            applyBuff( "death_and_decay" )
-            applyDebuff( "target", "death_and_decay" )
+        handler = function()
+            applyBuff("death_and_decay")
+            applyDebuff("target", "death_and_decay")
         end,
 
         bind = { "defile", "any_dnd" },
@@ -1489,16 +1553,16 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend = function ()
-            return 40 - ( buff.sudden_doom.up and 40 or 0 )
+        spend = function()
+            return 40 - (buff.sudden_doom.up and 40 or 0)
         end,
         spendType = "runic_power",
 
         startsCombat = true,
 
-        handler = function ()
+        handler = function()
             if buff.sudden_doom.up then
-                removeBuff( "sudden_doom" )
+                removeBuff("sudden_doom")
             end
         end
     },
@@ -1510,11 +1574,11 @@ spec:RegisterAbilities( {
         cooldown = 60,
         gcd = "spell",
 
-        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
+        spend_runes = { 0, 0, 1 }, -- 0 Blood, 0 Frost, 1 Unholy
 
         startsCombat = false,
 
-        handler = function ()
+        handler = function()
         end
     },
 
@@ -1528,9 +1592,9 @@ spec:RegisterAbilities( {
 
         startsCombat = true,
 
-        handler = function ()
-            applyDebuff( "target", "death_grip" )
-            setDistance( 5 )
+        handler = function()
+            applyDebuff("target", "death_grip")
+            setDistance(5)
         end
     },
 
@@ -1548,9 +1612,9 @@ spec:RegisterAbilities( {
 
         usable = function() return pet.alive, "requires an undead pet" end,
 
-        handler = function ()
-            gain( health.max * 0.25, "health" )
-            dismissPet( "ghoul" )
+        handler = function()
+            gain(health.max * 0.25, "health")
+            dismissPet("ghoul")
         end
     },
 
@@ -1569,8 +1633,8 @@ spec:RegisterAbilities( {
 
         startsCombat = true,
 
-        handler = function ()
-            removeBuff( "dark_succor" )
+        handler = function()
+            removeBuff("dark_succor")
         end
     },
 
@@ -1584,8 +1648,8 @@ spec:RegisterAbilities( {
         talent = "deaths_advance",
         startsCombat = false,
 
-        handler = function ()
-            applyBuff( "deaths_advance" )
+        handler = function()
+            applyBuff("deaths_advance")
         end
     },
 
@@ -1596,17 +1660,17 @@ spec:RegisterAbilities( {
         cooldown = 30,
         gcd = "spell",
 
-        spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
+        spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
 
         talent = "defile",
         startsCombat = true,
 
-        usable = function () return ( settings.dnd_while_moving or not moving ), "cannot cast while moving" end,
+        usable = function() return (settings.dnd_while_moving or not moving), "cannot cast while moving" end,
 
-        handler = function ()
-            applyDebuff( "target", "defile" )
-            applyBuff( "death_and_decay" )
-            applyDebuff( "target", "death_and_decay" )
+        handler = function()
+            applyDebuff("target", "defile")
+            applyBuff("death_and_decay")
+            applyDebuff("target", "death_and_decay")
         end,
 
         bind = { "death_and_decay", "any_dnd" }
@@ -1619,12 +1683,12 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {0, 1, 0}, -- 0 Blood, 1 Frost, 0 Unholy
+        spend_runes = { 0, 1, 0 }, -- 0 Blood, 1 Frost, 0 Unholy
 
         startsCombat = true,
 
-        handler = function ()
-            applyDebuff( "target", "frost_fever" )
+        handler = function()
+            applyDebuff("target", "frost_fever")
         end,
     },
 
@@ -1640,8 +1704,8 @@ spec:RegisterAbilities( {
 
         toggle = "defensives",
 
-        handler = function ()
-            applyBuff( "icebound_fortitude" )
+        handler = function()
+            applyBuff("icebound_fortitude")
         end
     },
 
@@ -1657,8 +1721,8 @@ spec:RegisterAbilities( {
 
         toggle = "defensives",
 
-        handler = function ()
-            applyBuff( "lichborne" )
+        handler = function()
+            applyBuff("lichborne")
         end
     },
 
@@ -1676,7 +1740,7 @@ spec:RegisterAbilities( {
         debuff = "casting",
         readyTime = state.timeToInterrupt,
 
-        handler = function ()
+        handler = function()
             interrupt()
         end
     },
@@ -1688,13 +1752,13 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
+        spend_runes = { 0, 0, 1 }, -- 0 Blood, 0 Frost, 1 Unholy
 
         talent = "necrotic_strike",
         startsCombat = true,
 
-        handler = function ()
-            applyDebuff( "target", "necrotic_strike" )
+        handler = function()
+            applyDebuff("target", "necrotic_strike")
         end,
     },
 
@@ -1705,12 +1769,12 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {0, 1, 0}, -- 0 Blood, 1 Frost, 0 Unholy
+        spend_runes = { 0, 1, 0 }, -- 0 Blood, 1 Frost, 0 Unholy
 
         startsCombat = false,
 
-        handler = function ()
-            applyBuff( "path_of_frost" )
+        handler = function()
+            applyBuff("path_of_frost")
         end
     },
 
@@ -1721,12 +1785,12 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
+        spend_runes = { 0, 0, 1 }, -- 0 Blood, 0 Frost, 1 Unholy
 
         startsCombat = true,
 
-        handler = function ()
-            applyDebuff( "target", "blood_plague" )
+        handler = function()
+            applyDebuff("target", "blood_plague")
         end,
     },
 
@@ -1742,8 +1806,8 @@ spec:RegisterAbilities( {
 
         toggle = "defensives",
 
-        handler = function ()
-            applyBuff( "purgatory" )
+        handler = function()
+            applyBuff("purgatory")
         end,
     },
 
@@ -1761,26 +1825,25 @@ spec:RegisterAbilities( {
 
         toggle = "cooldowns",
 
-        handler = function ()
+        handler = function()
         end
     },
 
     -- Talent: Raises $?s207313[an abomination]?s58640[a geist][a ghoul] to fight by your si...
     raise_dead = {
-        id = 46585,
+        id = 46584,
         cast = 0,
-        cooldown = function() return talent.raise_dead_2.enabled and 0 or 120 end,
-        gcd = function() return talent.raise_dead_2.enabled and "spell" or "off" end,
+        cooldown = 120,
+        gcd = "spell",
 
         startsCombat = false,
-        texture = 1100170,
 
         essential = true,
         nomounted = true,
 
         usable = function() return not pet.alive end,
-        handler = function ()
-            summonPet( "ghoul", talent.raise_dead_2.enabled and 3600 or 60 )
+        handler = function()
+            summonPet("ghoul", talent.raise_dead_2.enabled and 3600 or 60)
         end,
     },
 
@@ -1791,19 +1854,9 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
+        spend_runes = { 0, 0, 1 }, -- 0 Blood, 0 Frost, 1 Unholy
 
         startsCombat = true,
-        usable = function()
-            if (state.unholy or 0) > 0 or (state.death or 0) > 0 then return true end
-            return false, "no unholy/death rune"
-        end,
-
-        handler = function ()
-            -- Scourge Strike base functionality for MoP
-        end,
-
-        bind = { "wound_spender" }
     },
 
     -- Talent: Strike an enemy for Shadow damage and mark their soul. After 5 sec, if they are below 45% health, the mark will detonate for massive Shadow damage.
@@ -1813,13 +1866,13 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
+        spend_runes = { 0, 0, 1 }, -- 0 Blood, 0 Frost, 1 Unholy
 
         talent = "soul_reaper",
         startsCombat = true,
 
-        handler = function ()
-            applyDebuff( "target", "soul_reaper" )
+        handler = function()
+            applyDebuff("target", "soul_reaper")
         end
     },
 
@@ -1837,9 +1890,9 @@ spec:RegisterAbilities( {
         debuff = "casting",
         readyTime = state.timeToInterrupt,
 
-        handler = function ()
+        handler = function()
             interrupt()
-            applyDebuff( "target", "strangulate" )
+            applyDebuff("target", "strangulate")
         end
     },
 
@@ -1850,7 +1903,7 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "spell",
 
-        spend_runes = {1, 0, 0}, -- 1 Blood, 0 Frost, 0 Unholy
+        spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
 
         startsCombat = true,
         usable = function()
@@ -1866,7 +1919,7 @@ spec:RegisterAbilities( {
             return false, "single target / no spread need"
         end,
 
-        handler = function ()
+        handler = function()
             -- Blood Boil base functionality for MoP
             -- Spreads diseases to nearby enemies
             if debuff.frost_fever.up then
@@ -1878,7 +1931,7 @@ spec:RegisterAbilities( {
         end,
     },
 
-    -- Horn of Winter: Increases Attack Power and Strength
+    -- Horn of Winter: Increases Attack Power and generates 10 runic power
     horn_of_winter = {
         id = 57330,
         cast = 0,
@@ -1894,12 +1947,26 @@ spec:RegisterAbilities( {
             return rp <= 60, "runic power high"
         end,
 
-        handler = function ()
-            applyBuff( "horn_of_winter" )
+        handler = function()
+            applyBuff("horn_of_winter")
             gain(10, "runic_power") -- MoP gives 10 RP on cast
         end,
     },
 
+    -- Unholy Frenzy: Increases Attack Speed
+    unholy_frenzy = {
+        id = 49016,
+        cast = 0,
+        cooldown = 180,
+        gcd = "off",
+
+        startsCombat = false,
+
+        handler = function()
+            applyBuff("unholy_frenzy")
+            buff.unholy_frenzy.on_self = UnitIsUnit("target", "player") and true or false
+        end
+    },
 
 
     -- Talent: Summon a Gargoyle into the area to bombard the target for $61777d.    The Gar...
@@ -1913,31 +1980,62 @@ spec:RegisterAbilities( {
 
         toggle = "cooldowns",
 
-        handler = function ()
-            summonPet( "gargoyle", 30 )
+        handler = function()
+            summonPet("gargoyle", 30)
+        end,
+    },
+    -- Presence switching
+    blood_presence = {
+        id = 48263,
+        cast = 0,
+        cooldown = 1,
+        gcd = "off",
+
+        startsCombat = false,
+
+        handler = function()
+            if buff.frost_presence.up then removeBuff("frost_presence") end
+            if buff.unholy_presence.up then removeBuff("unholy_presence") end
+            applyBuff("blood_presence")
         end,
     },
 
+    frost_presence = {
+        id = 48266,
+        cast = 0,
+        cooldown = 1,
+        gcd = "off",
 
+        startsCombat = false,
 
-    -- The presence of the Unholy, increasing attack speed by 15% and movement speed by 15%.
+        handler = function()
+            if buff.blood_presence.up then removeBuff("blood_presence") end
+            if buff.unholy_presence.up then removeBuff("unholy_presence") end
+            applyBuff("frost_presence")
+        end,
+    },
+
     unholy_presence = {
         id = 48265,
         cast = 0,
-        cooldown = 0,
-        gcd = "spell",
+        cooldown = 1,
+        gcd = "off",
 
-        talent = "unholy_presence",
         startsCombat = false,
 
-        handler = function ()
-            applyBuff( "unholy_presence" )
+        handler = function()
+            if buff.frost_presence.up then removeBuff("frost_presence") end
+            if buff.blood_presence.up then removeBuff("blood_presence") end
+            applyBuff("unholy_presence")
         end,
     },
 
     -- Stub.
     any_dnd = {
-        name = function() return "|T136144:0|t |cff00ccff[Any " .. ( class.abilities.death_and_decay and class.abilities.death_and_decay.name or "Death and Decay" ) .. "]|r" end,
+        name = function()
+            return "|T136144:0|t |cff00ccff[Any " ..
+                (class.abilities.death_and_decay and class.abilities.death_and_decay.name or "Death and Decay") .. "]|r"
+        end,
         cast = 0,
         cooldown = 0,
         copy = "any_dnd_stub"
@@ -1955,14 +2053,14 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-        
+
         startsCombat = true,
-        
-        handler = function ()
+
+        handler = function()
             -- Control Undead: Take control of an undead target
         end,
     }
-} )
+})
 
 
 
@@ -1974,18 +2072,18 @@ spec:RegisterAbilities( {
 
 -- Legacy rune type expressions for SimC compatibility
 -- Death Rune tracking system for MoP (based on Cataclysm implementation)
-local death_rune_tracker = { 0, 0, 0, 0, 0, 0}
+local death_rune_tracker = { 0, 0, 0, 0, 0, 0 }
 spec:RegisterStateExpr("get_death_rune_tracker", function()
     return death_rune_tracker
 end)
 
-spec:RegisterStateTable( "death_runes", setmetatable( {
+spec:RegisterStateTable("death_runes", setmetatable({
     state = {},
 
     reset = function()
         for i = 1, 6 do
-            local start, duration, ready = GetRuneCooldown( i )
-            local type = GetRuneType( i )
+            local start, duration, ready = GetRuneCooldown(i)
+            local type = GetRuneType(i)
             local expiry = ready and 0 or start + duration
             state.death_runes.state[i] = {
                 type = type,
@@ -2004,9 +2102,9 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
         end
 
         local runeMapping = {
-            blood = {1, 2},
-            frost = {3, 4},
-            unholy = {5, 6}
+            blood = { 1, 2 },
+            frost = { 5, 6 },
+            unholy = { 3, 4 }
         }
 
         for _, runeIndex in ipairs(usedRunes) do
@@ -2060,13 +2158,15 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
 
     getRunesForRequirement = function(neededRunes)
         local bloodNeeded, frostNeeded, unholyNeeded = unpack(neededRunes)
+        -- for rune mapping, see the following in game...
+        -- /run for i=1,6 do local t=GetRuneType(i); local s,d,r=GetRuneCooldown(i); print(i,"type",t,"ready",r) end
         local runeMapping = {
-            blood = {1, 2},
-            frost = {3, 4},
-            unholy = {5, 6},
-            any = {1, 2, 3, 4, 5, 6}
+            blood = { 1, 2 },
+            frost = { 5, 6 },
+            unholy = { 3, 4 }, --
+            any = { 1, 2, 3, 4, 5, 6 }
         }
-        
+
         local activeRunes = state.death_runes.getActiveRunes()
         local usedRunes = {}
         local usedDeathRunes = {}
@@ -2109,8 +2209,8 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
         return usedRunes
     end,
 
-},{
-    __index = function( t, k )
+}, {
+    __index = function(t, k)
         local countDeathRunes = function()
             local state_array = t.state
             local count = 0
@@ -2122,10 +2222,10 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
             return count
         end
         local runeMapping = {
-            blood = {1, 2},
-            frost = {3, 4},
-            unholy = {5, 6},
-            any = {1, 2, 3, 4, 5, 6}
+            blood = { 1, 2 },
+            frost = { 5, 6 },
+            unholy = { 3, 4 },
+            any = { 1, 2, 3, 4, 5, 6 }
         }
         -- Function to access the mappings
         local function getRuneSet(runeType)
@@ -2146,7 +2246,7 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
             return count
         end
 
-        if k == "state" then 
+        if k == "state" then
             return t.state
         elseif k == "actual" then
             return countDRForType("any")
@@ -2176,170 +2276,170 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
             return t.getRunesForRequirement
         end
     end
-} ) )
+}))
 
 -- Legacy rune type expressions for SimC compatibility
-spec:RegisterStateExpr( "blood", function() 
+spec:RegisterStateExpr("blood", function()
     if GetRuneCooldown then
         local count = 0
         for i = 1, 2 do
-            local start, duration, ready = GetRuneCooldown( i )
+            local start, duration, ready = GetRuneCooldown(i)
             if ready then count = count + 1 end
         end
         return count
     else
         return 2 -- Fallback for emulation
     end
-end )
-spec:RegisterStateExpr( "frost", function() 
-    if GetRuneCooldown then
-        local count = 0
-        for i = 3, 4 do
-            local start, duration, ready = GetRuneCooldown( i )
-            if ready then count = count + 1 end
-        end
-        return count
-    else
-        return 2 -- Fallback for emulation
-    end
-end )
-spec:RegisterStateExpr( "unholy", function() 
+end)
+spec:RegisterStateExpr("frost", function()
     if GetRuneCooldown then
         local count = 0
         for i = 5, 6 do
-            local start, duration, ready = GetRuneCooldown( i )
+            local start, duration, ready = GetRuneCooldown(i)
             if ready then count = count + 1 end
         end
         return count
     else
         return 2 -- Fallback for emulation
     end
-end )
-spec:RegisterStateExpr( "death", function() 
+end)
+spec:RegisterStateExpr("unholy", function()
+    if GetRuneCooldown then
+        local count = 0
+        for i = 3, 4 do
+            local start, duration, ready = GetRuneCooldown(i)
+            if ready then count = count + 1 end
+        end
+        return count
+    else
+        return 2 -- Fallback for emulation
+    end
+end)
+spec:RegisterStateExpr("death", function()
     if GetRuneCooldown and GetRuneType then
         local count = 0
         for i = 1, 6 do
-            local start, duration, ready = GetRuneCooldown( i )
-            local type = GetRuneType( i )
+            local start, duration, ready = GetRuneCooldown(i)
+            local type = GetRuneType(i)
             if ready and type == 4 then count = count + 1 end
         end
         return count
     else
         return 0 -- Fallback for emulation
     end
-end )
+end)
 
 -- MoP rune regeneration tracking
-spec:RegisterStateExpr( "rune_regeneration", function()
+spec:RegisterStateExpr("rune_regeneration", function()
     local total = 0
     if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
     if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
     if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
     if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
     return 6 - total
-end )
+end)
 
 -- MoP Death Rune conversion tracking
-spec:RegisterStateExpr( "death_rune_conversion_available", function()
+spec:RegisterStateExpr("death_rune_conversion_available", function()
     local br = state.blood_runes and state.blood_runes.current or 0
     local fr = state.frost_runes and state.frost_runes.current or 0
     local ur = state.unholy_runes and state.unholy_runes.current or 0
     return br > 0 or fr > 0 or ur > 0
-end )
+end)
 
 -- Rune state expressions for MoP 5.5.0
-spec:RegisterStateExpr( "rune", function()
+spec:RegisterStateExpr("rune", function()
     local total = 0
     for i = 1, 6 do
-        local start, duration, ready = GetRuneCooldown( i )
+        local start, duration, ready = GetRuneCooldown(i)
         if ready then total = total + 1 end
     end
     return total
-end )
+end)
 
-spec:RegisterStateExpr( "rune_deficit", function()
+spec:RegisterStateExpr("rune_deficit", function()
     local total = 0
     if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
     if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
     if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
     if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
     return 6 - total
-end )
+end)
 
-spec:RegisterStateExpr( "rune_current", function()
+spec:RegisterStateExpr("rune_current", function()
     if state.runes and state.runes.ready then
         return state.runes.ready
     end
     local total = 0
     for i = 1, 6 do
-        local _, _, ready = GetRuneCooldown( i )
+        local _, _, ready = GetRuneCooldown(i)
         if ready then total = total + 1 end
     end
     return total
-end )
+end)
 
 -- Alias for APL compatibility
-spec:RegisterStateExpr( "runes_current", function()
+spec:RegisterStateExpr("runes_current", function()
     return state.rune_current
-end )
+end)
 
 
 
-spec:RegisterStateExpr( "rune_max", function()
+spec:RegisterStateExpr("rune_max", function()
     return 6
-end )
+end)
 
 
 
 -- MoP Unholy DK-specific state expressions
-spec:RegisterStateExpr( "festering_wounds_available", function()
+spec:RegisterStateExpr("festering_wounds_available", function()
     return debuff.festering_wound.stack or 0
-end )
+end)
 
-spec:RegisterStateExpr( "festering_wounds_max", function()
+spec:RegisterStateExpr("festering_wounds_max", function()
     return 6 -- Maximum 6 Festering Wounds in MoP
-end )
+end)
 
-spec:RegisterStateExpr( "festering_wounds_deficit", function()
+spec:RegisterStateExpr("festering_wounds_deficit", function()
     return 6 - (debuff.festering_wound.stack or 0)
-end )
+end)
 
-spec:RegisterStateExpr( "sudden_doom_proc", function()
+spec:RegisterStateExpr("sudden_doom_proc", function()
     return buff.sudden_doom.up
-end )
+end)
 
-spec:RegisterStateExpr( "dark_transformation_available", function()
+spec:RegisterStateExpr("dark_transformation_available", function()
     return pet.alive and cooldown.dark_transformation.ready
-end )
+end)
 
-spec:RegisterStateExpr( "ghoul_empowered", function()
+spec:RegisterStateExpr("ghoul_empowered", function()
     return buff.dark_transformation.up or buff.dark_empowerment.up
-end )
+end)
 
-spec:RegisterStateExpr( "diseases_maintained", function()
-    return (debuff.frost_fever.up and debuff.frost_fever.remains > 3) and 
-           (debuff.blood_plague.up and debuff.blood_plague.remains > 3)
-end )
+spec:RegisterStateExpr("diseases_maintained", function()
+    return (debuff.frost_fever.up and debuff.frost_fever.remains > 3) and
+        (debuff.blood_plague.up and debuff.blood_plague.remains > 3)
+end)
 
-spec:RegisterStateExpr( "diseases_refresh_needed", function()
-    return (debuff.frost_fever.up and debuff.frost_fever.remains < 3) or 
-           (debuff.blood_plague.up and debuff.blood_plague.remains < 3)
-end )
+spec:RegisterStateExpr("diseases_refresh_needed", function()
+    return (debuff.frost_fever.up and debuff.frost_fever.remains < 3) or
+        (debuff.blood_plague.up and debuff.blood_plague.remains < 3)
+end)
 
 -- MoP Unholy rotation tracking
-spec:RegisterStateExpr( "unholy_rotation_phase", function()
+spec:RegisterStateExpr("unholy_rotation_phase", function()
     if not state.diseases_maintained then return "disease_setup" end
     if state.festering_wounds_available < 3 then return "festering_build" end
     if state.sudden_doom_proc then return "sudden_doom" end
     if (state.runic_power and state.runic_power.current or 0) >= 80 then return "runic_power_spend" end
     return "standard_rotation"
-end )
+end)
 
 -- Expose disease state for APL compatibility
-spec:RegisterStateExpr( "disease", function() 
+spec:RegisterStateExpr("disease", function()
     local frost_fever_remains = debuff.frost_fever.remains or 0
     local blood_plague_remains = debuff.blood_plague.remains or 0
-    
+
     local min_remains = 0
     if frost_fever_remains > 0 and blood_plague_remains > 0 then
         min_remains = math.min(frost_fever_remains, blood_plague_remains)
@@ -2348,17 +2448,17 @@ spec:RegisterStateExpr( "disease", function()
     elseif blood_plague_remains > 0 then
         min_remains = blood_plague_remains
     end
-    
+
     return {
         min_remains = min_remains
     }
-end )
+end)
 
 -- Expose disease min remains (legacy)
-spec:RegisterStateExpr( "disease_min_remains", function()
+spec:RegisterStateExpr("disease_min_remains", function()
     local frost_fever_remains = debuff.frost_fever.remains or 0
     local blood_plague_remains = debuff.blood_plague.remains or 0
-    
+
     if frost_fever_remains > 0 and blood_plague_remains > 0 then
         return math.min(frost_fever_remains, blood_plague_remains)
     elseif frost_fever_remains > 0 then
@@ -2368,13 +2468,13 @@ spec:RegisterStateExpr( "disease_min_remains", function()
     else
         return 0
     end
-end )
+end)
 
 
 
-spec:RegisterRanges( "festering_strike", "mind_freeze", "death_coil" )
+spec:RegisterRanges("festering_strike", "mind_freeze", "death_coil")
 
-spec:RegisterOptions( {
+spec:RegisterOptions({
     enabled = true,
 
     aoe = 2,
@@ -2392,71 +2492,79 @@ spec:RegisterOptions( {
     potion = "tempered_potion",
 
     package = "Unholy",
-} )
+})
 
-spec:RegisterSetting( "dnd_while_moving", true, {
-    name = strformat( "Allow %s while moving", Hekili:GetSpellLinkWithTexture( 43265 ) ),
-    desc = strformat( "If checked, then allow recommending %s while the player is moving otherwise only recommend it if the player is standing still.", Hekili:GetSpellLinkWithTexture( 43265 ) ),
+spec:RegisterSetting("dnd_while_moving", true, {
+    name = strformat("Allow %s while moving", Hekili:GetSpellLinkWithTexture(43265)),
+    desc = strformat(
+        "If checked, then allow recommending %s while the player is moving otherwise only recommend it if the player is standing still.",
+        Hekili:GetSpellLinkWithTexture(43265)),
     type = "toggle",
     width = "full",
-} )
+})
 
-spec:RegisterSetting( "dps_shell", false, {
-    name = strformat( "Use %s Offensively", Hekili:GetSpellLinkWithTexture( 48707 ) ),
-    desc = strformat( "If checked, %s will not be on the Defensives toggle by default.", Hekili:GetSpellLinkWithTexture( 48707 ) ),
+spec:RegisterSetting("dps_shell", false, {
+    name = strformat("Use %s Offensively", Hekili:GetSpellLinkWithTexture(48707)),
+    desc = strformat("If checked, %s will not be on the Defensives toggle by default.",
+        Hekili:GetSpellLinkWithTexture(48707)),
     type = "toggle",
     width = "full",
-} )
+})
 
-spec:RegisterSetting( "pl_macro", nil, {
-    name = function() 
+spec:RegisterSetting("pl_macro", nil, {
+    name = function()
         local plague_strike = spec.abilities and spec.abilities.plague_strike
-        return plague_strike and strformat( "%s Macro", Hekili:GetSpellLinkWithTexture( plague_strike.id ) ) or "Plague Strike Macro"
+        return plague_strike and strformat("%s Macro", Hekili:GetSpellLinkWithTexture(plague_strike.id)) or
+            "Plague Strike Macro"
     end,
     desc = function()
         local plague_strike = spec.abilities and spec.abilities.plague_strike
         local blood_plague = spec.auras and spec.auras.blood_plague
         if plague_strike and blood_plague then
-            return strformat( "Using a mouseover macro makes it easier to apply %s and %s to other enemies without retargeting.",
-                Hekili:GetSpellLinkWithTexture( plague_strike.id ), Hekili:GetSpellLinkWithTexture( blood_plague.id ) )
+            return strformat(
+                "Using a mouseover macro makes it easier to apply %s and %s to other enemies without retargeting.",
+                Hekili:GetSpellLinkWithTexture(plague_strike.id), Hekili:GetSpellLinkWithTexture(blood_plague.id))
         else
-            return "Using a mouseover macro makes it easier to apply Plague Strike and Blood Plague to other enemies without retargeting."
+            return
+            "Using a mouseover macro makes it easier to apply Plague Strike and Blood Plague to other enemies without retargeting."
         end
     end,
     type = "input",
     width = "full",
     multiline = true,
-    get = function() 
+    get = function()
         local plague_strike = class.abilities and class.abilities.plague_strike
-        return plague_strike and "#showtooltip\n/use [@mouseover,harm,nodead][] " .. plague_strike.name or "#showtooltip\n/use [@mouseover,harm,nodead][] Plague Strike"
+        return plague_strike and "#showtooltip\n/use [@mouseover,harm,nodead][] " .. plague_strike.name or
+            "#showtooltip\n/use [@mouseover,harm,nodead][] Plague Strike"
     end,
     set = function() end,
-} )
+})
 
-spec:RegisterSetting( "it_macro", nil, {
-    name = strformat( "%s Macro", Hekili:GetSpellLinkWithTexture( 45477 ) ),
-    desc = strformat( "Using a mouseover macro makes it easier to apply %s and %s to other enemies without retargeting.",
-        Hekili:GetSpellLinkWithTexture( 45477 ), Hekili:GetSpellLinkWithTexture( 59921 ) ),
+spec:RegisterSetting("it_macro", nil, {
+    name = strformat("%s Macro", Hekili:GetSpellLinkWithTexture(45477)),
+    desc = strformat("Using a mouseover macro makes it easier to apply %s and %s to other enemies without retargeting.",
+        Hekili:GetSpellLinkWithTexture(45477), Hekili:GetSpellLinkWithTexture(59921)),
     type = "input",
     width = "full",
     multiline = true,
     get = function() return "#showtooltip\n/use [@mouseover,harm,nodead][] Icy Touch" end,
     set = function() end,
-} )
+})
 
 -- MoP Unholy DK-specific settings
-spec:RegisterSetting( "plague_leech_priority", "expire", {
+spec:RegisterSetting("plague_leech_priority", "expire", {
     name = "Plague Leech Priority",
-    desc = "When to use Plague Leech: 'expire' = only when diseases are about to expire, 'rune_generation' = for rune generation when needed",
+    desc =
+    "When to use Plague Leech: 'expire' = only when diseases are about to expire, 'rune_generation' = for rune generation when needed",
     type = "select",
     values = {
         expire = "Disease Expiration Only",
         rune_generation = "Rune Generation Priority"
     },
     width = "full"
-} )
+})
 
-spec:RegisterSetting( "festering_wound_threshold", 3, {
+spec:RegisterSetting("festering_wound_threshold", 3, {
     name = "Festering Wound Threshold",
     desc = "Minimum Festering Wounds before using Scourge Strike",
     type = "range",
@@ -2464,21 +2572,21 @@ spec:RegisterSetting( "festering_wound_threshold", 3, {
     max = 6,
     step = 1,
     width = "full"
-} )
+})
 
-spec:RegisterSetting( "sudden_doom_priority", true, {
+spec:RegisterSetting("sudden_doom_priority", true, {
     name = "Sudden Doom Priority",
     desc = "Prioritize Sudden Doom procs over other abilities",
     type = "toggle",
     width = "full"
-} )
+})
 
-spec:RegisterSetting( "dark_transformation_auto", true, {
+spec:RegisterSetting("dark_transformation_auto", true, {
     name = "Auto Dark Transformation",
     desc = "Automatically use Dark Transformation when available",
     type = "toggle",
     width = "full"
-} )
+})
 
-spec:RegisterPack( "Unholy", 20250809, [[Hekili:DV1EpUTns8plbfyRnUD9Q1p22MUEbss7Dx71lxqCo0)Z20s02eRSOojQ1Xfg(Z(ndPEqkrkRDBsAVRanETe18E(nZqrp)M5Fy(SaIGo)Td9goX7B9(Ub3mA0TEJNptCiMoFwmX)bYg4pIi7G)9FhTLhEaV8HqojaF8uEwIpCR5ZwLXcf)u08v2O5KBgcRnM6dxEc8NBzbbu1APP(ZN9HTS0tlX)NCAzoxpTKVg(UVGXJoTmKLkGBVMNCA5FN(alKnaeKe(AwiW(V60YFGseBpT8FeX2Sv8Ytlvc7PFgU1RjP0aGCaz(v((TusWxdK6FYF3PLVjKKMY8pT8VLXcOWJTviItF51xVF)(b7vlEGpF3174Xx5Rw81BW1ET8B00RdqgF1ds(EDMKRxheNEvcxqqz)kFopmGVpk9kYkqUfmA6vXpsp9ZN(zL2LoioHcmzfr8xME9wEs0c(6f7zrcAYLS1txLTE9aZlpaj4XJ2UtcDhHfLE3T2jVscxaxkLg5tTVOyU0QB9EjewkDbO1b2Vpjz3buCeBlwL0j8d010Ou2Ju0jhbUJ3uywkjd8W7yrblwNqP)gv)YKibBhzdZFr6wAy4Lbe4B0P34H)hAIkSXdQTYcRXuVlsPcblAt6aW5OUPohYaDIjO7Ued1Nksyrpqf3uA9dijpSqKqIsHiWDs)6GS4ZsGHpbcSkKZbDpl5Wt5HOjP0Kha96j8qKeFseDHGNKqJe4dMKfbwSy(EAYDFJ3fDKoQOKZYyW5)3ijB4hcn8PPz72XJwSj)wizIPIbB2YZchGl7r6f9AHWhpw60TTGCh)9d96FXAm3CrXvg5vescbYa0aafqIGWPDGXip28DHKnzWn(fk1hav(xXqqf73igjfv5sRcr6JkGGecezGX1hqJiRcPbx0lGlgSoHNkwSM(OwM6OJhXBPcaILSU6E9nS4YBUiefln(PF5k21ZnrVWPO0)4XEq0aM6UM5Ze3pDytbxW8XqolID(D633qS5zIvjuYdOi)cxpZXJVWbFaN1xv5tMb5wpG(goKLl9J3m40YxfhdO9lzqjJxJeVA9rCWRQG7edSymtL0RvrtYLHax(fOY2PLjuaHkfIl6rEKZaw5hYIJr1wjaKvGcFAPGd1RiamduidU6RE7pCA5E4XjjfsfB3oAadOjk6(GuLTd52Y9mSuMrqy7sUlb)Iwcb69IwIE0sUmUDro0ed)lZ)aGMKPIjD7fLMXzzyPFi5JZ3b6ycJNWehYZ7EpIdbxfbImslXN8nKurzD(3WzH1mGy9DtQJEaSVeGYZ2saT50YFkADwkMglnYs)07FhA8tndoKv1x4dCPeFlvs7fbaPb7aSuPu1790D8hX(l2qJOjO4RHME)35DAzq2U4VhATauXqCHmG7yZqLD1O83HkTwSfdUaJF6G(52S3rfMwJk5SQAS02xhb1qLAIsw4tGhaSdusmkaQeRL9sz7IdzRzOit)i1pdJ9lLoJaaOnWqaFfFEfSuYgqqGMNcfBhe7lUB6Ojx0j46X5I0R4)iixuHTAKRY9kkvCby23b9uvIu5mrWsqz)lKR((P3CrVCYvNe3zYMJh1wNgfRTS(ndMa3p4O8jhSl7QIgsjPQvf4r2VfAXDbeJPWiv)rrKXRK8a8zYaj94ISOfQVTadYuDLq4uB8E8zFWuGLGqO8RnjXDfETzY1DA5hKlecPY7bUQtrdkzpOS1gkWaOCM9xPPq)UsaZFLNHWhwsrAWWuFyKLngGNuj3wxqUf7rQnivaZHC)uaOS0Z0VoFlQfjhljOODcmswaaPy71Yccui)MQVc)qo(bIpr)ymtrmjcy(ylqrmS3bB1jipsyHii9a3kzLUuPMT0oGQqU9(bQQtyTRgTcfM3VSBlLrBMaupssGvZNeJgnqaECkmBLoEdyIKEcaLeDlPiWKGhRqrnwgo2Ge8LwmOOoU21Zuo(cU2)jA(AGPDpaPvcEiTD4F0wWeos2xH4R7VkeSYGODTSZKR2RcFXMfwbR7LQOgSxHTKhXogavnlpWa1V8yLFJMW1mlqt9Fn2QdACG4nO(3bQO)LYAn4YzWnt5k6gWLRLfGzRseg4dctiDliGcmh(kvFukgkTNnCDTydBMNvbW1MrAAr355TX9bsSJgWBWsvWTGeR1AC51k7lwYA1L93IpArM(KCi4sjWvRkqaidBRZhQ7NiR8hYxb(UdFp2BOac7Xlcz8f2nEsqUzZpKG0OFlaIDQXJA5uNhN956oU3t5mC1f1)jdkKIXL73knvaKn4ZmBYqbIPkzaMOD8aAAEFxLTtOsHHKHhLtHb8o5rfIVQ7FJ2(APVUxIaKYMYLKqA0vrWYSayCzqcwHG0C09GnDtLCcZZYIcPPPLyiYg1PFCljdmm4giLuLTr)itVJXU4gDvotfrMkvKfSC9ihXyYf907MC6KjQ5ZQUYyVIcut9aC8wDLYXYWXXXovjHkxa2DQ2Ome5KmaQHCxUUIaO5YW5thN4P3(xN1Dt537Zx6RBk3Cl103WJP36LVrdp99yRLez6oj5xiNMEpuds1ztHVsv7a(uw6a(uxKUvL19J7OaXI8p0O2Gm4gDl9I41dWH44u0w1htsek8(Celv5Ku(ok67VulHdRe88CPJ9QxvRMS2cMWbSjXYgAaTr52HStwkkcGka0cZVLkNQnjr5OsseeEzgFihVVQM2gsmMbVwGRdRFYbciFEnKKoRWfTazlfUiW0WOm0tFoMMWZqN44C8u0VGBdBRdX36Uk1E7x3n6zYt3nlwNGMZK9uha7Z2yxwLU6t(mQPEEg5To9TmA35NERorAP4Cd(zBiEBIK1C1B9YXZA0sr(1FE1OAGhyZh8PayxrVViW5kw97feVZEMrEZNbHzOzT8vNnA(S9Kee1kD(SFcKKezBiJR9wXauS5ZK)f(g5aobF8w5l3l30o)1WLLpX8zvP)Q39wclwDddGQ5ZGBGDqqGv5AtrxEbG(2c0KCbTdpDA5DNwoAUau5AYBh5VlyQCcBtTbMn65ZmBqc496v0GBdGmPOyc8CA5XJgRxJQwxE)knPcqd1KXo1K6K4(PGbXUnRd6Ol(pXj)DIcQu(xGDG)ObLRbLIK)wNKVyCyuTUPIgMiPij(gzsrblAcVPtFy5FRtoQLUQylKFlvfhZOvDpN7JfAWDdSkJeMixudEp2RUDZp3J8DovaxiVvIrt0xf3Mu39dpnYRB86M16UCRLkpXf2SMfZo(S0GCRr2G5cLYuDKVMXmG0OeM8D4O87YaFTVBQeOouXzlvgKS3nqwdN4ixorbeiR3pABa6wdPnq2DTPS6YwRXP2WNDKWzY522Hwdu3wMAvh5Qx12GjZ7XqblW5fYw9TXZT09h7(4QBk6DUAAQSeh7xBXs6xyUEX5krJe7C1OVxrtB1B6OP(pH7(RjYyT92vPZt0bjYd4QqjQUq7HViUHTsLDkd6)N2RyNLV7GreHKT1qqZYsM2pxBI8NO6IYLOxwPSJdBi1vq81YoEQ7Z8LDEFMBGX3OpfBn90PqZM7(8Vhh895gV6TVCwJ3NSDM(YN8ot35cODVrVEw61BYefmTT7n2REHrvZlYAeN1Gllu0phAVrZCN10)jzBKBTdPjENPLUFh5UU6PTJnW9fTNw3dS(fPNwxv9Dgz8LEJRBniASkiYv9xNkX)tUJ26wIQM)AzFRTpF5qp1yib01KSqRdGyyRCF6ERm0ANT32MOO2j4vxHo3P8vlmV5P9fhvAN80SRo2WTn5qX5)Tti8zXfhq(YhRLoLlozWppspS9nDPvczc3Hh0423ILUrSYdGSTwFCHDEA534vbrFoEyEELBFxA6ebvhC52A3O2HtUEHVYlxX4gN8o9kdooA0MtF1YXItwUEOxXGDgNNz1SkETwc3yWU6PUpNtbTLAWU3d4ENDE1IrABBS3(DRvaBNM1cPOddxBzlqBoBDv3yLNt6Cytx6B5wSAvtlVBr7yvrQAAZz6o5fTr48TC9S7UBXj12Axh1ekRtf8eol2Du4BTdK2eL)GpW2gBW152Y9ZesASto2JWnGsSDMTL4etkYJCxdPlHjLh4BjTCnu(tEG32pd4F(pa4DBA5BCnGF1zXUM(2XZi(LpVZiE9JhEnNz9ctsvqwaT0pD23kYnoRtwDWVR7JFoNP8ZSPC4mx57kxNRAow2RPRcJAVnllVou55pxxMuwqZxQMbM)t99QvurVXMm(5(9jIgf31sDRNn3xNE6nB3(76ZO0MLx33W6v3mDjYhm)SURL1zEG1pNAmw9UYxOARgFB5iJDpGDDACNKeozUgTnFfoYXPk)DsABGQcAwB()6dAz9N56Fs)nU2aq95VfjLJmwRN2IFiR1qSgPV08(9nxXy9vOdDBSQj6RQ(pTvZ1k9WKmOOc40EDs2dKh4Ylo))o]] )
-
+spec:RegisterPack("Unholy", 20250809,
+    [[Hekili:DV1EpUTns8plbfyRnUD9Q1p22MUEbss7Dx71lxqCo0)Z20s02eRSOojQ1Xfg(Z(ndPEqkrkRDBsAVRanETe18E(nZqrp)M5Fy(SaIGo)Td9goX7B9(Ub3mA0TEJNptCiMoFwmX)bYg4pIi7G)9FhTLhEaV8HqojaF8uEwIpCR5ZwLXcf)u08v2O5KBgcRnM6dxEc8NBzbbu1APP(ZN9HTS0tlX)NCAzoxpTKVg(UVGXJoTmKLkGBVMNCA5FN(alKnaeKe(AwiW(V60YFGseBpT8FeX2Sv8Ytlvc7PFgU1RjP0aGCaz(v((TusWxdK6FYF3PLVjKKMY8pT8VLXcOWJTviItF51xVF)(b7vlEGpF3174Xx5Rw81BW1ET8B00RdqgF1ds(EDMKRxheNEvcxqqz)kFopmGVpk9kYkqUfmA6vXpsp9ZN(zL2LoioHcmzfr8xME9wEs0c(6f7zrcAYLS1txLTE9aZlpaj4XJ2UtcDhHfLE3T2jVscxaxkLg5tTVOyU0QB9EjewkDbO1b2Vpjz3buCeBlwL0j8d010Ou2Ju0jhbUJ3uywkjd8W7yrblwNqP)gv)YKibBhzdZFr6wAy4Lbe4B0P34H)hAIkSXdQTYcRXuVlsPcblAt6aW5OUPohYaDIjO7Ued1Nksyrpqf3uA9dijpSqKqIsHiWDs)6GS4ZsGHpbcSkKZbDpl5Wt5HOjP0Kha96j8qKeFseDHGNKqJe4dMKfbwSy(EAYDFJ3fDKoQOKZYyW5)3ijB4hcn8PPz72XJwSj)wizIPIbB2YZchGl7r6f9AHWhpw60TTGCh)9d96FXAm3CrXvg5vescbYa0aafqIGWPDGXip28DHKnzWn(fk1hav(xXqqf73igjfv5sRcr6JkGGecezGX1hqJiRcPbx0lGlgSoHNkwSM(OwM6OJhXBPcaILSU6E9nS4YBUiefln(PF5k21ZnrVWPO0)4XEq0aM6UM5Ze3pDytbxW8XqolID(D633qS5zIvjuYdOi)cxpZXJVWbFaN1xv5tMb5wpG(goKLl9J3m40YxfhdO9lzqjJxJeVA9rCWRQG7edSymtL0RvrtYLHax(fOY2PLjuaHkfIl6rEKZaw5hYIJr1wjaKvGcFAPGd1RiamduidU6RE7pCA5E4XjjfsfB3oAadOjk6(GuLTd52Y9mSuMrqy7sUlb)Iwcb69IwIE0sUmUDro0ed)lZ)aGMKPIjD7fLMXzzyPFi5JZ3b6ycJNWehYZ7EpIdbxfbImslXN8nKurzD(3WzH1mGy9DtQJEaSVeGYZ2saT50YFkADwkMglnYs)07FhA8tndoKv1x4dCPeFlvs7fbaPb7aSuPu1790D8hX(l2qJOjO4RHME)35DAzq2U4VhATauXqCHmG7yZqLD1O83HkTwSfdUaJF6G(52S3rfMwJk5SQAS02xhb1qLAIsw4tGhaSdusmkaQeRL9sz7IdzRzOit)i1pdJ9lLoJaaOnWqaFfFEfSuYgqqGMNcfBhe7lUB6Ojx0j46X5I0R4)iixuHTAKRY9kkvCby23b9uvIu5mrWsqz)lKR((P3CrVCYvNe3zYMJh1wNgfRTS(ndMa3p4O8jhSl7QIgsjPQvf4r2VfAXDbeJPWiv)rrKXRK8a8zYaj94ISOfQVTadYuDLq4uB8E8zFWuGLGqO8RnjXDfETzY1DA5hKlecPY7bUQtrdkzpOS1gkWaOCM9xPPq)UsaZFLNHWhwsrAWWuFyKLngGNuj3wxqUf7rQnivaZHC)uaOS0Z0VoFlQfjhljOODcmswaaPy71Yccui)MQVc)qo(bIpr)ymtrmjcy(ylqrmS3bB1jipsyHii9a3kzLUuPMT0oGQqU9(bQQtyTRgTcfM3VSBlLrBMaupssGvZNeJgnqaECkmBLoEdyIKEcaLeDlPiWKGhRqrnwgo2Ge8LwmOOoU21Zuo(cU2)jA(AGPDpaPvcEiTD4F0wWeos2xH4R7VkeSYGODTSZKR2RcFXMfwbR7LQOgSxHTKhXogavnlpWa1V8yLFJMW1mlqt9Fn2QdACG4nO(3bQO)LYAn4YzWnt5k6gWLRLfGzRseg4dctiDliGcmh(kvFukgkTNnCDTydBMNvbW1MrAAr355TX9bsSJgWBWsvWTGeR1AC51k7lwYA1L93IpArM(KCi4sjWvRkqaidBRZhQ7NiR8hYxb(UdFp2BOac7Xlcz8f2nEsqUzZpKG0OFlaIDQXJA5uNhN956oU3t5mC1f1)jdkKIXL73knvaKn4ZmBYqbIPkzaMOD8aAAEFxLTtOsHHKHhLtHb8o5rfIVQ7FJ2(APVUxIaKYMYLKqA0vrWYSayCzqcwHG0C09GnDtLCcZZYIcPPPLyiYg1PFCljdmm4giLuLTr)itVJXU4gDvotfrMkvKfSC9ihXyYf907MC6KjQ5ZQUYyVIcut9aC8wDLYXYWXXXovjHkxa2DQ2Ome5KmaQHCxUUIaO5YW5thN4P3(xN1Dt537Zx6RBk3Cl103WJP36LVrdp99yRLez6oj5xiNMEpuds1ztHVsv7a(uw6a(uxKUvL19J7OaXI8p0O2Gm4gDl9I41dWH44u0w1htsek8(Celv5Ku(ok67VulHdRe88CPJ9QxvRMS2cMWbSjXYgAaTr52HStwkkcGka0cZVLkNQnjr5OsseeEzgFihVVQM2gsmMbVwGRdRFYbciFEnKKoRWfTazlfUiW0WOm0tFoMMWZqN44C8u0VGBdBRdX36Uk1E7x3n6zYt3nlwNGMZK9uha7Z2yxwLU6t(mQPEEg5To9TmA35NERorAP4Cd(zBiEBIK1C1B9YXZA0sr(1FE1OAGhyZh8PayxrVViW5kw97feVZEMrEZNbHzOzT8vNnA(S9Kee1kD(SFcKKezBiJR9wXauS5ZK)f(g5aobF8w5l3l30o)1WLLpX8zvP)Q39wclwDddGQ5ZGBGDqqGv5AtrxEbG(2c0KCbTdpDA5DNwoAUau5AYBh5VlyQCcBtTbMn65ZmBqc496v0GBdGmPOyc8CA5XJgRxJQwxE)knPcqd1KXo1K6K4(PGbXUnRd6Ol(pXj)DIcQu(xGDG)ObLRbLIK)wNKVyCyuTUPIgMiPij(gzsrblAcVPtFy5FRtoQLUQylKFlvfhZOvDpN7JfAWDdSkJeMixudEp2RUDZp3J8DovaxiVvIrt0xf3Mu39dpnYRB86M16UCRLkpXf2SMfZo(S0GCRr2G5cLYuDKVMXmG0OeM8D4O87YaFTVBQeOouXzlvgKS3nqwdN4ixorbeiR3pABa6wdPnq2DTPS6YwRXP2WNDKWzY522Hwdu3wMAvh5Qx12GjZ7XqblW5fYw9TXZT09h7(4QBk6DUAAQSeh7xBXs6xyUEX5krJe7C1OVxrtB1B6OP(pH7(RjYyT92vPZt0bjYd4QqjQUq7HViUHTsLDkd6)N2RyNLV7GreHKT1qqZYsM2pxBI8NO6IYLOxwPSJdBi1vq81YoEQ7Z8LDEFMBGX3OpfBn90PqZM7(8Vhh895gV6TVCwJ3NSDM(YN8ot35cODVrVEw61BYefmTT7n2REHrvZlYAeN1Gllu0phAVrZCN10)jzBKBTdPjENPLUFh5UU6PTJnW9fTNw3dS(fPNwxv9Dgz8LEJRBniASkiYv9xNkX)tUJ26wIQM)AzFRTpF5qp1yib01KSqRdGyyRCF6ERm0ANT32MOO2j4vxHo3P8vlmV5P9fhvAN80SRo2WTn5qX5)Tti8zXfhq(YhRLoLlozWppspS9nDPvczc3Hh0423ILUrSYdGSTwFCHDEA534vbrFoEyEELBFxA6ebvhC52A3O2HtUEHVYlxX4gN8o9kdooA0MtF1YXItwUEOxXGDgNNz1SkETwc3yWU6PUpNtbTLAWU3d4ENDE1IrABBS3(DRvaBNM1cPOddxBzlqBoBDv3yLNt6Cytx6B5wSAvtlVBr7yvrQAAZz6o5fTr48TC9S7UBXj12Axh1ekRtf8eol2Du4BTdK2eL)GpW2gBW152Y9ZesASto2JWnGsSDMTL4etkYJCxdPlHjLh4BjTCnu(tEG32pd4F(pa4DBA5BCnGF1zXUM(2XZi(LpVZiE9JhEnNz9ctsvqwaT0pD23kYnoRtwDWVR7JFoNP8ZSPC4mx57kxNRAow2RPRcJAVnllVou55pxxMuwqZxQMbM)t99QvurVXMm(5(9jIgf31sDRNn3xNE6nB3(76ZO0MLx33W6v3mDjYhm)SURL1zEG1pNAmw9UYxOARgFB5iJDpGDDACNKeozUgTnFfoYXPk)DsABGQcAwB()6dAz9N56Fs)nU2aq95VfjLJmwRN2IFiR1qSgPV08(9nxXy9vOdDBSQj6RQ(pTvZ1k9WKmOOc40EDs2dKh4Ylo))o]])
