@@ -12,9 +12,6 @@ local Hekili = _G[ "Hekili" ]
 -- Early return if Hekili is not available
 if not Hekili or not Hekili.NewSpecialization then return end
 
--- Create frame for deferred loading and combat log events
-local mageFrostDeferredLoadFrame = CreateFrame("Frame")
-
 local function RegisterFrostSpec()
     local class = Hekili.Class
     local state = Hekili.State
@@ -1968,25 +1965,8 @@ end)
     } )
 
     -- Register default pack for MoP Frost Mage
-    spec:RegisterPack( "Frost", 20250727, [[Hekili:1E12UnUnq0VLGfqyx0fATLJt2Tioa9k6gGguuLNLeLmvcHLefOOsAcm03ENH6gfLOD7I2hsGn5WZHC4mhECW6Ghc83tK0G79w5TD1Nx756T6YRVCBGV81sAGFjj5a5r4dfKC4))QGxjXrFnJt2JRUIxlsGzc8JRzzYVweeVeKBw9fi2sAsW9xDzG)tS97PTHsRsc8F4jwvte(hPjQJZMiEk89ejJx0eLXQKW0PCrt0VrpWYyUb(QbvNbAkPotcF8E1zQDvb(j86cjvaeNLf4tliXz09b)yGe2DyCJJ4NiyqKmcCYjIhPs3NOKm5tULjYMOBAI822eD8ytKKLdBTBBI2osdow4lerjc8g9nqoti4IqwUkjozdCPECSKxdFMYkQmcAREqPc(B0IqUi2iQRoXzjJwiDlf0kArcnKNgMZk272h8a2MrGWETvyJRttDh2ZU1LT5g1WXccRimvqPVrDfuGGrwIH7cQ4aR4re)p)Fp(zC((W0AXRi(FXa)HRlbR4avU(FaJjCE2E(lfAtjO5WgOsvd4TcQQZ4snmbExV60e79)aXEkIxFUcHuSbomMNh3xc0e50eDbwxNOUx0R26cvb9P6xuqlQluvpL8xOclOR(Q6epnA8KoY8K5uKV5CKZkEMNqWLpH52K74Ct5H2pUIJlpphjeunjSc713BEe74AAm1LA94tNtr62t3cakqq8O8IARRO69w7d0AssHKn0RHzr19OBLeuvvLoRBI(W4MAKb1(XUsIHC4MvQntxQjbkwdRkiLZfwgMsHVDjLHmiObftecguwGndJKOpZmA0Mur0z0woLiIkHLYeaGC4nfentLed0MLTnqe3CzeqDv9WJP6W5aR7QdFdsLogKgg2(D6cqepMS3nN8x6hgmgfV2fhWGFMgslO5mkkWSdUG7RRZ5pprxioJ92BD1VE2vfSJPjGj822DSsrb6gJh9QKQlcJ3VT3VAsGE6xQEQlbu1iJ2fwqQMiGMvOcqWYYyQ1QSQiyLTZ)7Wd6FFtuNHO5LXZwpkf0B7ONKQ68CEbOgG9G0mAouMtmnQCwTVffETRMQYbpdvy4STM0U276aFqtQasBGdKVMxYfsuzZZWaMBZDaW1YN4IaF)86ub7aMq5PSmid9UMi98sZDVdg5p6t3n31IvL7WnW3T7tZsuFKLU7cR5WLbXidUCqtseilN8HR7A39)CRZYbebC0nvQp(GlWwSnmrEJ32JhXqUDR(I0niQp(WZ(6doAauFutRBAhnB((0x(ONmCHZSJC8OTxB0XyW313og1v0qOYo)JOVMD9(PSGND7r36T6SO69THABfXdWtmG7)pDf8rvw28kQZ1K21WCxxox07isBT)RkqhqWXIFQjvtdwG0GDUNjNL8lnfNjwyMa2IMJCUWITO(S5pXfWpN6p5sfH6Cn6mz42YWoKZ7Tuw1vVT8lP3U(dt7M78NGSO1UUzLJnZnt7th8DmkCn1dJJD)lZQCgSDmCMpDtZWtBdXVSxKj6fuzN1b7lsLPUXZbJ1qC11I)JBaVh93Q)a)xw(sT38aYmzIdHB3TX5I2xUNE9mAoy5f1VMwMbx2pMrXwtu)Dw(ftTwZFD(gWhid(7p]])
+    spec:RegisterPack( "Frost", 20250727, [[Hekili:1IvBVTTnq4FlbfWjbRq1s2ojDijaBDBynylyyk7RsIsIkMiuKAuujnbg63(os9gfTK9AXgkAH9DhFUx4X75CdCdEiWpfjXb37T0BZYRCx54Uz9M1Ub(YxlWb(fOKNqpcFGHYH)9xe8sPs6RuokvD6sELib0e4hxrOYpZcINcY1RUcSTaNeC)fRd83sstXnMIltc8FylPSos9xuDuRpRJ4zW3tKeoRoIskLG6mUOo6xXprOehioe8mcf8(7QJ(D4iFFDKocRV7DGK)qGt45Xi4RnOu6u0j67U5dircIHdJfekLGyj43tYU5K4QSmN9u5uvmniLv55Cw4lqclcXuCoMjr0PTvubyYZcl4VGfkNbwcM7msUdMHIP4067AsIFcNHQOdPaGtcVIbUdQMuQPCjjhdrIOObBXJyPZwmIk36uKiV2BZUDktUDJ5HYjcbxesYvvCd5KKxdFgtyLMcZe83WSqUi2ukKJLyOiPYHCcl1i1SvnKDdhpgsfS4jc7r1b11)ENd19D70IIficlmtGXVHDey44JWGY5PHzvIx)2XOQehsK483xs5YBKcc7jS0Dg8s4CAk)fMHybohGV8wVLhfvVVnuB6iEGGH3aB(WfWh1vz7ROszym0ZzCnmiS7cyXjssIQMBE2VQg0EewOtKX2OsIrDtm4bL6jsPQb1SdXsZa6nLhlTQNHnvHpXfWeI)Klr65dg(cA4HdO607RYdI0r2IZMPDOTpjdYkOPuLo6kNtPegjDR75JFfstdlzi9RnJNzRwUOn16TyQUEc8OigjeKMkDB6oies1oCmLobs6qmJiaJ4uzFoF4MDfM0UHEtN07DMcSQtsH38hsxPU2BHYwRHIo9D39bLU1(6ht6N29d8FE6l1yk5T3A7CusFghIz4CcU82BwT4KC(Zw9Yj8M(r1LW0hQ7mnE2h(mfREsPMBUx9vvANT(1GuG)ZqPa03Y8DP3Lb(qxld0vQO4a0j5fCHSLg700Mz7NwhjW)DfCdMwhvYZb7qvsEou(abjBrqnU0P(UFJWavUFey5(lwzvHckLfOwkYthUGoDS5FIZGytB8PFf3mqGj5WrMx9zUF5Chvj8Z5DrJNfNnOoWhYNTCrGVFEvMG8uGVwLE7JMAa8X71BJ0C2aFtsUa)22(GFmqcvxLDds8teWawbbb7Syt6vhDnerBQJ2TdYfIQ0Elm7CWn9CMkGxzgaMeJwbWAt76hvBz0gtJgioTS6IdKlhKbDaBBluWE5SWUhRttTzMrgdEzGLwH)v)3JFpdUc)pAHF)1vlR8)cpopxQUhWBjSpkqjBGj4x3Lh2XE)p4ypTJDpwJW(C41rlQJor1xR5Hh1T1AQg6d9E5alGogD9xNHPFWZJ0PD(QJ58zwaOZ9ZSgGX7VX60oD9HBpTwhq7QZMTh1ObEA6o91QBD05db1Gh0XZMzJhRrvRwQdM5wGWC8yRkn(ZpfPVcoAZctNmX2fMd36vQD0rMRCOh4JxtrJ2rMIm9gjJdonhSgm7rghdS2RUR1mwlmE2oMKtBbSHIto6lgZC7zA1es2tng8941oGoLBGl5UE7U9ggMb2SKJgZ5himpM2aAUeKguplsPMfBS5xN)nRTdmVcKAQOMFTBpD(eJs37hx38FcGGu0O38hYpvR8u)48(1c6CY0)UCRe9OZMMCW48t76(tW)m]])
 end
 
--- Deferred loading mechanism
-local function TryRegister()
-    if Hekili and Hekili.Class and Hekili.Class.specs and Hekili.Class.specs[0] then
-        RegisterFrostSpec()
-        mageFrostDeferredLoadFrame:UnregisterEvent("ADDON_LOADED")
-        return true
-    end
-    return false
-end
-
--- Attempt immediate registration or wait for ADDON_LOADED
-if not TryRegister() then
-    mageFrostDeferredLoadFrame:RegisterEvent("ADDON_LOADED")
-    mageFrostDeferredLoadFrame:SetScript("OnEvent", function(self, event, addonName)
-        if addonName == "Hekili" or TryRegister() then
-            self:UnregisterEvent("ADDON_LOADED")
-        end
-    end)
-end
+-- Immediately register the spec.
+RegisterFrostSpec()
