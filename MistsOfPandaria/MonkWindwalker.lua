@@ -57,9 +57,8 @@ local function RegisterWindwalkerSpec()
 
 
     -- Register Chi resource (ID 12 in MoP)
-    spec:RegisterResource(12, {}, {
-        max = function() return state.talent.ascension.enabled and 5 or 4 end
-    })
+    -- Use default resource state (with metatable); UnitPowerMax already reflects Ascension.
+    spec:RegisterResource(12, {})
 
     -- Register Energy resource (ID 3 in MoP)
     spec:RegisterResource(3, {
@@ -86,16 +85,6 @@ local function RegisterWindwalkerSpec()
                 return state.buff.energizing_brew.up and 20 or 0 -- Additional 20 energy per second
             end,
         },
-    }, {
-        max = function() return 100 end,
-        base_regen = function()
-            local base = 10 -- Base energy regen (10 energy per second)
-            local haste_bonus = 1.0 + ((state.stat.haste_rating or 0) / 42500) -- Approximate haste scaling
-            return base * haste_bonus
-        end,
-        regen = function()
-            return state:CombinedResourceRegen( state.energy )
-        end,
     })
 
     -- Talents for MoP Windwalker Monk
@@ -366,10 +355,18 @@ local function RegisterWindwalkerSpec()
         },
         spinning_crane_kick = {
             id = 101546,
-            cast = 0,
-            cooldown = 0,
+            cast = function()
+                return talent.rushing_jade_wind.enabled and 0 or 3
+            end,
+            cooldown = function()
+                return talent.rushing_jade_wind.enabled and 6 or 0
+            end,
             gcd = "spell",
             startsCombat = true,
+
+            channeled = function()
+                return talent.rushing_jade_wind.enabled and false or true
+            end,
 
             spend = 2,
             spendType = "chi",
@@ -612,7 +609,7 @@ local function RegisterWindwalkerSpec()
         width = "full"
     })
 
-    spec:RegisterPack("Windwalker", 20250806, [[Hekili:TM1EVTTnq8plbdWijTrtYpsBhIcqxxbwl2kgGcW(pjrlrzZAzrbkQK6Ia9zFhPEr9GYQPRfDZMK37J)U7ODTCFW1jeXXUFzP5YnMV18ngMMwWhCD4NsXUoPOGdODWhsqhH)7)sscFcfFaZeBDkMIcfSiJMZcGTDih)adfXl83S(T3amzBojM)Pe3TJjMvwwUoOC(EkWT)KCeJCD2tcdXLNhNf468WEswHV4FOc)kLPWNgbFpGtOjf(XKmoSDeLv4)N4dKyIbOBmAejg0OFPW)VPjh(Tc)wvV4ZWQ9u1Ipl(lSU94)rU3)WW38b6XTiGkhmppDAkk1WmJugoqs1RS)1y8ouWjpAKhFp2dFmfZOSxtIS3MhfzKXr8mJq6tjlKFF0tl3FoC)P9eo2Jt2HBLqaJW1kafcMqiPuPJ)8UR)ahHtYipIHWZFbrP55TcBOcKvicS5eV9i2rHjWrX4eq)Bx1aNG2gJdxCH0E408G9cZ5aShYipDXEmkMV3inGFN9TM6edjkkpd7DeTJeOki11)Hf1zDqFGYWZYP041BIJBJP0W48mUbddh65N5i2om3GdxJ84uVqcUJ9cCqyiq89yM6IBXSmm7ajzN6Qb7jEBz4NuCf1l14fGfUZE5Il5msYbqYWvUadWpft4NQvQld2luRmBRfqcK8ZEcn8oBlZRE(56DxoQ6xT71Wrv1nz6Pxkk(yJZOAj6tqEldFersYUZELqdV32AaT4t4gJRL86v9a3KYfKo7jUFgCWEP5lMNsvcCA64nOVBg1zS28QfHyjzmsgeU8YYt8oqcoiY8g4feqtTQiobZ2r(UGQMOAfVpI(MNC7t3VrLKEcrqIgXRyx)aHjjvA4yvi8ERfJOLwJewjjpspG9(woorjJvz16K2owiiUYV5jkH8ArboBefl4Gy9hXcrEKGZU3E1zjuybXGUkJCdzXDRMbCGJKh38GKhf(x68WvZcDWOJWf((AOPqmIVVX)l)MxcLJf5ms34k9mzKmGEr5bKejkflKBuo7uJy7L9vg6hjYUEyACDMW6ZQTc4PNqpI7HyjwQbXAezoHXib8Yzz8(GGI1EH887qvRS09WT(xhCkOzhaFuriThAsPS4IqANdZHOKko(aPVngqyO58M4zzhbqDDQiYGGwJ82spucE3)k9WKSHxW7YkEAfNUu3Mvi1c4)HgO9YR6FvFGo8v02Q8sdGYBoNkpWbukQxv()mQUYYW7WjxhqPXImvTOt2RnB8rN9Q97bZ(gA0nFmkchiUB)E6hN5LBassc6KTxOgFffc9PbTYQKWmyVbWDvm5LM(D2mTs2pJ7GJrYzVKnWxmkYuDwq)tNLssseNpGHsWnuCX5CEUopc9gbmQzOLBDDEcXe8kZ15thtPmoOC(B6nlIrXNDDKFsoAKAoiSWxKZCvlJF31r0roMrqIHL6dsx4VOWhSRc)7Tl8xbtljfemCwhe(YHLyK0Yn1LsnAbgDjGUCWU1QQn60YwDQxyrWGvtBRJvzqAYdHdaPv4VwUPUQekhzmxwNItcLBTwLtxY7eQMIFOMmHm2mhz0nzF(crsNqk3EoPm8o9KIrU5ff(JFTVvjA3dKPkGIilh0R3mD4xtLNUrqfBUd8TG)V9hH)1LJKS)YQ0iDfLk8VZw6iE(znUPYTVQRYAPCdTP8OqtF3u3KKOw(3mUrdL4emWYulhQvPxv4psHSc)RbgFMIzLsDT5SD9CbKtekpEoqA9MvTYPoygNsF(TMTsTCM35IUjNM(SWz18UzAyvnVgYQXSBMoU3PMf2H64YTE2QeRYKq9dpx6LUuqKCmyWYG8ljDDgLUKHwMYCrbjQNF5e(ALtEDfd6bVaQ)0yy6rIf60QzE3qp61ets3Rsq3POlTDZEcS(mZazAcz2E7OdqYOAH0S3mzmyTzniI2P7hVOxE6eMNEGrnq(BAzwVIYtJEnXBcOflzK(eMaDB0xoykhMA3awtvMZAM5Nw6H30)sdTmtztj363uvJBP7ZkOkMk88Q3sOPZgXX8kFxEOvxjZ73W1lG531N3D7GvI938CWZa9V9nTBtK1)U2TQ8ONPxTGHpT)G31x7awJ8A(NT4Xe9Au)U66mY(VTUodv5CdkhvxpuTueVm4pzC48J60MN07iZT474d4(YCOt306)d9LQFSenD(pEZ9ZRja1M710)U(kSs0jBjkLOlXjbr1xh9cr5N5McmY8Ynn8v9lMmRSTr(rAQJFLy69)9tK72(BOmSDqfoo30Yb)eu)uzKJ(Zb9ZAuQ80TcFnlfha6ZTVt(v3)7]])
+    spec:RegisterPack("Windwalker", 20250806, [[Hekili:LM1EVTTnq8plfdWijTrt(vw6Gva66kqBXwXaua2)jjAjkBwllkirfxxeOp77i1lkjszLSg02y(4EF)U7ODM78OJDaIHD(2cZfRnVF(cJflnnxm3XMDob7yNG8pG2b)sm6i8V)ljo4ek6aoLV15ikkGtImAEQpSTn54htrHScV1RU)27DS3MtIyFj2z7q2Sy97xT0XgLZ2tbQ9zYrmYXEpjiaxEECMVJ9J7jzfE8)Ik8QeMcpAi8zFgHgx4frYyW2H00cVpJpqIigGSLsdjrGe9lfE)nn(WVx41k6fFfwTNOw8v(pW6wQ)JyV)jfF7hPh3IGBzJz5jJFJsjmZijf7lU1BT(1i8oK)zxAOlBp2fFmbNstFhj0ABEyOrgdXYmcONINj(SYtl2Fku)0Ecd7Yi7WTCWpLW0YaPlmctsOcd)Lnx)joehNrEcdUN)c8stZAf0ClGxbiqNJD3JspYvbgkchdYF7Qg4y02iCqP6WO5(75AZbyluPEUhJIy7ns8zBSUZuhFiHH5zy3JODeFzojV(lNxx0e9rAkEsMLg7EJNCBeLgeLNXmsXWHE(zgkDhMzWGejxg1nGG7OWaf4Ac4HpMjV4wCAgo9ajEN8Q(7jUBtXNKSf1l1ygGf2yTy2vSus8bGZqsNVbyOIiSZ1c1v(75IvM18zqiK43D5s4gR5Mx)8Z17UqP4xT7nWrLLnraQBck6yJXOAj6jiYnfFerIZ2yTKlHpynFWDXNXnkx71Rx1fmtsPiD2JNH6FWAH5RMMcrcmA6OniVRvAmwzE9SaS4APKmWD5MLh7EG4FWipz2aRahCQveXX40DKFYVvJxTI2hr)WvS95hwlFLEmHFfnSxsVEbUjXT0qXkx4dZNPqkNRWTsIFIEa7(JCCSueR0Q1bTD0qGDLFYLxe5D8sCwikMtb(6pH5S8ibN9G1YlErUgebYQWZnKeBwob4aBbnU9rbnk8UY(XRNe6GrhMZT91GtbyeBFJ9x8j3ykdZJzeMXL6jIIiGEE5bxjKxmMZ3W80ZnSTx0xPRxHND1WW46iHvxuA5WtNqpH7HyXxQbXsbphrzeaE5PzS(GG81EL08NqDRSK9qw)78p73SdGpkXK2dnkxM9MaANdZaVKmo(aUVncqyO5Sg)zzpbqLDk3ZGGMJC3spucE3pLEyq2We8UKILurPR0Tzfsnh(FOcAT46(P6dKHVJ2wfxAa382ljYdmaLS6TL)NrvkBkEho(gFknIhPQfDYALzJn6IP2Fau7BPH3(PWqSpp3(d0pnXKBassa6KTNlgFhfaDQbnZkfWmyVbWDve51g(DXiTsYpHCqvx5IjzdSfkrMQJc6F6SesCm)8(POyCZn0A7cizQ56KG9RdEVZ0X(jO3k441J9yENJ9jukxwYCS)YXeAkdyJ36EtZyu8vyMQeSpCX7EVJTyrXCwYmdw4BIb4Qmso)bmnLGmWWBDW)lhMkLKuUPUaoLLF0fE6yZhLaNsq8P86xBPWBwHh4ok8EaO7shgOj9e12R3CUfTkqppmNal1saTfzeIXqKfGBfEReBQRGJ0rKuJgXRtDoUWTsRWPlpyertYouFnopwpfE0nVz6mrCpoxUttivB2VcopeYyuwl28nfEQrva6lJnXJYb563g39RPiwxpOKo3PsaN(3)sOFDLnb5VQkmsx9TcVnwcL(5N1ysk3(6Uc7CP05MkTCj99JLjjaa9UvTsdvl5eyUPwkulsVTWtrnXcVBacFH6ILCDL5Kn9mo(uikpAuiTYXFNkuMyW6jJD1Bw6kp1GzWkDKaWEnCwTS1myTSKxdz1O2ndA37utc7qEY7wlBvGvzqO(5WlvOR4xsmrnyzG4lX96mvEjbNBkIf5xr(8lgXSiDYBQiqp4fq8hhdtpsmxMwoXCJ(OxQO)GHY7vjO7a5L6UzpgwFMjGmncpBZo6aKOukeQ96r9bRmRbr0(qbQl6LNmI6Phyud8(6wI1RO84OxJ88cAXsu0NWiOBkFeIXmyYDdmFSsAZNy858(WBds2v8OfTetAtb103uvfSD1RpmObME9Yw2JPB5J8dD7kiU(gU6t8ntM2D7GvG9382YJH(R8LW7vmy4d9p4v(1oSLI32FYvpAF1(2Sl9VC)49cx2ir9J0RJE9FOED2jPZnOCuD9u5srSsN)i(Hbtln1cYQN)Dk24lnJRkd6)NMwFH9LQplrtN)QBUFAnbi3CVM(31xHvGozjqP4DjokiQ(6OxCS5w6QyW7XRxk3q8DMVAeL2VANXcLL(wKMAq8GVrRxq8RIV0kPIXd)YKeB2(fknO3ZXCok)AREvCR1AjtshwZpo)3]])
 
 end
 
