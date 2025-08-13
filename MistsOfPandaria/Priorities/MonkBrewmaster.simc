@@ -5,7 +5,7 @@
 
 # PRECOMBAT
 actions.precombat+=/legacy_of_the_emperor,if=!buff.stats.up
-actions.precombat+=/potion,name=virmen_bite
+actions.precombat+=/potion,name=virmens_bite_potion
 actions+=/call_action_list,name=defensives
 
 # --- DEFENSIVES ---

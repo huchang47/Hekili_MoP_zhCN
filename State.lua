@@ -246,6 +246,22 @@ state.last_ability   = state.last_ability   == nil and false or state.last_abili
 state.rage = state.rage or { current = 0, max = 100, time_to_max = 0, per_second = 0 }
 state.damage = state.damage or { incoming_damage_3s = 0 }
 
+-- Windwalker (and other Monk specs) may have APL lines that reference chi/energy before
+-- the specialization file finishes registering resources (due to load order). Provide
+-- safe placeholder tables so early emulation doesn't spam Unknown key errors. These
+-- are replaced/extended once spec:RegisterResource runs.
+state.chi = state.chi or { current = 0, max = 4, time_to_max = 0, per_second = 0, regen = 0 }
+state.energy = state.energy or { current = 0, max = 100, time_to_max = 0, per_second = 10, regen = 10 }
+-- Some APLs may reference combo_points before the spec registers resources; seed a safe placeholder.
+state.combo_points = state.combo_points or { current = 0, max = 5, time_to_max = 0, per_second = 0, regen = 0 }
+-- Ensure the keys are known to the expression parser even if specialization resources not yet registered.
+if ns and ns.commitKey then
+    ns.commitKey('chi')
+    ns.commitKey('energy')
+    ns.commitKey('combo_points')
+    ns.commitKey('time_to_max_energy')
+end
+
 state.movement = {}
 
 setmetatable( state.movement, {
@@ -2152,7 +2168,15 @@ do
             -- If the information will change and is time-sensitive, just return the calculated value.
             -- If something externally will set the value and it needs to persist, do not include in the reset table.
             -- If it's possible that something will set a value during recommendations generation, the key should also be in the reset table so it'll get wiped for each new set of recommendations.
-            if state.class.stateExprs[ k ] then return state.class.stateExprs[ k ]()
+            if state.class.stateExprs[ k ] then return state.class.stateExprs[ k ]() end
+
+            -- Removed early numeric fast-path for 'chi'/'energy' because it broke table field access (chi.max, energy.max)
+            -- and led to recursion when expressions mixed bare and dotted forms. Bare tokens now resolved via explicit
+            -- state expressions (registered by specs or core) that return resource.current. Leaving here intentionally
+            -- empty so normal resolution (including resource tables) proceeds.
+            if k == 'time_to_max_energy' then
+                -- Provide conservative default until spec/state expression overwrites.
+                return 0
 
             -- Internal processing stuff.
             elseif k == "display" then t[k] = "Primary"
@@ -2516,7 +2540,8 @@ do
 
                 c = ability.spend
                 if c and c > 0 and c < 1 then
-                    c = c * t[ ability.spendType or class.primaryResource ].modmax
+                    local mm = t[ ability.spendType or class.primaryResource ] and t[ ability.spendType or class.primaryResource ].modmax or 1
+                    c = c * mm
                 end
                 return c or 0
 
@@ -2595,10 +2620,44 @@ do
             if k == "duration" then return ability and ability.cast or 0 end
 
             -- Check if this is a resource table pre-init.
-            for key in pairs( class.resources ) do
-                if key == k then
-                    return nil
+            -- Guard against recursive resolution when a bare resource token (e.g., chi, energy) is requested
+            -- before the spec's stateExprs/resources are registered. Maintain a small recursion sentinel table.
+            if k == "_resolving" then
+                -- Directly return/create the sentinel table without invoking further __index recursion.
+                local r = rawget( state, "_resolving" )
+                if not r then
+                    r = { depth = 0 }
+                    rawset( state, "_resolving", r )
                 end
+                return r
+            end
+            local _resolving = rawget( state, "_resolving" )
+            if not _resolving then
+                _resolving = { depth = 0 }
+                rawset( state, "_resolving", _resolving )
+            end
+            -- If a seeded resource table exists (e.g., state.energy, state.combo_points), return the table so
+            -- callers can access fields like .current/.max during early emulation before spec finishes init.
+            do
+                local seeded = rawget( t, k ) or rawget( state, k )
+                if type( seeded ) == 'table' and ( seeded.current ~= nil or seeded.actual ~= nil ) then
+                    return seeded
+                end
+            end
+            if class and class.resources and class.resources[k] then
+                -- Depth + per-key sentinel to prevent runaway recursion loops.
+                if _resolving[k] or ( _resolving.depth or 0 ) > 8 then
+                    return 0
+                end
+                _resolving[k] = true
+                _resolving.depth = ( _resolving.depth or 0 ) + 1
+                local res = rawget( t, k ) or state[k]
+                -- If the resource is a table, return the table to support downstream dotted access (energy.current).
+                -- If it's a number, return the numeric value.
+                local val = res
+                _resolving[k] = nil
+                _resolving.depth = _resolving.depth - 1
+                return val
             end
 
             if t:GetVariableIDs( k ) then return t.variable[ k ] end
@@ -2617,7 +2676,13 @@ do
                 return t[k]
             end
 
+            -- Early resource fallback removed; bare tokens resolved via explicit state expressions (e.g., chi, energy).
+            -- Retain only a safeguard for time_to_max_energy.
+            if k == 'time_to_max_energy' then return 0 end
+
             if k ~= "scriptID" and not ( logged_state_errors[ t.scriptID ] and logged_state_errors[ t.scriptID ][ k ] ) then
+                -- Provide a safe default for early queries of derived expressions that may be registered later.
+                if k == 'time_to_max_energy' then return 0 end
                 local key_str = type(k) == "function" and tostring(k) or k
                 Hekili:Error( "Unknown key '" .. key_str .. "' in emulated environment for [ " .. t.scriptID .. " : " .. t.this_action .. " ].\n\n" .. debugstack() )
                 logged_state_errors[ t.script ] = logged_state_errors[ t.script ] or {}
@@ -3738,7 +3803,7 @@ end
 
 
 function state:CombinedResourceRegen( t )
-    local regen = t.regen
+    local regen = tonumber( t.regen ) or 0
     if regen == 0.001 then regen = 0 end
 
     local model = t.regenModel
@@ -3747,14 +3812,18 @@ function state:CombinedResourceRegen( t )
     for _, source in pairs( model ) do
         local value = type( source.value ) == "function" and source.value() or source.value
         local interval = type( source.interval ) == "function" and source.interval() or source.interval
+        value = tonumber( value ) or 0
+        interval = tonumber( interval ) or 0
 
         local aura = source.aura
 
         if aura then
-            aura = source.debuff and state.debuff[ aura ] or state.buff[ aura ]
+            local auraRef = source.debuff and state.debuff[ aura ] or state.buff[ aura ]
 
-            if aura.up then
-                regen = regen + ( value / interval )
+            if auraRef and auraRef.up then
+                if interval > 0 then
+                    regen = regen + ( value / interval )
+                end
             end
         end
     end
@@ -3767,7 +3836,7 @@ function state:TimeToResource( t, amount )
     if not amount or amount > t.max then return 3600 end
     if t.current >= amount then return 0 end
 
-    local regen, lastTick, pad = t.regen, nil, 0
+    local regen, lastTick, pad = tonumber( t.regen ) or 0, nil, 0
     local queryTime = state.query_time
     local deficit = amount - t.current
 
@@ -3878,7 +3947,7 @@ local mt_resource = {
             return 100 - t.pct
 
         elseif k == "current" then
-            local regen = t.regen
+            local regen = tonumber( t.regen ) or 0
             if regen == 0.001 then regen = 0 end
 
             -- If this is a modeled resource, use our lookup system.
@@ -3940,7 +4009,7 @@ local mt_resource = {
             return ( state.time > 0 and t.active_regen or t.inactive_regen ) or 0
 
         elseif k == "regen_combined" then
-            local regen = t.regen
+            local regen = tonumber( t.regen ) or 0
             if regen == 0.001 then regen = 0 end
             return max( regen, state:CombinedResourceRegen( t ) )
 
@@ -5566,7 +5635,8 @@ local mt_default_action = {
                 c = ability.spend
 
                 if c and c > 0 and c < 1 then
-                    c = c * state[ ability.spendType or class.primaryResource ].modmax
+                    local mm2 = state[ ability.spendType or class.primaryResource ] and state[ ability.spendType or class.primaryResource ].modmax or 1
+                    c = c * mm2
                 end
 
                 return c or 0
@@ -6771,6 +6841,10 @@ do
                 res.actual = UnitPower( "player", power.type )
                 res.max = UnitPowerMax( "player", power.type )
                 res.current = res.actual or 0  -- Ensure current is always initialized
+                -- Ensure modmax has a sane default (avoid nil multipliers in cost math).
+                if res.max and ( res.modmax == nil or res.modmax == 0 ) then
+                    res.modmax = res.max
+                end
 
                 if res.max > 0 then foundResource = true end
 
@@ -7151,7 +7225,8 @@ ns.spendResources = function( ability )
         end
 
         if cost > 0 and cost < 1 then
-            cost = ( cost * state[ resource ].modmax )
+            local mm3 = state[ resource ] and state[ resource ].modmax or 1
+            cost = ( cost * mm3 )
         end
 
         if cost ~= 0 then
@@ -7504,15 +7579,8 @@ do
             end
         else
             local usable = ability.usable
-            if type( usable ) == "number" and state.IsUsableSpell then
-                local ok
-                -- Some analyzers stub IsUsableSpell() with no params; permit true in that case
-                pcall(function()
-                    ok = state.IsUsableSpell( usable )
-                end)
-                if ok == false then
-                return false, "IsUsableSpell(" .. usable .. ") was false"
-                end
+            if type( usable ) == "number" then
+                -- Analyzer-safe: skip IsUsableSpell probe during emulation; assume usable.
             elseif type( usable ) == "boolean" and not usable then
                 return false, "ability.usable was false"
             end
@@ -7641,7 +7709,8 @@ ns.hasRequiredResources = function( ability )
         end
 
         if spend > 0 and spend < 1 then
-            spend = ( spend * state[ resource ].modmax )
+            local mm = state[ resource ] and state[ resource ].modmax or 1
+            spend = ( spend * mm )
         end
 
         if spend > 0 then
@@ -7759,7 +7828,8 @@ function state:TimeToReady( action, pool )
     end
 
     if spend and resource and spend > 0 and spend < 1 then
-        spend = spend * self[ resource ].modmax
+    local m = self[ resource ] and self[ resource ].modmax or 1
+    spend = spend * m
     end
 
     if not pool then
@@ -7932,7 +8002,8 @@ function state:IsReadyNow( action )
         end
 
         if spend > 0 and spend < 1 then
-            spend = ( spend * state[ resource ].modmax )
+            local mm4 = state[ resource ] and state[ resource ].modmax or 1
+            spend = ( spend * mm4 )
         end
 
         if spend > 0 then

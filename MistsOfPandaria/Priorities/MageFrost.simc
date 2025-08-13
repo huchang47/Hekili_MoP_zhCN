@@ -1,58 +1,38 @@
 # Mage: Frost
 ## Precombat
-actions.precombat+=/arcane_brilliance
-actions.precombat+=/frost_armor
-actions.precombat+=/summon_water_elemental
+actions.precombat+=/arcane_brilliance,if=!buff.arcane_brilliance.up
+actions.precombat+=/water_elemental
 actions.precombat+=/rune_of_power,if=talent.rune_of_power.enabled
 
 ## Default
-
-# Rune of Power management
-actions+=/rune_of_power,if=talent.rune_of_power.enabled&(!buff.rune_of_power.up|buff.rune_of_power.remains<=cast_time)
-
-# Enhanced mana management
-actions+=/evocation,if=mana<=45000
-
-# Cooldown management with enhanced conditions
-actions.cooldowns+=/berserking,if=buff.icy_veins.up|buff.brain_freeze.react
-actions.cooldowns+=/blood_fury,if=buff.icy_veins.up|buff.brain_freeze.react
-
-# Enhanced potion usage with state conditions
-actions+=/potion,if=buff.fingers_of_frost.stack=2&buff.brain_freeze.up
-
-# Alter Time with complex conditions
-actions+=/alter_time,if=buff.fingers_of_frost.stack=2&buff.brain_freeze.up&(buff.bloodlust.up|buff.sated.remains>=180)
-
-# Core rotation
-actions+=/ice_lance,if=buff.fingers_of_frost.stack=2
-actions+=/frostfire_bolt,if=buff.brain_freeze.up&cooldown.alter_time.remains>=10
-
-# Enhanced DoT management
-actions+=/nether_tempest,if=active_dot.nether_tempest<5|active_enemies>=5
-
-# Enhanced Frost Bomb and Frozen Orb with state conditions
-actions+=/frost_bomb,if=!ticking
-actions+=/frozen_orb,if=ready
-
-# Enhanced Fingers of Frost usage
-actions+=/ice_lance,if=buff.fingers_of_frost.up&buff.fingers_of_frost.stack>=2
-
-# Enhanced default filler with state conditions
-actions+=/frostbolt
-
-# Enhanced trinket usage
+actions+=/counterspell
+actions+=/time_warp,if=target.health.pct<25|time>5
+actions+=/mirror_image
+actions+=/icy_veins
+actions+=/frozen_orb
+actions+=/presence_of_mind,if=talent.presence_of_mind.enabled
+actions+=/berserking,if=buff.icy_veins.up|buff.brain_freeze.react
+actions+=/blood_fury,if=buff.icy_veins.up|buff.brain_freeze.react
 actions+=/use_item,slot=trinket1,if=buff.icy_veins.up|cooldown.icy_veins.remains>20
 actions+=/use_item,slot=trinket2,if=buff.icy_veins.up|cooldown.icy_veins.remains>20
 
-# Enhanced cooldown usage with settings
-actions+=/icy_veins,if=ready
-actions+=/deep_freeze,if=ready
-actions+=/summon_water_elemental,if=ready
+## Tier 5/6 Talents
+actions+=/frost_bomb,if=talent.frost_bomb.enabled&!ticking
+actions+=/rune_of_power,if=talent.rune_of_power.enabled&!ticking&buff.rune_of_power.down
+actions+=/incanter_s_ward,if=talent.incanter_s_ward.enabled&!buff.incanter_s_ward.up
+
+## Core Rotation
+actions+=/alter_time,if=buff.alter_time.down&(buff.brain_freeze.react|buff.fingers_of_frost.stack>1)
+actions+=/cold_snap,if=health.pct<30&talent.cold_snap.enabled
+actions+=/ice_barrier,if=!buff.ice_barrier.up&talent.ice_barrier.enabled
+actions+=/frostfire_bolt,if=buff.brain_freeze.react
+actions+=/ice_lance,if=buff.fingers_of_frost.react
+actions+=/pet.freeze,if=buff.fingers_of_frost.stack<2&pet.water_elemental.cooldown.freeze.remains<gcd
 
 ## AoE Rotation
-# Enhanced AoE with state expressions
-actions.aoe+=/blizzard,if=active_enemies>=3&!moving,interrupt_if=cooldown.frozen_orb.ready|buff.fingers_of_frost.react|buff.brain_freeze.react
-actions.aoe+=/cone_of_cold,if=active_enemies>=3&moving
+actions+=/blizzard,if=active_enemies>=3&!moving
+actions+=/cone_of_cold,if=active_enemies>=3&moving
 
-# Enhanced AoE cooldowns
-actions.aoe+=/frozen_orb,if=active_enemies>=3
+## Single Target
+actions+=/frostbolt
+actions+=/ice_lance,if=moving

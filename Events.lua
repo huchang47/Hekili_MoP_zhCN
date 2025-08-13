@@ -21,7 +21,19 @@ local insert, remove, sort, wipe = table.insert, table.remove, table.sort, table
 
 -- MoP API compatibility
 local CGetItemInfo = ns.CachedGetItemInfo
-local IsEquippedItem = C_Item and C_Item.IsEquippedItemByID or IsEquippedItem
+-- Use a local wrapper to check if an itemID is equipped without deprecated APIs.
+local function IsEquippedItemLocal(itemID)
+    if type(itemID) ~= "number" then return false end
+    if C_Item and C_Item.IsEquippedItemByID then
+        local ok = C_Item.IsEquippedItemByID(itemID)
+        if ok ~= nil then return ok end
+    end
+    for slot = 1, 19 do
+        local id = GetInventoryItemID( "player", slot )
+        if id == itemID then return true end
+    end
+    return false
+end
 local GetDetailedItemLevelInfo = function(itemLink) 
     local _, _, _, itemLevel = CGetItemInfo(itemLink)
     return itemLevel or 0
@@ -232,33 +244,56 @@ local GetSpecializationInfo = GetSpecializationInfo or function(specIndex)
     return specID, specName, nil, nil, nil, class
 end
 
--- MoP doesn't have C_UnitAuras, create compatibility function
+-- MoP Classic UnitBuff requires an index; name lookup is not supported in all clients.
+-- Iterate player buffs to find a matching aura by spellID (number) or name (string).
 local UA_GetPlayerAuraBySpellID = function(spellID)
-    local name, icon, count, dispelType, duration, expirationTime, source, isStealable, 
-          nameplateShowPersonal, spellId = UnitBuff("player", spellID, "PLAYER")
-    if name then
-        return {
-            name = name,
-            icon = icon,
-            applications = count or 1,
-            dispelType = dispelType,
-            duration = duration or 0,
-            expirationTime = expirationTime or 0,
-            sourceUnit = source,
-            isStealable = isStealable,
-            nameplateShowPersonal = nameplateShowPersonal,
-            spellId = spellId,
-            isFromPlayerOrPlayerPet = true
-        }
+    if not spellID then return nil end
+
+    local i = 1
+    while true do
+        -- In MoP Classic, UnitBuff signature is UnitBuff(unit, index[, filter])
+        local name, icon, count, dispelType, duration, expirationTime, source, isStealable,
+              nameplateShowPersonal, foundSpellId = UnitBuff("player", i)
+
+        if not name then break end
+
+        local matches = false
+        if type(spellID) == "number" then
+            matches = (foundSpellId == spellID)
+        elseif type(spellID) == "string" then
+            -- Only match if the provided string is the actual aura name.
+            matches = (name == spellID)
+        end
+
+        if matches then
+            return {
+                name = name,
+                icon = icon,
+                applications = count or 1,
+                dispelType = dispelType,
+                duration = duration or 0,
+                expirationTime = expirationTime or 0,
+                sourceUnit = source,
+                isStealable = isStealable,
+                nameplateShowPersonal = nameplateShowPersonal,
+                spellId = foundSpellId,
+                isFromPlayerOrPlayerPet = (source == "player" or source == "pet")
+            }
+        end
+
+        i = i + 1
     end
+
+    return nil
 end
 
 local IsUsableItem = ns.IsUsableItem
 local GetItemSpell = ns.GetItemSpell
 
 -- MoP API compatibility for spell cooldowns
-local GetSpellCooldown = function(spellID)
-    local start, duration, enable, modRate = GetSpellCooldown(spellID)
+-- Avoid shadowing/global recursion: call the real API explicitly.
+local function GetSpellCooldownMoP(spellID)
+    local start, duration, enable, modRate = _G.GetSpellCooldown(spellID)
     return start, duration, enable, modRate
 end
 
@@ -342,7 +377,8 @@ function ns.StartEventHandler()
 
     for unit, unitFrame in pairs( unitHandlers ) do
         unitFrame:SetScript( "OnEvent", UnitSpecificOnEvent )
-    end    events:SetScript( "OnUpdate", function( self, elapsed )
+    end
+    events:SetScript( "OnUpdate", function( self, elapsed )
         if Hekili.PendingSpecializationChange then
             if Hekili.SpecializationChanged then
                 Hekili:SpecializationChanged()
@@ -352,11 +388,11 @@ function ns.StartEventHandler()
             end
         end
 
-        if handlers.FRAME_UPDATE then
+    if handlers.FRAME_UPDATE then
             for i, handler in pairs( handlers.FRAME_UPDATE ) do
                 local key = "FRAME_UPDATE_" .. i
                 local start = debugprofilestop()
-                handler( event, elapsed )
+        handler( "FRAME_UPDATE", elapsed )
                 local finish = debugprofilestop()
 
                 handlerCount[ key ] = ( handlerCount[ key ] or 0 ) + 1
@@ -494,7 +530,7 @@ do
 
     local requeued = {}
 
-    local HandleSpellData = function( event, spellID, success )
+    local function HandleSpellData( event, spellID, success )
         local callbacks = spellCallbacks[ spellID ]
 
         if callbacks then
@@ -512,7 +548,9 @@ do
             UnregisterEvent( "SPELL_DATA_LOAD_RESULT", HandleSpellData )
             isUnregistered = true
         end
-    end    function Hekili:ContinueOnSpellLoad( spellID, func )
+    end
+
+    function Hekili:ContinueOnSpellLoad( spellID, func )
         -- MoP: No spell data caching system, call immediately
         func( true )
         return
@@ -853,7 +891,7 @@ do
         for set, items in pairs( class.gear ) do
             state.set_bonus[ set ] = 0
             for item, _ in pairs( items ) do
-                if type(item) == "number" and item > maxItemSlot and IsEquippedItem( item ) then
+                if type(item) == "number" and item > maxItemSlot and IsEquippedItemLocal( item ) then
                     state.set_bonus[ set ] = state.set_bonus[ set ] + 1
                 end
             end
@@ -870,7 +908,8 @@ do
         -- 1. Which trinket?
         -- 2. Does it have a spell?  (GetItemSpell)
         -- 3. Does it have an on-use?  (IsItemUsable)
-        -- 4. ???        local T1 = GetInventoryItemID( "player", 13 )
+    -- 4. ???
+    local T1 = GetInventoryItemID( "player", 13 )
 
         if not state.trinket then state.trinket = {} end
         if not state.trinket.t1 then state.trinket.t1 = {} end
@@ -2301,7 +2340,8 @@ local function ReadKeybindings( event )
                 end
             end
 
-        if _G.ConsolePort then
+        local ConsolePort = rawget( _G, "ConsolePort" )
+        if ConsolePort then
             for i = 1, 180 do
                 local action, id = GetActionInfo( i )
 
@@ -2423,7 +2463,8 @@ local function ReadOneKeybinding( event, slot )
         end
     end
 
-    if _G.ConsolePort then
+    local ConsolePort = rawget( _G, "ConsolePort" )
+    if ConsolePort then
         local action, id = GetActionInfo( slot )
 
         if action and id then
@@ -2436,35 +2477,6 @@ local function ReadOneKeybinding( event, slot )
         end
     end
 
-    ability = ability and class.abilities[ ability ]
-
-    if ability and ability.bind then
-        if type( ability.bind ) == 'table' then
-            for _, b in ipairs( ability.bind ) do
-                for page, value in pairs( v.lower ) do
-                    keys[ b ] = keys[ b ] or {
-                        lower = {},
-                        upper = {},
-                        console = {}
-                    }
-                    keys[ b ].lower[ page ] = value
-                    keys[ b ].upper[ page ] = v.upper[ page ]
-                    keys[ b ].console[ page ] = v.console[ page ]
-                end
-            end
-        else
-            for page, value in pairs( v.lower ) do
-                keys[ ability.bind ] = keys[ ability.bind ] or {
-                    lower = {},
-                    upper = {},
-                    console = {}
-                }
-                keys[ ability.bind ].lower[ page ] = value
-                keys[ ability.bind ].upper[ page ] = v.upper[ page ]
-                keys[ ability.bind ].console[ page ] = v.console[ page ]
-            end
-        end
-    end
 
     -- This is also the right time to update pet-based target detection.
     Hekili:SetupPetBasedTargetDetection()
@@ -2533,7 +2545,7 @@ if select( 2, UnitClass( "player" ) ) == "DRUID" then
 
         if display then
             caps = not ( queued and display.keybindings.queuedLowercase or display.keybindings.lowercase )
-            console = ConsolePort ~= nil and display.keybindings.cPortOverride
+            console = ( rawget( _G, "ConsolePort" ) ~= nil ) and display.keybindings.cPortOverride
         end
 
         local db = console and keys[ key ].console or ( caps and keys[ key ].upper or keys[ key ].lower )
@@ -2603,7 +2615,7 @@ elseif select( 2, UnitClass( "player" ) ) == "ROGUE" then
         local caps, console = true, false
         if display then
             caps = not ( queued and display.keybindings.queuedLowercase or display.keybindings.lowercase )
-            console = ConsolePort ~= nil and display.keybindings.cPortOverride
+            console = ( rawget( _G, "ConsolePort" ) ~= nil ) and display.keybindings.cPortOverride
         end
 
         local db = console and keys[ key ].console or ( caps and keys[ key ].upper or keys[ key ].lower )
@@ -2659,7 +2671,7 @@ else
         local caps, console = true, false
         if display then
             caps = not ( queued and display.keybindings.queuedLowercase or display.keybindings.lowercase )
-            console = ConsolePort ~= nil and display.keybindings.cPortOverride
+            console = ( rawget( _G, "ConsolePort" ) ~= nil ) and display.keybindings.cPortOverride
         end
 
         local db = console and keys[ key ].console or ( caps and keys[ key ].upper or keys[ key ].lower )

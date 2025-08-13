@@ -5283,32 +5283,47 @@ found = true end
                             name = "Performance",
                             order = 10,
                             args = {
-                                placeboBar = {
-                                    type = "range",
-                                    name = "Not a Placebo",
-                                    desc = "This adjusts the VROOOM of your current specialization.",
-                                    order = 100,
-                                    width = "full",
-                                    min = 3,
-                                    max = 20,
-                                    step = 1
-                                },
-
-                                vroom = {
-                                    type = "header",
-                                    name = function()
-                                        local amount = self.DB.profile.specs[ id ].placeboBar or 5
-
-                                        if amount > 19 then
-                                            return "|cFFFF0000MAXIMAL VROOM|r - Secret Optimal Mode Unlocked"
-                                        elseif amount > 14 then
-                                            return "|cFFFF0000DANGER|r - Approaching Maximum VROOOM"
-                                        end
-
-                                        return format( "VR%sM!", string.rep( "O", amount ) )
+                                mode = {
+                                    type = "select",
+                                    name = "Mode",
+                                    desc = "Choose a performance preset:\n\n"
+                                        .. "• Low: conservative updates for slower/older systems.\n"
+                                        .. "• Medium: balanced updates for most systems.\n"
+                                        .. "• High: fastest updates for high-end machines.",
+                                    order = 1,
+                                    width = 1.5,
+                                    values = { "Low", "Medium", "High" },
+                                    get = function(info)
+                                        local p = Hekili.DB.profile
+                                        p.performance = p.performance or {}
+                                        return p.performance.mode or 2
                                     end,
-                                    order = 101,
-                                    width = "full"
+                                    set = function(info, v)
+                                        local p = Hekili.DB.profile
+                                        p.performance = p.performance or {}
+                                        p.performance.mode = v
+                                    end,
+                                },
+                                frameCapPct = {
+                                    type = "range",
+                                    name = "Frame Cap %",
+                                    desc = "Set the fraction of your frame time budget the engine may use. This scales the per-frame work cap.\n\n" ..
+                                           "Example: 80% means the addon targets using up to 80% of the available frame time (subject to presets and dynamic limits).",
+                                    order = 2,
+                                    width = 1.5,
+                                    min = 0.3,
+                                    max = 1.0,
+                                    step = 0.05,
+                                    get = function(info)
+                                        local p = Hekili.DB.profile
+                                        p.performance = p.performance or {}
+                                        return p.performance.frameCapPct or 0.8
+                                    end,
+                                    set = function(info, v)
+                                        local p = Hekili.DB.profile
+                                        p.performance = p.performance or {}
+                                        p.performance.frameCapPct = v
+                                    end,
                                 },
                             }
                         }

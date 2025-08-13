@@ -88,6 +88,14 @@ local Masque, MasqueGroup
 local _
 
 
+-- Simple performance presets for MoP fork (Low/Medium/High)
+local performanceSettings = {
+    [1] = { refreshRate = 0.5,  combatRate = 0.2,  frameCeiling = 20 }, -- Low
+    [2] = { refreshRate = 0.25, combatRate = 0.1,  frameCeiling = 15 }, -- Medium (default)
+    [3] = { refreshRate = 0.1,  combatRate = 0.05, frameCeiling = 10 }, -- High
+}
+
+
 function Hekili:GetScale()
     return PixelUtil.GetNearestPixelSize( 1, PixelUtil.GetPixelToUIUnitFactor(), 1 )
     --[[ local monitorIndex = (tonumber(GetCVar("gxMonitor")) or 0) + 1
@@ -2342,8 +2350,13 @@ if self.HasRecommendations then
 
         -- Safety check: ensure DB is initialized before accessing
         if Hekili.DB and Hekili.DB.profile and Hekili.DB.profile.enabled and not Hekili.Pause then
-            self.refreshRate = self.refreshRate or 0.5
-            self.combatRate = self.combatRate or 0.2
+            -- Apply performance preset if configured
+            local p = Hekili.DB.profile
+            p.performance = p.performance or {}
+            local mode = p.performance.mode or 2
+            local perf = performanceSettings[ mode ] or performanceSettings[2]
+            self.refreshRate = perf.refreshRate
+            self.combatRate  = perf.combatRate
 
             local thread = self.activeThread
 
@@ -2369,11 +2382,16 @@ if self.HasRecommendations then
                 else
                     local rate = GetFramerate()
                     local spf = 1000 / ( rate > 0 and rate or 100 )
-
+                    -- Use perf ceiling to bound per-frame work budget.
+                    local ceiling = perf.frameCeiling or 15
+                    -- Apply user-configured percentage of the frame cap (defaults to 0.8 if unset).
+                    local capPct = (p.performance and p.performance.frameCapPct) or 0.8
                     if HekiliEngine.threadUpdates then
-                        Hekili.maxFrameTime = 0.8 * max( 7, min( 16.667, spf, 1.1 * HekiliEngine.threadUpdates.meanWorkTime / floor( HekiliEngine.threadUpdates.meanFrames ) ) )
+                        -- One min() with all candidates; guard against division by zero.
+                        local dyn = 1.1 * HekiliEngine.threadUpdates.meanWorkTime / max( 1, floor( HekiliEngine.threadUpdates.meanFrames or 1 ) )
+                        Hekili.maxFrameTime = capPct * min( ceiling, 16.667, spf, dyn )
                     else
-                        Hekili.maxFrameTime = 0.8 * max( 7, min( 16.667, spf ) )
+                        Hekili.maxFrameTime = capPct * min( ceiling, 16.667, spf )
                     end
                 end
 
@@ -2409,8 +2427,13 @@ if self.HasRecommendations then
                 if coroutine.status( thread ) == "dead" or err then
                     self.activeThread = nil
 
-                    self.refreshRate = 0.5
-                    self.combatRate = 0.2
+                    -- Keep using the selected performance preset
+                    local p = Hekili.DB.profile
+                    p.performance = p.performance or {}
+                    local mode = p.performance.mode or 2
+                    local perf = performanceSettings[ mode ] or performanceSettings[2]
+                    self.refreshRate = perf.refreshRate
+                    self.combatRate  = perf.combatRate
 
                     if ok then
                         if self.firstThreadCompleted and not self.DontProfile then self:UpdatePerformance() end

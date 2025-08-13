@@ -432,7 +432,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 136015,
         
         handler = function()
             removeBuff( "clearcasting" )
@@ -452,7 +451,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 237582,
         
         handler = function()
             removeBuff( "lava_surge" )
@@ -472,7 +470,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 136026,
         
         handler = function()
             -- Can proc Lava Surge
@@ -492,7 +489,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135813,
         
         handler = function()
             applyDebuff( "target", "flame_shock" )
@@ -509,7 +505,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135849,
         
         handler = function()
             applyDebuff( "target", "frost_shock" )
@@ -525,7 +520,6 @@ spec:RegisterAbilities( {
     toggle = "cooldowns",
         
         startsCombat = false,
-        texture = 237577,
         
         handler = function()
             applyBuff( "ascendance" )
@@ -540,7 +534,6 @@ spec:RegisterAbilities( {
         gcd = "spell",
         
         startsCombat = true,
-        texture = 237588,
         
         handler = function()
             -- Mana restore and knockback handled elsewhere if needed
@@ -689,7 +682,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 651244,
         
         handler = function()
             -- Buffs a random stat
@@ -751,7 +743,6 @@ spec:RegisterAbilities( {
         gcd = "off",
         
         startsCombat = true,
-        texture = 136018,
         
         toggle = "interrupts",
         interrupt = true,
@@ -770,8 +761,6 @@ spec:RegisterAbilities( {
         gcd = "spell",
         
         startsCombat = false,
-        texture = 136095,
-        
         handler = function()
             applyBuff( "ghost_wolf" )
         end,
@@ -788,7 +777,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135825,
         
         usable = function()
             -- Don't suggest if Searing Totem already active
@@ -810,7 +798,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135826,
         
         handler = function()
             -- Magma Totem provides AoE damage pulses
@@ -828,7 +815,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 135790,
         
         handler = function()
             -- Summons Fire Elemental for 120 seconds
@@ -846,7 +832,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = false,
-        texture = 136024,
         
         handler = function()
             -- Summons Earth Elemental for 120 seconds
@@ -864,7 +849,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = false,
-        texture = 839977,
         
         handler = function()
             -- Stormlash Totem buffs raid damage
@@ -877,15 +861,10 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 15,
         gcd = "spell",
-        
         spend = 0.17,
         spendType = "mana",
-        
         startsCombat = true,
-        texture = 462650,
-        
         handler = function()
-            -- Unleash weapon imbue effects
             if state.buff.flametongue.up then
                 -- Flame damage and movement bonus
             elseif state.buff.frostbrand.up then
@@ -903,11 +882,8 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 120,
         gcd = "spell",
-    toggle = "defensives",
-        
+        toggle = "defensives",
         startsCombat = false,
-        texture = 451169,
-        
         handler = function()
             applyBuff( "spiritwalkers_grace" )
         end,
@@ -924,7 +900,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 451165,
         
         handler = function()
             -- Earthquake channeled AoE
@@ -941,7 +916,6 @@ spec:RegisterAbilities( {
         talent = "call_of_the_elements",
         
         startsCombat = false,
-        texture = 136792,
         
         handler = function()
             -- Reduces totem cooldowns
@@ -957,7 +931,6 @@ spec:RegisterAbilities( {
         talent = "astral_shift",
         toggle = "defensives",
         startsCombat = false,
-        texture = 538565,
         handler = function()
             applyBuff( "astral_shift" )
         end,
@@ -971,7 +944,6 @@ spec:RegisterAbilities( {
         talent = "stone_bulwark_totem",
         toggle = "defensives",
         startsCombat = false,
-        texture = 538576,
         handler = function()
             applyBuff( "stone_bulwark_totem" )
         end,
@@ -988,7 +960,6 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = true,
-        texture = 451165,
         
         usable = function() return buff.ascendance.up end,
         
@@ -1072,5 +1043,5 @@ spec:RegisterOptions( {
     package = "Elemental",
 } )
 
-spec:RegisterPack( "Elemental", 202508009, [[Hekili:vN16UTTnu4NLGcyKG2Q6eBNK2gBG1HcSgG1vm3H9JHklAjAlcljQjrfVmyON9DiPUlskNEjT7hTXsK8C)Y3HY(C7pAV0dXW2V)IXxmB81JFP15tp)Yz2lz3hJTxgJC3H2c)icfc))BdWH4igkGVY9buKhNaP0Sexyv7LRZibS3fzVwbvhF9SlTxIYy(0e7LldZ2Kq2zV0N45HLNaN6AV8J(K0Ch()q5ofSp3HUbE2LrOr5obKugS8gAsUZVG3rciw2lfVuimKOTb4vmuYwmdEX7f6iocToa7z)gjBsiXCAbIHy35oYTN7Kqzi5kWEy4ecYE5jWYe3DWoZDoCa2doerIaj4M55otavYvEInbGnAvQp1DNndu9o8TMGEuMvJnBvtWCNZNL7mk3XLsd8O7JSqPU4ipuKlU12MPLTt0YwWTb(oRSOamk1h7TAtwY9wLBTIEfRVcl91PCIovlrxNTzJva6o0Q0mWeALfxtjXRxNLKY40yMwAWnWugo0kfJsaZ8k5tzXctr1QBij4sPcf0B5q02qu1rRLIweLlixoSGahH53NxNwgOyXiGnNrx5rGGNfC32yzWHQ1b)1KzYLn6x505cGoNvl8DeKAL4QVprxx)Wz7I595BDKrlTFCnFRLmoBF5rZ2QmvP7seE2ql5oYM(HvjyGJTm5TJApF8q5t1oN1biqH6Lq1zdcQkkkPnJRb)4BwFLez2hzRplIhIN6tWbEwPmOSP0WFvPHyOaVlL2fv2REHJvrdNpPPAulhRPbS2kbJx3Ddkly4sYN(BIFGcGQ(X4iCc)Vq(e5FfvMFf0vib)84SaydTljiZoGgfrE5oDS6VO2TcDx4DtccO7XEpl3jcVfO8D8Uaax4XoruytPzXX0eggOLpobBDwUZVcMl19icP3jyNLh0hIB56gpNgtGnVhfSdNKUABcsgy311wUDxq8wjFyfV1MSb3kzx4sFzQ5698JFhyEIWHeCrI4KJKfikwvD)J6ST7al89GhZLgUgnS3FPpkeXDYvqnYDEoy5PFaklznZckp(7f2)CN3Gs5Uh(p)t6EFmcEyBgXdxedWbBa0G4wqG4ecfmpcRXhkfjr8umkrvFF15xT6X1zrZD(bsIJC9rrffTy0OTzyR9yuSOOxZIUY1wvSMrp9JCd0PnZ6JPfLgANTZdGgYx)t03wNnbvPM80Y(NPNPu9uRap(DLvv2XSJxvU4utM)b8C1YsJJzoi5RbUaXU6QlMHbRh64aig0HfqposLcwziIzu8TDVT1a94f1ZWJhwSEGCdr9VBT91dcuzyEh683zODdaQRV4016HrH1OZQ6k5d61Qk7sVAs19nhQY0pxUt50MMLTgMW6AcHaMdmmEv5YkRaXToJ7vk1yHKhm7Rj)6akvo0N5cfFjSaa3Gt4jzMt9)Ftf9JyO1F8NvuFbSHyX1hJOCJOvM6YinKUUboMl(jiLiInidgQYyAuUZfnrAZOjHb85PQmax3SkbxYszjGGKUNSHfHt7oW1XpT5NtpuT9zmmQ5NxRsrrV7Gus(sLxf3v2l3Js41htlVST4e6gc)wW4pesstfnjlM)P4I22YNeJdKMbyb3bi0SYDYDEhtEibwAW96XHJZ85GQXaJVVcYn8lsKBqMhVRaMaWYtEv(TcO9)1FKI5uchM(jyAS9(ex)M7gfDFnxlMnd)pXbexclOMUE8FXzoUMPVgMniPKnFuscWE9PIXdQF1fn48EcFYYknQGKSYTkSgIxfLfc174mona8p53(UWYbgN152kHf5JaIDb3WLxWNhsyXTx(KCNhYep3(KVOHEUvqa1t(KFRuItTQgw7PZFrxqgpJSz(j6Mksnj6pmJGi6NdsnzaRCZ5qe0q9qpJortVLYf6G0wj7K9If2Rh3lK41pGlKq6pBFRevQdOekU0bUDR3LvSyCZt1D4(NXhRFEf4PH3km7hNnTbdUy(KHpzRRoOq96GfR2DvjrvUlox73d6WbTixoCOFdLBMpDSAMudG6bZineScU0xjcQk8RrMs)mIt7R)la8jkTltMD4GHUBla8iNPwSuImPHC1hc1JLG11YYfktK6AZS6MPfUS2WNvY7o4uQIaAc6rP6EHMWtfaB0eLuJKGZvnGlU58zJmPQZ0ifv70aTxmhqljtV19f4QPERIc9f)tkgR)WHsjRrLMHo8xUU3LbDVmFoxyM(YB6jvDhIQGJwxPG(t(nVvzxg(dvg(JUp)OJ5hz4lG1Oj8arcA(MxJovvhK2FPldwPo4tAe32zLHdC7MdmuCtLRXWfBTy(vJo1umWLQk9AqFB)5QkQgz6kPRjfaW5hRMTsbQrYQk8xtvNuRTgqp99RtA0O2YvRQ1sgD0PtdiH9y0Otv1SONDSD2wFQyQsSKcDcR1rIVnb6nebXDTQmwqToJrHQrI2D7DVQv(vny)Fd]] )
+spec:RegisterPack( "Elemental", 202508012, [[Hekili:DNvFVnUTz8plhgGHdsppl7y3SBXbOxxhwpSCTyUd7)KeTnDSqKe1eLsqam0N9(qs9cjfjLcsVlh6FChCejFE)LF8H(E()M)2dOcS)NxmFXQ5x7TC285Rw7T2FBXZzy)TzO9pGUh(rkkb()FkgNGtlqXSvEoMGoWOaLuMVhw1F7UYO4IFo1FNjYUAXcyVz49WNxd)8u0HdyXEX09(B)Ttr0Qq2)qvH1mUkKCe(79frK0QW4iAbS8rsEv4)c)quC0mqqYjhJIb2)xQc3EcLGs)qvyRGwf((QW7i)Av4QzRMnVk8)qkqCQ9jy)FerXhaEa0()rE6egb)X9Lrha(IsHFJklobKjAFnnYYJi5rfryA1N4e4xZX7jj7qfS1WzO8AAlKy6SSM1VCZFno6(tfPrP3hqpfHJp8Drh38UDLhpotFLzLzMjXXyWnuqsVVeh8egLrs5ebNU)ekTyM0YZelBHmr54aCJjkOGuGt4eI)RzQlBvyOyuotM1pUY3HtpXgzBwibDFcQD7MzwgP1PXS5ikyX)3OhHiLpwMZ(JQZEqOXomeCaEVSY4ylEb4qb74Nr4cVdfbU)82WI6dbBnVmnq8xbSiVVJLdSHKHtX5m1TikbFZk5dqZIGOJNqXpGZPb3NJ2JzBmH8ixPNDaOckDp(25YNApkoUpF2tiXhipLshERicNnSV)iyHtXjqa6TBwo8jPGFkghuGYVh3yp(XwgZZ36SITsuR7GXvEamIUhNEGPAGd88z(36IVsaVfo)z(scwnJz7apEWHi8nBUAUzMSlMqoeCSm)5xmJSqqWTGZFau6)Gi4lnrAY0(6)TERMB0USC15ZnmtwoZXjqil9wVfZVWSybjGfNCixAR)vuW0TSmHYfPU2nRU5QAxMIB0mVPfK8Kye9uN5GFuEuwCjTWw85clHNmUrlYbLH(u0XIumLAjkHvwgkTt2)aJRhi1vQfFQvx8wmXLQU25QwiQfjV98oKNB34Takiave(LmgjqXqF1C8XCm9uv4)CBvykehvfcDiRcXSULSw1snEVt4IHDqQcPPOmG8qH6tSppkdL1KXj6Im0HMLv377nwNLtSqRMnSzrD1VFHxEVkCklcOk8ga3a9IAZqQOVcdEXDvHxYmc)DaZrtCfdhrmOUrGzGfpvJLHxvwGXqTRKOtYiJmB6vQTx2k8(qB8mqyJPBITpF2kdhqpsfZLdzlkZvzZyYY8ygQlzDIrhly2XAdMHg2mZ0p0gicrtSGJNH2qnMS(IxxV7gfbcsN8otva4YXIEYHmd5i8iPVVKc)reymPgyPAQIGLlSf)z48aXd40w641s3svPRwG2HFMKE4dSVLKPzY4BGfWwWXS8FtJX1XDqB7)HWKcoeWRaOAhY85QUPLJ0KRgKJHD(sSccjTPLJWyWf0z1lHfn6NHtr7Inl9TGK3rIBaRSLdGHP1CemsW46OGciNrhKF(SHfAkxW00aM3e21Bs1CDD6vyG1jLHOe(NOLWguIs0p5x8leOZWVPW5OlCJUjBxKqNPVD95J1rzRL4utWCvtKDOeD22DqtNcPWkTvgoUs4muBU37IVW9J2)WTBwpzQld)AtO(COfglD8dKFsQEr40Lx2ugHkrk4UvFBHZxiqsziMU63vMZKSM41tFF7qSorvxUr6AS1c3OtSgqR6XOjtnLerdeKCJNXwcm1RN7rn1SpJCvvvqbTSfBK4lt(JKi8)lrpyC6cxzwNXOKHaxi2((tGOe0Qa(BFeUCoSEZmdN755V9juoBrQ)2FojJKZG1eUwBEGZQ(K)w(VyZIuaxa(1N5d3SUQK)h93koK)wne0IPpMhLjw1i(F)TWgaGAri2io1qMxfoPk8DSB5ygFoF9AQTPk0ZVaurnzRJ8DBeqO3j09aBZOYsRuXsCkxuScEVJBsNJXNRgqAVLPwnMH(E(o62LwWi7Qrq2fCYAP3whH74hJWRhdH7oCleD2z)ERND8k21wPHAF3XPBQ0(Vzx3Cb3tsB1qkYiQ3CgvBzOs3szUXKai26iQe(UHumLmj15Q2rETPQAi4hY5ez0bIxDOoN2zEtVzScUzihskTV)SznLd1SD95LQiqTZSWD2HAjtrC3YrYcOiPPCKrDwf4pcNw7eWDvzuVBIMd9L84kVMxwXYJQiBzBQZy4HtChM8o2OQS9yjAfavENf31BBl)3dzLennGH0D8txtfTlqP2YPpAoLLvHakLqit02yTMvfd4xn5VxHvLWJX(SmwQSviI5DeEA0aQkdUW0po)f32nT5uY405fuam8vHNpBEDOW1YvILDG(sqNfaDUWDSQPYhx5Y3oqyrNLu6ydGJWYCiyQQNO3Stn9goCTrSlRmAsZ4a7Sd3OwgD0GvSYdo(Lf2qtyhMIrbRjaY1vjQcfiMyrkwHQDHvv0o(g7su)BCydHHDeqdrDJxgryEx3ywgkXyTWQy4(dYgePBh5gWLXCin6WVIJBSvdJ9dU3tFKu9UJJguQoCeok71ujwPqN2J06wwLmPghAV9cAmR1C3vPEXSRtZ6EFx3vHEnSO9fFhzR234gcdIwWE1OwvO)upFJ0bJJN1DbSHyX1JruUH3N0CzejPZ0vQh46FQ373HjBH8np0g4qtbR22nP9EhznCx2lm9w3G2ApkrHWxMm7UpSNEbsnFJ5sB2VHTX1Kv5LUgxs3gvhMGQzOq)YyUG3kDsTlEz5rUumQ2GrybJHSI2(Aw17(ToMYz)MxXyogOdZOqhnIwiFfVT2FEBemqrc14R(VBM(0FulLyVkVRAftndlv2G0mxVlSf(yhPQ7NvZuBl(ggbU13oC5VK5kYU)FzXjsouVdLSJqEaX)Q)V)]] )
 

@@ -1,7 +1,7 @@
 # Rogue: Combat
 # Precombat actions
 actions.precombat+=/tricks_of_the_trade,if=time<5
-actions.precombat+=/jade_serpent_potion
+actions.precombat+=/potion,name=virmens_bite_potion
 actions.precombat+=/stealth,if=!stealthed.all
 actions.precombat+=/slice_and_dice,if=buff.slice_and_dice.down
 

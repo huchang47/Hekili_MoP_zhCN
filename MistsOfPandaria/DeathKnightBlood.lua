@@ -636,7 +636,8 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
         local activeRunes = {}
         local state_array = state.death_runes.state
         for i = 1, 6 do
-            if state_array[i].type == 4 and state_array[i].expiry < state.query_time then
+            local entry = state_array[i]
+            if entry and entry.type == 4 and entry.expiry < state.query_time then
                 table.insert(activeRunes, i)
             end
         end
@@ -647,7 +648,8 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
         local activeRunes = {}
         local state_array = state.death_runes.state
         for i = 1, 6 do
-            if state_array[i].expiry < state.query_time then
+            local entry = state_array[i]
+            if entry and entry.expiry < state.query_time then
                 table.insert(activeRunes, i)
             end
         end
@@ -658,7 +660,8 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
         local count = 0
         local state_array = state.death_runes.state
         for i = 1, 6 do
-            if state_array[i].type == 4 and state_array[i].expiry < state.query_time then
+            local entry = state_array[i]
+            if entry and entry.type == 4 and entry.expiry < state.query_time then
                 count = count + 1
             end
         end
@@ -676,9 +679,10 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
         local runes = runeMapping[type]
         if runes then
             for _, rune in ipairs(runes) do
-                if state_array[rune].type == 4 and state_array[rune].expiry < state.query_time then
+                local entry = state_array[rune]
+                if entry and entry.type == 4 and entry.expiry < state.query_time then
                     count = count + 1
-                elseif state_array[rune].type == (type == "blood" and 1 or type == "frost" and 2 or 3) and state_array[rune].expiry < state.query_time then
+                elseif entry and entry.type == (type == "blood" and 1 or type == "frost" and 2 or 3) and entry.expiry < state.query_time then
                     count = count + 1
                 end
             end
@@ -705,6 +709,13 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
         return rawget( t, k )
     end
 } ) )
+
+-- Ensure the death_runes state is initialized during engine reset so downstream expressions are safe.
+spec:RegisterHook("reset_precast", function()
+    if state.death_runes and state.death_runes.reset then
+        state.death_runes.reset()
+    end
+end)
 
 -- Tier sets
 spec:RegisterGear( "tier14", 86919, 86920, 86921, 86922, 86923 ) -- T14 Battleplate of the Lost Cataphract
@@ -2121,13 +2132,19 @@ end )
 
 -- MoP Blood-specific rune tracking
 spec:RegisterStateExpr( "death_strike_runes_available", function()
-    -- Death Strike requires one pair of runes (in MoP any pair of Blood/Death for Blood spec) – simplify: need at least 2 usable runes of any kind.
-    local total = 0
-    if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
-    if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
-    if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
-    if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
-    return total >= 2
+    -- Prefer unified runes resource to avoid nil state table during early compilation.
+    if state.runes and state.runes.count then
+        return state.runes.count >= 2
+    end
+    -- Fallback to API check if unified runes not yet seeded.
+    local ready = 0
+    for i = 1, 6 do
+        local start, duration, isReady = GetRuneCooldown( i )
+        if isReady or (start and duration and (start + duration) <= state.query_time) then
+            ready = ready + 1
+        end
+    end
+    return ready >= 2
 end )
 
 spec:RegisterStateExpr( "blood_tap_charges", function()

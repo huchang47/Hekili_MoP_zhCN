@@ -121,13 +121,9 @@ RegisterAfflictionCombatLogEvent("SPELL_AURA_APPLIED", function(timestamp, subev
                 applyDebuff("target", "unstable_affliction", base_duration)
             end
         end
-    elseif spellID == 348 then -- Agony
-        -- Track Agony application and stack building
-        local stacks = select(3, FindUnitDebuffByID("target", 348, "PLAYER"))
-        if stacks and stacks < 10 then
-            -- Agony stacks up to 10 times
-            addStack("agony", nil, 1)
-        end
+    elseif spellID == 980 then -- Agony
+        -- Agony application (stack building handled in aura system elsewhere; remove manual addStack call)
+        -- Ensure internal tracking starts
     elseif spellID == 48181 then -- Haunt
         -- Track Haunt application for Soul Shard generation
         applyDebuff("target", "haunt", 12) -- Haunt duration in MoP
@@ -136,34 +132,19 @@ end)
 
 -- DoT tick damage tracking for Malefic Grasp and Soul Shard generation
 RegisterAfflictionCombatLogEvent("SPELL_PERIODIC_DAMAGE", function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool)
-    if spellID == 172 then -- Corruption
-        -- Corruption ticks trigger Soul Shard generation
+    if (spellID == 172 or spellID == 30108 or spellID == 980) and state and state.soul_shards then
+        -- Deterministic expected shard gain model: average proc chance converted to fractional value.
+        -- Approximate: baseline 2% per tick, criticals double contribution.
         local critical = select(21, CombatLogGetCurrentEventInfo())
-        local shards_generated = 0.1
-        if critical then shards_generated = shards_generated + 0.05 end -- Critical ticks generate more
-        
-        if state and state.soul_shards then
-            gain(shards_generated, "soul_shards")
+        local base = 0.02
+        if spellID == 30108 then base = 0.025 end -- UA slightly higher
+        if spellID == 980 then
+            -- Agony ramps: use stack-based scaling up to ~4% at 10 stacks.
+            local stacks = select(3, FindUnitDebuffByID("target", 980, "PLAYER")) or 1
+            base = 0.01 + 0.003 * stacks
         end
-    elseif spellID == 30108 then -- Unstable Affliction
-        -- UA ticks trigger Soul Shard generation
-        local critical = select(21, CombatLogGetCurrentEventInfo())
-        local shards_generated = 0.15
-        if critical then shards_generated = shards_generated + 0.1 end -- Critical ticks generate more
-        
-        if state and state.soul_shards then
-            gain(shards_generated, "soul_shards")
-        end
-    elseif spellID == 980 then -- Agony
-        -- Agony ticks with increasing damage and Soul Shard generation
-        local stacks = select(3, FindUnitDebuffByID("target", 348, "PLAYER"))
-        local critical = select(21, CombatLogGetCurrentEventInfo())
-        local shards_generated = 0.1 + (stacks or 0) * 0.02 -- More stacks = more shards
-        if critical then shards_generated = shards_generated + 0.1 end
-        
-        if state and state.soul_shards then
-            gain(shards_generated, "soul_shards")
-        end
+        if critical then base = base * 2 end
+        state.soul_shards.generate( base )
     end
 end)
 
@@ -171,7 +152,7 @@ end)
 RegisterAfflictionCombatLogEvent("SPELL_AURA_APPLIED", function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool)
     if spellID == 17941 then -- Nightfall
         -- Track Nightfall proc for instant Shadow Bolt
-    elseif spellID == 63156 then -- Soul Burn
+    elseif spellID == 74434 then -- Soulburn
         -- Track Soul Burn application for enhanced spells
     end
 end)
@@ -570,7 +551,7 @@ spec:RegisterAuras( {
         end,
     },
     
-    haunt = {
+    cast_haunt = {
         id = 48181,
         duration = 8,
         max_stack = 1,
@@ -1324,14 +1305,12 @@ spec:RegisterAbilities( {
         texture = 136197,
         
         handler = function()
-            -- 15% chance to generate a Soul Shard
-            if math.random() < 0.15 then
-                gain( 1, "soul_shards" )
-            end
+            -- Deterministic shard model handled via resource generator; remove RNG here.
+            if state.soul_shards and state.soul_shards.generate then state.soul_shards.generate( 0.15 ) end
         end,
     },
     
-    haunt = {
+    cast_haunt = {
         id = 48181,
         cast = function() return 1.5 * haste end,
         cooldown = 8,
@@ -1343,12 +1322,10 @@ spec:RegisterAbilities( {
         startsCombat = true,
         texture = 236298,
         
-        handler = function()
-            applyDebuff( "target", "haunt" )
-        end,
+    handler = function() applyDebuff( "target", "haunt" ) end,
     },
     
-    agony = {
+    cast_agony = {
         id = 980,
         cast = 0,
         cooldown = 0,
@@ -1384,7 +1361,7 @@ spec:RegisterAbilities( {
         end,
     },
     
-    unstable_affliction = {
+    cast_unstable_affliction = {
         id = 30108,
         cast = function() return 1.5 * haste end,
         cooldown = 0,
@@ -1401,7 +1378,7 @@ spec:RegisterAbilities( {
         end,
     },
     
-    malefic_grasp = {
+    cast_malefic_grasp = {
         id = 103103,
         cast = function() return 3 * haste end,
         cooldown = 0,
@@ -1451,7 +1428,7 @@ spec:RegisterAbilities( {
         end,
     },
     
-    seed_of_corruption = {
+    cast_seed_of_corruption = {
         id = 27243,
         cast = function() return 2 * haste end,
         cooldown = 0,
@@ -1578,6 +1555,24 @@ spec:RegisterAbilities( {
             applyBuff( "dark_soul_misery" )
         end,
     },
+
+    -- Dark Intent (precombat self-buff in APL imports)
+    cast_dark_intent = {
+        id = 109773, -- Using MoP era raid-wide spellpower/haste buff ID
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        startsCombat = false,
+        texture = 463286,
+        handler = function()
+            applyBuff( "dark_intent" )
+        end,
+        usable = function()
+        if buff.dark_intent.up then return false, "dark_intent active" end
+            return true
+        end,
+    },
+    dark_intent = { id = 109773, alias = "cast_dark_intent" },
     
     summon_doomguard = {
         id = 18540,
@@ -1745,7 +1740,7 @@ spec:RegisterAbilities( {
         end,
     },
     
-    dark_intent = {
+    dark_intent_legacy = { -- renamed to avoid duplicate key; kept for older imports referencing spellID 80398
         id = 80398,
         cast = 0,
         cooldown = 0,
@@ -1757,9 +1752,7 @@ spec:RegisterAbilities( {
         startsCombat = false,
         texture = 463286,
         
-        handler = function()
-            applyBuff( "dark_intent" )
-        end,
+    handler = function() applyBuff( "dark_intent" ) end,
     },
     
     summon_pet = {
@@ -1779,7 +1772,7 @@ spec:RegisterAbilities( {
         end,
     },
     
-    summon_infernal = {
+    cast_summon_infernal = {
         id = 1122,
         cast = 0,
         cooldown = 600,
@@ -1797,6 +1790,13 @@ spec:RegisterAbilities( {
             -- Summon infernal
         end,
     },
+    -- Ability name aliases to avoid aura/ability key collision while satisfying imports.
+    haunt = { id = 48181, alias = "cast_haunt" },
+    agony = { id = 980, alias = "cast_agony" },
+    unstable_affliction = { id = 30108, alias = "cast_unstable_affliction" },
+    malefic_grasp = { id = 103103, alias = "cast_malefic_grasp" },
+    seed_of_corruption = { id = 27243, alias = "cast_seed_of_corruption" },
+    summon_infernal = { id = 1122, alias = "cast_summon_infernal" },
     
     drain_life = {
         id = 689,
@@ -1840,17 +1840,9 @@ spec:RegisterAbilities( {
 } )
 
 -- State Expressions for Affliction
-spec:RegisterStateExpr( "soul_shards", function()
-    return soul_shards.current
-end )
-
-spec:RegisterStateExpr( "soul_shards_deficit", function()
-    return soul_shards.max - soul_shards.current
-end )
-
-spec:RegisterStateExpr( "current_soul_shards", function()
-    return soul_shards.current or 0
-end )
+spec:RegisterStateExpr( "soul_shards", function() return state.soul_shards and state.soul_shards.current or 0 end )
+spec:RegisterStateExpr( "soul_shards_deficit", function() return state.soul_shards and ( state.soul_shards.max - state.soul_shards.current ) or 0 end )
+spec:RegisterStateExpr( "current_soul_shards", function() return state.soul_shards and state.soul_shards.current or 0 end )
 
 spec:RegisterStateExpr( "nightfall_proc", function()
     return buff.nightfall.up and 1 or 0
@@ -1899,6 +1891,6 @@ spec:RegisterOptions( {
 } )
 
 -- Default pack for MoP Affliction Warlock
-spec:RegisterPack( "Affliction", 20250710, [[Hekili:nNvBpoUTr4FllcGVljBCS2D9D5sxVaxrlqVfPbf1xq)qrKeTeLnRLevPKUTgWq)27musK6fszL92EPF4U1sA4ZqoZZmC4qxh3p6UnKuqD)5BwDZ6vV1z1YvooRU7DUBloLrD3Mrcos2d)iLKa))7JIIzbfmEk(PtXCsicroVueaF2D7UswCXhsD3za3v35ChiBgnaE9Bw7U9almKwllnpWD7hpWYR8X)rQ8B0CLppcEwQZk)ywEb85iUOY)VqpYIzlD3kFPCLqJiLXfWp)z5kJMs2ftdD)JUBjnt6cbl9iTWXDBGGvqfmc8lopoK)u6YqI4OhSwIxkOjewkOP7R8x3U4vJTaM)dWxJ2UYOOoivMPvEgx(xy43(Cg(oQiNkoYs3JqC3ZcIyop0lQuCcHyTviUQYVGettlwsebhyj8uWd59jA6EkjnGUSzqv(Npx5RSFMLvzlFOY3zTEUOMH4u5nwNkj8prtWzsxCwPHruM6v)BpKiuth8Q9y4yr0FRv0Xr(jQhnLMWOi2BKo85aoHlX(hMn23pBOHhbKFhImSeqhoqOBuIxZB6qQJOXErXYrQNiieBZe0aEYoIXycmOtWYQX4FqeX8GJ)yLF3y8E(kwAb4huS)mAHxDscq)hkHpk0diVmbicEGm9Ntdz(tsKBOG7faPIjOE8iVCc85iMMcQvPrXMMMVp(u2HLih0l)js2ymvFsXrhelp0GJKcdM6o0zskzzwqHKoCxhECmlI6vuRPHzxALHSNNEQVfsSNwSSmLbaE1gmZyqjq1wu53nfwbl4OxblHk)IzEzWPGyCcGaMJRadPPANhbCHOSH48fBYmKNO8ruAi6ZnpPUQwHqeJr1b5sU1S6Mo5yhiR5ihiIW60ho6P2bszDaJ90BnCCeKDLIuVXRgDYwqzGULP3BLVx292xoDkVjg)yl5Kj4c5O3oVqMwIOsBSSR1bLrsBh92oRWMpPNjjGvbcF92li5zQCHQ55bcSFJ3oECXOaWCJP6m78WnV6YmdiqgyKzAWdAFdF9ELtMOAc2(GKMHCEY(sGpnDLcFo6DW2CnkMLgrfPK4PZkBmwEyoQjdGUacgOuthdDb86tNThyOQJrfC0f4BxzP0f7XhJYmi9fVUjewsTaEOxEgdgsE)IoRzNMfempbhLIDtL)xBGS(UpVTFCwnr6kzo(dusCXbfq3SsUYqZUxb3lKrLzw7KP)BK5zv2pbSqRnGBXQkK(h3TY8Uo2JD)cMVXXE8(ZAwmLQUDU52KLZ(YxDXSdKuH22tk9Bku8Iv(bhW7FrOWzeZ9ckttb7yVSAQawdY1DFnD9XtMw6IkDibgnQJkm0AX4Gd8jIaXlhpQleuWsY4IIMJZ(QMtV(kCpP)DjKopeRTadEiLf8e400WlcoqGZvLVS6XFILcFAnuW(VKMxMHiHcupnq4AZr9kLWVZQWQjnkSCUfXJJ5pj5ZKsGQw5)evaVVmhhidgubkwlc4HxW0vfTYLYLlSY0EshgIchsGGhso9hRESY)7WNBMQWZpAWYOofZVnBJZ02M6JZOTo3yvC9Hz0sFNvPnUB8RMHhtDyduyJgc40fVuMG2ecZz9lJ71cERvb1H3ZXqnUCZ5yLKBYPf8ntAoXDX1Y(2N1u5hSoQEPYNtywNK7)UeO1AsSqVYFXcWg4KUyOLQK35WYguT6COAdyW2zxg2yFoCnt8g7SndPMTtYgykTtUghr7SY(uqvbwhXT7pTW0DS7yTnIjCR)ohCmSmBlbjyryVuHj)Fqs4E78FPOdDzpZjOOh0OTe7SFMGhXIP1T5pHLNlDUndVXgVhoNQGfaUR6oUdMs)k)puupizXaj00quzfhiWRPFIkoHyZ4GN7e6RdIldXt6szGpx06J)N)sofrIMK)RxdKKdSGdDLMKEsR1g6d9)KbzcyfXAC7YMAv6FOYhM7nQ5J1qa((FfbnS7RUPJMFIfh3zf1azrROsRH8vPLj7O10Ty4Sfvp(HKw796(8FK3Hn(vAMD3(vv(MATB1JFf8L)wBHvvpwdr(svTwF7MVVtzsMfqxy01TDdEJQzWwgskjl)aVWdYZIXyMKXyfuxZI2mR(DywTT1wHWyPTVMhzDJErcmAX(t1fPReDdKjYdoarY1yN730EfrOwSFTs3VwnELcWrm6IB6kM(2FUSOQB55IIQEpk5vZ5oFoFEE33Zdo9wLdUUJAZfMlfv8W745HvxCOqPW4iX3RBS1dBUSoH)oAC9DiQ8wxxFvlBCA9(BHNWCxFu2fKk))ohiXs2rlZjVyJCFKAZz9z)pFU1VRAWy3bOJJuvb11zmjzFH11rpGBlv65IBx7AnWYDJq4AxA6E90xqdfunNHP3eBos3JfBTnE3F7QbJt5Q0DQ7HnolE9K9N7(1NpprF5U)MVEGwA3LxY0BAqZ93nCUORi7AvlX24uN1Bqp3U)Mvl60RThuMLV52bG2RkmeRl08QfJAC1cZTo7fxpdjU6IbBd(Ep)p3jIZ)1R)wSb4YRSPJfhYlmhtETy1S4E3(txt(vBK3G1Ir0Vjc7QbUd99)bOp(0QM0sB6NHXY3oeUrjSw0lCyK2BcR6SH8mU9Qfxn8ENMXQQD3Rjg1NpZ7Im8MP3yg5FTzBltBeGBPnhIyJCZjFAJOZo1yJ86TZ0om794CX0nvDe66Jeml4Tp7C3chH6ax4U9NGIvHAMPPYMM6(F)]] )
+spec:RegisterPack( "Affliction", 20250811, [[Hekili:fNvBVXTns4FlgfyTDRVTRw71XU1RbYHCaxmAkcUnf3houjXvIAxwljQtuk(mWc9B)MH6fsjrPv2jT5dXXwA4mKZ8mpZWr2w2FYEJpjJA)RlxSC1IBSSMBD5QBwDT9MSNtO2BsiEps2b)smjc(5BdcczEzmEm(QNd5eFufcEEQh8A7nBZzHzVp2ERz9UeKnH6bp(6v2B2Z89PLYsfE2B(0EMOWf)hPWTYYfU8a4VL2SWnKjYGxhWtlC)N0hzHS52BKpuEsObK8Wm4x)v5jJgt2gs9T)72BivB6Suw8J0ml7nEPSmAkJa)gNh6ZFkEUpj9rh4SeopLgryXGLURWDv9HVzTzW(VJ(vABBEqGMMYtugpHl)Fy5x(Aw(wAQGM(ilEhQIREvQiKZ9DcYtFgvXQbvXjfUzKqAC2CsQ3EwepgIqoFMgVJsI9OZRwuH7HdfUn(pZY24lVVW1ALAV0SdXTY1dUvI4FMgH7eD9SqPM08yNYF3bbcLWbNYigUwu7VzqTJR8ZuhAmnIrrDVwgWNIYjCPUVzY6(UjRA4pbnFlQz4iGbCaqxzeNQNObQdOHobHYvQ2iOk2KKs94rBjgZjWKUuwsPo(3K0qU3J)uHRkhVW9S36tsYWaDqkpQW9j(tcweCw(a)JGKF8xoVt8KfNbXQMmKeAMtjrcSh3NdVmvTarEeawCazAVV7MDmkyVcMUlfaESuQdpWrqGxhWuWuLjnk24PczSiGecGflkCN1KwG42T5PX9nr9BghvR0QAL7j5LUojCTdPr3ilI(met1YBiXK5jEzsC3vAMjKfqDYijMOXQLHSJh)CB3C6oA288ygOWtwJuWE5cPhrNRmJ59OdE2G1(SxiAhCDcCJAG2R2CE8008kG4xBBEuOtDaZrqP(iWqTBu8CGnborjZAtOxNyvpQ3fl1itp93LYfojqQT0ANvw0Rf3uH7LLmUD3hfUNB(WpmaSJ5qL5i2ts9RibTgcxAuB(CmojYKeuKgcK56MaLrIR69unhE1RugpccsqsQZUuIiPHVTXLUNavEC2YdZ6LHigTrGYdvBoWpayQm4FqVf4BHnhf90xanJaL4aNuL)r2(X7a6Uc3nGFdOf3tHfHWuS5fGXvE64bbQIJqe9oRfIZlCZJdPcrJnIbuHar0bPuXEqSkS9DxD(CDxC)iunorIgKNhWSoIegSgX8sJ2Gw69E9uORqa0OD1OAiyuMw5wA86EvS((CE0UC40mE7qFj2TtT8kdZIdOPXKWxe3WXicgihQoc1bK3QJOfDsog4LMYU0f9gjhWuOJuhsfeyTgnAjOrhECBvLpjDmkItg3XNrl3J30TSXO8ot1MVzuBQfwn4ygNRAQ7GvJUdwAS61O9dEMbiYvL2TYk7PKWS9nvTxUWmUAjeR)MbTA12(TVa213LhL0W69h5c4NBPavk9hbdX8PTPurk2moKu)zods7Gg5t9ijjsI1s62yEwjXm8S5JE)NHQWbhaRfdgUmfRMPDBhd3wu6xnu406lSnnRHjMhf50f1QH2)EzZetebC9iaPRnvgVLaAyNu4PLGNn4nfKYBVPmsmCrG)c7UWA4scVQDXyMA1u7KrEn2V(n7BIsSv709O1hoeDen0MI8OLDFKf(heQpnw44LhhJj41I3Os1LEh)6BtxJLOt0J1ucRVX6eBGOZtKuuFcC(vqIflkHNMv1K4PvJK6uS0Y)nhAFXhzIWeqsEgpIiVBT3Es8oQyEXd)clgE1k4w4)wSipb1ekq52avxnNZPGWsZfWdd5pjXFKCaAbSJ0u455cCHyVSzOy1AahYa2(swTCsw0aEEClP99rH9jayNiO)uXdfU)n8VRSo83py4W2mTHx2X1A8JB5ifoTr8LdkUAGckPVAqPn2qPAHxp4cL06OGgDcWfZFzh)HppY8o1o6YbfuLED6ear9Vh6l6uxk4BguWweDd6MeF1ajD2yhfE0CZJP4z7CPHP4E7e1g2JAOyYu8VMcB3mngJsHVDQUsRftwYH9G9GdvRy4eZER4Bkrh(3DV88ayASo9ldv)xEUVQgxDMjoXIKuEalKwo(IiMqiDZvRV60TdUxDkZdCCLFge4q4w4((QzEiz(JOX(O1Y2tGhtHw2Fg1nJd(SNrVUxyUpEZCkd8(P1E7)ZVjOOMOrIF)cS7EM3EDPjXpRSAvGK()sGugwwOsV6X1AJ(ZYlsuzMpvQca797Os91F0snl)elmu7evPYSArLEd5JIZJ2sld0HqJFfp8(OAh(Q2irmIJtJx6MT38DfUV25Tx8W3bR(J1vAlEO0mI5nfF)H1)OwDtZcOQuEr9i6x3mH(bwsmjrSNN5aKwygGjzmws9cwW6jndhZMTAsgsTa9uUEXSHMnJX1ltDvl2SqLZyhZhqN77k7zRr01afJd0pz0f4xNzD9Nbev6Wxg8UvnRVXa4k6F5unXuFHVJlAZxY7OI28CuYtMY317WHP9n9U3Q1PSZN0Q0DHKIOH7(D8UFXrxk0kfUs85Q56D)6JBtrw)11oG00q)fLFoT1w1rF4IP7qQWpjVyDH7)Id4Dj6aE5ati(N)MnHyfEwKTUbRRn6I7xBn7SHNq8HdJoDyWe6wqXC00eLoMA007zdgoAP46oTET6vhEuPyDgeZuhZoP7aDN11fAEah3BTywVXIu)WrMQY9301Vk1aUfR98RBUg9Hd1p72z9hh59w30rvgS7Xu8BmQ4UEs15)y6BLr9TSJ(ArmDwlp(vho0BYw3TCr7WYYZ)tjUGLa(ZCwLD8cnzT9iX7achADTDCZgUMe4a6OJ6XdjjORMH0Dx1vk1y7UOzQDRTkZNmeJ0J5nyJV)YJ67V2qiR8zgcWx3zp26sd4w7iJRBwVr111s1Z17RTD6spPg8xDjO3Y)hA1DCpB1pu)fceA0gq1XPeblfRKEP1NiwpcEYA53wFwD(RAqXD0JgfWxUYgHzEKpgFFY6E6T3AnTzpPocDwNkixwvuuZc9C7njFnAzOC1s5)YHnhfEwD27dN(qvNx69YuViSRSPGIQKRxvkdX2krnxSyy5vDKPqddp12ElxDX2x361MWlCF998u7nBIYdszpkNYR9)p]] )
 
 -- Register pack selector for Affliction

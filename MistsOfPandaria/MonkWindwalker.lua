@@ -1,14 +1,17 @@
 -- MonkWindwalker.lua July 2025
 -- Adapted from MonkBrewmaster.lua by Smufrik, Tacodilla, Uilyam
 
-local addon, ns = ...
-local _, playerClass = UnitClass('player')
-if playerClass ~= 'MONK' then return end
+if select(2, UnitClass('player')) ~= 'MONK' then return end
 
-local Hekili = _G["Hekili"]
-local class, state = Hekili.Class, Hekili.State
+    local addon, ns = ...
+local Hekili = _G[ "Hekili" ]
+    
+-- Early return if Hekili is not available
+if not Hekili or not Hekili.NewSpecialization then return end
+    
+local class = Hekili.Class
+local state = Hekili.State
 
-local floor = math.floor
 local strformat = string.format
 
 
@@ -260,7 +263,14 @@ local function RegisterWindwalkerSpec()
             toggle = "cooldowns",
 
             handler = function()
-                removeBuff("tigereye_brew")
+                -- Consume current Tigereye Brew stacks (simplified MoP model: each stack grants damage buff percentage; we just track duration)
+                if buff.tigereye_brew.up and buff.tigereye_brew.stack > 0 then
+                    -- Apply a use buff; we can store the consumed stacks in v1 for scaling if needed later.
+                    local stacks = buff.tigereye_brew.stack
+                    removeBuff("tigereye_brew")
+                    applyBuff("tigereye_brew_use", 15)
+                    buff.tigereye_brew_use.v1 = stacks
+                end
             end
         },
         touch_of_death = {
@@ -517,6 +527,63 @@ local function RegisterWindwalkerSpec()
         }
     })
 
+    -- Combo tracking (basic SimC-style) to enable combo_strike / combo_break style conditions if desired.
+    spec:RegisterStateTable( "combos", {
+        jab = true,
+        tiger_palm = true,
+        blackout_kick = true,
+        rising_sun_kick = true,
+        fists_of_fury = true,
+        spinning_crane_kick = true
+    } )
+
+    local prev_combo, actual_combo = "none", "none"
+    spec:RegisterStateExpr( "last_combo", function() return actual_combo end )
+    spec:RegisterStateExpr( "combo_break", function() return state.this_action == last_combo end )
+    spec:RegisterStateExpr( "combo_strike", function()
+        local a = state.this_action
+        local c = state.combos
+        return not c[ a ] or a ~= last_combo
+    end )
+
+    -- Tigereye Brew stack accumulation + combo tracking hooks.
+    local chiSpentForBrew = 0
+
+    spec:RegisterHook( "spend", function( amt, resource )
+        if resource == "chi" and amt > 0 then
+            -- Track Tigereye Brew stacks: 1 stack per 4 chi spent (simplified), max 20.
+            chiSpentForBrew = chiSpentForBrew + amt
+            while chiSpentForBrew >= 4 do
+                chiSpentForBrew = chiSpentForBrew - 4
+                if buff.tigereye_brew.up then
+                    buff.tigereye_brew.stack = math.min( 20, ( buff.tigereye_brew.stack or 0 ) + 1 )
+                else
+                    applyBuff( "tigereye_brew" )
+                    buff.tigereye_brew.stack = 1
+                end
+                if buff.tigereye_brew.stack >= 20 then
+                    chiSpentForBrew = 0
+                    break
+                end
+            end
+        end
+    end )
+
+    spec:RegisterHook( "runHandler", function( key )
+        local c = state.combos
+        if c[ key ] then
+            if last_combo == key then
+                -- If we wanted to model a hit_combo style buff we could remove it here; placeholder for future.
+            else
+                prev_combo = actual_combo
+                actual_combo = key
+            end
+            last_combo = key
+        end
+    end )
+
+    spec:RegisterHook( "reset_precast", function() chiSpentForBrew = 0 end )
+
     spec:RegisterStateExpr("time_to_max_energy", function()
         if state.energy.active_regen and state.energy.active_regen > 0 then
             local deficit = state.energy.max - state.energy.current
@@ -567,7 +634,7 @@ local function RegisterWindwalkerSpec()
                 self:UnregisterEvent("ADDON_LOADED")
             end
         end
-    end)
+    end )
 
     -- Options
     spec:RegisterOptions({

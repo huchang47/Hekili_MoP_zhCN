@@ -78,24 +78,7 @@ spec:RegisterResource( 3, { -- Energy with Subtlety-specific enhancements
         end,
     },
     
-  -- Relentless Strikes energy return (enhanced for Subtlety)
-  relentless_strikes_energy = {
-    last = function ()
-      return state.query_time
-    end,
-    interval = 1,
-    value = function()
-      -- Relentless Strikes: Enhanced for Subtlety with stealth bonuses
-      if state.talent.relentless_strikes.enabled and state.last_finisher_cp then
-        local energy_chance = state.last_finisher_cp * 0.05 -- 5% chance per combo point (enhanced for Subtlety)
-        local stealth_bonus = (state.buff.stealth.up or state.buff.vanish.up or state.buff.shadow_dance.up) and 1.5 or 1.0
-        if math.random() < energy_chance then
-          return 25 * stealth_bonus
-        end
-      end
-      return 0
-    end,
-  },
+  -- NOTE: Relentless Strikes energy is not modeled as random regen to keep the engine deterministic.
 
   find_weakness_energy = {
     aura = "find_weakness",
@@ -454,11 +437,7 @@ spec:RegisterAuras( {
     duration = 12,
     max_stack = 1
   },
-  cold_blood = {
-    id = 14177,
-    duration = 60, -- Correct 1 minute duration for MoP
-    max_stack = 1
-},
+  -- (removed) Cold Blood was not available in MoP Subtlety.
   smoke_bomb = {
     id = 76577,
     duration = 10,
@@ -707,7 +686,8 @@ spec:RegisterAbilities( {
     gcd = "totem",
     school = "physical",
 
-    spend = function () return 60 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) * ( talent.slaughter_from_shadows.enabled and (1 - 0.04 * talent.slaughter_from_shadows.rank) or 1 ) end,
+  -- MoP: Backstab costs 35 energy (reduced by Shadow Focus while stealthed).
+  spend = function () return 35 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
     spendType = "energy",
 
     startsCombat = true,
@@ -742,11 +722,11 @@ spec:RegisterAbilities( {
     gcd = "totem",
     school = "physical",
 
-    spend = function () return 35 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
+  spend = function () return 35 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
     spendType = "energy",
 
     startsCombat = true,
-    usable = function () return combo_points.current > 0, "requires combo points" end,
+  usable = function () return combo_points.current >= ( settings.combo_point_threshold or 4 ), "need finisher CP threshold" end,
 
     handler = function ()
       local cp = combo_points.current
@@ -769,7 +749,8 @@ spec:RegisterAbilities( {
     gcd = "totem",
     school = "physical",
 
-    spend = function () return 35 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) * ( talent.slaughter_from_shadows.enabled and (1 - 0.03 * talent.slaughter_from_shadows.rank) or 1 ) end,
+  -- MoP: Hemorrhage costs 30 energy (reduced by Shadow Focus while stealthed).
+  spend = function () return 30 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
     spendType = "energy",
 
     talent = "hemorrhage",
@@ -830,11 +811,17 @@ spec:RegisterAbilities( {
     gcd = "totem",
     school = "physical",
 
-    spend = function () return 25 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
+  spend = function () return 25 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
     spendType = "energy",
 
     startsCombat = false,
-    usable = function () return combo_points.current > 0, "requires combo points" end,
+    usable = function ()
+      -- Keep SnD rolling; refresh early when it is down or about to expire (<3s) with any CP.
+      if buff.slice_and_dice.remains < 3 and combo_points.current >= 1 then return true end
+      -- Or use at threshold CP if it's down.
+      if not buff.slice_and_dice.up and combo_points.current >= 1 then return true end
+      return false, "slice_and_dice ok"
+    end,
 
     handler = function ()
       local cp = combo_points.current
@@ -878,8 +865,6 @@ spec:RegisterAbilities( {
     cast = 0,
     cooldown = 60,
     gcd = "off",
-
-    talent = "shadow_dance",
     startsCombat = false,
 
     toggle = "cooldowns",
@@ -893,11 +878,6 @@ spec:RegisterAbilities( {
       if not buff.stealth.up then
         -- Only apply if not already stealthed
         applyBuff( "stealth", 8 ) -- Grants stealth-like benefits
-      end
-      
-      -- Shadow Clone effects if talented (MoP mechanic)
-      if talent.shadow_clone and talent.shadow_clone.enabled then
-        applyBuff( "shadow_clone", 8 )
       end
       
       -- Apply Find Weakness buff for enhanced damage
@@ -1206,22 +1186,7 @@ spec:RegisterAbilities( {
     end
   },
 
-  -- Increases the critical strike chance of your next ability by 100%.
-  cold_blood = {
-    id = 14177,
-    cast = 0,
-    cooldown = 60,
-    gcd = "off",
-    school = "physical",
-
-    talent = "cold_blood",
-    startsCombat = false,
-    toggle = "cooldowns",
-
-    handler = function ()
-      applyBuff( "cold_blood", 3600 ) -- Until next ability
-    end
-  },
+  -- (removed) Cold Blood was not available in MoP Subtlety.
 
   -- Utility and misc abilities
   
@@ -1263,21 +1228,7 @@ spec:RegisterAbilities( {
     end
   },
 
-  -- Generic potion use
-  jade_serpent_potion = {
-    id = 76089,
-    cast = 0,
-    cooldown = 0,
-    gcd = "off",
-    school = "physical",
-
-    startsCombat = false,
-    item = 76089,
-
-    handler = function ()
-      -- Potion effect
-    end
-  },
+  -- (removed) Potion ability mapping; potions are handled via items/packs.
 
   -- Creates a cloud of thick smoke in a 10 yard radius around the caster for 10 sec.
   smoke_bomb = {
@@ -1352,27 +1303,7 @@ spec:RegisterAbilities( {
     end
   },
 
-  -- An attack that deals damage and has a chance to grant an extra combo point.
-  ghostly_strike = {
-    id = 14278,
-    cast = 0,
-    cooldown = 20,
-    gcd = "totem",
-    school = "physical",
-
-    spend = function () return 40 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
-    spendType = "energy",
-
-    talent = "ghostly_strike",
-    startsCombat = true,
-
-    handler = function ()
-      gain( 1, "combo_points" )
-      if math.random() <= 0.5 then -- 50% chance for extra combo point
-        gain( 1, "combo_points" )
-      end
-    end
-  },
+  -- (removed) Ghostly Strike is not present in MoP Subtlety.
 
   -- When activated, the cooldown on your Vanish, Sprint, and Shadowstep abilities are reset.
   preparation = {
@@ -1703,7 +1634,7 @@ spec:RegisterSetting( "energy_threshold", 75, {
     width = 1.5
 } )
 
-spec:RegisterPack( "Subtlety", 20250802, [[Hekili:n3XIUTXnYVfJcOy3MtNE640Z2akjkjQWw2NLsl6D4K0kPvw7zPDv3ho1ag6B)gsUlx(MCvCrUc0ajUCNz4W5jNr0tAoz8Krl9s9NmSvJwDBCwJw1B2PBJ2TNmk9PD(tgTZBXdE3dFi0Bl8VJYMN6NKIg)PnrElrVFsuw8c4ztgnplyt6GWjZva0oTActDN)cy0tHpUoy5sFYu9twmz041bj7NH(FV9ZYX6(zrRGVVinikC)SnbjPWJxffVF2N9FiytqDGoIJwfSbW(pSF2fY)3(Fbg)UB(0x6)Z7Nn6lVB8v9h)77N932pR3h(1EdFF)pSF21dgnE0(z38X9ZUT3Wp07Ub9qVZ4EJhCZqma6hU2lCH)YCKhTlnyR3M9Z(WTJE9(zX(eoW(zB9cbQERFykmSxim)KG0mpe5JMU3x9I9d9tsWavj1Q)jW43Ex)3FZ1VR3yyP0F8xUD)SFBW4pZUuGzCBV7kjCLqIWptQVl2Fr025EP)0f)DVD72800DrbjrHVEJF6AVnxS03B5MNEDyuy(alIdGPfeEV7W4RrzHlzaX2GWLtdZ2ohGYRdwDXUh3PgyPXblEizA0QPPR9NMg7T0hn)7JJY2v7OKOnrQFV)lmXPj(X7GnbGwWsokNysQV3M01iGEu(N9xw3BZMAhfeoLmn1Vj85T(ldsX7RO3N)1t92a4Uo3SQ7h6nFdiaPgGWsfO1fp4NIaxQx89(aaGrjdIEvRuvYMGf(tbHUPlHpGGZ8SvRQZpC9LrFnSg6DIqBuHPjxErRAGmz89pbFQRfbWR7nyiJQrU43GHJ7F1vd(u)HJrsGdU5UbiDSr)(OX9V2Qyiq6paRuMf(sFmLVWljfKsQd73QFaq((XXzGYiWFyH39rz37)TcWAhTikAdIFvhrF1JbTHNyXYCqty5FjyHzq8sPa3eBrBHnl)WfpbC4cJljS01JEHbjy561yXY67wKE(fn7w7imzqEmI8iFpx4LzG1EaQNUezXdnkLwYFtjgH)JEj5AcSySv3AbHGOgSMbGTfmmoTDYL5ZyR3F(JnQ3jhL5qaWglCxaoyEazbGqrjIiODJA5Swa4blkxbIVigUyM3yKvfqoMANMfF2n5u7yWWV)LTB88ZPRb(qkIqU8SgNuS38N(lYsbhbJI2bUZsdwaEbbVa9Y9GDf2dg7semymL81Pi3BVg5L9IcoUdtnF3dS49hzGqHVK5iwqeNfQacmB3tJJkTQPsyWk0MNfNKYrnio25TqCmI2a67ttJaZr(NJyKy0mFtu0YnzjPUGJvbi5q)4P7IdIIdsFcHgEBADE(5JZTd7fcBdb74mdlybSDn2jnDXAeLIGYjwPfViEMgeGdSnrwQj1x5fIeNEim4re8ABfCm0107rMLXa2UyWwpKvLq0UK9jV0FLFycqstZsHGOsFYIv)YWlad69UczYFu))5x6dJTF2X3CB)H9VdIFccDIzg)2GHF4MFB0jwT)xxuegza3lgyQyXNJwgLwp)7GSZIhaZj1KfLUSzlUn1Z7AebEBNNrSrMlLKlNVkArwcvkH4xeSFVceoqw0ACy44i7i5Ylo9abo3lbIYy9PvOWS(QV3dOOnXo9ncTfGz1DG1YOuji2vfZ(0AM2wYnkNKMfAh1sbtXVEkdoPtdhJSsbsMdPtKaHrHnR5VgXCi0Ab0ptM5BuLy0N7bs3qca9Wkb3C74bxp4FLhvev5WUOVkBVhM8)z6LE0GenIqDz54hRrAk3Sn)dGTfWmuY5TpXoY9FmizbY8MVSX7U1qRzEydEGLhmhHx2Yo(0Sy7WO(zhi6fJ0WbDbOR93gfhV27EjobfqN3PHf5X39L7gnM1S8hV5oij5bF6Ziz0R79P(ulY2Lk59HJsTGq6Z3areLqOY8qc5EsEWRhRkWHNFw8DipHUf24e7ea(vuH)cyHqFbV)nDRPkbiDH5Aa7LbuRmuyTwWVOvnZl6MnKIb3azSaa1uCGsCKs5W5KJqKqA4cgqeyFDNxmJb5CmXmEXwTmdHSY6012gEBAqZkLf)bH0k)4GHdg95(3DajywxkEXFY1SLlSODXPs5mRYe8lbkxkNGEtLUGnJmu(LzXLEqY)o1dIOqI6iQSj6ybZSiMYk74cUp7Gq9I4GTjqOUP(B35NKAnECzsbZReatbpZmUn7qtJLOJz5qiJKkYr6StoCeRt5VgpEv6MNHCys6UD3VbYPDnzacXuFiB1XqI27OOHbEcgHrQQA4bU6BTm9NE30N90VW(yV(lxnEWTxbpyCV7(u)Xo4FLnNr1sTI7IwKIp2Ky7ZpR6HfQJmP4ksxUzVQaqNjX2Dmvyr0YnrfHezgSuNXT7E4m82MrYP1mXrBPfVhIjc97oRZIdEWhWFuscxISmJR88okdRSTrUjApYOIrEwpinduzjUb8nFZaKZ6pHorahlcH6t8awGB9IFWFjKSC80L(EPSjRl(i1lt1oPB21bCx5a9rPkHvclJMNx)JzCAmsN4aLym7GQIsqB3sClhgDq15A4aKEreCBqpRHayFcIR0PfX9RJss3800KueMyWn)dmJC0MTTth4MB)8GrJh8(EJjkh3CfK51qu9tgcPIDnkIwhumYpeyf5)WKJdxceffWInbN8CZahE6ccrBQemXWZ9ifPSXsTL5lHpT8MDnLHKk63swtkpsQwDnY6kZDv48MHf6IuLbE1PXZpRmxwXtp(eB560rdTjMrNtHUPj9ALrWPzdsxcEcjXH3TmUUAuQqAI7d7U7400lgKQPjQnFrZwQbijzvuPD257VKbO8pGc4TrpIRZtjOBvK0TWBWwJOWh8rDAaUc(VhiHSTiOLOMKYs8NgarbqoC9hd82iuZk1ByQkhIg5ekgs2eLErkH(AwnqBSsl2XwRxcSHzV35Tia1me9MJQ9qGoUk(nNUkl(PkIznGZpoXp(H8Uo4BgCEXl8crZkog1ShutY4IsY72WHsQpU)qY5iJlHYxgp4k85B079OqOCiHcMQ)u542B7YHn0rhU8)ZDrG4IxmeDacthXxca2hJp5nHkeKfUesRJ(yvM1LsNthPW19jaPq(uDsFNKFO15JrBhL8Yt4y6FFO)h7pC0GFvAJ6U(JUf2O67WwLuT3(jhQZD3QuNBtystL6b74IvQVRqL6BRVs9kX0k)aIEHTwaOvz0bulZ4x2kkqYfEPtrrQeG83X4mq8ru3bIutlrQPg4LaI9NT(jQWT2JFORO8AZcxKDlwDLVR1LyY2Oh8NohaOaAAJ98UfSEEzZIqOOZ1kyPDUsbmqXHXRAINsDPEyHwtVACh5Iz0j2oo5nctnMV6stXqd)2YEdYtFmmbgmY0SgVTH4sTy(WQDYOV6fhc0wcQFe93ply7UO4082(7vSPG)kuF)9hzbXO(7ijAlmzVS0OTKg(yXAVW7HOU3)lxbcG7N18NbZfqCe7qGdnbYcaGPWXi8k6R0w7RWLLE5l0Pk4y)VOy9XyqTAlVwArnRhaxwBSwXrZhtLRI2Sj6ROJGfiIypiYSV6hdJdrQaVBa8EPOPvaeuNoSF28S0I5fgHxIzHCZE5s0Kx6b557L4)Zapb1wOSeC(qSUP0W54RHs1yE6Ln4YDXfUhjaENejOPEOvAqs36LAzj626vUihr874cta79WnEaVxIY3PR23P04D5Spv)gi1MC5SFJ2zJT5woXZ0orSb1Yj(wTtSW023fnjXT58HlOP8VIdPj)ZLm3cnpk)RyaW)JgXvA45vtmvViNOYKEjon6PUQ9zvUGlrvdcifzUv(U)79Zesi9)8paBCHPXpH3jWrf99q4GFnvS7YYhP745NmKERuEzBsR2MUEBtO4nCXEKGkOEzdbLA9YeIIB6TbjzluVbi9MA1lUPOny))j7hfgmujmi26xVusf59FLlCCUMt77cFZGnsPkPwngKErsTrXQ33eVNu1BNmNqZlEG3m7PA8NOQkcVuyxSewUiAXxLcTeo9hfYlfTkgtUnBJQNVEtKAm4yZGPIFPpUy9m3gHlmCjDzBMoz(H8q2EgSTyonBYREJy8tgH)e63qhBQLW3hI)H5LFQftE3KrGcgKGCGh8jMJxy)SlVayr7Nvd2G1xjx2PD8(zhb2mm0MlZE(z1ti)id3p7CmWobOA8cctDSZK8t6loyh5PQoqSk3vfQowTjPtg2slJYWPEIxcNH5hYSZwUXoBxU85rcIQA742hqgDDeD4ProdK8r6wsbCVaIa64ibucARuWP4PztWOLEPcGS6wbYIWyuxfSsKu2ufi4FQw4BQkZkeeOBmfC8ZrmC7mkbbdwSnbXbgXCglM1ZTj(2wJ4Bt84YhLo8uqTvRqRdQSouQIQRLEeLwvxZa8QrAscvoW0sUvdD65mcrm40S6RCvfi2lvwzHseW6sKihWFIr2m5hPTDRlmQRQKwesZynCPSOtyLAzWIlcgvP7ZRUeIHM9wYM4Bmz0OqusfRsA1JFGnt5I1nxfjDQk5VZP(zSV70SbpHt7v8sAMqa2S7RPlp0OE0XjZVLaZM59innrEHaSMUqGy2QRRIYT5fLzWgrTt6qnnR5vwLdYEwUlaHYXXT)OOOCmSlHh6I2vLkaz1vVexIDiIBYfeeZFlRw2(z)4(znQ3MBXxwEqwp04XmRljxMq1ORvxjfSw86hffpKj4i0iMvoSu3qLCKw6irsuc46iscKGvDHhbMvA42Aa4OZtwtXiv6YZs4Q4yjXuoS5qNeiJ2nkqhQ2Hetu8wOyRejJHv6Wi09gTOReWuJKs()lkpjRJFPF2HONjq7N2OKEWWarkNzqSGTGLSitUOLfeQIsxkjY2HrKaFsIiY4T2iJYQyIz6VTHAEdx9mlWsXGeRG0Zk3S1pfEwf8cL)BmxHJvABhAZHmRPFzxtCw9LBcrdHVqCG7G9vx6wZQBwffgkr3q2ILLqc0ZJT7)lhB6IfURQyg0BvoxxJRxjj7jQqW5eNhOhRnGuL2VaFiN4QdEwvh(avRywVMIVPqWuFq1exncTBj)zIu1iJue3dvqXkxPHOlG2n0ffKljjJdoHPbn5SZM3jL5(EAjUFGEpZw4n2YMyuj12MSPYvOFi1aNm225EKKr(5fxNvcfhts2x5EVgzF05XWzTrFJKA2CF1XCdgHs2wUSKHu00OO8(Jsz(oqjnB89GuAjqkTWKITZdPsKcRV(IUjvypsQBuXuHTdv8qPcAtOIXIE7Uu94lOHBjF8umNUax3Ost0bvxuZo45dCO8MlsryvkV9IkjbuWoU4S9qUbPoaNVFJRldXYPiWn97J)fshspI5MIsrmU69mkM)xt(a9OxxuQcnXYHQW78I9usKcdHx0r5DCvfYvcfkfzz4AELD4whwsJ1XuLkvEF5oVaJ(vX3uvfahFf5Lhhdny0cZZcPsCgFe0kkiNSRn(7rlv5rrxec3crIB2UCPzrkv2uIx7Y0xu4hvpwlzuCrwZbAXoiqP)rAc08xHt28tWJiv12wPlqhWgz)9CseshM3zgst4OPv5q0bAsze355gy4Q5sFkc1qXrjFnDrH9jClcPwDqPlxhwhwRlwBo8YvixekfT8QfLCc4Q69am4eTaQxCNbESfDcberdyobe5JofhOHKgJXioYR9SWfAKPCwB2YA8p5qZL4p(2UlZoKir0EZFXKXwXvmwURlhI4dFDgzo4JJO6zwWUPdLqdwDnr7ZPQUksyEjFjYOa31IetRrRgjNtlCfArIt8Gdz0hO3lAMD7R7KC4oZVg54u)Dy2e2m2lFSzN(C)(05XkXXULn1IFR7eTzzZMFdfP(II9aDnzHMnUZkPUQxLAxV2GQUUSQf7YIdAUIfI)uTlrB60kUnF0qaDCWSQ6Z)I1lfgtM15vCp)KxlPdHYoRQeME7fw9DBMan3OumMjKB0fxTvyRrxkIGN)c7XyqENXflpF)XO3mYbCaPI0uTYZmv(KrziyX6j11abRV2m6IrunsY9PAtQIh56pIoPYkz0mNbEiZj22H5KI4knxQUSfEHJ0svdXDWbA52nKz1ncRjeafEAvllUK2YokEOq)vDs1c4sNMTQBZsnpGRSw6elDo4RcDy(W8QwixYHx4WoaxzwlJVWzRIsavq9O82OzsE9mvMVKLZ(04DjKQLQT4wAYOQicxx0zC5cvQ6Amh0oyPouUDe5BzOYgfw(MgcZo47ryw5ax1HOK2HtheLGtmA3tJGvvu0K5GT1jVAqz7LOjvBWUu5kFgBy1cnMQ9AcQ(ksYfIIioX4eHdsefy6Vzbv6S2vC(M(d8Yl)FDxuEfqOEWQ9N0fLk)JiDCkIpH(71cJ5D2MoDeT1uXBUK)oUy2WXUh3vcC8FixCa2S)bEXSQU0PvxcDvhaDH(yXCu8Z)Gfrg1ZoI53viBdSq)tScJMczEM1rKb2lEA(5k08)rHXaDZ8trXCC0vmRw5d2GTPsKYLfRD7LLUokEYOrBZwb684bN8)o]] )
+spec:RegisterPack( "Subtlety", 20250812, [[Hekili:9Qv7UTnUs0NLGciKSBwhh)rA2BTnGtIBRlsTZnYzlU)XwYw0Xcwwsx9rYgGa9SVZqkljkts70gTbOfwIIZqoCMdp8in98PtMQBzgrMoQr9gTRF55nQ1OzRM1VyQE0l(KP6(MlwB(i8dxZnW)RhppYHe9c2WloEMwObc9IdwanovFESTt0q3PZfz16T)t4z9jlGBFX5t1xzBzrypljCXu9jRSdtmW)zMyK63edVLW1lIS9CtmCSdJGMx6fKy8vYABh7At1P3ehgpsCjbMrEb4vJOtnIR5ChI10RMQZSb4vYgVGGv05e63aBFwdDFF)lX46XF)QXjg3nE4OjjgFzWOb33FY471tm2xFFJ)Ly8DtB3i4Fyyz7070eJOve4wxbHYWiZ5jgh7755y7(yIHRxuIra5)hBhqSGamCvZ2jgye8XxGfbOBF37UtMQdXNisGTj8lVnZ9M57bEcwd6KyapVgyZeJJsmS8IQLhzRfzVyn1pV(6oTfq2aJuMjALyCY0iiFO0IvUxNtwz7AnlYm4rse1HsghBh696ItL8175PZE0nnL6MDnQWmgWgTKAJithIBuTWvXb2RjUZI8cdRL(KhYihJh1ZDlNDqp3wsgDOJ9cYmtikzzVOYZQ)EFiDEWO(JUEW7EIm3cF8YL14NACPonfesX1(ZXq1fsxKcjrrqMzynZ4iAhd9CNz6778sHSzQVTiMwoVK(i1I9zjZBBfJW(yTuXh4K8ffQjtBdgrr4YYsZyNivytRHYM)nw)smUF8K(tgoE07(syIXqxiuhe7JliWkxIXnKLe3q7NiH8vlyfDTfMH46HAqGvetNOv18xaiaDax0Gv4y7cl)4sGL5gO6CwtmfiXi9P3y(3jg)wIr9ATYJWKNmdTPRikadSi0LyWM2lORRAzgnBi0SqL6cyJW1Z8wolCLPL3ZHQHjYYaJdjZIcGL8qSVawnCLPfH6Uhd8sDCK9gcDAv0Jc6MiecUmP7cS3ygaP59t3n9w6gN5ZcthNzSlMH7PYnMJOtFIvn4HyB5oJriiTLzHWEje3fervFY9qbdTa2AccEU0O3hpqGASGV9b6GL2U2HRibuhCPuhGD)jYmauEJnj1fnpqxy6rN))5pZ8Va7fkCHFabNRMcbmQwic9hUAYTdM8)qyIV8aaZ)haSXq9jaZLXFgi00F0n9VFyFGHZT911hEDr4eDkxWW)tIbTB)y8pMC111(YxO8jGMt5pcDX7XyiX(XyBmL)ypFC(FwGxKjl7Cfb2(dWgweEsQTEgkTS3eE2gp)IgQ)D3My8nD05hdflyP1zl8CTSr7GDEFt434FvGbV7(b)bYwSpWtuFWKhU7D3hqQgjALPdM6GBRjzJQdAJs4SaEUBnx2(GQrWpCqV9cYjh3g2BUeqvgfj2T3dWCX(YWEzm6GsXneiFIMzULrxUX5AwemSk0RZLYJJIcKJkQG2aBBhyxq3QN(31JhF7nJ)XOQ4um63WojYhB)7BzfFk(JW4acs7Y2XcGVpdM(eli8f7dT(xMiQoRFTY7hqoyjEkhMrd9G1nPPJfdF7CuIpYOAuo1IEtruut31gpZdYbcg55SwPR31ZAx0zIWh5c1LsfhDTAl6Gfidj5J6TPu1koVlmcWXyEU1t04R66UchGPzDEFW6oN1B1MR0X3miRW5ajnLoWN7aicH7BL440wxIhJ8zI5AxcCSmCWXi0Z4xbd9g1tVbJykEF4OxGTiPhnJJFp3yqDrFosQJd0LusIre)Iym53L7iJPdglyNqw6jnhQr5Xb2pvmVaOu31KOZrqgVOIxx(axfZj2EMhjreKqkhyZdHqdG52SL5FG5cBth4klyVCuoGBytcu)MWvEbqn7Kj3iIWxPbEJF5bk38UHAkGICqbbfC88SMTmo4frC9oyRaizKG1SnoJkYovfq))QN0)Zdhnu)RdQybR0DV5S7ziLmuCas767aK9bpzhUaPex8(qUdaMf8SDiP2UbB5QfCHk1cKJ1EepsEMSwcTv7IvSC5GLWutn3EoeQODqysM929(LcDUC4wLNYIKTWOg3J7iZWsqDjJ8S9QOlIWXEI9PwNREj)2S6LDo3PIYgEcAvCvJ(Kb9VDYxrI8)3hgqvj74X0d3ujNf5ZE4MkPNJco1fBUcNxQhT0cCoLieWyIyDc7293mpgPmH)gLlM9RCvIXRsRiNUR8McjdlJfI6QlrfTSnMLuRkNQS6tfG1spAgahUKVgE)vlP96TuTWlESjnyRUqrQ(55MHtd6iMsdkY4bBVbpVgSxSpjmQQZ57pEqfkPOAGjgEOivBATfxbdULIizryLjOseSFpseT00fp06AxQKNkZnpCCw6Q(taic2u6RvRoql6zZaxKC5u9HB8bgvyT4hl9gZQL8nee0BPTdur)H39fOKV9HFjrJODFRUr4fVJshLzUFs1J(wveUQgR(brcjvjEILDfwltJYFV7zf1r6uM6qDzAnDAMCrDxSvTOtTx2vXRIrOheOheNzKiTKgtlDHMmLfbAMJ4pPSWhNBVpQVl2hnL7qk2)C7JHwSiIqVUNxH5kLErqvLBu86GYIjqKaF1x48N)1cv8jsF1n4dLZSSt3gT1299a1l)Da9B1R1QOzk)YAq7v6f(Ov0(nRxS3)s5GAirJEObzfRcFHmCJ1sVWGtXxvq3YuF3jrC)MitwX9)OzhmD3SZ27V3apfSF87y2RBZ93Z83hsfwdOKSEv50QLYEoqt58erayQGS0kUAdfAkT8UizYy3RTdeNcZMY)McqlGfV2Um47DPsdY4JxoxUtBLDkN9D2arWh7s1LMMl6Ev5H3S07F6Ti9EEWnd4btzkOn2oGOfBuJz4ED)yBn(TP1el8RMaXtGmT6AILDVx3lepczQxJJTTJGwTlxvuEePuE9ENxxSNkieEU760SUMeL071QTYGktxAzrvwRYcEhlrV8xFflZ60Oo8JDk760Q(jQgrOc18K(kjgUMuHW1kjcoSs2iTy7NuXzXdumaH26uuR4UBLiphkJxkxHbHMswEfA6gVlMoxoAzMts)YeGwE)Qm4MCPLRkpSpbM)0biWCEGlJe0bVtxADANlKVDxrJMcwLT9sjfNlzK2I23Ri0IetlawStRdX2xk205kuOICi)Ojth3se5VOEPbcGSURGWvyojViwvIx2gqawXiVxEjP2ne2sRmV5wAhPqmRYoGtiQDP8SJ1Bw2a7z9TAcsFqXxoDv5qrF)0F6D47NopGMFCMD4twAv5yj8lF9vXSx60sMB2(PptXOk(DuRvYLBz30S9pXawsx4(8LlCudHFE0IhqaNIkmjR4hYCL4dXHL30UhnLV7bNv5eFZwL0Aq6LWVU5xF9izFxZ4x9qCeqEAQU(M4LWQhvn6P)Z]] )
 
 
 
