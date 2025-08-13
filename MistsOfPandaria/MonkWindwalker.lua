@@ -3,14 +3,12 @@
 
 if select(2, UnitClass('player')) ~= 'MONK' then return end
 
-    local addon, ns = ...
-local Hekili = _G[ "Hekili" ]
-    
+local addon, ns = ...
+local Hekili = _G[ addon ]
+local class, state = Hekili.Class, Hekili.State
+
 -- Early return if Hekili is not available
 if not Hekili or not Hekili.NewSpecialization then return end
-    
-local class = Hekili.Class
-local state = Hekili.State
 
 local strformat = string.format
 
@@ -56,8 +54,6 @@ local function RegisterWindwalkerSpec()
     if not state then
         state = Hekili.State
     end
-
-
 
     -- Register Chi resource (ID 12 in MoP)
     -- Use default resource state (with metatable); UnitPowerMax already reflects Ascension.
