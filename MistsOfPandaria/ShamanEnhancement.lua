@@ -1538,7 +1538,7 @@ spec:RegisterAbilities( {
 
     fire_nova = {
         id = 1535,
-        texture = 135824,
+        texture = 459026,
         cast = 0,
         cooldown = 2.5,
         gcd = "spell",
@@ -2036,7 +2036,7 @@ spec:RegisterAbilities( {
 
     unleash_elements = {
         id = 73680,
-        texture = 462650,
+        texture = 237581,
         cast = 0,
         cooldown = 15,
         gcd = "spell",

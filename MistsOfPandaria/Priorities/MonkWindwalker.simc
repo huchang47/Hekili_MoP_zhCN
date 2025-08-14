@@ -12,8 +12,8 @@ actions.precombat+=/potion,name=virmens_bite_potion
 # =======================
 # Defensives List
 # =======================
-actions.defensives+=/dampen_harm,if=talent.dampen_harm.enabled&!buff.touch_of_karma.up&health.pct<=60
-actions.defensives+=/diffuse_magic,if=talent.diffuse_magic.enabled&!buff.touch_of_karma.up&health.pct<=60
+actions.defensives+=/dampen_harm,if=talent.dampen_harm.enabled&buff.touch_of_karma.down&health.pct<=60
+actions.defensives+=/diffuse_magic,if=talent.diffuse_magic.enabled&buff.touch_of_karma.down&health.pct<=60
 
 # =======================
 # Core
@@ -49,9 +49,10 @@ actions.single_target+=/blackout_kick,if=energy+energy.active_regen*cooldown.ris
 # =======================
 # Area-of-Effect (AoE)
 # =======================
-actions.aoe+=/rushing_jade_wind,if=talent.rushing_jade_wind.enabled
+actions.aoe+=/rushing_jade_wind,if=talent.rushing_jade_wind.enabled&cooldown.rushing_jade_wind.up
 actions.aoe+=/zen_sphere,cycle_targets=1,if=talent.zen_sphere.enabled&!dot.zen_sphere.ticking
 actions.aoe+=/chi_wave,if=talent.chi_wave.enabled
 actions.aoe+=/chi_burst,if=talent.chi_burst.enabled
 actions.aoe+=/rising_sun_kick,if=chi=chi.max
-actions.aoe+=/spinning_crane_kick,if=!talent.rushing_jade_wind.enabled
+actions.aoe+=/spinning_crane_kick,if=talent.rushing_jade_wind.disabled
+actions.aoe+=/run_action_list,name=single_target,if=energy>=60
