@@ -129,11 +129,17 @@ local strformat = string.format
 
     -- Auras
 spec:RegisterAuras( {
+        -- Common aspects
         aspect_of_the_hawk = {
             id = 13165,
             duration = 3600,
         max_stack = 1
     },
+        aspect_of_the_pack = {
+            id = 13159,
+            duration = 3600,
+            max_stack = 1
+        },
         aspect_of_the_iron_hawk = {
             id = 109260,
             duration = 3600,
@@ -208,6 +214,14 @@ spec:RegisterAuras( {
         duration = 15,
         max_stack = 1
     },
+        -- Master Marksman (Aimed Shot!); expose as master_marksman for APL compatibility
+        master_marksman = {
+            -- Use the same aura as Aimed Shot! and alias it
+            id = 82926,
+            duration = 10,
+            max_stack = 1,
+            copy = "aimed_shot_instant"
+        },
      steady_focus = {
         id = 53220,
         duration = 20,
@@ -394,6 +408,12 @@ spec:RegisterAuras( {
             duration = 20,
             max_stack = 1
         },
+        -- Dire Beast focus regen aura (used by resources)
+        dire_beast = {
+            id = 120694,
+            duration = 15,
+            max_stack = 1
+        },
 
         -- === PET ABILITY AURAS ===
         -- Pet basic abilities
@@ -448,6 +468,33 @@ spec:RegisterAuras( {
             duration = 12,
             max_stack = 1,
             debuff = true
+        },
+
+        -- Tier set bonuses for MoP (for APL expressions that reference them)
+        tier14_4pc = {
+            id = 105919,
+            duration = 3600,
+            max_stack = 1
+        },
+        tier15_2pc = {
+            id = 138267,
+            duration = 3600,
+            max_stack = 1
+        },
+        tier15_4pc = {
+            id = 138268,
+            duration = 3600,
+            max_stack = 1
+        },
+        tier16_2pc = {
+            id = 144659,
+            duration = 5,
+            max_stack = 1
+        },
+        tier16_4pc = {
+            id = 144660,
+            duration = 5,
+            max_stack = 1
         },
 
 
@@ -1334,33 +1381,7 @@ spec:RegisterAuras( {
 
 
 
-        exhilaration = {
-            id = 109260,
-            cast = 0,
-            cooldown = 120,
-            gcd = "off",
-            
-            startsCombat = false,
-            toggle = "defensive",
-            
-            handler = function ()
-                -- Instantly heals you for 30% of your total health
-                applyBuff( "exhilaration" )
-            end,
-        },
-
-        tranquilizing_shot = {
-            id = 19801,
-            cast = 0,
-            cooldown = 8,
-            gcd = "spell",
-            
-            startsCombat = true,
-            
-            handler = function ()
-                -- Dispel magic effect
-            end,
-        },
+    -- duplicate exhilaration and tranquilizing_shot definitions removed
     } )
 
     -- Pet Registration

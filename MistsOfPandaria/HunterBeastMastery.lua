@@ -483,6 +483,11 @@ spec:RegisterGlyphs( {
             duration = 3600,
             max_stack = 1
         },
+        aspect_of_the_pack = {
+            id = 13159,
+            duration = 3600,
+            max_stack = 1
+        },
 
         -- === PET ABILITY AURAS ===
         -- Pet basic abilities

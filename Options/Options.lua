@@ -4239,6 +4239,10 @@ self:ForceUpdate( "SPEC_PACKAGE_CHANGED" )
         db = db or self.Options
         if not db then return end
 
+        -- Simple guard to avoid repeatedly rebuilding the heavy Ability Options UI in rapid succession.
+        if self.AbilityOptionsEmbedded then return end
+        self.AbilityOptionsEmbedded = true
+
         local abilities = {}
         local toggles = {}
 
@@ -9219,6 +9223,8 @@ function Hekili:TotalRefresh( noOptions )
     end
 
     self:RunOneTimeFixes()
+    -- Allow ability options to rebuild after a total refresh.
+    self.AbilityOptionsEmbedded = nil
     ns.checkImports()
 
     -- self:LoadScripts()
