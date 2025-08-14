@@ -1054,7 +1054,7 @@ do
             i = i + 1
         end
 
-        if bracketed then output = "(" .. output .. ")" end
+    if bracketed then output = "(" .. output .. ")" end
         if ands then output = output:gsub( "&", " and " ) end
         if ors then output = output:gsub( "|", " or " ) end
         if nots then output = output:gsub( "!", " not " ) end
@@ -1067,6 +1067,17 @@ do
         output = output:gsub( "@safebool", "@safenum" )
         output = output:gsub( "!%(%s*(%b())%s*%)", "!%1" )
         output = output:gsub( "%(%s*(%b())%s*%)", "%1" )
+        -- Safety: remove any trailing unmatched ')' that can sneak in after transformations.
+        local open = select(2, output:gsub('%(', ''))
+        local close = select(2, output:gsub('%)', ''))
+        if close > open then
+            local excess = close - open
+            -- Trim from the end only; avoid stripping meaningful content inside.
+            while excess > 0 and output:sub(-1) == ')' do
+                output = output:sub(1, -2)
+                excess = excess - 1
+            end
+        end
 
         esDepth = esDepth - 1
         return output

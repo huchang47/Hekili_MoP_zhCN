@@ -10,7 +10,7 @@ actions.precombat+=/call_pet_1,if=!pet_alive
 actions.precombat+=/hunters_mark,if=(settings.mark_any|target.is_boss)&active_dot.hunters_mark=0&target.time_to_die>15
 
 # Main combat priority system
-actions+=/potion,name=virmens_bite_potion,if=buff.bestial_wrath.up&buff.bloodlust.up|target.time_to_die<=60 & target.is_boss
+actions+=/potion,name=virmens_bite_potion,if=buff.bestial_wrath.up&buff.bloodlust.up|target.time_to_die<=60&target.is_boss
 
 # Emergency pet management
 actions+=/call_pet_1,if=!pet.alive&settings.pet_to_call=1
@@ -40,6 +40,7 @@ actions.opener+=/stampede,if=target.time_to_die>30
 actions.opener+=/dire_beast,if=talent.dire_beast.enabled
 actions.opener+=/glaive_toss,if=talent.glaive_toss.enabled&focus>=15
 actions.opener+=/serpent_sting,if=!debuff.serpent_sting.up
+actions.opener+=/use_item,slot=hands,if=cooldown.synapse_springs.ready
 actions.opener+=/arcane_shot,if=buff.bestial_wrath.up&focus>=35
 
 # DETAILED COOLDOWN USAGE
@@ -93,7 +94,7 @@ actions.cooldowns+=/use_item,slot=trinket2,if=buff.bestial_wrath.up|target.time_
 # Focus Fire priority (adapted from interface priority list)
 actions.focus_fire_management+=/focus_fire,if=pet.alive&buff.frenzy.stack>=5&!buff.bestial_wrath.up&cooldown.bestial_wrath.remains>5
 actions.focus_fire_management+=/bestial_wrath,if=pet.alive
-actions.focus_fire_management+=/synapse_springs,if=buff.bestial_wrath.up
+actions.focus_fire_management+=/use_item,slot=hands,if=cooldown.synapse_springs.ready&(buff.bestial_wrath.up|target.time_to_die<=60)
 actions.focus_fire_management+=/blood_fury,if=buff.bestial_wrath.up
 
 # Core rotation priorities - Updated to match single-target rotation description
@@ -147,14 +148,14 @@ actions.defensive+=/feign_death,if=incoming_damage_3s>health.max*0.6
 actions.defensive+=/misdirection,if=pet.alive&pet.threat<0.8&tanking
 
 # Pet utility and management
-actions.pet_management+=/masters_call,if=debuff.slowed.up|debuff.rooted.up
+# Removed masters_call (unsupported in importer); handled via utility elsewhere
 actions.pet_management+=/intimidation,if=talent.intimidation.enabled&target.casting&target.time_to_die>5
 actions.pet_management+=/call_pet_1,if=!pet.alive&combat
 
 # Tier set and proc optimization
-actions.tier_bonuses+=/arcane_shot,if=set_bonus.tier14_4pc&buff.tier14_4pc.up&focus>=50
-actions.tier_bonuses+=/kill_command,if=set_bonus.tier15_2pc&buff.tier15_2pc.up&pet.alive
-actions.tier_bonuses+=/cobra_shot,if=set_bonus.tier15_4pc&buff.tier15_4pc.up&debuff.serpent_sting.up
+actions.tier_bonuses+=/arcane_shot,if=set_bonus.tier14_4pc>0&focus>=50
+actions.tier_bonuses+=/kill_command,if=set_bonus.tier15_2pc>0&pet.alive
+actions.tier_bonuses+=/cobra_shot,if=set_bonus.tier15_4pc>0&debuff.serpent_sting.up
 
 # Burst phase optimization - Updated to match burst window description
 # Your burst window starts as soon as you have Bestial Wrath ready to use and lasts until you have used it and it's expired.

@@ -8,7 +8,7 @@ actions.precombat+=/potion,name=jade_serpent_potion
 
 
 actions+=/shadowform,if=buff.shadowform.down
-actions+=/synapse_springs
+actions+=/use_item,slot=hands
 actions+=/use_item,name=trinket1
 actions+=/use_item,name=trinket2
 actions+=/potion,name=jade_serpent_potion,if=buff.bloodlust.react|target.time_to_die<=40

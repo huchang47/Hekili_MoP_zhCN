@@ -48,6 +48,7 @@ actions.finish+=/eviscerate,if=combo_points=5|target.time_to_die<6&combo_points>
 # Cooldowns
 actions.cds+=/use_item,slot=trinket1,if=buff.deep_insight.up|buff.adrenaline_rush.up
 actions.cds+=/use_item,slot=trinket2,if=buff.deep_insight.up|buff.adrenaline_rush.up
+actions.cds+=/use_item,slot=hands,if=buff.deep_insight.up|buff.adrenaline_rush.up
 actions.cds+=/adrenaline_rush,if=energy<35&!buff.killing_spree.up&debuff.revealing_strike.up&(buff.deep_insight.up|buff.bloodlust.up)
 actions.cds+=/killing_spree,if=energy<35&buff.slice_and_dice.up&!buff.adrenaline_rush.up&(buff.deep_insight.up|debuff.find_weakness.up)
 actions.cds+=/blood_fury,if=buff.deep_insight.up|buff.adrenaline_rush.up

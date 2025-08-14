@@ -8,7 +8,7 @@ actions.precombat+=/call_pet_1,if=!pet_alive
 actions.precombat+=/hunters_mark,if=(settings.mark_any|target.is_boss)&active_dot.hunters_mark=0&target.time_to_die>15
 
 # MAIN ROTATION PRIORITY LIST
-actions+=/call_action_list,name=opener,if=time<10
+actions+=/call_action_list,name=opener,if=time<12
 actions+=/call_action_list,name=cooldowns,if=time>=3
 
 # 1. AOE Rotation (3+ targets) - TOP PRIORITY
@@ -53,7 +53,7 @@ actions.opener+=/fervor,if=talent.fervor.enabled&focus<50
 actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&focus>=60
 actions.opener+=/rapid_fire,if=!buff.rapid_fire.up
 actions.opener+=/blood_fury,if=cooldown.blood_fury.ready
-actions.opener+=/synapse_springs,if=cooldown.synapse_springs.ready
+actions.opener+=/use_item,slot=hands,if=cooldown.synapse_springs.ready
 actions.opener+=/explosive_shot,if=focus>=40
 
 # LOCK AND LOAD BURST PHASE - Based on official guide
@@ -87,6 +87,9 @@ actions.cooldowns+=/stampede,if=cooldown.stampede.ready
 
 # Glaive Toss should be used on cooldown
 actions.cooldowns+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_toss.ready&focus>=15
+
+# Synapse Springs from Engineering gloves; use when ready
+actions.cooldowns+=/use_item,slot=hands,if=cooldown.synapse_springs.ready
 
 # Rabid (pet ability) should be used as many times as possible
 actions.cooldowns+=/rabid,if=pet.alive&cooldown.rabid.ready

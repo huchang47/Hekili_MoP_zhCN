@@ -31,7 +31,6 @@ else
     GetActiveLossOfControlDataCount = function() return 0 end
 end
 -- MoP compatible item and spell functions
----@diagnostic disable-next-line: deprecated
 local GetItemCooldown = _G.GetItemCooldown or function(item)
     if type(item) == "number" then
         return _G.GetItemCooldown and _G.GetItemCooldown(item) or 0, 0
@@ -40,6 +39,66 @@ local GetItemCooldown = _G.GetItemCooldown or function(item)
     end
 end
 
+-- Safe local aliases for inventory-based APIs used by tinkers; avoid referencing _G inside setfenv'd functions.
+local GetInventoryItemCooldown = _G.GetInventoryItemCooldown or function(unit, slot)
+    return 0, 0, 0
+end
+local GetInventoryItemSpell = _G.GetInventoryItemSpell or function(unit, slot)
+    return nil
+end
+local INVSLOT_HAND = _G.INVSLOT_HAND or 10
+local GetInventoryItemID = _G.GetInventoryItemID or function(unit, slot)
+    local link = _G.GetInventoryItemLink and _G.GetInventoryItemLink(unit, slot)
+    if not link then return nil end
+    return tonumber( link:match("item:(%d+)") )
+end
+local GetInventoryItemLink = _G.GetInventoryItemLink or function(unit, slot)
+    return _G.GetInventoryItemLink and _G.GetInventoryItemLink(unit, slot) or nil
+end
+local GetInventoryItemTexture = _G.GetInventoryItemTexture or function(unit, slot)
+    return _G.GetInventoryItemTexture and _G.GetInventoryItemTexture(unit, slot) or nil
+end
+local CreateFrame = _G.CreateFrame
+
+-- Cataclysm-like tinker tracker for MoP
+local tinker = { hand = { spell = 0, name = nil, item = 0, texture = nil, enchant = 0 } }
+local function UpdateTinkerHand()
+    -- MoP clients can return either (name) or (name, spellID); be resilient.
+    local a, b = GetInventoryItemSpell("player", INVSLOT_HAND)
+    local spellName, spellID
+    if type(a) == "number" then
+        -- Some clients might (rarely) return spellID as first value.
+        spellID = a
+        spellName = b
+    else
+        spellName = a
+        spellID = b
+    end
+    tinker.hand.name = spellName or nil
+    tinker.hand.spell = spellID or 0
+    tinker.hand.item = GetInventoryItemID("player", INVSLOT_HAND) or 0
+    tinker.hand.texture = GetInventoryItemTexture("player", INVSLOT_HAND)
+    local link = GetInventoryItemLink("player", INVSLOT_HAND)
+    if link then
+        local enchant = link:match("item:%d+:(%d+)")
+        tinker.hand.enchant = tonumber(enchant) or 0
+    else
+        tinker.hand.enchant = 0
+    end
+end
+do
+    local f = CreateFrame and CreateFrame("Frame")
+    if f then
+        f:RegisterEvent("PLAYER_LOGIN")
+        f:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+        f:SetScript("OnEvent", function(_, evt)
+            if evt == "PLAYER_LOGIN" or evt == "PLAYER_EQUIPMENT_CHANGED" then
+                UpdateTinkerHand()
+            end
+        end)
+    end
+end
+UpdateTinkerHand()
 -- Use modern C_Spell.GetSpellDescription when available, fallback to deprecated GetSpellDescription for older versions
 local GetSpellDescription = (C_Spell and C_Spell.GetSpellDescription) or _G.GetSpellDescription or function(spellID)
     local tooltip = CreateFrame("GameTooltip", "HekiliTooltip", nil, "GameTooltipTemplate")
@@ -3343,6 +3402,46 @@ all:RegisterAbilities( {
     }
 } )
 
+-- Support 'use_item,slot=hands' by exposing a pseudo-ability that copies Synapse Springs.
+-- This lets APLs request slot-based glove usage while we still drive behavior from synapse_springs.
+all:RegisterAbility( "hands", {
+    -- Keep simple labels; behavior is inherited from synapse_springs.
+    name = "|cff00ccff[Hands]|r",
+    listName = "|T136243:0|t |cff00ccff[Hands]|r",
+
+    -- Copy all runtime behavior (cooldown, usable, item, handler, etc.).
+    copy = "synapse_springs",
+
+    -- Ensure the correct texture is always shown from the equipped gloves.
+    item = function() return (tinker and tinker.hand and tinker.hand.item) or 0 end,
+    texture = function()
+        -- 1) Try the equipped glove's actual texture from the inventory slot.
+        local tex = GetInventoryItemTexture("player", INVSLOT_HAND)
+        if tex then return tex end
+
+        -- 2) Try the cached texture from our tinker tracker.
+        if tinker and tinker.hand and tinker.hand.texture then
+            return tinker.hand.texture
+        end
+
+        -- 3) If we know the glove item, try its icon from item info (should be cached when equipped).
+        local itemID = (tinker and tinker.hand and tinker.hand.item) or 0
+        if itemID and itemID > 0 then
+            local _, _, _, _, _, _, _, _, _, invTex = GetItemInfo(itemID)
+            if invTex then return invTex end
+        end
+
+        -- 4) Fall back to Synapse Springs spell icon so it never shows a question mark.
+        if GetSpellTexture then
+            local sTex = GetSpellTexture(82174) or GetSpellTexture(96228) or GetSpellTexture(96229) or GetSpellTexture(96230)
+            if sTex then return sTex end
+        end
+
+        -- 5) Final fallback.
+        return "Interface\\Icons\\INV_Misc_QuestionMark"
+    end,
+} )
+
 
 -- Use Items
 do
@@ -4096,16 +4195,87 @@ all:RegisterAura( "synapse_springs", {
     id = 96228,
     duration = 15,
     max_stack = 1,
-    copy = {96228, 96229, 96230}
+    copy = {96228, 96229, 96230, 82174, 126734, 141330}
 })
 all:RegisterAbility( "synapse_springs", {
-    id = 82174,
+    -- Equipment-based, not a learned spell; use a negative ID so the engine doesn't require IsPlayerSpell().
+    id = -82174,
     cast = 0,
     cooldown = 60,
     gcd = "off",
 
     startsCombat = true,
     toggle = "cooldowns",
+
+    -- Provide item/texture like Cata for UI parity.
+    -- Always provide the equipped glove item ID; gating is handled by known/usable.
+    item = function() return (tinker and tinker.hand and tinker.hand.item) or 0 end,
+    itemKey = "synapse_springs",
+    texture = function() return (tinker and tinker.hand) and tinker.hand.texture or nil end,
+
+    -- Always treat as known; 'usable()' below enforces having Synapse Springs equipped.
+    known = true,
+
+    usable = function()
+        -- Prefer robust slot-use detection: if the glove slot has any on-use spell, treat as Synapse Springs.
+        -- MoP clients may return only the spell name; rely on presence of a spell rather than exact IDs.
+        local hasUse = GetInventoryItemSpell("player", INVSLOT_HAND) ~= nil
+
+        -- Keep ID-based detection as a secondary signal when available.
+        local s = (tinker and tinker.hand) and tinker.hand.spell or 0
+        local knownByID = (s == 82174 or s == 96228 or s == 96229 or s == 96230 or s == 126734 or s == 141330)
+
+        if not (hasUse or knownByID) then
+            return false, "no synapse springs on gloves"
+        end
+        return true
+    end,
+
+    -- Drive cooldown timing from the glove slot rather than a spell.
+    meta = {
+        -- Ensure t.duration/t.expires are populated so downstream keys like 'remains' work.
+        duration = function(t)
+            local start, dur = GetInventoryItemCooldown("player", INVSLOT_HAND)
+            if start == nil or dur == nil then dur = 60; start = 0 end
+            t.duration = dur or 60
+            t.expires = (start and start > 0 and dur) and (start + dur) or 0
+            t.true_duration = t.duration
+            t.true_expires = t.expires
+            return t.duration
+        end,
+        expires = function(t)
+            local start, dur = GetInventoryItemCooldown("player", INVSLOT_HAND)
+            if start == nil or dur == nil then dur = 60; start = 0 end
+            t.duration = dur or 60
+            t.expires = (start and start > 0 and dur) and (start + dur) or 0
+            t.true_duration = t.duration
+            t.true_expires = t.expires
+            return t.expires
+        end,
+        remains = function(t)
+            local start, dur = GetInventoryItemCooldown("player", INVSLOT_HAND)
+            if start == nil or dur == nil then dur = 60; start = 0 end
+            local expires = (start and start > 0 and dur) and (start + dur) or 0
+            t.duration = dur or 60
+            t.expires = expires
+            t.true_duration = t.duration
+            t.true_expires = expires
+            local now = (state and state.query_time) or GetTime()
+            local remains = expires > 0 and max(0, expires - now) or 0
+            return remains
+        end,
+        ready = function(t)
+            local start, dur = GetInventoryItemCooldown("player", INVSLOT_HAND)
+            if start == nil or dur == nil then dur = 60; start = 0 end
+            local expires = (start and start > 0 and dur) and (start + dur) or 0
+            t.duration = dur or 60
+            t.expires = expires
+            t.true_duration = t.duration
+            t.true_expires = expires
+            local now = (state and state.query_time) or GetTime()
+            return expires == 0 or expires <= now
+        end,
+    },
 
     handler = function()
         applyBuff("synapse_springs")

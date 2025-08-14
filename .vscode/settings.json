@@ -141,7 +141,9 @@
         "runes",
         "spend",
         "check_swd_reset",
-        "removeDebuff"
+        "removeDebuff",
+        "ITEM_HEROIC",
+        "BEST"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.runtime.builtin": {

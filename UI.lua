@@ -52,11 +52,22 @@ local multiUnpack = ns.multiUnpack
 local orderedPairs = ns.orderedPairs
 local round = ns.round
 
--- MoP API compatibility
-local IsCurrentItem = IsCurrentItem
+-- Always reference the global API to avoid local recursion/shadowing.
+local IsCurrentItem = _G.IsCurrentItem
 local IsUsableItem = ns.IsUsableItem
-local IsCurrentSpell = IsCurrentSpell
-local GetItemCooldown = GetItemCooldown
+local IsCurrentSpell = _G.IsCurrentSpell
+
+-- Safe item cooldown wrapper for MoP: normalize return to 4 values.
+local GetItemCooldown = function(item)
+    local start, duration, enabled
+    if _G.GetItemCooldown then
+        start, duration, enabled = _G.GetItemCooldown(item)
+    else
+        start, duration, enabled = 0, 0, 1
+    end
+    -- modRate is not available in MoP; default to 1.
+    return start or 0, duration or 0, enabled or 1, 1
+end
 local GetItemInfoInstant = function(itemID)
     local GetItemInfoFunc = ns.CachedGetItemInfo
     if not GetItemInfoFunc then return nil, nil, nil end
@@ -64,24 +75,35 @@ local GetItemInfoInstant = function(itemID)
     return name, texture, quality
 end
 local GetSpellTexture = function(spellID)
-    local name, rank, icon = GetSpellInfo(spellID)
+    local name, rank, icon = _G.GetSpellInfo(spellID)
     return icon or "Interface\\Icons\\INV_Misc_QuestionMark"
 end
+-- Safe IsUsableSpell wrapper (avoid recursion); fall back to usable=true when API missing.
 local IsUsableSpell = function(spellID)
-    local usable, noMana = IsUsableSpell(spellID)
-    return usable and not noMana, noMana
+    local usable, noMana = true, false
+    if _G.IsUsableSpell then
+        usable, noMana = _G.IsUsableSpell(spellID)
+    end
+    return (usable and not noMana) or false, noMana
 end
 
--- MoP API compatibility for spell cooldowns
+-- Safe spell cooldown wrapper (avoid recursion); normalize to 4 values.
 local GetSpellCooldown = function(spellID)
-    local start, duration, enable, modRate = GetSpellCooldown(spellID)
-    return start or 0, duration or 0, enable ~= nil and enable or false, modRate or 0
+    local start, duration, enable, modRate = 0, 0, 1, 1
+    if _G.GetSpellCooldown then
+        start, duration, enable, modRate = _G.GetSpellCooldown(spellID)
+    end
+    return start or 0, duration or 0, enable ~= nil and enable or 1, modRate or 1
 end
 
 local floor, format, insert = math.floor, string.format, table.insert
 
 -- MoP API compatibility
-local HasVehicleActionBar, HasOverrideActionBar, IsInPetBattle, UnitHasVehicleUI, UnitOnTaxi = HasVehicleActionBar, HasOverrideActionBar, IsInPetBattle or function() return false end, UnitHasVehicleUI, UnitOnTaxi
+local HasVehicleActionBar = _G.HasVehicleActionBar
+local HasOverrideActionBar = _G.HasOverrideActionBar
+local IsInPetBattle = _G.IsInPetBattle or function() return false end
+local UnitHasVehicleUI = _G.UnitHasVehicleUI
+local UnitOnTaxi = _G.UnitOnTaxi
 local Tooltip = ns.Tooltip
 
 local Masque, MasqueGroup

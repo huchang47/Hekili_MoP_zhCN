@@ -53,6 +53,7 @@ actions.cooldowns+=/shadowstep,if=settings.allow_shadowstep&talent.shadowstep.en
 # Use items and racials during Dance or short TTD
 actions.cooldowns+=/use_item,slot=trinket1,if=buff.shadow_dance.up|target.time_to_die<30
 actions.cooldowns+=/use_item,slot=trinket2,if=buff.shadow_dance.up|target.time_to_die<30
+actions.cooldowns+=/use_item,slot=hands,if=buff.shadow_dance.up|target.time_to_die<30
 actions.cooldowns+=/blood_fury,if=buff.shadow_dance.up
 actions.cooldowns+=/berserking,if=buff.shadow_dance.up
 
