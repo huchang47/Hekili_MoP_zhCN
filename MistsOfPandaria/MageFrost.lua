@@ -1010,7 +1010,7 @@ end)
             gcd = "off",
             toggle = "cooldowns",
             startsCombat = true,
-            texture = 135933,
+            texture = 135994,
         },
         
         freeze = {
@@ -1670,7 +1670,7 @@ end)
             spendType = "mana",
             
             startsCombat = true,
-            texture = 135846,
+            texture = 135857,
             
             handler = function()
                 state.applyDebuff( "target", "blizzard" )
