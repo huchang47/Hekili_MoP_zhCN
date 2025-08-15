@@ -233,7 +233,8 @@ local function RegisterMistweaverSpec()
         },
         muscle_memory = {
             id = 139597,
-            duration = 15
+            duration = 15,
+            emulated = true
         },
         tiger_power = {
             id = 125359,
@@ -377,14 +378,15 @@ local function RegisterMistweaverSpec()
             spendType = "mana",
 
             handler = function()
-                if buff.stance_of_the_wise_serpent.up then
-                    gain(1, "chi")
-                elseif buff.stance_of_the_fierce_tiger.up then
+                if buff.stance_of_the_fierce_tiger.up then
                     gain(2, "chi")
+                else
+                    gain(1, "chi")
+                    applyBuff("muscle_memory")
                 end
             end,
 
-            copy = { 103985, 108561, 115697, 120267, 121278, 124146, 108557 },
+            copy = { 108561, 115697, 120267, 121278, 124146, 108557, 115693 },
         },
         tiger_palm = {
             id = 100787,
@@ -395,6 +397,7 @@ local function RegisterMistweaverSpec()
 
             handler = function()
                 applyBuff("tiger_power")
+                removeBuff("muscle_memory")
             end
         },
         blackout_kick = {
@@ -406,6 +409,7 @@ local function RegisterMistweaverSpec()
 
             handler = function()
                 applyBuff("serpents_zeal")
+                removeBuff("muscle_memory")
             end
         },
         spinning_crane_kick = {
