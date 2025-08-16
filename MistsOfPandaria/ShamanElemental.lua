@@ -162,7 +162,7 @@ spec:RegisterAuras( {
     lightning_shield = {
         id = 324,
         duration = 600,
-        max_stack = 3,
+        max_stack = 7, -- Track up to 7 stacks for Fulmination (ES spender)
     },
     
     earth_shield = {
@@ -417,8 +417,10 @@ spec:RegisterAbilities( {
         
         handler = function()
             removeBuff( "clearcasting" )
-            if state.talent.rolling_thunder and state.buff.lightning_shield.up and state.buff.lightning_shield.stack >= 7 then
-                state:QueueAuraEvent( "lava_surge", "AURA_APPLIED" )
+            -- Build Lightning Shield stacks for Fulmination (up to 7)
+            local stacks = state.buff.lightning_shield.stack or 0
+            if state.buff.lightning_shield.up then
+                applyBuff( "lightning_shield", nil, math.min( 7, stacks + 1 ) )
             end
         end,
     },
@@ -436,8 +438,10 @@ spec:RegisterAbilities( {
         
         handler = function()
             removeBuff( "clearcasting" )
-            if state.talent.rolling_thunder and state.buff.lightning_shield.up and state.buff.lightning_shield.stack >= 7 then
-                state:QueueAuraEvent( "lava_surge", "AURA_APPLIED" )
+            -- Build Lightning Shield stacks for Fulmination (up to 7) on CL as well
+            local stacks = state.buff.lightning_shield.stack or 0
+            if state.buff.lightning_shield.up then
+                applyBuff( "lightning_shield", nil, math.min( 7, stacks + 1 ) )
             end
         end,
     },
@@ -473,9 +477,9 @@ spec:RegisterAbilities( {
         startsCombat = true,
         
         handler = function()
-            -- Can proc Lava Surge
-            if math.random() < 0.15 and state.buff.lightning_shield.up then
-                state:QueueAuraEvent( "lava_surge", "AURA_APPLIED" )
+            -- Consume Lightning Shield charges (Fulmination); leave baseline 1
+            if state.buff.lightning_shield.up then
+                applyBuff( "lightning_shield", nil, 1 )
             end
         end,
     },
@@ -559,7 +563,8 @@ spec:RegisterAbilities( {
         handler = function()
             removeBuff( "earth_shield" )
             removeBuff( "water_shield" )
-            applyBuff( "lightning_shield", nil, 3 )
+            -- Apply Lightning Shield baseline; Fulmination stacks build via LB/CL
+            applyBuff( "lightning_shield", nil, 1 )
         end,
         
         copy = { 324, 325, 905, 945, 8134, 10431, 10432, 25469, 25472, 49280, 49281 }
@@ -966,8 +971,10 @@ spec:RegisterAbilities( {
         
         handler = function()
             state:RemoveBuff( "clearcasting" )
-            if state.talent.rolling_thunder and state.buff.lightning_shield.up and state.buff.lightning_shield.stack >= 7 then
-                state:QueueAuraEvent( "lava_surge", "AURA_APPLIED" )
+            -- Build Lightning Shield stacks while beaming, too.
+            local stacks = state.buff.lightning_shield.stack or 0
+            if state.buff.lightning_shield.up then
+                applyBuff( "lightning_shield", nil, math.min( 7, stacks + 1 ) )
             end
         end,
     },
@@ -1044,5 +1051,5 @@ spec:RegisterOptions( {
     package = "Elemental",
 } )
 
-spec:RegisterPack( "Elemental", 202508014, [[Hekili:DNvFpUTTz8plhkGHpKup)YzNSu7dOzTfRblTf1zy)NKOLOT1SKOMi1D7am0N99qs9gLiP0LS1ly)rc8js(8(l)EiDw48jN9big25xwoF565VDXDZwUA1BwS0zp7PuSZ(uK)f0j4hjOy4))XiCmoHHI4R8uebfWPaLKN5dR6S)qEye7NtCoOs25CcstX(Wh2a)8CyqawUlm13z)Nohsl84)dv4vYYcpYr4V9zHKKcVOqkdw(ijRW7VIVegfodeHmYXWiGXFtH3(ZOyuY7k8QfXcVVTW7JKFRWB9S1ZMx497egsqTpa7)9ikoa4bq7)b5XZye8hNYdda(IsGFJYzNbYe6xsJ0Sqswiletl(GGa)wg2NeFaX4RHtrzL0wkX0zPvR)QD)POWtNzjHjNCPNdXrbVo84UBoKF84SURmlpvpjogboagj5uo29rmkLKiicoX)mkHnR1YZKlBGmHzyxCLjYLry4ybHe)AM6YgfgkgLXL5Uhx57WPNyISvleJofJQ3UEMLs4F718aWD)tua2LIZsbc5kxO2zGOGR4VHEacHEFEg)pkUUaIzoGHOgWTMMhfzW9ahY9a)mCDHfgJ3UO0l)ruieHKvh5uEC4qz5jUY)YLhCkLpciy4SAQSU9bOPHqa0JOOl4mQ7PmKpMVXyYdc7YSaGkOeF89ZBFkFuuuF(4tirbKhtOdVverWg(3FaCcj4yig((DRg(KuWvgHDzOStywP94VuZyrkzJ9SwIg2JXfhrWpI6Jtc46m48VEv8TMyZyWHIZEsSKugMXnQq0IBqiE7U7MRN7hIiKa3J5zp9SzKbcc(lC2fWA8Fjc(CtcNmTV(F)I1Z1AxwT(61kM1woZWXqSm9(flNFREXcsEzNTixDw)pqbRRLLlu2i1BTZQT3v6YuCJ65nLrYIJq0ZnMdXrfrzr5uMP4ZLZfjmCItzzGStFm8ilbtl70LIOuiJe(JerlMVdkZG5fdk8ye4CpqcH2qHXPKmqLl8YtUKaYuDlrbX1iW6yOwnRr55kvawOwI(iqViI)LAR5UfqDSVby3VMYPck6DCr9ygMEUW7N2x4LargGuFgeDmV3jVXDR2WFu60K6fnbLcKhQoFM)zdjinsrTbxx61KactrKH(1880EFVYXVAIbAvTHDlll09RIk5fEt5(0cVTakc6TLMHezZeoyJpw49kUra8E7RIu4OkIa1nemd8iKsKnIcWsehQTIKnngzSwvNZo7LVIOLZUfAiS2ei52NpBTMd0XbCJMOdGHwk7XTtVI39fDue9wAV00KMBL((6qriyIhB8e0WPYI1x663VgIrNCJUuAHCSSNC0MHc4EKKVnNYtgbBjvdlvtwKSC5eTMfr4ZVJtJqCQdu1vsuVhdzqSb(FNgf6hc6hnIRQWgOgs59ZWaSJKtGrjmQoBxJ0vXKxZj5oaqyaTTywxkK(ep7de1uomnke1JcEAq6XGnFbZw0IKJ9mlvoJWzSs1zuA)pGFIKe8o(3It7eHi2ap9KjaJ93tIWLzzaEKFqgbbXFqqiGOFOOfB19nCKAZxZNLwot()(2gPix17u6Ces8SYLWselZWjOdr6vJ6jfoqIQGJTxarJR(cmATaQ2qbfyCJn3(6vZne222)3L6FgQkOh)qEMioVjVecfOPO4oHcttiYwoNGPlV1SumEF(ioP4t0Cydwp5)ZhkQld)QcVwxH75HUyCEd9DHmMEAXYvBZoaTqzTIr7SIsq6(ub6MFkpkomrMM5Xh))nqOkd5FH(D11Wd6fpdR9iIx1ppHXlMZdI5WcGtEGNbp9(nulMtPVufruV7oqif3V7n6AfozQfFWg7E6n2Y00vw67j)yRArEtx9QQsuT1ryY0VUggskqTs)0n48D6ttnMv3L8FEjgL2k1s3QI22DRS5K3U86v9167zbuZ66ZfBvfLuOt4QjsyiaEZKPwdh1n9wpLqic)RC0fTx)XD61zmkEOggYT7Fgef3AfWz)d4mkSUYnE(ikJVi1z)plX0bvg205onNv8bN9IFXVjvz3E4x)I4QzlR(48EN9Yd5SVdUF5nOMfMkxv7ulo7HnaaUcr8lOTZ8efEtk8UHdav)ufI1lP2UcVfomqf7iBnKVzJWCfncDVze4uzLrQOjknqm6likgN5OHBTohNp3nG0EpxTQmd998n0TjTGt21JGSlfK1WqQneUHFCcVzmeU5W1dyWp7BmE2XRyV1inQskDH2R(SXPBQ0(pBw3SHrSL22bEjNOlMZPAndvAi1MBCjaIToIYHVRjftjts9IFBiFNR9vtWpKZjZODLVzszoT18MExcm4MHCOwP99V8yD5qvBV7f6Qiq130I9Sd1sMY4UvJKfqrsD5iJ6SkimKoT6lR3wLXUDt64qFopq0xYRdz4HHABzRQZO5XFShMCd)c2m9GpDkaQ8wr2R3wx(Vh4Lw0udmn7Xpnnv6maKAlN(aMuwwfLvReI2eTowRAv5dnOM83RWQs4XyFbjdv2yYyElHNAnGQYGnyZJZFjSDtRovBOWIckam5cVRx1Vou4A1A5YwqFjPZsGo3Apwvx5J7S5BhiSOXs26ydGJq)Talu1fYEZw10Tc4AJyxgz0KQBXSXoSvTm6ObRyKhc8llnHMWmmfTcwvaKU(6uxjpl8KiM4rkgHQDRrv0m(gZsu)jomHWWmcOHOU2HrKM3nvMLHsm2iTkAMFOTbP10r2bCPnhQdDeJ4yhB1Wy)G5E6JKQ3moDGs1GJWszVQkXkf668kY2L1wMuTV1G5cACR1C7vPE2SRrZAENz7vH(syr9lppYwTVWnegeTG5Qr1Qq)BT8fsh0E9Q2lGnelE7yeLTI(K6lJ0s60ns9aJ)Po3Vft2Y2tE05chQkyv3UjP37n3b3L5ctV0nOn2Jswi85jZ27dVOBbYo(g9L2mpHT21ARYRSDDjnBu9YeundSUdJzdEBRt2zWRq9VrLIr1emcdymAROCdIRC2BXUFPJPS2V5l4AogOdZOqhnIwi)boT2))2iyGIeQXxkVBvJym3uPeZv5TvRyQEyPTniv3R3TMcFmJu1(ZNPRTLydJa36lhU8NZ9kYN)pNDMKb17qXhiKliXxD(pp]] )
+spec:RegisterPack( "Elemental", 202508016, [[Hekili:vRrApUTn2FldwaJzWm1RpMRMm2anBBW2GnTfR7I9BYI2I2wDKe1ksnZAad9BFFpsDlsk5MMMSFibJ5X7(MYzQZV6SYJiOo)0SjZUBYJtVF807N84TFRZkXXyQZQyY2Nj7H)iIec))peqdPrcsaUZXagXdHaNLMSf21z1Mu)aXpg5SrpyFaoBmDlS89ZCwDW3ZJQolLV1z1VEWNN5I)JK5MJ4mx2o43Bf(SOm3aFUa2EhljZ9VtF2pWFmqijSD(ba6)lzURoqcjrVjZTKqZC)Mm3pY(Lm37gF34jzU)tMGiH2hGZ)ocN6b4aG9)M96bkb(X(uFpaVKi4VjPIday83MdJ4eFwIVWNYZ(Gea)scDllCdrG7rJjj5WwrX8XXf7F9I)AG)(dIi)O9R5h8PbE34VBXfBs3TBC7DgNgRhe7ca1GGfTpLU(vkjMfjbcnA7bsKyCTThR22ay8tORPfIO1cMGgkbK8Vg3CBJedNssqAU91BSoC7rMaBXgHK9HKYJRhzXmCTBqZWf)gXJUMttIbaTwTrPYGWbvX)OqEcAywaSq2PPGDZgky5aQ240aWU4Yq)KewcSoGKqP5fBp)Q(0DBaaImRWpK(00CZGps8H7NuAALdc4IjPrRv)AnA9Qyagq50KkOmR(n4X(Gj2RKGNPj817tiBP4jdzViLCJ9aWqI2sxoP(T2scc6IOTmwGh71iE)hLWKObx)fqnfrdbR8LlM3)n5GyjGUwqs2tf5cK)wjILoTvc1skQFDksos3dcFlnYd5zW840j5AvwVHGkNMCuULIggJsvWEATNp9Pf3orp23eWyER3LMC8SrKbac6lAYZG04piaEUUPJUSl)VC6Dt0kxMF3PtfiRoDMqdbJz(YPZMCLEYcCVfhSqxT2)prcRTKfjkBG6r7O6PBZvznuJ6XnxWscdi8dvId5vLwzbPCHj7ZztKomVhCT2a58GCx(qgVige6Q4QQeuyuRBYC9syXqIUc0blKMiJ0bMd4rdj)gMECtQ8xV6hbu4Gj5Ii4n3rQbpl75RgPcSDNK3WZZfjWj4V6Vter5555JjCoeTb(rKmb7BHyOumqxMRaeaKxy(qsy)Wywca4m30ONJaIVSGajW1Wz6qOwrqf)GCVhvYqYSOqMy22NnQUt501(OqJhWelGKVE8ggB8JrKy4m8yu5WblkI3XZvic8hWG)CmIEsWBqHZUekQZF)kWeb8Za50bqyrXAvWcLQv2ZhvWrjj5i1CGbgehWLneUPIVlnF1rxJ8yIgcjO(imQxN1lCJMpYaSkoWIz5Pn(zzIri3mA(K5(eu1gVqmK7cGf39Xm3RrHWBB4iWIcoQ8EuonYkjLPZQCGQ4Cvo4b65oYSJH0qFXunawB4i4Nys8UYcAezta1lhEtgFNviUbicHw4j3PeAxAjzzxJXRSWnTSoUWGZcQQUgl2ISt6YMRYYRlJ8cuA)7uHMqf13vIDmKhS4rOcIcLwxAiaU)AzKTIANwUy6Ol0fJwshZ6qh1rOScFw03a(Ya1aQtUgu2mcHcLZgzI5H2lOXbee6fri4yqybyEs)VXb(B9b(dJzipa3qCUTq4cHmOEKFqzionuNHWqfKP9Wr9cpbC4NPIP1a5qVZSg3rQmM3uzKl)3qpYI8EdUwyClle5bWiecz51)ROaAUJouG53RSGu2)qtC9zTylrUHRuk(QwopqEpzkQKnksUOyiEnp28TOQsqlCy1rtnA9ipq5kzn3i7ll6UwRhvqOrD5d1d(0jnlxpoTjO)7Gvb(47ZlEPYVemf4XKWwMcxIfeHz92te0RmtfdxNpGBkxINchW6n)S3hCBe(vvb4TjUZQKQoC25MGBO6tT0XiJo4kFSyzDvVpni0ps5D5Id65bWcvaLQZFBzOBVoMXWEVsWG9PrcmgoA7IfKa3Cd64E5Y75wKIkvyZAX6mLijvSCXd6Yao6sZ(XlV3Uc(EBoy6Ig9DSFOwii3lNFDrKP68iHrV(RQMAveunVoKoufFunaKB17DA0zUn4pl)HCruZa1nPONwm3MU9PzNoPpYEhgVPhsxSylgOccTSsnbIVe2T1iW)tk5zTZ26w9sekjSVKhQJV9aG21LSNZQxOjCy)IXEpz6ToRELKGBYDw9JQ67GWf33AK2JZ(GZk5FHJtxL5h(RFsoF(8iDoVZzL6soRA1gIAa6j(XQD12eLZk4aqXx(eCk9TAVjZDuM7fyXO6BYrUFo0wK5o1raSylARc891ItlObT6uXzDUeIQ5dhvntoGi6sCwig6bkZ90P8TBQODVQdlRHeLidjWBnsGGqvRZyf4QTocQ7mZRsIzjsmf6RUuEfCR8UrWE)aa7mjy7HCRWgc2hmyGk7ebStHock)HzuAVnLww3FgBWc5OhnWrf9czGpk41YJbG6BTdQzdduZqqnDIr93WTbM2oCsfqmxi0amjAHLEdmOVDGk41UtcjuLXakXyJIqQJnKea7LDKuyDnrqByk18vBQaFR3SPREccPcSPmI9A1dJMhZ2ACXoVGdOWHWF1cR39LF0f(R44TFnMgeu5G9ShFQzkrLf48bIcijOUiwd6UnkRuP1kFUnBz(Axlrln658(VFkp(RH39TvKF9v)aUowntUaNNRP3ZTvEJgpfS9uLLP37uXAnyQP28EZVPVz3MLu0Tk5gB3S06Aoe1bQoBnLXKM3oScg5)wtoqtrtAyr9hYBkRpcIYSh9ISyWRvL0KeT191WSakkuQBhvYquq3wQkL0TpWjZVtTTLAZvWzgaNRSB9RlG0T2Sw6XqRssw7A29uoRkGgEOvSmY5fsAZn5iLOZucutvpIsXZVasZeu3o9o)6i7d6ABcuPFFWC9SdrETu2q1qmaVVHGRw3R6QLThBYwWr2KPUcipNk1GopllCSmnA7MmBvStvI((k3P13KH1ON2O6ADnzUPkTHkq52eDHMnhp4SrFf4R(apS7V)PGIYp5JbMM8lCO3EZ0Bo6rjl0D6YFH4bTJb3EqQ(qXJdHuEsMrs)KdQrD6MKH5ymAMjJfr2S6Dn0AyqwAI1(CJ(S(jOOVOr9tA6s9zc6jQtJr2GwDow6bVws8McbCPb9TQCZz(TQm0puL(Rer38ak4RoZAPNNa(tqC3C8o2NVGf4GZxq)3tI29Q7fwR8IUWU6GQHQOVCjr7wrTvkETB2QTtF9VgBlJEd1YHcAR1dkzaRzj)eMSIPPluRUVMm7VVNSTNcHSM9C4LNoG0x)50OQ5uq)FuEuZzRoRwKmxrS9X3RlxA5i3BhyVhAR5CMBpLttMtgdZwV1HwHc67rJVXYJgFZqE04UEgF10AvzsGsXP1b1It)ivCGLaIns4gg7zICvN)3d]] )
 

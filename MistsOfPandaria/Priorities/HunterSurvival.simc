@@ -43,18 +43,26 @@ actions+=/call_action_list,name=defensive
 # 14. Aspect Management - BOTTOM PRIORITY
 actions+=/call_action_list,name=aspects
 
-# OPENER ROTATION (First 10 seconds) - Based on CSV analysis
-# Sequence: Glaive Toss → Stampede → Serpent Sting → Black Arrow → Fervor → A Murder of Crows → Rapid Fire + Blood Fury + Synapse Springs → Explosive Shot
-actions.opener+=/glaive_toss,if=talent.glaive_toss.enabled&focus>=15
-actions.opener+=/stampede,if=cooldown.stampede.ready
-actions.opener+=/serpent_sting,if=!debuff.serpent_sting.up
+# OPENER ROTATION (First ~12 seconds)
+# Requested sequence:
+# Explosive Shot → Black Arrow → A Murder of Crows → Fervor → Multi-Shot → Stampede + Everything (springs, racial, pot) → Explosive Shot
+actions.opener+=/explosive_shot,if=cooldown.explosive_shot.ready&focus>=40
 actions.opener+=/black_arrow,if=!debuff.black_arrow.up&focus>=35
-actions.opener+=/fervor,if=talent.fervor.enabled&focus<50
-actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&focus>=60
-actions.opener+=/rapid_fire,if=!buff.rapid_fire.up
-actions.opener+=/blood_fury,if=cooldown.blood_fury.ready
+# Try to cast AMoC now; if focus is low, Fervor will be used just after to enable it on the next GCD.
+actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus>=60
+actions.opener+=/fervor,if=talent.fervor.enabled&cooldown.fervor.ready&(focus<60|(talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus<60))
+actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus>=60
+actions.opener+=/multi_shot,if=focus>=40
+# Stampede + Everything bundle (includes Rapid Fire and trinkets)
+actions.opener+=/stampede,if=cooldown.stampede.ready
+actions.opener+=/rapid_fire,if=cooldown.rapid_fire.ready&!buff.rapid_fire.up
 actions.opener+=/use_item,slot=hands,if=cooldown.synapse_springs.ready
-actions.opener+=/explosive_shot,if=focus>=40
+actions.opener+=/use_item,slot=trinket1
+actions.opener+=/use_item,slot=trinket2
+actions.opener+=/blood_fury,if=cooldown.blood_fury.ready
+actions.opener+=/berserking,if=cooldown.berserking.ready
+actions.opener+=/potion,name=virmens_bite_potion
+actions.opener+=/explosive_shot,if=cooldown.explosive_shot.ready&focus>=40
 
 # LOCK AND LOAD BURST PHASE - Based on official guide
 # Lock and Load gives 3 free Explosive Shot casts (no focus cost, no cooldown)
@@ -90,9 +98,6 @@ actions.cooldowns+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_to
 
 # Synapse Springs from Engineering gloves; use when ready
 actions.cooldowns+=/use_item,slot=hands,if=cooldown.synapse_springs.ready
-
-# Rabid (pet ability) should be used as many times as possible
-actions.cooldowns+=/rabid,if=pet.alive&cooldown.rabid.ready
 
 # Racial abilities - use with other cooldowns for maximum effect
 actions.cooldowns+=/blood_fury,if=cooldown.blood_fury.ready&(buff.rapid_fire.up|buff.fervor.up)
