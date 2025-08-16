@@ -16,7 +16,7 @@ actions+=/expel_harm,if=chi.max-chi>=1
 actions+=/blackout_kick,if=buff.serpents_zeal.remains<2
 actions+=/surging_mist,if=buff.vital_mists.count=5
 actions+=/spinning_crane_kick,if=active_enemies>=3&chi.max-chi>=1
-actions+=/jab,if=active_enemies<=2&chi.max-chi>=1
+actions+=/jab,if=active_enemies<=2&chi.max-chi>=1&buff.muscle_memory.down
 actions+=/tiger_palm,if=chi>=1&buff.tiger_power.down&buff.muscle_memory.up
 actions+=/blackout_kick,if=chi>=2&buff.muscle_memory.up
 actions+=/tiger_palm,if=chi>=1&buff.muscle_memory.up
