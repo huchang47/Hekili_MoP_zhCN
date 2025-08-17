@@ -113,86 +113,73 @@ local function RegisterWindwalkerSpec()
         tigereye_brew = {
             id = 1247279,
             duration = 120,
-            max_stack = 20,
-            emulated = true,
+            max_stack = 20
         },
         tigereye_brew_use = {
             id = 1247275,
             duration = 15,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
         },
         touch_of_karma = {
             id = 122470,
             duration = 10,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
 
         },
         tiger_power = {
             id = 125359,
             duration = 20,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
 
         },
         power_strikes = {
             id = 129914,
             duration = 1,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
 
         },
         combo_breaker_tp = {
             id = 116768,
             duration = 15,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
 
         },
         combo_breaker_bok = {
             id = 116767,
             duration = 15,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
 
         },
         energizing_brew = {
             id = 115288,
             duration = 6,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
 
         },
         rising_sun_kick = {
             id = 130320,
             duration = 15,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
         },
         zen_sphere = {
             id = 124081,
             duration = 16,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
         },
         rushing_jade_wind = {
             id = 116847,
             duration = 6,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
         },
         dampen_harm = {
             id = 122278,
             duration = 10,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
         },
         diffuse_magic = {
             id = 122783,
             duration = 6,
-            max_stack = 1,
-            emulated = true,
+            max_stack = 1
         },
         legacy_of_the_emperor = {
             id = 117666,
@@ -672,7 +659,7 @@ local function RegisterWindwalkerSpec()
         width = "full"
     })
 
-    spec:RegisterPack("Windwalker", 20250806, [[Hekili:LM1EVTTnq8plfdWijTrt(vw6Gva66kqBXwXaua2)jjAjkBwllkirfxxeOp77i1lkjszLSg02y(4EF)U7ODM78OJDaIHD(2cZfRnVF(cJflnnxm3XMDob7yNG8pG2b)sm6i8V)ljo4ek6aoLV15ikkGtImAEQpSTn54htrHScV1RU)27DS3MtIyFj2z7q2Sy97xT0XgLZ2tbQ9zYrmYXEpjiaxEECMVJ9J7jzfE8)Ik8QeMcpAi8zFgHgx4frYyW2H00cVpJpqIigGSLsdjrGe9lfE)nn(WVx41k6fFfwTNOw8v(pW6wQ)JyV)jfF7hPh3IGBzJz5jJFJsjmZijf7lU1BT(1i8oK)zxAOlBp2fFmbNstFhj0ABEyOrgdXYmcONINj(SYtl2Fku)0Ecd7Yi7WTCWpLW0YaPlmctsOcd)Lnx)joehNrEcdUN)c8stZAf0ClGxbiqNJD3JspYvbgkchdYF7Qg4y02iCqP6WO5(75AZbyluPEUhJIy7ns8zBSUZuhFiHH5zy3JODeFzojV(lNxx0e9rAkEsMLg7EJNCBeLgeLNXmsXWHE(zgkDhMzWGejxg1nGG7OWaf4Ac4HpMjV4wCAgo9ajEN8Q(7jUBtXNKSf1l1ygGf2yTy2vSus8bGZqsNVbyOIiSZ1c1v(75IvM18zqiK43D5s4gR5Mx)8Z17UqP4xT7nWrLLnraQBck6yJXOAj6jiYnfFerIZ2yTKlHpynFWDXNXnkx71Rx1fmtsPiD2JNH6FWAH5RMMcrcmA6OniVRvAmwzE9SaS4APKmWD5MLh7EG4FWipz2aRahCQveXX40DKFYVvJxTI2hr)WvS95hwlFLEmHFfnSxsVEbUjXT0qXkx4dZNPqkNRWTsIFIEa7(JCCSueR0Q1bTD0qGDLFYLxe5D8sCwikMtb(6pH5S8ibN9G1YlErUgebYQWZnKeBwob4aBbnU9rbnk8UY(XRNe6GrhMZT91GtbyeBFJ9x8j3ykdZJzeMXL6jIIiGEE5bxjKxmMZ3W80ZnSTx0xPRxHND1WW46iHvxuA5WtNqpH7HyXxQbXsbphrzeaE5PzS(GG81EL08NqDRSK9qw)78p73SdGpkXK2dnkxM9MaANdZaVKmo(aUVncqyO5Sg)zzpbqLDk3ZGGMJC3spucE3pLEyq2We8UKILurPR0Tzfsnh(FOcAT46(P6dKHVJ2wfxAa382ljYdmaLS6TL)NrvkBkEho(gFknIhPQfDYALzJn6IP2Fau7BPH3(PWqSpp3(d0pnXKBassa6KTNlgFhfaDQbnZkfWmyVbWDve51g(DXiTsYpHCqvx5IjzdSfkrMQJc6F6SesCm)8(POyCZn0A7cizQ56KG9RdEVZ0X(jO3k441J9yENJ9jukxwYCS)YXeAkdyJ36EtZyu8vyMQeSpCX7EVJTyrXCwYmdw4BIb4Qmso)bmnLGmWWBDW)lhMkLKuUPUaoLLF0fE6yZhLaNsq8P86xBPWBwHh4ok8EaO7shgOj9e12R3CUfTkqppmNal1saTfzeIXqKfGBfEReBQRGJ0rKuJgXRtDoUWTsRWPlpyertYouFnopwpfE0nVz6mrCpoxUttivB2VcopeYyuwl28nfEQrva6lJnXJYb563g39RPiwxpOKo3PsaN(3)sOFDLnb5VQkmsx9TcVnwcL(5N1ysk3(6Uc7CP05MkTCj99JLjjaa9UvTsdvl5eyUPwkulsVTWtrnXcVBacFH6ILCDL5Kn9mo(uikpAuiTYXFNkuMyW6jJD1Bw6kp1GzWkDKaWEnCwTS1myTSKxdz1O2ndA37utc7qEY7wlBvGvzqO(5WlvOR4xsmrnyzG4lX96mvEjbNBkIf5xr(8lgXSiDYBQiqp4fq8hhdtpsmxMwoXCJ(OxQO)GHY7vjO7a5L6UzpgwFMjGmncpBZo6aKOukeQ96r9bRmRbr0(qbQl6LNmI6Phyud8(6wI1RO84OxJ88cAXsu0NWiOBkFeIXmyYDdmFSsAZNy858(WBds2v8OfTetAtb103uvfSD1RpmObME9Yw2JPB5J8dD7kiU(gU6t8ntM2D7GvG9382YJH(R8LW7vmy4d9p4v(1oSLI32FYvpAF1(2Sl9VC)49cx2ir9J0RJE9FOED2jPZnOCuD9u5srSsN)i(Hbtln1cYQN)Dk24lnJRkd6)NMwFH9LQplrtN)QBUFAnbi3CVM(31xHvGozjqP4DjokiQ(6OxCS5w6QyW7XRxk3q8DMVAeL2VANXcLL(wKMAq8GVrRxq8RIV0kPIXd)YKeB2(fknO3ZXCok)AREvCR1AjtshwZpo)3]])
+    spec:RegisterPack("Windwalker", 20250806, [[Hekili:LM1EVTTnq8plbdWijT2ZpZshScqxxbAd2kgGcW(pjrlrzXAzrbjQ46Ia9zFhPSKOLiPvYAr3S5J7997UJ2zMZto2big25BZNoF107ND3K5txD3S7CSzhtXo2Pi)DOTWhsq7H)7)sscoGI3HZ4BDmMIc4KiNwK5dBBt2)PmuiR0B1Y7hFVJ9Mcsm7RjoBuZMvo2OcwefO2xi7Xih7isqaU684CFh7NIi5LE8)Hk9ojmLE0q47(mcnP0lMKZGTdPzLEFbVJetMaYwgnKeds0Vu6930KD)EPxROx(iSAhrT8r(FH1Tu)hXE)tgE8NO73GGBzJzfPMVrLeMpjnd7lU17S(1y8wK)rxAOllc7I3NIZOzVNeATPimCsodXYNeqpKms8DLNwS)qO(Hicd7YiBXTCWpJW0YaPlyGjPuHH)YMR)ehItYjpJb3ZFbEPHzTcAUfWRaeOZjUrOS9CvGHIXjG83U6eCcAtmoOsDy0c)iU2Sd2cvPNryumlAsQpBT1Dt1Xhsyyro2DpAlXxMtYR)651fnrFIMHhKzPXU34j3etPbXf5SjfPV8cdLTfZMWGSixg1nGGptBHRZvdW9UpxEXn4SCC2osYw5v9JiUBYWhKme1l1ydGfwBnF01SmsYoGZqgN)eWkftyhfs01(rCzk3A2ii4r8zxU4T2A20BE5L6DNRu2pT7TWrLfmrOPBkkEFJz40s0dqmBgEpIKKV2Abx8EWAwV7IpIB0S2RxVQlyJKsooBpEUP)oR5tFZ0uisGfthTb5DLsJXYP3mkalUwgjh8vU5fjU7i(7ad9OEwboSuRiItWzBj)KFRgx6jAVh9dxX2hFyL8v6We(v0WEj96v4Me3sdfp5cFy2ifs5mfUvsYZ0Dy3FuGtKcxLwToI9mneyx13C5LpEpV4MfII5uGV(Zyol3tW5pyT4IxKRbXGSk8C9jX6fdaiWwqJXpjOrP312pDZGWfMCgZ52(AyPamIf1y)fFZnHYW8ygHzCHEIOicOJxU3vc5LH58nSi7ydB7e9v56v4zx2pmUosy5fLwo20b0Z4oWv8LAGRuWtdkJaTRilN1fbKV2BKM)eQyLNgbz9V3)OFZoa(OetApKrUm6Qa6zhMbEjzq8ECFtmGWqlyn(ZQUbGA6uUNbbTf5UHURj4WGIOi7(C6WsBWL6Trde98U5Y94Z3rBof4nb09XxsS6PHvgR3v9)MCkNmdVfNCRpLgZdf1c)yTCAJD4I5UFeuVX0WXFome7ZtE)i9Zdm7fWCeOk5rCX47OaOjmOpvPiIE71wbUrj6DePsaNyXBn67IbAvKFaPGQUYfZX6zPucmvhJ0905PKKe(59Zqj4MBC1LmT99pdb1)uYj02LJ9ZqFvWXRN3zkmp1bugxwYDS)6(uAgdyJ3QoJXmP8rhBXNetvjZbyHVjgx7Km68hWStI7cJQDgMF1OtzK0Qn1fdQSKJUiwhB(Gd4mcIptx36jLEJk9aFqP3daDx4Wa9UJO2E9MZnVvb64w5eyHwcOTWIqm6dxcCR0BPytDfzKoIKA0iENvBJlCl1kC6c(niAs2H6RX5XQHWJZtwgote3JZL70es1MYRGZ9XjmYAXMxv6PgkbOVmGepkhKRFZS7xvHRZDFsk8zvg4e)(xdXfvZAJE0vrR0BTvTU2ieZKYrBQAYLGpyk9qaL5nwTYavf5ey2uTuO20)Uspf1(k9Ufi8fQ)vX1LthSjLXbDcrfXgXPQMGDO4tIzJhmGK84WLEV8ceo2BsQkFeGpxdqvlynZgll21Gqn6CZSYDo1GqdKhEU1S2gZCniWQhLUsBUMFdXqXGnbISex6SbRRO2mWPDt1vKp)Cd2ePtE7jc0bTaKDZqs6bw5Y0IbMv0fmsf97nxDhG9ZNPUs3N2HH1Nzaang4zBErTduVuiu7vg9blRCCaL0oRV6AyfPgup9qDAqRx1sSo1ynJBz4fc0IIOOSVbCnLVJGjdMCX9zMQqnBGXNZ6cS1ltxX7o0smPnfutFpsNaSp9ac96hPt)OvTm6w9c9qhRcIRV)PUeF9GP95nKkq9BEyyt4(kFg7oLb6)k99EIETJtP4H5hCDJ2NCVn7s)ZUBU12QgeQFHDD0R7RSRZojDUE1IQRKkxhIv58n4h6nWZqlfREc3HyJV4OwImpttYQYK))Pl1xzJO6ZJ00QV6U5hwpcYDZRPHD91Gf4xwcCmEhKgHz1xP9kEbkZ(SwkRyaBZ1uBaDR6d7TI60(B3ykCx6NjAOb69(jREfX4k(vPKky3)xlsSz7VyuVMtnfTO83L6nXTwRLmjDozOZtX(G4C3heF15)(d]])
 
 end
 
