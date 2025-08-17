@@ -232,8 +232,23 @@ spec:RegisterAuras( {
 
         thrill_of_the_hunt = {
             id = 34720,
-            duration = 8,
-            max_stack = 1
+            duration = 12,
+            max_stack = 3,
+            generate = function( t )
+                local name, _, _, count = FindUnitBuffByID( "player", 34720 )
+                if name then
+                    t.name = name
+                    t.count = count and count > 0 and count or 1
+                    t.applied = state.query_time
+                    t.expires = state.query_time + 12
+                    t.caster = "player"
+                    return
+                end
+                t.count = 0
+                t.applied = 0
+                t.expires = 0
+                t.caster = "nobody"
+            end,
         },
 
         hunters_mark = {
@@ -520,14 +535,11 @@ spec:RegisterAuras( {
             cast = 0,
             cooldown = 0,
             gcd = "spell",
-            spend = function () return buff.thrill_of_the_hunt.up and 0 or 30 end,
+            spend = function () return buff.thrill_of_the_hunt.up and 10 or 30 end,
             spendType = "focus",
             startsCombat = true,
             handler = function ()
                 mm_last_spell_was_steady = false
-                if buff.thrill_of_the_hunt.up then
-                    removeBuff( "thrill_of_the_hunt" )
-                end
             end,
         },
         
@@ -564,26 +576,17 @@ spec:RegisterAuras( {
             cooldown = 0,
             gcd = "spell",
             school = "nature",
-            spend = function () return buff.thrill_of_the_hunt.up and 0 or -14 end,
+            spend = -14,
             spendType = "focus",
             startsCombat = true,
             
             handler = function ()
-                if buff.thrill_of_the_hunt.up then
-                    removeBuff( "thrill_of_the_hunt" )
-                end
-                
                 -- Cobra Shot maintains Serpent Sting in MoP (key Survival mechanic)
                 if debuff.serpent_sting.up then
                     debuff.serpent_sting.expires = debuff.serpent_sting.expires + 6
                     if debuff.serpent_sting.expires > query_time + 15 then
                         debuff.serpent_sting.expires = query_time + 15 -- Cap at max duration
                     end
-                end
-                
-                -- Thrill of the Hunt proc chance (30% on focus-costing shots)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
                 end
             end,
         },
@@ -626,7 +629,7 @@ spec:RegisterAuras( {
             cooldown = 0,
             gcd = "spell",
 
-            spend = 40,
+            spend = function () return buff.thrill_of_the_hunt.up and 20 or 40 end,
             spendType = "focus",
 
             startsCombat = true,
@@ -640,11 +643,6 @@ spec:RegisterAuras( {
                     -- In MoP, Multi-Shot spreads Serpent Sting to all enemies within range
                     applyDebuff( "target", "serpent_sting" )
                     -- Note: In a real implementation, this would spread to all targets in AoE range
-                end
-                
-                -- Thrill of the Hunt proc chance (30% chance for Multi-Shot to proc in MoP)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
                 end
             end,
         },
@@ -670,17 +668,13 @@ spec:RegisterAuras( {
             gcd = "spell",
             school = "physical",
 
-            spend = function () return buff.thrill_of_the_hunt.up and 0 or -14 end,
+            spend = -14,
             spendType = "focus",
 
             startsCombat = true,
             texture = 132213,
 
             handler = function ()
-                if buff.thrill_of_the_hunt.up then
-                    removeBuff( "thrill_of_the_hunt" )
-                end
-
                 -- Track consecutive Steady Shot casts for Steady Focus buff
                 state.last_steady_shot = state.last_steady_shot or 0
                 state.steady_shot_chain = state.steady_shot_chain or 0
@@ -694,11 +688,6 @@ spec:RegisterAuras( {
                 if state.steady_shot_chain >= 2 then
                     applyBuff("steady_focus", 10)
                     state.steady_shot_chain = 0
-                end
-
-                -- Thrill of the Hunt proc chance (30% on focus-costing shots)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
                 end
             end,
         },
@@ -1536,4 +1525,4 @@ end )
         width = "full"
     } )
 
-    spec:RegisterPack( "Marksmanship", 20250705, [[Hekili:vZXAVnUXXFlgbvXoxov9(8fylGMMuKC4sqa01VkkkQvwSwIuLK685cd9BVZUlj3xZSK02OxkkAsm1UZ7x7ml5YHl)0YfBclyl)9rdgnDW7gmT)Gbthn66LlkE8iB5IJHr3hEh8FKeEa(N)wy295hctY3fFK)JpUpnCdhi5PNYIGfSCX6tX7l(1KLRrH8W3dR9ilcE80jlxSlEZgMCTS8OLl(0U48ZR4))WZRkX95vPBH)oQion58Q9X5fWpVnn78QFHDF8(4(lxiEiNmyFHfDcq6Nw(7cEJLeUEpBZYFC5cjawUa2Y(G8DPfsCMfFu(8FwUvaT7cZH)1LfHz3XkoVAnBF6dNxnAWF58QDSW9f7UA5cyFfSS4qqojwwF5VeCmc2Xn3Yx(5v940z0jGCNdpzYGLfaBBrwTfqRpTDB)dH5WIdouQf6F6OIVcJpW2izmanJFMOzdtGOCw2rwsrqErCYDaAS5LXduioAhG5SWAup5zIAdrLINl2LX1yPBdk2Xc2DkPWKTZIcty1iF6ld58NmvJ3aXD4MhRGoyYSpn6(GWKnbLg(KMzSVCCFAE8Nzy2AFeGcysNS58QpcWbS5YsJoVcuPG9(bqWBs47HN03eG9lrPsozqzCrKxJn0Tia2fNx5fJewCajFKveOXcEeos748GOW97Ten)b3L7ub4xx8yPicxSuzPcoNmjX)0t12VzPPfSMLcLmACsr8HyiAfqbgc2sBMOqHFG(JGnWcksd2edHkMdgnkMthA(DfbrniZ6hUhKXcGhLEyDyHMRfiFc4I1H(DSmHIuceEmEtW24mMH7YAgWkH7dEilSyNuTj5OG8hIlI25tRX994AnE4ha7pgThebInNZ3KRUrFd93K(qIpjipKIHLWNkJ)kjmH8xyoCmlontyDiHe8lyA5Axy9qzwsFFr7iiZHY4fCOdogSe2HywzGJjicfe9pACted7UqutXrnTfJn9lcQBhgwps4Ht7lI1C2dt9MLvB5MA1)w6pRRcd38VoLxW9TZFoKxB8U9e4KgnkJdRTR7mzfJVH0UcIzDywgemRrQyQnZottxucKMs2kq4D7d5aVinpVrKoYgPd1cRPbOMs0kq8riUCwRK4tqQuQgT1GHJ0zDYEEcPMSaIosOj5)ehvVZFQt0QsOfSK1RC9FsJAXJifMX2EAFaKM3NNUwvaME6)D5(pV6VfFaQH)ipR4)rKvekUofiDriDr12x5iF1qUfRPxahWzV3P4Xznew4LaF)1h6X9NcPTtD6qtugksfxAglilTqwbIhvNLrMP2daY5vvqPoKny20wRrE5yxs87zSdHXjvwG9N6Z296ZRUYVg1Ne8sEvvP75vF0xpJlqcGMtsLUfmXrj5bCAmiVNmopZ8k0H5FjwZ25vmpc5l8Ou2bYvN72BG8sPZXywweOgf7iVIPW)rdJjTqTMlZFqD60HOXmBDLsob4BDEeQFoViKF4rrPkKPvEVFSwg2sWaQcZjuCwX4goOdW2q1mwXxgls303gz2HUuit3gEwLRoMNm3dxDO2nWJdwZGt0P8l5ROoiH2cQP(5IcYUIuCpKo2KHRwtKjvKkfzm2KmSob(wWyHL5nKVM81UNep82sIvcgQy(gPcRcQHQvBonmTXYOUBSqhx2OZv6rsiYkn3W3kkDDRAVLBdSU0xpSKQCSKEC(NxXgTbhDSzx7nsmmL2qA9PSCVDWrz8Azg9J8Dw3ev9Q(SQBaZhWjOABoFxyWHtzByzCXBuw6d5U9gJOzio7Svz33)yYxcYoLVZapTVfm17Vfj2DB4BJGVTjX9v0Kp4BxneDQ8M1W6PzSSWB48xUGLodEBYtlIgULLWR6YND)ggqfzSKiB7(FQA3uHnJtIspWRgzt4b4W7btLXzKfrbk6VCE13DE1G(t8B0BdMXeGzMIM3YIVljydt2XVMhnWMyOgdGdLHjU2ieFiF4nf1rYcF4ETtYGSI4S0KQLPPRnwZH0K7zp63BW09I)xqmvGJaAKZTxxgPl5EXjzQvXX5805Y)sMHKBl0YUutNR8FiTOuGHosNeHvbFf6N5w9Y6gvS6))itQj7iYLuEeUgtRoP7PvBOoznHOE4e3neiJqiTdaVZSG1PjNYz5(Sbi7UXNI5viLZBqDzxP5tWHYkawNeB95iE4KGjhJ0QYV(ziXiBQDgwGEAWihqlEM1zOSJ7thGN2yWb1UC1ucUYtKFAlbl8ndHvNPZQOPeisa4jtPdADzZz6Sj(rSOC2KzEcbAbZo0WM73a3OQHeP3e98hbqEqtGEc8nR4lHLt1VaM7baBDixhji64Q1Fm12sM6OluvzY7VG8UdSjlKLehfeENy4EyQ6Atq1CVSgspyzEhK99rroaZiWc3WYjhAvRzD2d)kA3KmgT4W58oevibKZgo17V6ON1SfJsfJuRfvjvwSAEm8VQBcYlF4MMWBP3gC8QKZ2PvgMtlolgQngSg(P)yHQBLwgsY)iGFjrKxvKaPbz1PTfL970wJwbcR6Z1lSaR7fTcMMTV1F3fWIWnUL4Hpbpo0jNpPVnx2Pbr4RJG2so4AFjsDkC0sv(lcl7F48k97y05v8)3FKXEBvupiympKJmNRziGLihW0t1OT6SLeBVApeSx9c9N)0iYewWVQqKv)K5e4nIGthvJUh9AU1ytrOY7WxBaGmzXjS8CNPhi3Sh1tRo9EDdX0c1Qxoztfhr3NHlToxO2KaS7MUwBy0A7HxnBxZsoYOFRHhoY20UX76x85PvJ05Rn77ewlsAC2VTPfjpdABOztynAKIVeTKn(vZoaoF824O4cv)7AXKHuWSvjJ3YY(CAMb6nAMQcWYv6p9A1nkiozJV87QtZpV(08EUgjvuGoyXsd7qhKxIkt1o5aQvO26cuv4nn7Z5SB)MaCQmnU3)UYlyQ44CHYryZ5MfaSGAmZf3iwlVDFTQZ(3SMyvZNU)f3hWgcvraF6MttHNNx)mDBA9fOXIPWkDaPgLEDy0PeyNBFM(5MTgnQqiAhJveUZ2WSeoEpmtvLq9O65wjSBrnoibigoTcYLfneLMakh8bvB9B(n0W7UOEW0CwYDnEVMQK140Tw80R9CpEbD2dHz8BGso)sNdWi(WX0Sk)(VT8EK)TWzky)7tGRfOnYtpaRJF26dHf8heTlm5owE)ZF4JqnqajafV(ptYpDKdj(cKyhax9SV)26fpICXkJl1QhtUA9U1Wx)5pGWogx03xlMY8wk0DodLsLgjLxg1UrPVqzeCCOUHpA(0vYGIrTqpDdZ06etjSaNBt3Vp9bXj8dpLfcohpW4xTNt58DYBOubFzvGGFgpEuLIQ1LKki4tjgREZg(IHC0HRdZz)aWHRElqOkoIIN1pCB34AA5TT(Tj7bkl3jTuUkx90U4UpJCXM3sf1og2w)OVYAz(tm5HYhQ3bucRbzxe6MzaTy)RSyPf8RyS6DJDFTSjBvmW6rG2nAK2tdBqFKy3E2CTLi(ZOMwF(sTLp6wW9Ugu8RTuI)iTX2y8GjIhqyrYhns3eH0bB17FUsi(oY1B2UB6m5v9kRB0jTQUUVATjDwvdJ(QOLBoLp9H3FTKwDZXOB1xJT6xRyYFLtyzP6(1dve4W3zIbUoyjFQI7sZwUyXHtBZIVN33)uiboB5IV58k6U3)HVP1nW)8hKynVF9ifEZT)v3jh89XBV9IgAVFBGv965aSDD8hhSQw2linvhVqxTEx8XxHr74fGK62A9bH81)GHRXbxaunAy9hwpvy9hkh973Zh3ZTwJULtrUTE6PNCBx0n3oBqjn22r3QtdnkxH1unTv(kQxqpZH3EZ0b9UaPxU6OslZG0CqF6O9CzT5t13UzIcn7j8bW2RJGxFOOUmQCSQ3mO)19khNAPmhF8Oosy5FkgYNuFxNpR5LshDV59ACyWMxoCcDoVZFUAMNZVDCZ7S8cnlfkyZMs5gwZ6aWQZclS(AAIl98mSQ5C3auuuVuvqndB0ExkkGA(Tth80tiDS8kC4wvtqxCvhrqJoCSE4ssPXLTfTZgqWd1Z3rdFotwQNYvO1yC4ucmQMNJgkDhCuPoPAKrZVDsLUXa5eiroBhneyowOEcyFdOVX3U(Gz0ac2yG6z1Y153EnwKMHtXXK(Cy0We2GE00cyiyqDEQx(Gxu0kDOhUrBDTv1UaUJbONVPZaoeV(4cp)ZRb4rn0h8QIIYirZQsMAn7KxtuHa)EoZLz(7huhtN6Tvu30wlBtxkY6PNU039A9MBN0FkMz)1xrJC9tNZXnbQ7DPNxEXgJ5yIsZUEQ5qJ)6k27cQxurAuGOBBHouzxrd56wQQvBMw9DqURkOmXdum7tPMC351nSN3x1qJqd2irDTsXQwzupZNawp9QZW7rYQUJS1Iw07eDpQFs8EdQxTKRdHAiz14i3(AS2gXCJaQwmoUN7p61aZumuz4mdp3)fKzWF6jpVVFZN6XlY0exfreLa8((8nF8vLrVO)MyOOdO43gTTgJzjj3yxD(DbDlchirv5xNc9Atm)Ox4a8PyraKat7RoHgar(Ow4a0rvavV8gjqR)MsObsNpxfoaCcMPVT0L)5Jat1mbr(v(vOWgyT3v3HLTbLzkoJpZd3o0xkp8Q4CdDvvxh69wqRGGYF)n2DGP8Qkiifz7l6H1yh1nAafMwxdbTueQkFhoTwd4EJgqHA99rabE3C71O7XkYNZDvqqhLf4FDvXlOV6ykWxpugonv)6NXbV7Ru2C17b23nO)eCGO9(GHbLXwqzgouWgTdUKcvLw2Mo0FdVpE6i)52peFFCXuy6OXhYmo6efOk)ELPxTw13ESNEY(7oMhG1LJv1L2e5IjQ2N1RStH0704ZeMPag7ymcHBdVuCkSzpNpx)g5k0ElZMpUYRP(WhK1m0m49uqYOgkibb4Q3JnushofgC8aFhGy(eVWN8nzRHSdLcSjvHz6W3tnf9yCFCEJzVRXsOuYNoF53WmDhpGgp)piZffQnoAgnl2kepLgnDOuoP6RXx4qnCPn9zNAwXExelp1G(7HiwnzwW1(qSyVkIAqU61qe3zq3lZM(nRic71o0anMmWeAgWuhG96fQb3QxTqFLDzbFR4oyViHgiOKWXp5vPDa9hybfziUNjVPnDxg5advB(512xS0d2qURn2TnWSdTvQbi12wZ0gyHvlpQcycIcW06ezVogIobn8(rDrlRJ43iYdZBfDJ5CjaWljtBfirYVcXhh4pL6yeaH38GjvNDhnlkXae0hzHc(eTgaFeevJfTdF2Pv4S8(j)MNBJXu73KOXbaH3eg4SDEWbiLlvTYfLsnvFnWRK9bdNUTSB9a8BuExD5lCOcPADefpU1ZTLPgWfZrS1a2A6tMa2UT5yGUPQZW6HFJFuSvuKX9z)nDV7wcAZ5RFnj4r0r2BU3fEXO4voy5)9]] )
+    spec:RegisterPack( "Marksmanship", 20250816, [[Hekili:DNvFVTTnt8plfdlTflvt2P2jBloaBdyinaRyyU)TKOLOSiIKOgjvcmGH(S)CKuVqjtj78mNUHHIMetE649YV7hVt2BM3x8whHeyVpp3D(c3BMT0z2s3R(4CV1IDfyV1fOWhrBH)ihLb)83rSh5zOCEcPqU5UukksQeoTKfcc4TEtjjv8PCVn21miAboewDb8NjKOiSwump0B9xsi8Qa5)rvb1hDvang(COGqZRcsjCbSDmLvfCp(rskXbSdgnMKcNUwkUtbdhsZ2GeF3QVpPmxGzC)mW0VKeV6DCSqqY3YDKR4JY3TFVaX2IfoeU)gkN)(lK65jSFev4y(4RCVOwsbjd7lO(re8DZwu9GTdUGkx7szGB1tewgohuprG91By)HqGIJ85jur1dTsaRhIst91F0xgd0QfrXsxQ2CX54mcMF3QRQE4BQc(vedhxMwf8ZKmiAMG44FecKBOpbX0BC)2QaTZufKGrPIKlH)aXIcrCH6zWrvbRLgsaA7wgMZHZiDxvWZercTewocNI2brs4OsaXzOA5pQzhQTmFWzLMFDmvBfofHI7UXv5b)jQGagXVryGfVPKLlp88i6ZWNWPYFbUb4tXONK4H(2mGsIkZkGhjbWgvbpIXf9nwA(hK5XJBVSyF5PlT1nLXXomPD5hdMLtzXfhy(3UsA)htPCWysbqKoh0LSDcP0uWhvpkYpRKfHz(0y)qg9zUDX4cuwbocBF3oZ1((LCSpGlZUKNsfRsq5rC7UQ0kH0YxyK8hXIrSL(AtOLD2lq25MbJErjLNIrr7ufisB8nkJSEXyAyjhmZ97pCvgodrY53UyCvhQXf1fFJj1ezKdSvmRaNl85s6gL1gH1wM5gQ4QTGtmMbWADbskiUJEbhCoAtko6IgzBwNjD3luU7TlCNWdAPyAZYDl5dbjbcomtR6fedagjqGTPijHKaitnSFJvp0jm30WtUB1Sjsziwikh36l6N4MfDA1mN2GbUZ1z54QeUsjTvHwkTNFYr2PnI5NegVUIZcvo8lgHYicGXVk4Dnu53vtTF)F8EduvhF75TeQVITxan4Wp9AcWVVFK7JapwKOdbW9Y7Ay6JkzAgEJW1pbltRcYLpxykPOJ)FelSFsSgeET7rWuZgtDVwLcJMtRHmwU70kG52vTiMQGlKIoK13aivFr45fe1Pu7aiJd90bph(WwZRlpgxXmBQ61kNAyS)9j2SMRmVAvtvFgtKAfApjQ3lRmvqSUZlH29G7yMWN8w)e09oSx9Cix7UWB9ZiwUCca5ahq1bjRGYe1dv82ESXVTkGH)RsOqaQL4uOzXauPGMbd2alec9kTfZDQEqPNyAk0uQIbcvYKKupJLvFqxoGWK8AslTTQhLrwVjAKtXrftlZ7jDuKuyyuk0gvh8puf8by5dUXwMA)KYtKN21dgzcSry8OsOZDM361zLXmYJERvBPgFZ0PHf(SAYWAuS3V4ToeioWmcYB9BQ5igGrQc2V32o14eGOPkyrZeAWbAKIeqUrECn7zIGmncqURmL7G2qgi8hNYhgH5WWcn3rQUfJQUX7HYWyB3wQRLVe)46rpyviwFP)cf79K8dkbbocJtUJMrEq3m6bDqfP(IJ5UD6QTcwQPFyunDClC(ybTzUMrTEf5MXlH8TjeJaQMPbYsf1n1mC0GdDLbkCWuB6QfF97bb4zAHTgkx(wmyKcTc(NA(7PCHjZOQEh75Mgnz0w9nM7(1zy9tZ5Sm6QS6yeu8aNU(ItBmiNe2OpxQcp2(gEMgr(o4oMHVCknVA)xqvvW7v(tncE4RPQkaCkxtp241vPsZZmyInFsByATtz5fy1PI6pFa)Cx17Wcuz9ZKHIX7PQpp3b9vP2UHxCvFx1qyBE6R8DCxDI3X9rt566yAGuJFB0lLRU3DrMHil3cDkKVMKgwYXwvXXiop(0UNT03lTBKZxdgJX2ywh1lqDggp(YXgp2wBgak6A3tSpJzhdK(6xFV8urSnm()FHwpJdA)FqmSvq0YtTz1zJ1k4)cawFnAi)05CBEVXTy4wnEKHlM3)i0Fpc2WinY0bzTDVLLsh1xOW0DNbNCQ0R0IAj)2ORMVoHb1GnFJen6PvmljRbQA(GNzU3KtCz9vX3ptB(64nbvYktJ7G1I5jA)N3)7p]] )

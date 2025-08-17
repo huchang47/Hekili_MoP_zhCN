@@ -1,4 +1,4 @@
-    -- HunterSurvival.lua
+-- HunterSurvival.lua
     -- july 2025 by smufrik
 
 -- Early return if not a Hunter
@@ -219,8 +219,23 @@ spec:RegisterAuras( {
 
         thrill_of_the_hunt = {
             id = 34720,
-            duration = 8,
-            max_stack = 1
+            duration = 12,
+            max_stack = 3,
+            generate = function( t )
+                local name, _, _, count = FindUnitBuffByID( "player", 34720 )
+                if name then
+                    t.name = name
+                    t.count = count and count > 0 and count or 1
+                    t.applied = state.query_time
+                    t.expires = state.query_time + 12
+                    t.caster = "player"
+                    return
+                end
+                t.count = 0
+                t.applied = 0
+                t.expires = 0
+                t.caster = "nobody"
+            end,
         },
 
         hunters_mark = {
@@ -233,11 +248,12 @@ spec:RegisterAuras( {
 
 
     serpent_sting = { --- Debuff
-        id = 118253,    
+        id = 118253,
         duration = 15,
         tick_time = 3,
         type = "Ranged",
-        max_stack = 1
+        max_stack = 1,
+        debuff = true
     },
 
         concussive_shot = {
@@ -305,7 +321,7 @@ spec:RegisterAuras( {
             max_stack = 1
         },
 
-        black_arrow = {
+    black_arrow = {
             id = 3674,
             duration = 15,
             max_stack = 1,
@@ -379,7 +395,8 @@ spec:RegisterAuras( {
 
         explosive_shot = {
             id = 53301,
-            duration = 4, -- DoT duration
+            duration = 2, -- 2 ticks @ 1s in MoP
+            tick_time = 1,
             max_stack = 1
         },
 
@@ -442,6 +459,7 @@ spec:RegisterAuras( {
             duration = 3,
             max_stack = 1,
             type = "Taunt",
+            debuff = true
         },
 
         widow_venom = {
@@ -475,19 +493,13 @@ spec:RegisterAuras( {
             cooldown = 0,
             gcd = "spell",
             
-            spend = function () return buff.thrill_of_the_hunt.up and 0 or 30 end,
+            spend = function () return buff.thrill_of_the_hunt.up and 10 or 30 end,
             spendType = "focus",
             
             startsCombat = true,
             
             handler = function ()
-                if buff.thrill_of_the_hunt.up then
-                    removeBuff( "thrill_of_the_hunt" )
-                end
-                -- Thrill of the Hunt can proc from focus-costing shots (not Auto Shot)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
-                end
+                -- Cost reduction / stack handling occurs via buff system
             end,
         },
         
@@ -508,7 +520,7 @@ spec:RegisterAuras( {
         black_arrow = {
             id = 3674,
             cast = 0,
-            cooldown = 30,
+            cooldown = 24,
             gcd = "spell",
 
             startsCombat = true,
@@ -524,26 +536,18 @@ spec:RegisterAuras( {
             cooldown = 0,
             gcd = "spell",
             school = "nature",
-            spend = function () return buff.thrill_of_the_hunt.up and 0 or -14 end,
+            spend = -14,
             spendType = "focus",
             startsCombat = true,
             
             handler = function ()
-                if buff.thrill_of_the_hunt.up then
-                    removeBuff( "thrill_of_the_hunt" )
-                end
                 
-                -- Cobra Shot maintains Serpent Sting in MoP (key Survival mechanic)
+                -- Cobra Shot maintains Serpent Sting
                 if debuff.serpent_sting.up then
                     debuff.serpent_sting.expires = debuff.serpent_sting.expires + 6
                     if debuff.serpent_sting.expires > query_time + 15 then
-                        debuff.serpent_sting.expires = query_time + 15 -- Cap at max duration
+                        debuff.serpent_sting.expires = query_time + 15
                     end
-                end
-                
-                -- Thrill of the Hunt proc chance (30% on focus-costing shots)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
                 end
             end,
         },
@@ -595,17 +599,9 @@ spec:RegisterAuras( {
                 -- Apply Multi-Shot buff for tracking
                 applyBuff( "multi_shot" )
                 
-                -- Serpent Spread: Multi-Shot spreads Serpent Sting to all targets hit (Survival passive)
-                if debuff.serpent_sting.up then
-                    -- In MoP, Multi-Shot spreads Serpent Sting to all enemies within range
-                    applyDebuff( "target", "serpent_sting" )
-                    -- Note: In a real implementation, this would spread to all targets in AoE range
-                end
-                
-                -- Thrill of the Hunt proc chance (30% chance for Multi-Shot to proc in MoP)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
-                end
+                -- Serpent Spread: spread/maintain Serpent Sting on primary target
+                -- Always apply/refresh Serpent Sting when Multi-Shot hits (Improved Serpent Sting / Serpent Spread behavior)
+                applyDebuff( "target", "serpent_sting" )
             end,
         },
 
@@ -633,22 +629,13 @@ spec:RegisterAuras( {
             gcd = "spell",
             school = "physical",
 
-            spend = function () return buff.thrill_of_the_hunt.up and 0 or -14 end,
+            spend = -14,
             spendType = "focus",
 
             startsCombat = true,
             texture = 132213,
 
-            handler = function ()
-                if buff.thrill_of_the_hunt.up then
-                    removeBuff( "thrill_of_the_hunt" )
-                end
-                
-                -- Thrill of the Hunt proc chance (30% on focus-costing shots)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
-                end
-            end,
+            handler = function () end,
         },
 
         serpent_sting = {
@@ -1347,26 +1334,7 @@ spec:RegisterAuras( {
     spec:RegisterGear( "tier15", 95307, 95308, 95309, 95310, 95311 )
     spec:RegisterGear( "tier14", 84242, 84243, 84244, 84245, 84246 )
 
--- Combat log event handlers for Survival mechanics
-spec:RegisterCombatLogEvent( function( _, subtype, _, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags, _, spellID, spellName )
-    if sourceGUID ~= state.GUID then return end
-    
-    -- Lock and Load from Black Arrow periodic ticks (ICD-gated, 20% chance per tick in MoP-like behavior)
-    if subtype == "SPELL_PERIODIC_DAMAGE" and spellID == 3674 and state.talent.lock_and_load.enabled then -- Black Arrow
-        if lnl_icd_ready() and math.random() <= 0.20 then
-            state.applyBuff( "lock_and_load", 8 )
-            lnl_last_proc = GetTime()
-        end
-    end
-    
-    -- Lock and Load procs from trap activation (important Survival mechanic)
-    if subtype == "SPELL_CAST_SUCCESS" and ( spellID == 1499 or spellID == 13813 or spellID == 13809 ) then -- Freezing, Explosive, Ice Trap
-        if state.talent.lock_and_load.enabled and lnl_icd_ready() and math.random() <= 0.25 then -- 25% chance from traps
-            state.applyBuff( "lock_and_load", 8 )
-            lnl_last_proc = GetTime()
-        end
-    end
-end )
+-- Real Lock and Load aura detection is sufficient; no RNG proc simulation here.
 
     -- State Expressions
     spec:RegisterStateExpr( "focus_time_to_max", function()
@@ -1470,7 +1438,7 @@ end )
         damage = true,
         damageExpiration = 3,
 
-        potion = "tempered_potion",
+    potion = "virmens_bite_potion",
         package = "Survival",
     } )
 
@@ -1493,4 +1461,4 @@ end )
         width = "full"
     } )
 
-    spec:RegisterPack( "Survival", 20250814, [[Hekili:DV1xZPnss8plPsDeOwhwadz9MZKQioKeN12KYq2RUxqmigmQSqsR(JD8vU0J3hG7J49j56EMrsZinscCW5H7HKnintp90)9x3T25DNpB(0vKq68R61P3GoN0TF7U)(X97)M5tdFWJoFQhX8wYnW)WHSf(7Pr(3zDhXgFXd2UKvibcCJ8nHxoF6Yil7WZDMVudv7CCNbWA9OMWJha)ZnwRwr5RLgyoF6SnwbXlW)qIxio34fURHFBgA56eVW2kieE9Ax)4fFMERLTv75tzpezdcsB2)8k29I6qwAtxn)98dW3YdPY8PJM(1XNnlEXLJUA0NgF54RG1cVnK6BrMp9fXlwgTEDBo1mCxBeUHASHC)TTJ8Ix0iEbSIqIn1jm3AS8DD4lm5KNYz8ewtMyZdbPqoUCpzcnRiJfI8k70txdWcHZN66rDO(1k0M81Xxn(64fxpz2OzNp5Q4fn)OLFqy8IUDIxeqnDDwf0kEXRJx8EsaDfO4af2zt)tq75qSFia1RtP)ve1XK(24fFYMyDhOEN5gaV4)(V)pWBdjB9OROj)K6dSwi(ClNBep892GDr8Ir((U3lE0hP(3HgeSFmcuRr(RO(CdNZGLLq(RjEwaBbCnCc)cskxx83r(pW(90hCiEbW7M65dhyY2g)DpB3agVoDJBOSwsyfCd7Qyec3KenptfT21mcOY7gcYObzAdPLxTrGPRR9k37DAhiemT9PKvpKrPKNJK54QSLwrz2kbCjQrakqvSquEdsU(7a5wI6cdcQksSkLUYhlDLLwjs8bLsCHeDntLQtyEA8IbDYimFHinFtD0KySLzyGUbMOzrz6Q3ir)cBcpQFRw3wF0uZynyPPiLZEmsMtQxXVenrnwdwO5v9zVbj1VNJujRAdbCk1BsXn2nc426jKpWgTW5BdOB3oLYJscS(scmAI3Ira6SWIWSIUMezhwBiMlhD(vYby(61Np56ZN9pJxCX5tNLDgMeBBd(pmWG)kkBRTuMvs3E8mdg88wIOCv6VX3lZ2TQdtIQjIZaDEGk3TUTHyttgdxp3qcpzwZJ)fmrI)n0qrGZzt(A2TE3UV4JbHnC52Arr9bJ5LyrIlvN)ScZ1dyUlCX4QGIh)NKvOHml6U3gcgtS5Np)tFE80zYAL73qD45MVJ2sYkpYPmUL5Cy7IXcCwzGWhy(hsSRYlny8GUigkS)XTXC5Q2oQPHCxV2Y0IyhV4MilmbZipp7hex3TelNq4pfZ408ElByplHn4tx7td2GeCjSXZCx6t4jeATBXAzrz4A72OHge)3yLfLPXKZouisC(aBkx9ZiOokxkk(DoX2eUgf0TE(UMGXc6NZcagq9i(aEn7hAvQpo7cKg)q1ppF0PcrbkeZuZT4pycB(fOj32IlV4ycxsTXu(9683agNsSd30snkpt0YFtBptyxNoexEgxb4fTtzO8rF1WqQynYjtTwNXECZeBMcGHnDDe(Gvr(mx9sSqQl9z5wmWRpP0KR5ZfO5InY3K4KASG3KhCJqZb8ceeXCwy(bc(j0fECi7ss)o1mkexwi1dE1Xc7kGBjRHR49eF1mosxj5e3eglKQnkKOrdxl5ZbYFbDVbdRxukd0nYELHjUf2HuaqwFP4RPRIXk5ZrvGQWvhS2RLSslJr38jEuZpGbX(aDn1H7hZeQFdK5wHpWJMnz2SjxUBPhKINUkHKmwO6uu9XCuSsfG4PaO9BOBzwbp9tpPImgmapFOiHTlj1de4ZroHic(KInzSWLUSKJJpBYLVFelp04Vo6Aw4(6RCYCdLgs2iv80wx8q4G)26EhgSTK6Le79auW2HPQXkr6xptutvJzYNQKjY1qwDTcE0qdcgAmNjd(8UvxmqtmXuyidF6wIpIla8fE8X0OIwbglzLp2IX1cSqRG8rBywqbg42IxaoMD218VY7KB3IiOQZILdTlR0yeA3Srx)PXZMwOM4cGrsCQERguyHKBryDOVduOhu6mS)7qFJrUWjswIbiya)y5D2s(U12OTqkgYwwZtkGmGNxvlGarRxycrDa(ATdi5khaqLr)Kt9JaXsZY4tCWEp90tZxzeVpIYS(GQsaF(TyZdSdTEnNtc8iBrrJLRplkCtxhe0ixe6KWR5KLLbGAqhzB0m86i2kfxZYfQBrEl9MvjIEj9(mOQtbEL0tL4ZYGd4gaNRwvwpHm)jaUKPCdbAxd22EAloe3yT46lh)1pvavvdaxguc3YWYrdekM7zMX1bcRs5DI4hbQsO(YWQlg4fto7paT1vFaCeMmc(73)TRzXp(8OPJRniyHqs3a2jCaMqLx6cLzsyndUPJB69Y0ni8i03mZuPvsh)YT)aKpOcuRGzXgmYk83(jQX8He)5e9lnEFsqh6DiZaLsWQinNu6zlY45yt3dzjusfULWdhX1e5RQaRzaYADhZjWK45XqtuJimVn6jLwXqOm026Sm)W4po(QPN)NJfMNFB25xWaXkl9yqZOFFJLnHxqHs)bveRQLYiVNQbjMJiY9nJ)QGqWMSAmEHBGATdBhyfgj6JekO6jLLWkyfyWBMWoLJotyXSYcG2zBJliJkqaAN)kcqx8Va9wQntTnUnWc(pMjBrrckon0wrbyP6w0fWTWPC)daeihrRvKpJ02tOScwZjYBA1tcZN8QRoSQGbSCG8hwRkAMKYakROwgqE1CJ7SolwNX9ztMCXhM8pUsEEw1gTvAwihLmbLJ0p9KJe(6ztNHNBH3xSi2zqcWqfi6CmVAa)bEa0ClMrvM8lv(i1H8mPZE1(8k6JBPdri94fVRGIP0XluHd5UmEH0dU4Y0ACu7mik3REVMAuL4VuhrxrTEziYQzSyPmO8c0kfQyQz5JrKghLpXd55yOv2OF8hkx)IZdCTVluqWyNBSCOuEYWBSHYXqFKiCLCKdCIvxtpVMW9iLQH71jKXkCtkAK0ib5RXJUEneLx71l)CJyc2M68U41tZEUWNaFwlzWWYdAAxMzfu9m1)w1aVpXZoLuZ10yZSuvwo3sd7Mt(oJ)4uJH0LPRDJ5OvVCBQ3CDnguD(4CTLFETQMYbpvD4OcGnHU((GBZ80wfQrkiD612oVr3iAEONlhNqc(nGpDTc2(RmnRDe2YoE36UZYFlGOYyjWVg8DvaXw6MuImlwSaygKmna)P4J)OduOX9eFh0hc)ipadCRTEU(Hcd6xLAH)k03bqD4ZMjHlonosuO7wcRrDMBWMbe0o(lxyH4m)nOC9Vb1A5H0ILfYKFrFLpi9x9kyHXF58TjV9KCFgjWRHlqu4gia)uO261(w3InP0DTfMZ6LXlkTnKaDFzz9Im(l8tjODA)o)LH)Q2okEK16HVOYMv24fI2u2G3oUDH4yx5kJYIE814f7wNi3LJlDt1EM104r8Uw(DmRNHSZjTRI6xTCt8W13SqFeF8r1Ei2QbVkVcDpCyNgfBzW76oqyeu9mRt5UKBa)NSgLFe60nKpxAKhrYFA3E1VLu3LKD9UHhl4M9FkZ1FCexkEqcXJOXqVl5epeJowMhYn8yolOPBeilPVesoFT)Zeg31HCSWY3kLH6YmGlzkXvARD4h2RmpQ20cKjzPRE3W(DAu5yFv4U9FiUY8qAdkyM25BOXPd71r5WoydOvMhK6(NSMsT5IneYMJhOtJn8ef285ECRYCVuxsKuHduLB1njvLGcPnCePxHEvMii62xXEpRFIs7s6PYBJh5AFN)z9bUs7puYrShZ3SEQlgTPG2hIVosKo)FWhizwgzEUnqckv7g3XUS6dtnlgOHkj1TIKOKIC1TRDn0RM9UNHc0qbEDnsxA1MsW37PO7zHTwOSFjQuAZgsyM3OJIzfFLHvtTGmDIGKY)ue7fkWS4oHkznGsh2Eewj1qwP4QAoDLGRHovKxs489dn4bgbE2M9as9dZ4hYKmAqdPvmvc8OxQMKE)g4qDCXUKahyGNNXluhZLl3Ow5tId0jjgxf)FwGSJrKd4NtjyLDyhScWex4sgwsgJKMxLz1Ln7dP4t6gJsdj7a5aEYKtAkii1K2r)s2H80oymqUXJ8UH90VXId4qYKvAKi63T6qlKU56hasd1HFONMYtHqII6g2rJkg0rIfCVb6pg5zniDm6gPrJkgNH8XWHw(eMdbUVFMJIitIKweDH8ILoIIgvMXuMG1L1x7yi0GfqMMpn4a1n3bD4fKp1DcZftnUpdlq)zT7OelFccYai5aQ39M4)3l2eF9m6tezJWAFjAT30dllL3KyOm8dLDmqBKtaI3M1DSgsgZW7YXjhK5pONv2ryJnAw0L6XhvNiqRsoH0UIREc5M(WoEcmjsYed2fTEY0e2J12lPwXsMuqj(9kthif(7PYLBOxUKaGzNNdGEcY3gVOxntiifjL8Kbso6FGVksEh2FU(WirQFq)2iLWP5s)bGJx8RFmpL3ri2plFBJ55LSVirP6Yg0jPx6jnlEyFrUtTx)96BvSC5m(jfICHMZUSVBrD9Uti(QO1I54G9SjbL1VWxMRTC7(3syEgA)7yNyJ7rx7yd6B()7]] )
+    spec:RegisterPack( "Survival", 20250816, [[Hekili:vV17YTnUr8NLmzQgRj(0jlB56ENTNrXrjX5ITYyPRD6xKimfKfRPi5X)ih3Xd)yFa6JyFs6UaGKaKaKs2YzA)WDNfjWUlwSyXV93YB6btNmD8CsmD61962RF3to44ohCC3J7D40XXpgqNooGyFp5o4p8iRG)94KW1oRjU4lE01NmhfqKFsOn8YPJVnXXn(sVP3wvQ9p8OE9GXgqTHh3V)0XlDMpNYhlnYE64jlDIsTW)HKAj0BQL)c432Xo(EPwUorXWRx4hMA9z69oUoDMoM9q0miOSz)51S1f1JCRlD(03dVIjGSHmZFXS4L0zljpCpx5Hob8bmy83gEXKuRRgC9Gpn8QHxdYbEBmn0HmD8BsTUnzXIovftNKGuRwPwWiIjUuV4sJXj03JpWmRkg8cLSYTurAgrHAscmTQZhdycXth7hq9OH150OFpW1pYznDw0s)4soSrFB41dVj16Mrtgm5YrxNAT3hDcJItTsF6GEPwruBFV5rTHrq)JeAumDo(q4p9SP)sQ1WmHNAngKEQ1)5F9VtTEVlS9NAnim0)bXJgaBkjHZPH8qIlG3ejE1hPHRXqc2pUkXn25NKK14yYQa6CqbVdu3AA4JXlD8Udm0OGq4pI2p1kKy7qCH)iWpUTyELSm5ThBFF35(p41r110jKsM)iB7zHVDcyENFwQ1rDBCVEoLTxElUQNrWfD22SKCoSFXwI0irHFOPW9zRyUmCR3gDyL28MecwBSFQLnb3XgCL)fPwE(paocNf5khpr6YEyMJ(bhxxi(d8mjr4(5)ibNozrmU7GYJBlWuHhJhCH4oqW0Vd)8tx8HoYl)SJlLn1Sdkm3qUdV6W06ZpM5ZpYOpxO0fS1JEnjExH43lxdNIki16PNypCNVaeIhIdBxSvYnhCv134QsnOlFQRWte8ZUW0p2qSsK4ysPqeJNEUnXBoUfVNJNTBcmh4eojWbwUW5F45ep4pJHdy3tJJAR90tMk5Ua04(ZgxB5tkevYSfGoK8CzzdLEPCcWIhJk5edEGLGjhP3qF0JeebhY5jme274ixmTaFAGC)lgKRWjCq2eY)nmNd6w)K6vAs9ytQCMAnM8TU((Wsoj8XmRTi3r2ByYYCIPczrdJOH3dl9kYk)nmzvopehZWANWvuVOz3ccEgKGLNAsibXVXzB(462MV10vxSl8MtxqGte6UXtjY)QbxET89AF7MlhDZLt(7PwF9YXtk0HnX1Dg)hZqSik5zCwrzhOb3mdOYmUlrCPBT3lWNllZFDktsQzUPiD3jOS2oOdKTF0qy55ht4yR27W3H5YcVdpUMA9tPwtg9TIv9MTEXhdoByXTYbZiCoZ4LmrIpvxMzfJRhyCF1hV)NLd5Rakt84ndurWsseM05Zx(PppC8e5DLhws94qfxtLsCgM4zYAzPmC9XBs9MpdrZYYAizUkVCgZg0Lcophkne2yJNffJNiuxvh2brvQgsbo53ty3GI7a(lw4GWqsTUlXbZ4oiiW9rHxyfXXlg(hamcxjiWgomMIBJdPlcPrlrbElmXl8VnKWrV0wpIdfdodZbpiOdg)nl2F2ChkBJ8G(1D9rTGeVGbVOcupCrNfZcRJk75bH(2qqeMG1LdBmGecLv4(yBJx7PEBRU8f6UNjBvaLu4AEb8Bmhn323JhUX9vCms3sDr0Q96(NaBMsCJx2wfZbZTYFtNaBywNEgo86UtsgONotsfOCjhkIHlZa5bjUmVpR(Pfj4dMNeYo)Bi(OjePMJxGxFsDxkscTjE1eSmG9(mVnUsE0pbJfWfquc7Oc7uGWEquNqumUMOFNANeJdlMgaV6qrqvFbe1hiHQ3ZlTK63T2BLTXtuMnAPdCG7xi27Wu9vDYGqsCNpRqIL9UW9H1FxVqcWQeIQnjcj8D5dt79(Q3pGzR(aDbCTnlIH5)(DW96e)ipT1OjtgD1MD9Gu(05zIulCbvt4i8okwLRqItIh5o6k2g(Zx7zeeWGbeecvMU6wIwGa5rPkvoBVKsJjllzOFoXJv3tg1iml8kF2DNdVy0vVFa7AQHFBWnS0(tBSoFHEKk1FLpQeEPeR8xlWB9c5pydjQOoYt0GZylnIgiXOWbWw0BaLg1u1hiNaA8mcMfSuid(8dQV6Q9WlGIJzfaSIeI4cEKxeOibOdaX1pkIv5wRmKiZMd37SKfIendNwQfCWSBdx0wutI0m5XTfG8QjUvQGNs5Pgn6RFy0F7AzgUAehIuDD5KaSVEgz2xKROOSrEwkz2ciriCg05HR8i(dcapNdSm0c7FlQ5REi1pJY(lkkVVuHffLJBo(FNtmGGzJIdbvO3P2WFt1DxLcGAG4ENlbJQJHTRsHwFI9gOSb2zGQB7YGt04MKeSEhK8a06AQhGQO6E5A23Is9v5eHpgikNpiWkc9xbaC9UZXJsdzWYVZ1FnfppKGJKJwSr8Ns1MRQYBi8tKKBX7Gz1w9tzI2jEj4DH8GHfERibkVvKV7SkbSn6IfqctTl5YufKX2v1tx80DSNloNGpRToaS60tjAe2E9yG3HMjEPeRNCsPE94JPei3y)WqieVmZ58DSWY7SAqMEkJ93CuBA8csAVrKvdUtGJJZ9cRiawilyp(orR(zwaHBcIEQggCSvRJoFskmVLtVtS(IPFUTD4RJU43GBGU(dqTIJga)73)73WOd4ZdgpSXl0QuP5DGA4vkafqt1uQksqomG988Zt5y7hfVpsxEXPU2zKFwA(rODqlyihzdxCGLNyaR0v06lgQHkE3kSuO5EUMkIvU81yY94cgYF5hYIfORPsrcLCqBCzSgBeHXQ9UeBVxmlrvUN1GvSFEFkuQneR8daZVMvCGnjiGDEOb)x57ooP70mYbffOuBK5shxcVMUslNpm8JdVE8L)1HIGZFFYLFLvGsL77KfIYfEkE2SksnJPP0WLz)K)QOyi2RbKklHeYXDICIteSbI(KEfsALt0CiW2wCyU2oRWcpM7aa0DDjmeDf5qjE)rcK85FcBr5vIAgXTWtf5a)h7SPO4ReAddlukpqDk6Gfurlp84AAONGjmTaqugHwei9KqUlpADx5xXaC8a4WoZRgqKBakJOrdqE08GBK81NBcxoBXfn5fzlEYGB(0WjJB3y(2S60)fnPEZZerTbONE2yQX1yMXb(dvW7OINzozf7ZdOsMAEcvTCjkNHvhhYTBmTXlnTlYFBo9uWPH7OV4uRsD3tvVFe9xh9oSzSm24)f1EJhfqwjFbWE(EizZC3NxMXwYpAI31(DLl5TG(FKswLI105qlNmPA8iK4iO0QtAFFc8wbBN5AMeY4)JyJOJuS6ATrbTNQAUbEX5BpMQxYmbUMPUDQkNf7mUynvAKzwnL5ZKhz44PH8v2rZIGRPBpnNMZo(sy5KL1dsMeHVl)BrcYntc9Wc3a4hRc8dzmRDsPpZOoPFbeBs8sOm)XWPSfHo3JSg6VWbVt7TPwgj(7lPF5TMy)l9lCTe1jNaY3D2pRL)V9DwC2BQLEWwVrqmylo)yBIWrAYmjzbPBTEZMrn4MOU8j1OoBGjqCTAEnwqIhtp508PF0YSQHJFVke790tQK61ULiVrz68oRBRQN5o)G(IGG6BICU1LTc4)KXC9(yPxNXBumAJO4p9GEnpLCkaYM15NDOWA2(2(2S6aqfOIutREEMg3f9Yv2gk1nxUjOPWs0K0d8NBxBF3yXzTlBiR8QsPnSSayd9NT2yTDFxwLTrv0HOrYsbF(zh1Tv9FFgYw323cvzBihIfl0UmAPtpRxxfLTZAoQSniDnS8oL6TZTe(Md7RBh7StumZx7wDkB9sfIlTf2x1V1uBmvskKFXokVk32N5io4iL49IBPLML0tLNgpZ122qYMtCLxQFMk2Igo2S0f9Aui7n(RKfhS2puw8f)FZ3kBXTU87V0M(O2KgTYtUOrwB5rqMVZ0N66V(k)PUQX8R02gE2S6BwuRMAuu269yDEmol6s6rTfyT02(Rw8J(NEC3NEAVDK9bcRD7)3WNuu4SYLzSOLD0x9QgTM1JnLtaQnKtZSk6oIY8k3xubiA1EPuvAqK8mO8Qv7JTY4mwVWunhD9aRr5K1gLnDG90EYoRvukguLouPzM59crDML75u1zYBrbpRTMgDSBZLXIUErnVGjGxT(xGsF30cJc)Mg45ADIgWR)wvuJBxNlAYk2eeLGb860LIMmUsG106FYcUojl4Q6)hmvOgbOK39dHtatkBNXiGybBOLlfgsoqpwuxrxxKUIrxZyAjfh0VREXj1HfuAsZ4idZqUtkmdOuRxo)SE6Ny1MNifYk1Uf9ZwTHisRC9nxPLAJv0lt5oCijrDnsPvnnrjlcUxF9QrUpgsQrx7sAvtRsKvdVwNNXNcfdE(pWVgQcpsoRo7k0aYc85bpKdOt(OHSm)XHOtwRBe8k224285kPxxsFqssRnnFhtfRQkFdt5f6MfvUfFBr)A1VTi9g6ZeVNiAFN8HhP3W2q4ET2RAG8tpP(5b12Gg2myHBOgevsYr3Vj(6QyIBCS9YOmWWNhKHtBkFPr5f0C6H9BYVKbByJ)OG0lWgqrNJFr(Zekt1VGwlJZ)1R7YAjD5L0Gzj0r(0xai4Q9rUSK3qGTVknjUSTOTs7(DZAPswpdo7iXnwAx(BvdFn7NXg6IwHgDBQ5V6OWv4(QHH5swWwYzLjAJFBj2z38MYw2G2EIBftCliVL1a2P)3p]] )

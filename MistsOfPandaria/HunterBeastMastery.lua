@@ -199,6 +199,14 @@ spec:RegisterGlyphs( {
             type = "Ranged",
             max_stack = 1
         },
+        -- Alias used by some APLs/imports for Bestial Wrath
+        the_beast_within = {
+            id = 19574,
+            duration = 10,
+            type = "Ranged",
+            max_stack = 1,
+            copy = "bestial_wrath"
+        },
         -- Stunned.
         binding_shot_stun = {
             id = 117526,
@@ -290,11 +298,26 @@ spec:RegisterGlyphs( {
             tick_time = 1,
             max_stack = 9
         },
-        -- Talent: Next Steady Shot or Cobra Shot costs no Focus and deals additional damage.
+        -- Talent: Thrill of the Hunt - next 3 Arcane/Multi-Shots cost 20 less Focus (tracked from game aura)
         thrill_of_the_hunt = {
             id = 34720,
-            duration = 20,
-            max_stack = 1
+            duration = 12,
+            max_stack = 3,
+            generate = function( t )
+                local name, _, _, count = FindUnitBuffByID( "player", 34720 )
+                if name then
+                    t.name = name
+                    t.count = count and count > 0 and count or 1
+                    t.applied = state.query_time
+                    t.expires = state.query_time + 12
+                    t.caster = "player"
+                    return
+                end
+                t.count = 0
+                t.applied = 0
+                t.expires = 0
+                t.caster = "nobody"
+            end,
         },
         -- Talent: Movement speed reduced by $s1%.
         glaive_toss = {
@@ -735,14 +758,7 @@ end )
             startsCombat = true,
 
             handler = function ()
-                if buff.thrill_of_the_hunt.up then
-                    removeBuff( "thrill_of_the_hunt" )
-                end
-                
-                -- 30% chance to proc Thrill of the Hunt
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
-                end
+                -- Cost reduction/stack usage is handled by the real aura; no manual consume/proc here.
             end,
         },
 
@@ -865,7 +881,7 @@ end )
             usable = function () return not pet.exists, "requires no active pet" end,
 
             handler = function ()
-                summonPet( "hunter_pet", 3600 )
+                -- spec:summonPet( "hunter_pet" ) handled by the system
             end,
         },
 
@@ -880,7 +896,7 @@ end )
             usable = function () return not pet.exists, "requires no active pet" end,
 
             handler = function ()
-                summonPet( "hunter_pet", 3600 )
+                -- summonPet( "hunter_pet", 3600 ) handled by the system
             end,
         },
 
@@ -891,7 +907,7 @@ end )
             gcd = "spell",
             school = "nature",
 
-            spend = function () return buff.thrill_of_the_hunt.up and 0 or -14 end,
+                spend = function () return buff.thrill_of_the_hunt.up and 0 or -14 end,
             spendType = "focus",
 
             startsCombat = true,
@@ -909,10 +925,7 @@ end )
                     end
                 end
                 
-                -- Thrill of the Hunt proc chance (30% on focus-costing shots)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
-                end
+                -- ToTH procs are handled by the game; don't simulate.
             end,
         },
 
@@ -959,7 +972,7 @@ end )
 
             handler = function ()
                 applyBuff( "dire_beast" )
-                summonPet( "dire_beast", 15 )
+                -- summonPet( "dire_beast", 15 ) handled by the system
             end,
         },
 
@@ -991,7 +1004,7 @@ end )
             usable = function () return pet.exists, "requires an active pet" end,
 
             handler = function ()
-                dismissPet()
+                -- dismissPet() handled by the system
             end,
         },
 
@@ -1035,7 +1048,7 @@ end )
             startsCombat = false,
 
             usable = function () 
-                return should_focus_fire, "requires pet with frenzy stacks" 
+                return state.should_focus_fire and true or false, "requires pet with frenzy stacks" 
             end,
 
             handler = function ()
@@ -1184,7 +1197,7 @@ end )
 
             handler = function ()
                 -- Basic cat attack with frenzy generation (10% chance)
-                if can_generate_frenzy and math.random() <= 0.1 then
+                if state.can_generate_frenzy and math.random() <= 0.1 then
                     applyBuff( "frenzy", 8, min( 5, buff.frenzy.stack + 1 ) )
                 end
             end,
@@ -1203,7 +1216,7 @@ end )
 
             handler = function ()
                 -- Basic canine attack with frenzy generation (10% chance)
-                if can_generate_frenzy and math.random() <= 0.1 then
+                if state.can_generate_frenzy and math.random() <= 0.1 then
                     applyBuff( "frenzy", 8, min( 5, buff.frenzy.stack + 1 ) )
                 end
             end,
@@ -1336,16 +1349,13 @@ end )
             gcd = "spell",
             school = "physical",
 
-            spend = 40, -- Standard MoP Multi-Shot cost
+            spend = function () return buff.thrill_of_the_hunt.up and 20 or 40 end, -- ToTH reduces by 20
             spendType = "focus",
 
             startsCombat = true,
 
             handler = function ()
-                -- Thrill of the Hunt proc chance (30% chance in MoP)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
-                end
+                -- ToTH procs are handled by the game; don't simulate.
                 
                 -- Apply Beast Cleave buff when Multi-Shot is used
                 if pet.alive then
@@ -1455,7 +1465,7 @@ end )
 
             handler = function ()
                 applyDebuff( "target", "silencing_shot" )
-                interrupt()
+                -- interrupt() handled by the system
             end,
         },
 
@@ -1466,20 +1476,13 @@ end )
             gcd = "spell",
             school = "physical",
 
-            spend = function () return buff.thrill_of_the_hunt.up and 0 or -14 end,
+            spend = -14,
             spendType = "focus",
 
             startsCombat = true,
 
             handler = function ()
-                if buff.thrill_of_the_hunt.up then
-                    removeBuff( "thrill_of_the_hunt" )
-                end
-                
-                -- Thrill of the Hunt proc chance (30% on focus-costing shots)
-                if talent.thrill_of_the_hunt.enabled and math.random() <= 0.3 then
-                    applyBuff( "thrill_of_the_hunt", 20 )
-                end
+                -- No Thrill of the Hunt consumption/proc simulation on generators.
             end,
         },
 
@@ -1640,4 +1643,4 @@ end )
         width = 1.5
     } )
 
-    spec:RegisterPack( "Beast Mastery", 20250801, [[Hekili:vZvBZTTro4Flz6CQ2TXQsww2jDS8mojo9sV2MmrUtN7lIIICLfptrYJKYo(gp63(bS7sY9Dsj70RxZKuBsUybWIf4bal5SHZUE20q)sYSF74bhpEWRgmS)Xdgc)3SPLpKrMnnZp4w)BGFiXFn8VVH4xuUD(Vc)lj)b82peN6hIKPiDtEa8iZMUytuC5hsMTWeThCYzWZMrcGlpE0SPRIcdjSNLuemB61RIk2oh)R)258zF780LWVhugLMSDECurjC7LP5BN)3j3gfh1F2u6fr2inJKqYHF63OchjXFrmjC2BMnLnEyg3KamFH3A)8BzZAEug7wF8tx9Bx95TZ)8hV(YR)Wh)TTZp49r5OepCW25fKG0KWId3o)YSS4hGzNsPVTavi53(YTZdOAN3qkkJ8J3o)pY9lxTD(3VD()ikg(93MUETFsi9kF2plc(jG8eyGLRiGKnT0FDgjeVW7GRJucii8B)uSF0DWVFDArb8Rtj5GuwIdik5g4cxMh4Na3F6Q0Yztb5byRi)ztpaz6s8Hk6JIRNFcW2p(imH(53qk7hv4TaO525Gq1JPIVJ4fMw2xulTD(KTZhqFc(4kJwt8kt9cJGz9cq9mEwjSGQOXByKmym(XuzOhU0fSbMZlaQoEqZcZcMEZ7EuTH0BuhP3Inlx2xA093K1qxWej2lGP7rYEIvY(coTYXfhVLWAGeHAUmsMXwjJfL0ibzTGVuJe6uhekgwN7hcZO3c0wOF1JvtOM7HK6S2i1nuljGRkkQOL6scSwwtDHhhj)RCP5cjuDxbZ40Ran7KuFs3bj3RTsoJROQm6ibg1NUdWRa3aG)bOaSV1LBajRcz3aVzdDpF2k)c03dC11r)hFM3NJ2o)3Zq3AGERmD781(LbRqZg6qUpkjm9EuxutUTZ)NGNrTNamaYr3y(WFlsXhd)Phs3SD(k)7i6ErYj(HpWMZniBrDKe7t9fc7vJILgn8iWTJk5pxuj6LI8LmWAjSp6b5FVHKeq(rWPKbFw9RUSKFlCCz(RLD3a0ob5jfpC3tDOr5zleBx3o70)Yt0EXHNg((gFV1BYdj5EPl9cYtVxE3tloG0gSBVq8Pm(HKV4LVPyL0u1fvv9extc3(ROuzzoj5)8qFWUm4wU(Qltbv)w7t0URmqtVjoe2WTi3NP2RjHW1OBDjFHeSbWnSFBEVIn66TVhW8gdccjg34D8G)gSjH4hxU6q72GCx4SNZllag)5tWb72o06WuTfpzWEylUd6WqYsssbinU0IHeGW5OFafD47QgnOfZJsbgiIuiYjrjGYh8I7f6VgaO5nUGgHJj3auJVSD(3bqg6FIB1LkzgzHmNkyVrIUjXlKSJqeWFRCf4pcxrqs(k(YCYTyWOAYVoQaJOY(TknP)MyNHsYsR0Nc6WF1pc8acY3cCo5QrWbEXda251DZ5f7oXPPHXBGG)4vfaVjHVanZoDqpzCDM0(1wm(WwiqT4nuDd0AcqJKGhOAnmcxcS2SgCjPeWxwdxd0ePjWvi9PahhURRts7EqiI078IwDfbSyikrM8UkjHFkpcG1cY37(0uiivAPpFJOOQH9lEyIfs7WbLoLTgoGL1HhlZiEEhg8ZANQcdpinngWfKuyYlANOqJJypHvmNycBrF6C6y4RmGjustpnQCdv5IqlyKINax3024Lb8NGQDn4bI568yj(WpL4gkPkjoNsHojJbPGYS28aMfyn320So9oQghaRdHqbxQ88B64uvnC6SO6Nz397oQJtBtycCED6QWgjWT7YgCdv3S3j6aHyYbNwjaY1cMNxCPTnmaSOGYoE)9F56pC01x(5F6QRLsL)Y0RoKcG)djbXBcrJHkSbf3hbW4bflSIbjNFfZybqh)RGR)OJyaDlOGFxH40xfDZksHKF9dWRNraK(3SjkKaZ0XhDIiPaWbjH(5HnECWSbqO98QQ82ycf7(AiYrjiW04YDaBH7ySY(xT5fvm9FXTkJTG5YGl9QNtonVoLJOZslmWiVXCee8qqm800rwGMkTLEVlgWKZMrMvmicoBsStO2hywsyX1nCZw4bAHBy1UHdoKA8a)LvtaVaUnLk6t2eQCjl6abBG142HAKQTw4IovTHUmVk1HO1YCSWpph8izBspTtclNiMcY5oc14QTACRniV740cQaK7N1I9(Xczgipq3X5eeVZEDh2oRK1HJqBAPDyL6mRQwuRsPQ4kyhFEb4Y(Hp8mmXceYz4o5ceR5IrGd5RVIdOpIIZ16lwfqP4vxRgdYzm0)C8UYDWzW9APsKAhbOfTWue5imozbPQ8uz5PbYfAtYoaqyqNU(4mp8eVtYcAspQ5Agk5Z4wcoQq6XEhRrA61QiDDW0Uhw0XKPlhJfLJwlOQAs)1GiDTOG9EPeRev5kIxWkcP0FLkckoD4RoBkJIbiokgBvz2kaQWiTBT2DCltzCZdv9HgKMaRQuFHOaROhKUN7vbTPdT1FvdXGBqsUH733owcl49589oV0LLtyk0N6AhRNu)ynOswR62o)t5KJQwYadr0eJT1Zzk(oxwRwHwNIZjlilOw4EWSVGBMUR8V)wbIwv3vPNjkhYCG(Gve2IUbFg3MbDIjm8enSGOc4oPIizzeTcoftLsX7IqvAAdx5FAD6ZCGsQzCtzmCygluYyLYoE11x(HF5Q3bPc9Xp(lV7J)bK12Vp9YF6QTZFpZN(7PTff7bdTfiL0q)0swJ9fnHChAQhUjNMjNCpnMznNilL)ESKvqx6hrnWrPgzQ0BjL26CeMIyXguS4XTOBlLBXlvMOXfbPey8BQtDuQNk2frPqI29qLtW0hkerguTI2xmoxZdcGVg5kzqHwMkRhe6)TWcAb2Q)scVByzGbBeqXxYxJReAeUqXpucRY3I4smSRwQbUu54aRj(IBsSuOvMLrT5ARfGf9(FOPT5nqq5T9vPmz8l3OjkVpcdPqRNWYOBwHNcGcAMC0Z9GuZelmeEth1zh0csvyOFv9xXHEOjVpnrmRBbTjyEqsQxtDMxiDSgAK10KgZmqmJcH5hpEfliGSsCTp2A)XRew2Axizzua2luXCFRnSL1fIw2vRM2Qh7ss(DP5kc97PxSr6yDcLVbKwoBqgVbS06IJkUaYMiJchZWB8ar7yTf3dnL0ChGPVkN6Ebp9nqKm2bEHkzFYVG1EOfqkdlJqRZ)1gCn1)UuCBnN1c8ZYustHH1Ls46GUavvWUtXKnWuM31CTwpvnz7nwW27sSAE4qyc0BXb1fxpjPyKLQ(9FVpAir3esDdzy1YDVI70wqdT2HVkQwaGk9rtREL1d)cC9TZ)mCdRB4yRHbulWQcskhKAXgqMdtt(w8)rI9FWGu3L2v7w2BBh5fcoy1kxrLEqSsrkrEJH4fya18OBjfIMX8fzgjyl2i7ZmHovWes8CyzvDcMormcrTsOLm7i26Qb1wNkrMXcLuJ2GxMkfPLD129YYwXfWxzGj7w50oWEattvMzu1sPnyuzP3dOl1Dl9PQR)mTeupp2KVtg7SKmuCdEl3GhisfmoSnv(lWeOPcofCNjKl7LpbkBzpLI9JMcWyZb4H3wvrkBH)5sZWNHzUigxSRjioR2I9YFOJFUN1JzjYyUBQ7tsnszUi2UOq)mAwZlZtxtpfvK8L(bspe2EmhhsL9kXfzu92D121t0PT0ECM9T5uQAGj)qIFwbGjjdbi1YXLQfAjS7KNIQytD3J(l(wkO0ME41CczSE6alaPiMCuv3gBgR05eu4q5XpGXQzbgTeJuvw5pfZf01rSt(Q8tR3YMUEINYA9tffmSTZ)WsdZo6)ArkIfaLTL(mSHWtEqmbdiwUYpHgWKFsPbdyYYYd5hyX3IL8IXg1CMYjjeivWg8ejvwhrcN01unoJ6N966blsqdPa91PrPZ2Jc)Uxhow7g8UtDhsXq44sj3Sf71psQ7rMZnWqIqbUt82yzamKjs3rq7c)VHKf6sIuczCm6mTC7mG4Exr(AcJUjeSTJlXe0itid1Ou3pa5AGX6cGvZOVnbzY0EcTUJ2qo9(FQH2XGHUS76pIDvcrHXqm247Dtb1Rge4epTOWuLdoXG7iblt)ixAckK2Zl2QrHI)i2)XsTJoJJyrRPvXVGEO6urdJEY5TOHJV0C58RCBa(7jH1aJ4xnpnTKEv3(i52aayLO1rHufPKrp31l(EWqvU2RJSqzKfPwRosL9sZ7zsJvGy5YP647a1gEl2lH0zhdBXV3ppHcRy6hwNLMtdwpC0w5ZNw)T)mq2nLRWc8uSEZsiRrSnnPlJIHT0Ft1B)JwNw(z8pFtNB4Y2FMnTf9RBb03p5hm2YLxgTCYlC2rMEVG3lMESws0fIJDMWgL595O3l6w3y6Y0vpOwNZwA(ckR2LXgdb68u3zfZpTyJmWN)aTEP84JY9r5WEmiyADqzs9zWvWI)IHJ5wfUpvW1ChWtSdvmYngXH0tRK11SOWeF(KtL6MtvxGymJ9t6RiJORkzBa7z6e)ozO4qRorU4aBgN8z898Xd4R1AzQuTrY0P1vJdz)k9Cf(s8efoHDICXPgviNpCq7dPU9vT)OgtqS9HrlCV1fvUeB)uZ2(e4NsqYZTo5fC5Ijh3(iLsmsNgN3bsu1uCC0Ani)IjJBNc1hivKe6N21lAoPRF3G(JANEYHyB)5fpBl8vJo(sHIp6FLFVqB88X2y8NLBpTzvYOx2ZaDtfyNmWWWet3sEuw2kPrHMKqAI9i3Oq9Xu1WoQBeDbCKjoTbrnBu26rL(ifGplmudiUR0ugvWsjgsfvBhmm9XkKWN9qp8jFuvqn79ThV7tV19n8zTdAGvB8aBWCqSQyGbL7imFn7jVzEVl7b65kp)lgoONZwZF(iUW981ODZIsR7Q6DGrD)JpAabdBTtS)bMr1mC8HvXkFATo3Sm16UERYKwl0pF0GkwvRD409op9oIBwg6OxOEhi1J8lMCYGhF0D5HpVw5)K71TLD2uYkW2YLTHZYNd7rQmIuwhQ14ptnW2mBAYxPXoB3JZVVAGKLWyzlHVo9N2cRRw9mbLT1IV1MrVsEhvlcFD6aTz5QUcBcYJw55614S1Me5EdWfnUF21MklU(FQ86)tT5YM1i7fKcMOT3Dq2smpg9e4cL2kxXbNw5EvjqGC(ia(JQfHNudHnZS1fyvGD1QhBfdFY46yTUB4RfftDhQSc5YAU9wqxu142Njcczd5fvsw)sSvPtQ6p7xtIF8EqCD0M7t7wBysJP4)8a8Sxloyg3oxyhcz7JvP)QoQhrBuQd2U8fMVwTnLcc8VoDofzN)FR5PI7lfQbuvs3nUbv6R65toEqlJ1yc72sgZgL2JeAvjrtdCWX7kZQZp1ovuq8XD)F2RTpIwZoYXKTpy0StU2avZXOo6m7KyhrxzNqDk6Q9H3XuBStGodkYojKBnPOrP(B7jTkI7CBi7QXSwlkDSrQPdKcJu8fSK3LIN0RqpsHNT3IEKypdVi9n6e)uYo6ytye7G7SEYWvpFSkbL9Qj9QwozOlVCgR06aL5tOI)gNpx0xdOTQSm5evI38IHJu(avE5XhpOde9Wd7v44TyVgUnK2F9pQXSA65oVzVjdO2j6UKmtRet3xI2q6z17IjRbDRxBrUA1kTfFnAJxpnnAYrkMIT5hQBKfZKw37J8uj1JddBYS9kCBsTostT(1DpmDFgZHSX3i3gUPQzBFVRJoaRRZgBSUWl1PjAQ8c2k4ZSP5EdBSr1FxDns1630wd078jVYcNiAoAOhJaByfCiRGRM(2M1mx1nGezW6VpA4K1w3ipXmre(GLzIkJuOYPMPI43Lm5Op4pX(YMD(G(VQh)lAwvLrCD4GAMj5UKItNW5nseWC1zh6Xhvp3qoiM457rWHPPdru12c(biY0UKXoMjRhvb(bUqS6BU(6d0mfI9dw3nQPVmbSYai9vjWuFnviSk6ctFyceOC1hLatGTvOSIdCdFdcKOlNJDVh659dKksX)69nsvPUc)V6ZKAZ6kv54eiAlPvxrGDThVAJFFsmTRm3oMJzxjRCn7muPUrDLsTM8f1Yzx(kK2mh8V8PoxKBjzLgsOSmBCCnqQnrHwev6bSC2)n]] )
+    spec:RegisterPack( "Beast Mastery", 20250816, [[Hekili:D31EZTnos(plPM6uS3jrrpSCs212v5K4zMKltsQyp1w3)ijksilEMIulFyhpLl9z)6gpiEqaqkBNzZE1uzsmfqJUbA0p)j6PdNEX0ZJckjt)0ObJMm4vdpS)WjJE9OdMEE5TBitpFtq4vbxc)J0G1W))nKGIYTZ)D4)tYVf)4BtYcIqYuKvLhcdz65lQItkFF60fwP9WxdJDdjeE8KXtpFvCueHnwsr40ZVyvCX254Fc2oNV6BNNTe(5WY4S0TZtIlkHpEzw(25)g5Q4K4(tpN(qKnY2qsj5W)6tuHJKgSiHen9ntpNnFyfRsbMVy26G8RyRAE8g2h95VC2No7RBN)1pFXPx8(p)PTZ37xIZrjE4GTZliHzPrf7VD(PB2KClS6uk90cCdj)QNTDE5kcWGVHuughKSD()mpOC125p)KTZ)VJtGh82S1RdsJyp6RbBIH)jSae2doVmy9gsK4NUnnytb8dNVjpo9YIxuc)1vKYIxKhecKV4fBYyBi4OFhLk8Jh8b)Asq81WJUiROGtqsoS3uIRdqp2ZonpmifxJvzLtph2ia5joy657HsBjoUI(4(0SGuqEV7oqedYVKu2pUy2ckLHDJESZMRjZIYk7RU9UD(XBNpGoc(8kJxtMvMnlkgwvGbgozAjOjyCujzKnWCcsOssp8mpScwZtaQozG8eDbBdF2n4(nsVXDKElQwUSV2S7xTrsxq3kzwi7mdj7bizfFyoE8nBjSVRUuWOMOoQc(zQXyo0LUjSsfWSsWJd2paJ(LognxJyOyc1)mmNx5FoJmMZiCoVwLZxKKLbYxfEnxJ3hoqByWznj)kqtXCyM3)ywqUooFnjf0EGtKzmnyjX4)moB3QeLbjGAC)iyNF2cuHVVyy10r(zuA5wDGtRlPxwa9YIcbXm13af1AYRmCk9pWj9FY25reQwwb723Sc8sLMwM2NqP3eN0ZQcRjRowHvdOxWNvG3VX)dOaypZN5rnLEDZJVPIAlCZQa0Uug801X)za3i025)Xg0CpSZvMTD(6GYWv4nm6uUjonk7gCZOMCBN))aEmAmc4ctoAEpa(trgom8FDBw125RcUM006Aoji6w2AwHSf1(Asa1hbykkorB2WqGpoUKpU4s06n5BBafMO(OnY)vfjnK83bB1utP6RwFXJ1mNJZBtWADRPaTtrEYWW)nupeuE2bX2vRvEnF2r9f6tcZYsGJG0(QAa9ZjRdItlygRDPx5XGl)gwWS1v5rK8zzlNfMNDJ(9SwSd3yY1gJ9TKj3M(Tz5vfR0wQUSLwVW1KO2UULlmHzlYdy7e6xx(f2wmZbpOnamf88Gem0bY3ctQIqEAzE266Bbyympd1vtJOm8IB5NuuhnGp1uiCO1uV4OYvW1zyievfuh6rv50)wxNvDNbyYQKOzkCm1Ma5BKWkiqT7NvHZyZU2UWEmx9aZtsWB0Jg8FbsejiPC1(UvU5XhWg3SnHW8p6yCY(vWDontL8dg0rL8b9p8EOM3CN1M(bD3ED210JqFB3byeYLO(oes5SWveszWkJ99FNthUPSkWuxC5TgEFajCrqjv0FcxD3kTB1scFJocuqdadKcNIckZ9Ybbid74fO3ruG1Umz8zTz2Wy5Wt1xP6HVGKEjMzIxtbI9A78DRUMnp6IilHyxajW3zxebw8C0lIXb27eZgUQKhNbmzmPqLBJtHJlGhMffSgeTztyAKmLBio8VTD(FdvqpW)rLjzg7Gmk65ljXxMolISJXpJ)u5kWBgETdj5R43Ltzbeki)64cmKSqE0D4LJS2n3yXK6V)hF8I3)8lo9R)6zxOLM2PzNTpniK3NsnSwiSOarrCtmekc1Y4KFE78ZsjRH9DWd)VxLug)CMZ6cQd8vySgRIVCfHgNd7qcmbVh(8neiALlRIJiWkn65hOskqFnnkihUgMNvYJicw2v1PK92ecn(d0od4iiGQD0bZy(pP1pnEId)zQzOrySm94AIdZ7wuaShRANc01B2FdSYBOKde)2Wey00zwGQkEVP3cdyUe04ESVXGol8eDURWawJAt20z)uwjgpP4k)Fk0cG)WDxRPHWIq8ISl(nbV1iGo4khEEXTGJjCletUBib9z5anlKs6PwY7munJFBhdSK(T8HTSbslmW(TYt28sJlyth32w)jw39TKW89lHVUSUgPcAM1DJfErqEoyt21IEyNeworMksz36cALggURHeFsYOEKlZd20YL1rkvCrFItRRkGvorr(E5RDAm6ri8SgLCWt8zE4dubSLtaTad8vSc(6wuIz89iSWkeAQTsBigNEroBykvHd5QcQtOpEe4tvy8adBCxy6RDQT6I8xRxeUHClUrknkz4Scsje2NVy6KfusxWphLAK9YjScGxWdhhCnxWlsTzfleL6GgqXnq6SXRlyrw0mSahL6s)YIYNZRgI6NQhoq9DjC75W2I5NU8lj5xNLBFP9rCPXniYYLXHyvxmlDlJ2(J50QkHCPafGrUUz6oEb9qNAtE0l(Hz0sURxNIPVxn4ESsnkFhKYq(SfzPvfKcVjqQmrJRQXOAxbrK34M8Sq9I51mEdykdpy2bBcTu9Oj7sI1TxSk6Anz2i5AvFs19WvTttf()(K5xaeIHTTC9euaXvM1TmdIIBbl3R9weCdM2Au8SpbRmFsvblQpLMYOzy8iz4e69SrkKYYTBEOuVneaB0WbWSHMf9znbOzA4T0ZhmIwrLPmSNRFpRUPsinbofPpnqZH7AANAPkvRf6kfiLafjPrOezZ6GMe(L8yWxiiFV7lNltRZyRH9dZWY2Pz4eoiywMgWAn5m25oV5KEnz0MbcPP12f2M8OcZyZfOLue6eTemT32v5LcwRYP)qQFqcpTniwcGw37ECzf9yh9EZifV)ZDtpWwWCJ04dSoi(JE2sOIJ6OqgMb7M1AU(dq2rLYM0XLQUOM(dhURv4AChxwzb58fmSxsGwI014Cg3Qx6O5zM6ZytoH5iWRJ6ouPxgod(71LkGd)cLoU9HkSPcJE5ZW00gbPsSD(xYjpx4hIE5wgyQhZ1ERqSWQZ6mKHyrcch88W9DFQBNURcU5kfIkAuK2yIZHTA6afe2Xghog)Uq6etyzeswqDd4AT6B6yg(JaL5CCMrOnkEC96M4VseAypRsl(k2Lw8xQ61WZfeDWDyur9ZU403)XZE325V9ZF(JV7Z)Zpb3jo)0F9STZ1B(wHsp1Wa0C0tn86SwN1IxVjlVedyomlDzsCiMuxd89GvcUOcxiECX0lAM4TjQkNAigUJcN5xwxHyT2)6oONMHC7pVizIXTeAo4qzSVyavb6I2UVoaMGDEA73lq0Avs4nUFdOcgdu8z0o7hELqOXSoKqAQvV6mn72cn6ewv78frmdVrolVDnAD0ddqcmlUuwEtm6HKMb)Y4lxHnTTGwptAg)AyAqt6Cwqf6j1EoRGVImXDwkI8fN6(2S0iekN1UGLj4bBNFb10BHjkY4YAwQCNheZ4icRf2liGSs81Uz)LVypRfhqub42oRzvmBFBgjfcoV2cgnLN(qP0Xk3o)YfnrcqgVesWQl9t3Dbs2tst(fwuOCC4UVV4U9KjpTnamWrc(Dy4rKkzFjOG1NXfqyJlJrTZ)3k8mLBwJZAHbB2yubUw6VGImzwpJ2Y73vwbnb3HnT0jkAPNITUdNct0FloPUyakfSRNseau6MauLJEDLAmYY5QFqR0PlRwtjFFB51i2pKyorFF4JWZ3o)RWh48Qj70oKQRk6(OURQfvGmhLL(u8Vijb3ArQ7cUz8l7TD3LBNEFB5Fj2guBSIbk0saNgOx184RifQ678ZyrIA4znY9mnOdv0GmahR9DtqZjMriQscTdtpNDSAzxRtDuYAQE1b6W7QJH0YEA7MJzh4kH9yHj7w3NehUYGKQpzTLq7y(jzJKlLH8Dde0yt7xFr88hPJG61XL8DWeRPNwFaOG4vJaDy3PcwGqSjUUg)7y4lUnjyn71hknvIGUgIU(YUvIM4h8k3eoYnW0QXQo6XEvhXsXWEzL8KUHCcMboOMqHk0qIc2ukbYhcVJ8LbHAdcZRWd23y32YjP)5T95rjR1Tw31dEVozSDIs0h8LrR9j9fgJDDZGdl9WMfPSG9Tuywb7lPGs)NEiUhnba)oE1W6vAEgNQve7EaaP3sd5vcYhjqUCcbAeCMjKNlGJKCUAGHwb5X8VDjM5pgVeDVvkmcJzr6dhX6pLdj5LsyrH5e3eHM9Xsh9(LwwD0O3ISkE(XldyrEcJCVec6fTeoTOEz5FnzaTEYYY95OY(Ty)uySrnNzaxAGuHviW5kRDJHl6A6ooJ6V811twLGwsW67dsQm0p6uhOUxFfaCx1OwBgQc8i07fAN6sjhGgDlQER5OyjvMUhyTV0cSKdrxYetjLLXVSrYHwceFxdi2wO7wcST9WvSfXKTagBqPD4RcJ7ga4oow7bL7lskNqI)mbUHWGNc2qRKQWC5PzNHbaIM((m2nAmIlw0HstMCKUdojraNt(2MCW2d8jAoNAG1NwcVQjgDuRiKkEBkB0UapUqGibIxhhXBBOEKVuuJWaSnpws1Yq(vcFBznTq)f82KUxvAr1gAbj5LXuuEY9v)odCDCGcXjjfKBwrSMoGkhQPBZnIgguWm(7U6WT813RrdG5nerQPOwUB6g81GaJFe)Bn6aiE0BcYrOswGL8GiKAEobpL1t1NIiW5FvHFnEWV3qy7xdQkZwZ8ghcBoxsk6V9dFmg94mc8Y(hQBMIugFQMf)NctGUIlZsahL0TIGQCSScW9ts93MOuE9xeuHvgzAU2SXrDBVmRkvB0rr0Oackdweuao()anecnoaE2hSiZ06l2vr(hsjqTBz)WkisCVO(ak4u0FaBe2KtoUr(Hve7YzL1CO6QeXUWn05fojX)H42g(mwkso2mcYiDv0)3UWyJ)1Ya6)WLeE3d7Qu0MQ4pG2(F)Abxo8a91afiWnAv5kSfhNVUAzE8viMdYwgNao7)jXRNGMWg4d)KxKd8b8)(PodGGTFGXwf9RX7WpF8lScHGNfV84N4fHb9EchBb9yTyVleh70UlkZ7BFVN0n0f0LLREsTUMTaMauwDlJYaJORtnsbSpA1gZJJFVgyd4U70XfW(9yLrObIaoEqVMX6DYWj2xyw78Fg24)JT03FUQKFurwt52PhkBwZmVh7PkiJSwGveJJo(WAPtGpcgh6gpJQCxZdfwOT9SHRXJhQovbUdXjkNNosgpAYaUwtJIMjUsAdtIn4q2psHOeBNKfJmU04MXrdh0(uSGoqC((R2iS)6uaABbRnN3(qTJEJwNgnQzNAq8Ty3q(R9faInajp)IfVjjNC8O2NPMx5M04Ooqcbc8Wz3amFNC8K2Pqny6qs0ePENirP3FBq)XTtp9uLBF8Q5eWpn64lKhCO))Y3jpsJUSRW)vBQVEv1UTOBdJEBeuWgyzAQLpuFw(TsiPGe9rw(qbEDS8rGs0mWVX6NHTs4yANeADuIgw11boY2gvDhhSUlk6eNLpSvxPnMHS2Eut7orBtZzQuipLPAP2FItxRkfAfHM6r013ERMZvPKXUDQZx8Xt4MdCJ3p8t)(b5p2Q)9e3FYDOA)GD8wxpFDe4KHd65Tw(hnMlCpEG5ZUOiVh784(U78hDbyzYEqDdf6hpqG6zNZfgzyxuAyUC8GE75qCAayVJgpyFoR2a8Du97ho(7SldD0srV90qK3jhFWG2ouoAIqIEWiRZoRZAuJcBR3JholFeCt4U7SEouVJ)ibxo7SPn7zwXrxpo)(QwUzEYG(hQPRmrxx57dk4CiCMnJt54WzV8A7AHrEzIJPVp4CZUCv3Wof5Pr3(6jn66sIA1ULq42vSRPE(FO(5)dfdB23rUxbgWeT7nq1C47JrpfUWa9Aco4qHbyn8QD3D8GERtdBS4q4bH7m7mBDdBvy3g93vWWhmP2NRFCL5yJPoctpEsTFhZvugIOsFKiO9OQ)Es8r3dI3mMX7dQUKmP1amrhy1p3sgqQO(cIMZr1t6TxlwyMW99PJURJg2FshyqlPkPvQhRy8A3TU3gB0b9AryEp6V0fKCNL6ETdXpvVNz(kzOxRfoRnwOT4GADb6zeBNAc72xsjckWL1xEghnCuBeZDPaAZ7zBu2i0lUvw14RCsyQ603lm9Xuv)HbwFi78FAi7t1fGsfsfQtspUgG(7OJhnOL5AvvSLIx3Gs3JkGysID4s2HUPI97aV81DjhdN08(e1VBY1MbmEErJFPBsSJXR7MqDkEn3tVJUdCtGohMnR5uDc1C06LVZaNRRkMnavNNlfsmZPmt1xbw8Uc(GEzoIu4r795isShHxPJY9KGmYoAKszg7GPPE6z5C0etcQBHs7LH1Xd9zXYARbgySEk92Y665J(6ucYpZuwo(a65Yd(9NOjlkFxbwhOP9k1u47nxOxIUN520D3TxhK39337AwNa5G7UR(F2yFSHkqNn2iZPVDIUlPN3kX0FDcI0SXu69exVZcTPO28ILthKMxG2fpMms3IHYgRqZstqliGX9O2mI2nYIvpQPPt9LsRJIwSq46neOTn(Xn24)(AaIAKG5nX6RdBj3i6j(p7dCsmiQyf6okVguSrtJ3U1kg8L9GFOulU5lkBRuT(1CTf6D0XVYbNOQoAbkaaB4mkvwBiS9IQwUw14eazW6x214I1gOboWoruE7tBJkJnOYH2PI6lzADxN4)I9AQ(Ob9Fvp(RNAr1a9IfFAz62z44)pAho(szqhMeGGOclFf7R2qRV4ochP(2UYmXZk5eptCOAPw(zFVXaLlHkgoAA1L5Rv9TjOsFm3b7UgRIzqtYLr8Ie0wobger)AJkj4CQ)7mpU)UrbP4pE)6rXOGg)763qkYJq6MJ3OMBjFEbb2n0i0IQ6ql0)(KkDxz(DmRyxK1SA4D)3yj)Jh3FJL0ucBnvuEAYD)xejY1G)l)eVArTK6MKeg6rwNNmk(DXKNCnAzZG(TOA6)3p]] )
