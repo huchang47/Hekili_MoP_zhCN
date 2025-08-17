@@ -161,12 +161,24 @@ local function RegisterMistweaverSpec()
 
     -- MoP Talent Registration (Shared with other Monk specs)
     spec:RegisterTalents({
-        celerity = { 1, 1, 115173 }, tigers_lust = { 1, 2, 116841 }, momentum = { 1, 3, 115174 },
-        chi_wave = { 2, 1, 115098 }, zen_sphere = { 2, 2, 124081 }, chi_burst = { 2, 3, 123986 },
-        power_strikes = { 3, 1, 121817 }, ascension = { 3, 2, 115396 }, chi_brew = { 3, 3, 115399 },
-        ring_of_peace = { 4, 1, 116844 }, charging_ox_wave = { 4, 2, 119392 }, leg_sweep = { 4, 3, 119381 },
-        healing_elixirs = { 5, 1, 122280 }, dampen_harm = { 5, 2, 122278 }, diffuse_magic = { 5, 3, 122783 },
-        rushing_jade_wind = { 6, 1, 116847 }, invoke_xuen = { 6, 2, 123904 }, chi_torpedo = { 6, 3, 115008 },
+        celerity = { 1, 1, 115173 },
+        tigers_lust = { 1, 2, 116841 },
+        momentum = { 1, 3, 115174 },
+        chi_wave = { 2, 1, 115098 },
+        zen_sphere = { 2, 2, 124081 },
+        chi_burst = { 2, 3, 123986 },
+        power_strikes = { 3, 1, 121817 },
+        ascension = { 3, 2, 115396 },
+        chi_brew = { 3, 3, 115399 },
+        ring_of_peace = { 4, 1, 116844 },
+        charging_ox_wave = { 4, 2, 119392 },
+        leg_sweep = { 4, 3, 119381 },
+        healing_elixirs = { 5, 1, 122280 },
+        dampen_harm = { 5, 2, 122278 },
+        diffuse_magic = { 5, 3, 122783 },
+        rushing_jade_wind = { 6, 1, 116847 },
+        invoke_xuen = { 6, 2, 123904 },
+        chi_torpedo = { 6, 3, 115008 },
     })
 
     -- MoP Glyph Registration
@@ -262,6 +274,11 @@ local function RegisterMistweaverSpec()
             duration = 16,
             hot = true,
         },
+        rushing_jade_wind = {
+            id = 116847,
+            duration = 3,
+            max_stack = 1,
+        },
     })
 
     -- Ability Registration (MoP 5.4.8 accurate)
@@ -318,11 +335,24 @@ local function RegisterMistweaverSpec()
         surging_mist = {
             id = 116694,
             cast = function()
-                return buff.soothing_mist_channel.up and 0 or 1.5
+                if buff.soothing_mist_channel.up then
+                    return 0
+                end
+                local max_cast = 1.5
+                local reduction_per_stack = 0.2
+                local stacks = buff.vital_mists.count or 0
+                local cast_time = max_cast * (1 - math.min(stacks, 5) * reduction_per_stack)
+                return math.max(0, cast_time)
             end,
             gcd = "spell",
 
-            spend = 0.063,
+            spend = function()
+                local base_spend = 0.063
+                local reduction_per_stack = 0.2
+                local stacks = buff.vital_mists.count or 0
+                local reduction = math.min(stacks, 5) * reduction_per_stack
+                return base_spend * (1 - reduction)
+            end,
             spendType = "mana",
 
             handler = function()
@@ -425,6 +455,9 @@ local function RegisterMistweaverSpec()
                 applyBuff("spinning_crane_kick", 3)
                 if active_enemies >= 3 then
                     gain(1, "chi")
+                end
+                if talent.rushing_jade_wind.enabled then
+                    applyBuff("rushing_jade_wind", 5)
                 end
             end
         },
@@ -616,7 +649,7 @@ local function RegisterMistweaverSpec()
     })
 
     -- APL Package
-    spec:RegisterPack("Mistweaver", 20250807, [[Hekili:fFvZsUTnm4NLmzgVhAIRT8UR3MXApKtjzAYfLEvs0sWwSwsuLKADCoON9cqzzQFJ92lD8SRTa)WhajabG8x6)DFVyMg8)MZcNhw80I1ZxUEHZI7990NkaFVcw0b2E8h5Sm8)FLR0hb2lGSk8JGMraoLkyXerkrPmcb57TTKNQ)CU)2HS)49pUATVhRuNiK(EFINbilj84yOgpOI89(Ecxvfs)XQcp7dvHID4ZrAUiVkmf9eC5Dc0t(eCGNYNJoJuSJNIUWBFBv4xf5h(a(L1L)c9PMa18cjejY2Y0)M7VR0S8iiqSlqNabh5kiqbYcixpo(uypl6udEiRaKc5747C3wUB3CKnTAES4y(mZZJI2SEl)bzTenlxdzQ2c3MkeXb7kLN6ifKOdEGNVVTuMmILdbAHu221XvYy5SanWU4JncMhjkZ1p76mJKmVisVX9PfZ2NEQiXccYzBtH42mgLWd2kHJeJAwkAV5nIAGpdfSXDz3nj8JciniHjZinreOv(X7XVF2D5SeGLQtmEXtl6ynwAAq9JbuK)Du6OltaVtPL8iT7sIncWl4jCoKXb1ZURUof43tZWMvD9DAdIhUfqSO32(S0l78mXlySH27D1(iMh2tvs0yhW)eYdufjGSTcwHxm1BmXZwluwmiovkX9zVafjBm7IPoWr05dY41k1ngDRXYU5W4nyrPo4ap6G9As9nmvWpXO(CjKX45QnoTvuvk332vm69ch3ggrQ6Sx3h6OtbppNukssxgAm5GCJzt7V)nB7ijd4DKPvrZ3dYGcwAZrbLoBC3ZRiocYw1eYkvrPqqgKjKN6fYgCCzOZ56koTt0xlFVJmjDkPOATyPvEwHqQpxp9UyyhRmvFxvOe(NsUeZqcvImehw3wKHL0rbrjS89GAE1x(tEoU0ASy7FLRkliMianLQVZMNC3f0lxmj8wxOAH3zs82C)wWF4g9gZUFNinvqj90guYW(ky0cLJvKrn5OwAcwdfu5JQWTL6gC5cZrxzEh0XXeySbiBltbFaRLe(ECnB(Wzjw)Nk3ms44sRNxxaz6tSr7i9)YPXOEcDm85SgV2PxtF0nXznkGiCSI1l89mcndYuN1I)8BMbBQ1Y37sFvFVZ178)OVg1UniBF2EOw1b1L(U9qDFBuD7d3d5desReVij6BsoJMAAqJ5QWNDnNaZQcBAqxfUbLH9hjHJ3O26knRqw(XjT8enWnwafwBXLwwBasSUEswpxT0eNnSq7LLgsTn6rUPnJLB71tI9NMK9UvNRjFfMyy6MtzawVTxN)6uMG6jAXzii78h3SD28FYm4Je6f3siO3We1bFZafvHdJdNrBOF5TqF7bo6sfTIHhNRXZW5qmE5BO6a9NgXAdRyJvwDnRmyoLEzG0sgMU)vMdA5PZ0ogUM((514QBM7YPVUn94pM0lN2vLAnkGH1PVUn(WrMuMhSm2EKkdHVYByn1e(LNeJmdMXwVIBzxk7DnBHdRzkMp9vRE1EgDQm7kdhvQXs2XRmgC6lBxmOZTq7GySZ0x)gBRCJoSME94ZZrmOf50Va8y9m)fj1xE1xR)n9R)AT)OymoD9h))9d]])
+    spec:RegisterPack("Mistweaver", 20250816, [[Hekili:1AvBVXjoq4FlRQeQv3vUf2KM2tH8H7(sBLA)c9ZgmWWUUlGr2MSDRI43Eh7LS8oK70DQQje7zEMNz88gXH8nIFcvbKV6U192TV35D24hoo7i(QZLaXVKgFKUh)OGMJ)8lmP6eqFee6RoNXPjAiK8krmE9hz5aTo8VRKkEoXpQILP(ubjAAJ4s8PvQdCrJIe)dSKe4I8GmM4)TdmzDO()iQnuPoKNI)DSIXlQdZqcHxNYf1HFeoYYy2eFZHgxdsPvzk8ZVAC1lAr8RKqatb5sIpuqJYGeYFrui)6kuugNNeKwjopqQD9KcesqCKvSFGu3OLQ9e)ybArbd9sfndku2Xhybrc4KDJq1Hw1H4H250Fuh(wZ31Hp4vh6AUsBXhHaOaYzG8Yn7m3evLMANxjJZGGCiNloBxvEbooplHFQO1yXhOI9A11426gpFVM53(syUIlkHeEpYNZFeJdgOD6dDJ0A0F3lb9tyk2Zq3hj9nAyUBny(jueilpacOhh30eU6CDvzRjApwBK3VMrmHTkHunnznxPb6dZc00p4TWiW37tyuniNDbkNT)RXc(rjKfGja5gGCMfitectRlrFug8tGMzlGCkRaZBU)58XfY6MW2rzy5lVsfCKfF0yE3Ln)JmmgB8APDmVQqzYRUDHQKwJjRe77fZ2nRTMVQAsJ4mNRRRYm31KziQKh0u470eiaFat6LfAaySiAq64fLSIcTaXcAb0g4MVZY)5oZM19N15789tgY37V2S7FoFB5X3Prg7oFNMPquX2dIGs(jq06)tMJ3APgDOzxkOMVN0RB8c0K3uh(0tl1nVBB)38syX4sR57BTESCb)7dDh8PJY9M4PWvceqmppI2oXDH2lkkwz3psNb7PXNd4PbQdySjVeeCXGx3jLXyEKa4IjsTunBAS9oI)jQqNuIJ6)uEjxO0vGUdwGWU(ZAYZtzz4wmV6v1HFHxC8pXFDDFN6pR)3fTK2xD0FZ7pMKq)ol1BGBATIl2bFe1RRO09W2vs6D61vq6E6Zt01mzMnoSAQYEl(7h8CT6Nt(G3oRjZpSMDRcp3HmOzW)asmy5bRllo45muB9W(bQ2DZGUI3o4UJcJ3bWAZ4P)JIA6P2ddBDhY3vHEZN1k1pM2v02XVllxV652ePPghFV7CprJqT7mXRGoAiR3TwZtSjAWRrACAtpiCMIIMcI1gTyTWyY)p51M1iwxJJ9bhBS7XQPxMX6cvB72MeKR6nC400V6lMe9AepVBE6PjJk4d9BwhZ553sAzguilHySR8DBn9Pj)6]])
 
 end
 
