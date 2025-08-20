@@ -136,6 +136,7 @@ do
         if state.runes and state.runes.reset then state.runes.reset() end
     end)
 end
+
 spec:RegisterResource(6) -- RunicPower = 6 in MoP
 
 -- Register individual rune types for MoP 5.5.0
@@ -462,7 +463,7 @@ spec:RegisterTalents({
 -- Glyphs (Enhanced System - authentic MoP 5.4.8 glyph system)
 spec:RegisterGlyphs({
     -- Major glyphs - Unholy Combat
-    [58616] = "anti_magic_shell",    -- Reduces the cooldown on Anti-Magic Shell by 5 sec, but the amount it absorbs is reduced by 50%
+    [58623] = "anti_magic_shell",    -- Causes your Anti-Magic Shell to absorb all incoming magical damage, up to the absorption limit.
     [58617] = "army_of_the_dead",    -- Your Army of the Dead spell summons an additional skeleton, but the cast time is increased by 2 sec
     [58618] = "bone_armor",          -- Your Bone Armor gains an additional charge but the duration is reduced by 30 sec
     [58619] = "chains_of_ice",       -- Your Chains of Ice no longer reduces movement speed but increases the duration by 2 sec
@@ -602,7 +603,7 @@ spec:RegisterAuras({
     -- Suffering $w1 Frost damage every $t1 sec.
     -- https://wowhead.com/spell=55095
     frost_fever = {
-        id = 55095,
+        id = 55921,
         duration = 30,
         tick_time = 3,
         max_stack = 1,
@@ -626,7 +627,7 @@ spec:RegisterAuras({
     -- A necrotic strike shield that absorbs the next $w1 healing received.
     necrotic_strike = {
         id = 73975,
-        duration = 15,
+        duration = 10,
         max_stack = 1
     },
     -- Grants the ability to walk across water.
@@ -1309,7 +1310,6 @@ spec:RegisterAbilities({
     },
 
     -- Talent: Convert Blood Charges to Death Runes.
-    -- TODO: Redo this entirely
     blood_tap = {
         id = 45529,
         cast = 0,
@@ -1323,7 +1323,7 @@ spec:RegisterAbilities({
 
         handler = function()
             removeBuff("blood_charge", 5)
-            gain(1, "runes")
+            gain(1, "runes") -- this is wrong
         end,
     },
 
