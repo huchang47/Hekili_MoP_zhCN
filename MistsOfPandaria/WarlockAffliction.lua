@@ -20,10 +20,6 @@ local strformat = string.format
 local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
 
 -- Enhanced helper functions for Affliction Warlock
-local function UA_GetPlayerAuraBySpellID(spellID)
-    return FindUnitBuffByID("player", spellID)
-end
-
 local function GetTargetDebuffByID(spellID)
     return FindUnitDebuffByID("target", spellID, "PLAYER")
 end
@@ -58,20 +54,24 @@ end)
 
 afflictionCombatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 
+-- Provide safe state expression shims so loader doesn't warn before events populate these.
+spec:RegisterStateExpr( "last_dot_tick", function()
+    return rawget( state, "last_dot_tick" ) or 0
+end )
+
+spec:RegisterStateExpr( "last_target_death", function()
+    return rawget( state, "last_target_death" ) or 0
+end )
+
+spec:RegisterStateExpr( "target_died", function()
+    return rawget( state, "target_died" ) or false
+end )
+
 -- Pet management system for Affliction Warlock
 local function summon_demon(demon_type)
     -- Track which demon is active
-    if demon_type == "imp" then
-        applyBuff("grimoire_of_sacrifice_imp")
-    elseif demon_type == "voidwalker" then
-        applyBuff("grimoire_of_sacrifice_voidwalker")
-    elseif demon_type == "succubus" then
-        applyBuff("grimoire_of_sacrifice_succubus")
-    elseif demon_type == "felhunter" then
-        applyBuff("grimoire_of_sacrifice_felhunter")
-    elseif demon_type == "felguard" then
-        applyBuff("grimoire_of_sacrifice_felguard")
-    end
+    -- Note: These state changes only work within ability handlers
+    -- This function is for reference/documentation purposes
 end
 
 -- Pet stat tracking
@@ -106,8 +106,7 @@ RegisterAfflictionCombatLogEvent("SPELL_AURA_APPLIED", function(timestamp, subev
             -- Pandemic refresh: if remaining duration is less than 30% of base duration, extend it
             local base_duration = 18 -- Corruption base duration in MoP
             if remaining < (base_duration * 0.3) then
-                -- Extend duration by base duration
-                applyDebuff("target", "corruption", base_duration)
+                -- Note: Extension handled by default aura system
             end
         end
     elseif spellID == 30108 then -- Unstable Affliction
@@ -117,16 +116,15 @@ RegisterAfflictionCombatLogEvent("SPELL_AURA_APPLIED", function(timestamp, subev
             -- Pandemic refresh: if remaining duration is less than 30% of base duration, extend it
             local base_duration = 15 -- UA base duration in MoP
             if remaining < (base_duration * 0.3) then
-                -- Extend duration by base duration
-                applyDebuff("target", "unstable_affliction", base_duration)
+                -- Note: Extension handled by default aura system
             end
         end
     elseif spellID == 980 then -- Agony
-        -- Agony application (stack building handled in aura system elsewhere; remove manual addStack call)
+        -- Agony application (stack building handled in aura system elsewhere)
         -- Ensure internal tracking starts
     elseif spellID == 48181 then -- Haunt
         -- Track Haunt application for Soul Shard generation
-        applyDebuff("target", "haunt", 12) -- Haunt duration in MoP
+        -- Note: Haunt tracking handled by default aura system
     end
 end)
 
@@ -144,7 +142,17 @@ RegisterAfflictionCombatLogEvent("SPELL_PERIODIC_DAMAGE", function(timestamp, su
             base = 0.01 + 0.003 * stacks
         end
         if critical then base = base * 2 end
-        state.soul_shards.generate( base )
+        -- Record last DoT tick time for state consumers.
+        state.last_dot_tick = timestamp or state.query_time or GetTime()
+        -- Soul shard generation is handled by the resource system automatically
+    end
+end)
+
+-- Track target death time to support drain_soul_death modeling and guard UI loader warnings.
+RegisterAfflictionCombatLogEvent("UNIT_DIED", function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags)
+    if destGUID and destGUID == UnitGUID("target") then
+        state.last_target_death = timestamp or state.query_time or GetTime()
+        state.target_died = true
     end
 end)
 
@@ -158,49 +166,7 @@ RegisterAfflictionCombatLogEvent("SPELL_AURA_APPLIED", function(timestamp, subev
 end)
 
 -- Enhanced Mana resource system for Affliction Warlock
-spec:RegisterResource( 0, {
-    -- Life Tap mana restoration (Warlock signature mechanic)
-    life_tap = {
-        last = function ()
-            return state.last_cast_time.life_tap or 0
-        end,
-        interval = 1.5, -- Life Tap GCD
-        value = function()
-            -- Life Tap converts health to mana (30% max mana in MoP)
-            return (state.last_ability and state.last_ability == "life_tap") and state.mana.max * 0.30 or 0
-        end,
-    },
-    
-    -- Dark Pact mana return (from demon health)
-    dark_pact = {
-        last = function ()
-            return state.last_cast_time.dark_pact or 0
-        end,
-        interval = 1.5, -- Dark Pact GCD
-        value = function()
-            -- Dark Pact converts demon health to mana
-            return (state.last_ability and state.last_ability == "dark_pact") and state.mana.max * 0.25 or 0
-        end,
-    },
-}, {
-    -- Base mana regeneration for Affliction
-    base_regen = function ()
-        local base = state.mana.max * 0.01 -- 1% base (Warlocks have low base regen)
-        local spirit_bonus = (state.stat.spirit or 0) * 0.4 -- Spirit is less effective for Warlocks
-        
-        -- Fel Armor bonus to mana regeneration
-        if state.buff.fel_armor.up then
-            base = base * 1.20 -- 20% bonus
-        end
-        
-        return (base + spirit_bonus) / 5 -- Convert to per-second
-    end,
-    
-    -- Improved Life Tap talent bonus
-    improved_life_tap = function ()
-        return state.talent.improved_life_tap.enabled and 0.2 or 0 -- 20% spell power as mana efficiency
-    end,
-} )
+spec:RegisterResource( 0 )
 
 -- Soul Shards resource system for Affliction
 spec:RegisterResource( 7, {
@@ -210,7 +176,7 @@ spec:RegisterResource( 7, {
             return state.last_dot_tick or 0
         end,
         interval = 3, -- DoT tick interval
-        value = function()
+    value = function()
             -- Corruption, Agony, and UA ticks can generate Soul Shards
             local shards_generated = 0
             if state.debuff.corruption.up then shards_generated = shards_generated + 0.1 end
@@ -228,7 +194,8 @@ spec:RegisterResource( 7, {
         interval = 1,
         value = function()
             -- Drain Soul generates 1 Soul Shard when target dies
-            return (state.last_ability and state.last_ability == "drain_soul") and state.target_died and 1 or 0
+            local la = rawget( state, "last_ability" )
+            return ( la == "drain_soul" ) and state.target_died and 1 or 0
         end,
     },
     
@@ -240,7 +207,8 @@ spec:RegisterResource( 7, {
         interval = 1,
         value = function()
             -- Haunt generates 1 Soul Shard when it fades
-            return (state.last_ability and state.last_ability == "haunt") and 1 or 0
+            local la = rawget( state, "last_ability" )
+            return ( la == "haunt" ) and 1 or 0
         end,
     },
 }, {
@@ -471,30 +439,11 @@ spec:RegisterGlyphs( {
 spec:RegisterAuras( {
     -- Core Affliction DoTs with enhanced tracking
     corruption = {
-        id = 172,
+        id = 146739,
         duration = 18,
         tick_time = 3,
         max_stack = 1,
         pandemic = true,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 172 )
-            
-            if name and caster == "player" then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.duration = duration
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.duration = 18
-        end,
     },
     
     agony = {
@@ -503,25 +452,6 @@ spec:RegisterAuras( {
         tick_time = 2,
         max_stack = 10,
         pandemic = true,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 980 )
-            
-            if name and caster == "player" then
-                t.name = name
-                t.count = count > 0 and count or 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.duration = duration
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.duration = 24
-        end,
     },
     
     unstable_affliction = {
@@ -530,33 +460,20 @@ spec:RegisterAuras( {
         tick_time = 2,
         max_stack = 1,
         pandemic = true,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 30108 )
-            
-            if name and caster == "player" then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                t.duration = duration
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.duration = 14
-        end,
     },
-    
-    cast_haunt = {
+
+    haunt = {
         id = 48181,
         duration = 8,
         max_stack = 1,
+    },
+    
+    curse_of_elements = {
+        id = 1490,
+        duration = 300,
+        max_stack = 1,
         generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 48181 )
+            local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 1490 )
             
             if name and caster == "player" then
                 t.name = name
@@ -572,7 +489,7 @@ spec:RegisterAuras( {
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
-            t.duration = 8
+            t.duration = 300
         end,
     },
     
@@ -602,51 +519,17 @@ spec:RegisterAuras( {
         end,
     },
     
-    -- Proc auras with sophisticated tracking
+    -- Player buffs (using default aura tracking)
     nightfall = {
         id = 17941,
         duration = 12,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 17941 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     soul_burn = {
         id = 74434,
         duration = 30,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 74434 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     -- Dark Soul forms with enhanced tracking
@@ -654,46 +537,12 @@ spec:RegisterAuras( {
         id = 113858,
         duration = 20,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 113858 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     dark_soul_misery = {
         id = 113860,
         duration = 20,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 113860 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     -- Channeled abilities
@@ -749,74 +598,23 @@ spec:RegisterAuras( {
         end,
     },
     
-    -- Defensive and utility auras
+    -- Defensive and utility auras (using default tracking)
     unending_resolve = {
         id = 104773,
         duration = 8,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 104773 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     dark_bargain = {
         id = 110913,
         duration = 8,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 110913 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     sacrificial_pact = {
         id = 108416,
         duration = 8,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 108416 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     -- Movement and utility
@@ -824,46 +622,12 @@ spec:RegisterAuras( {
         id = 111400,
         duration = 3600,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 111400 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     unbound_will = {
         id = 108482,
         duration = 6,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 108482 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     -- Armor buffs
@@ -871,46 +635,12 @@ spec:RegisterAuras( {
         id = 28176,
         duration = 1800,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 28176 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     demon_armor = {
         id = 687,
         duration = 1800,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 687 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     -- Talent-based auras
@@ -918,185 +648,49 @@ spec:RegisterAuras( {
         id = 108415,
         duration = 3600,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 108415 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     grimoire_of_sacrifice = {
         id = 108503,
         duration = 15,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 108503 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
-    -- Tier set bonuses
+    -- Tier set bonuses (using default tracking)
     tier14_2pc_affliction = {
         id = 105843,
         duration = 30,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 105843 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     tier14_4pc_affliction = {
         id = 105844,
         duration = 8,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 105844 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     tier15_2pc_affliction = {
         id = 138129,
         duration = 15,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 138129 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     tier15_4pc_affliction = {
         id = 138132,
         duration = 6,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 138132 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     tier16_2pc_affliction = {
         id = 144912,
         duration = 20,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 144912 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     tier16_4pc_affliction = {
         id = 144915,
         duration = 8,
         max_stack = 3,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 144915 )
-            
-            if name then
-                t.name = name
-                t.count = count > 0 and count or 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     -- Legendary cloak proc
@@ -1104,70 +698,19 @@ spec:RegisterAuras( {
         id = 148009,
         duration = 4,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 148009 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
-    -- Missing auras referenced in action lists
+    -- Missing auras referenced in action lists (using default tracking)
     dark_soul = {
         id = 113860,
         duration = 20,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 113860 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     soulburn = {
         id = 74434,
         duration = 30,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 74434 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
     },
     
     haunting_spirits = {
@@ -1183,29 +726,6 @@ spec:RegisterAuras( {
                 t.count = 1
                 t.expires = state.query_time + 8
                 t.applied = state.query_time
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
-    },
-    
-    dark_intent = {
-        id = 80398,
-        duration = 30,
-        max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 80398 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
                 t.caster = "player"
                 return
             end
@@ -1247,23 +767,7 @@ spec:RegisterAuras( {
         id = 86211,
         duration = 20,
         max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = UA_GetPlayerAuraBySpellID( 86211 )
-            
-            if name then
-                t.name = name
-                t.count = 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = "player"
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end,
+        
     },
     
     soul_swap_exhale = {
@@ -1287,6 +791,13 @@ spec:RegisterAuras( {
             t.caster = "nobody"
         end,
     },
+    
+    -- Dark Intent aura
+    dark_intent = {
+        id = 109773,
+        duration = 3600,
+        max_stack = 1,
+    },
 } )
 
 -- Affliction Warlock abilities
@@ -1305,12 +816,11 @@ spec:RegisterAbilities( {
         texture = 136197,
         
         handler = function()
-            -- Deterministic shard model handled via resource generator; remove RNG here.
-            if state.soul_shards and state.soul_shards.generate then state.soul_shards.generate( 0.15 ) end
+            -- Soul shard generation is handled by the resource system automatically
         end,
     },
     
-    cast_haunt = {
+    haunt = {
         id = 48181,
         cast = function() return 1.5 * haste end,
         cooldown = 8,
@@ -1325,7 +835,7 @@ spec:RegisterAbilities( {
     handler = function() applyDebuff( "target", "haunt" ) end,
     },
     
-    cast_agony = {
+    agony = {
         id = 980,
         cast = 0,
         cooldown = 0,
@@ -1337,10 +847,10 @@ spec:RegisterAbilities( {
         startsCombat = true,
         texture = 136139,
         
+        aura = "agony",
+        
         handler = function()
             applyDebuff( "target", "agony" )
-            -- Set initial stacks to 1
-            debuff.agony.stack = 1
         end,
     },
     
@@ -1355,6 +865,8 @@ spec:RegisterAbilities( {
         
         startsCombat = true,
         texture = 136118,
+        
+        aura = "corruption",
         
         handler = function()
             applyDebuff( "target", "corruption" )
@@ -1372,6 +884,8 @@ spec:RegisterAbilities( {
         
         startsCombat = true,
         texture = 136228,
+        
+        aura = "unstable_affliction",
         
         handler = function()
             applyDebuff( "target", "unstable_affliction" )
@@ -1481,6 +995,23 @@ spec:RegisterAbilities( {
         end,
     },
     
+    curse_of_elements = {
+        id = 1490,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        
+        spend = 0.1,
+        spendType = "mana",
+        
+        startsCombat = true,
+        texture = 136130,
+        
+        handler = function()
+            applyDebuff( "target", "curse_of_elements" )
+        end,
+    },
+    
     -- Soul Shards spenders
     soul_swap = {
         id = 86121,
@@ -1540,7 +1071,7 @@ spec:RegisterAbilities( {
     },
     
     -- Cooldowns
-    dark_soul = {
+    dark_soul_misery = {
         id = 113860,
         cast = 0,
         cooldown = 120,
@@ -1549,7 +1080,7 @@ spec:RegisterAbilities( {
         toggle = "cooldowns",
         
         startsCombat = false,
-        texture = 538042,
+        texture = 463284,
         
         handler = function()
             applyBuff( "dark_soul_misery" )
@@ -1557,22 +1088,22 @@ spec:RegisterAbilities( {
     },
 
     -- Dark Intent (precombat self-buff in APL imports)
-    cast_dark_intent = {
+    dark_intent = {
         id = 109773, -- Using MoP era raid-wide spellpower/haste buff ID
         cast = 0,
         cooldown = 0,
         gcd = "spell",
         startsCombat = false,
-        texture = 463286,
+        texture = 463285,
         handler = function()
             applyBuff( "dark_intent" )
         end,
         usable = function()
-        if buff.dark_intent.up then return false, "dark_intent active" end
+            if buff.dark_intent.up then return false, "dark_intent active" end
             return true
         end,
     },
-    dark_intent = { id = 109773, alias = "cast_dark_intent" },
+
     
     summon_doomguard = {
         id = 18540,
@@ -1586,7 +1117,7 @@ spec:RegisterAbilities( {
         spendType = "soul_shards",
         
         startsCombat = false,
-        texture = 603013,
+        texture = 615103,
         
         handler = function()
             -- Summon pet
@@ -1739,22 +1270,7 @@ spec:RegisterAbilities( {
             -- Instant damage spell
         end,
     },
-    
-    dark_intent_legacy = { -- renamed to avoid duplicate key; kept for older imports referencing spellID 80398
-        id = 80398,
-        cast = 0,
-        cooldown = 0,
-        gcd = "spell",
-        
-        spend = 0.06,
-        spendType = "mana",
-        
-        startsCombat = false,
-        texture = 463286,
-        
-    handler = function() applyBuff( "dark_intent" ) end,
-    },
-    
+
     summon_pet = {
         id = 688, -- Imp
         cast = function() return 6 * haste end,
@@ -1772,7 +1288,7 @@ spec:RegisterAbilities( {
         end,
     },
     
-    cast_summon_infernal = {
+    summon_infernal = {
         id = 1122,
         cast = 0,
         cooldown = 600,
@@ -1790,14 +1306,7 @@ spec:RegisterAbilities( {
             -- Summon infernal
         end,
     },
-    -- Ability name aliases to avoid aura/ability key collision while satisfying imports.
-    haunt = { id = 48181, alias = "cast_haunt" },
-    agony = { id = 980, alias = "cast_agony" },
-    unstable_affliction = { id = 30108, alias = "cast_unstable_affliction" },
-    malefic_grasp = { id = 103103, alias = "cast_malefic_grasp" },
-    seed_of_corruption = { id = 27243, alias = "cast_seed_of_corruption" },
-    summon_infernal = { id = 1122, alias = "cast_summon_infernal" },
-    
+
     drain_life = {
         id = 689,
         cast = function() return 5 * haste end,
@@ -1831,18 +1340,30 @@ spec:RegisterAbilities( {
         spendType = "soul_shards",
         
         startsCombat = false,
-        texture = 460957,
+        texture = 463286,
         
         handler = function()
-            applyBuff( "soul_burn" )
+            applyBuff( "soulburn" )
         end,
     },
 } )
 
+-- Ability aliases for action list compatibility
+spec:RegisterAbilities( {
+    unstable_affliction = { id = 30108, alias = "cast_unstable_affliction" },
+    malefic_grasp = { id = 103103, alias = "cast_malefic_grasp" },
+} )
+
 -- State Expressions for Affliction
-spec:RegisterStateExpr( "soul_shards", function() return state.soul_shards and state.soul_shards.current or 0 end )
+-- Avoid naming collision with the soul_shards resource table; rely on resource access or the alias below.
 spec:RegisterStateExpr( "soul_shards_deficit", function() return state.soul_shards and ( state.soul_shards.max - state.soul_shards.current ) or 0 end )
 spec:RegisterStateExpr( "current_soul_shards", function() return state.soul_shards and state.soul_shards.current or 0 end )
+
+-- Minimal safety shims for malformed imports that may reference unit "focus" or bare ticking/remains.
+-- These prevent compiler errors without changing behavior.
+spec:RegisterStateTable( "focus", setmetatable({ current = 0 }, { __index = function() return 0 end }) )
+spec:RegisterStateExpr( "ticking", function() return 0 end )
+spec:RegisterStateExpr( "remains", function() return 0 end )
 
 spec:RegisterStateExpr( "nightfall_proc", function()
     return buff.nightfall.up and 1 or 0
@@ -1891,6 +1412,6 @@ spec:RegisterOptions( {
 } )
 
 -- Default pack for MoP Affliction Warlock
-spec:RegisterPack( "Affliction", 20250811, [[Hekili:fNvBVXTns4FlgfyTDRVTRw71XU1RbYHCaxmAkcUnf3houjXvIAxwljQtuk(mWc9B)MH6fsjrPv2jT5dXXwA4mKZ8mpZWr2w2FYEJpjJA)RlxSC1IBSSMBD5QBwDT9MSNtO2BsiEps2b)smjc(5BdcczEzmEm(QNd5eFufcEEQh8A7nBZzHzVp2ERz9UeKnH6bp(6v2B2Z89PLYsfE2B(0EMOWf)hPWTYYfU8a4VL2SWnKjYGxhWtlC)N0hzHS52BKpuEsObK8Wm4x)v5jJgt2gs9T)72BivB6Suw8J0ml7nEPSmAkJa)gNh6ZFkEUpj9rh4SeopLgryXGLURWDv9HVzTzW(VJ(vABBEqGMMYtugpHl)Fy5x(Aw(wAQGM(ilEhQIREvQiKZ9DcYtFgvXQbvXjfUzKqAC2CsQ3EwepgIqoFMgVJsI9OZRwuH7HdfUn(pZY24lVVW1ALAV0SdXTY1dUvI4FMgH7eD9SqPM08yNYF3bbcLWbNYigUwu7VzqTJR8ZuhAmnIrrDVwgWNIYjCPUVzY6(UjRA4pbnFlQz4iGbCaqxzeNQNObQdOHobHYvQ2iOk2KKs94rBjgZjWKUuwsPo(3K0qU3J)uHRkhVW9S36tsYWaDqkpQW9j(tcweCw(a)JGKF8xoVt8KfNbXQMmKeAMtjrcSh3NdVmvTarEeawCazAVV7MDmkyVcMUlfaESuQdpWrqGxhWuWuLjnk24PczSiGecGflkCN1KwG42T5PX9nr9BghvR0QAL7j5LUojCTdPr3ilI(met1YBiXK5jEzsC3vAMjKfqDYijMOXQLHSJh)CB3C6oA288ygOWtwJuWE5cPhrNRmJ59OdE2G1(SxiAhCDcCJAG2R2CE8008kG4xBBEuOtDaZrqP(iWqTBu8CGnborjZAtOxNyvpQ3fl1itp93LYfojqQT0ANvw0Rf3uH7LLmUD3hfUNB(WpmaSJ5qL5i2ts9RibTgcxAuB(CmojYKeuKgcK56MaLrIR69unhE1RugpccsqsQZUuIiPHVTXLUNavEC2YdZ6LHigTrGYdvBoWpayQm4FqVf4BHnhf90xanJaL4aNuL)r2(X7a6Uc3nGFdOf3tHfHWuS5fGXvE64bbQIJqe9oRfIZlCZJdPcrJnIbuHar0bPuXEqSkS9DxD(CDxC)iunorIgKNhWSoIegSgX8sJ2Gw69E9uORqa0OD1OAiyuMw5wA86EvS((CE0UC40mE7qFj2TtT8kdZIdOPXKWxe3WXicgihQoc1bK3QJOfDsog4LMYU0f9gjhWuOJuhsfeyTgnAjOrhECBvLpjDmkItg3XNrl3J30TSXO8ot1MVzuBQfwn4ygNRAQ7GvJUdwAS61O9dEMbiYvL2TYk7PKWS9nvTxUWmUAjeR)MbTA12(TVa213LhL0W69h5c4NBPavk9hbdX8PTPurk2moKu)zods7Gg5t9ijjsI1s62yEwjXm8S5JE)NHQWbhaRfdgUmfRMPDBhd3wu6xnu406lSnnRHjMhf50f1QH2)EzZetebC9iaPRnvgVLaAyNu4PLGNn4nfKYBVPmsmCrG)c7UWA4scVQDXyMA1u7KrEn2V(n7BIsSv709O1hoeDen0MI8OLDFKf(heQpnw44LhhJj41I3Os1LEh)6BtxJLOt0J1ucRVX6eBGOZtKuuFcC(vqIflkHNMv1K4PvJK6uS0Y)nhAFXhzIWeqsEgpIiVBT3Es8oQyEXd)clgE1k4w4)wSipb1ekq52avxnNZPGWsZfWdd5pjXFKCaAbSJ0u455cCHyVSzOy1AahYa2(swTCsw0aEEClP99rH9jayNiO)uXdfU)n8VRSo83py4W2mTHx2X1A8JB5ifoTr8LdkUAGckPVAqPn2qPAHxp4cL06OGgDcWfZFzh)HppY8o1o6YbfuLED6ear9Vh6l6uxk4BguWweDd6MeF1ajD2yhfE0CZJP4z7CPHP4E7e1g2JAOyYu8VMcB3mngJsHVDQUsRftwYH9G9GdvRy4eZER4Bkrh(3DV88ayASo9ldv)xEUVQgxDMjoXIKuEalKwo(IiMqiDZvRV60TdUxDkZdCCLFge4q4w4((QzEiz(JOX(O1Y2tGhtHw2Fg1nJd(SNrVUxyUpEZCkd8(P1E7)ZVjOOMOrIF)cS7EM3EDPjXpRSAvGK()sGugwwOsV6X1AJ(ZYlsuzMpvQca797Os91F0snl)elmu7evPYSArLEd5JIZJ2sld0HqJFfp8(OAh(Q2irmIJtJx6MT38DfUV25Tx8W3bR(J1vAlEO0mI5nfF)H1)OwDtZcOQuEr9i6x3mH(bwsmjrSNN5aKwygGjzmws9cwW6jndhZMTAsgsTa9uUEXSHMnJX1ltDvl2SqLZyhZhqN77k7zRr01afJd0pz0f4xNzD9Nbev6Wxg8UvnRVXa4k6F5unXuFHVJlAZxY7OI28CuYtMY317WHP9n9U3Q1PSZN0Q0DHKIOH7(D8UFXrxk0kfUs85Q56D)6JBtrw)11oG00q)fLFoT1w1rF4IP7qQWpjVyDH7)Id4Dj6aE5ati(N)MnHyfEwKTUbRRn6I7xBn7SHNq8HdJoDyWe6wqXC00eLoMA007zdgoAP46oTET6vhEuPyDgeZuhZoP7aDN11fAEah3BTywVXIu)WrMQY9301Vk1aUfR98RBUg9Hd1p72z9hh59w30rvgS7Xu8BmQ4UEs15)y6BLr9TSJ(ArmDwlp(vho0BYw3TCr7WYYZ)tjUGLa(ZCwLD8cnzT9iX7achADTDCZgUMe4a6OJ6XdjjORMH0Dx1vk1y7UOzQDRTkZNmeJ0J5nyJV)YJ67V2qiR8zgcWx3zp26sd4w7iJRBwVr111s1Z17RTD6spPg8xDjO3Y)hA1DCpB1pu)fceA0gq1XPeblfRKEP1NiwpcEYA53wFwD(RAqXD0JgfWxUYgHzEKpgFFY6E6T3AnTzpPocDwNkixwvuuZc9C7njFnAzOC1s5)YHnhfEwD27dN(qvNx69YuViSRSPGIQKRxvkdX2krnxSyy5vDKPqddp12ElxDX2x361MWlCF998u7nBIYdszpkNYR9)p]] )
+spec:RegisterPack( "Affliction", 20250821, [[Hekili:LR1wVTnYv4FlgfqXknvljLPStGLb6(utWI8c3I(gjhro0IR4fvEXEnGa)T35cjf5mNziLRDsbksCC0C5C(oN5CDg5A6(7UoHOkS73TmSSnUZYCL16B2S(ZUovVCe76CefCa9i5)KHsj)7FpkkjoOkopJo1lj5OqkjkZRlcit76SRooP6RzU7aO7A71UoO6Q95fUooP1rfXhCD2hhgI5Baxg46877JlB8P)GA8BzFJFEe5Zmg34NexwrMokVOX)FGpeNeVIGMI8O4ecg(ln()lursEWHV04FgVn(nFJtGYvhlWb5P7qv)1T)siQ4GxCwfoRcEbL1PP5zEhXvFI8JhvTSncNSVMSNIpfhT9kYWRqjXpHHjWXC6yFIQa3(hOqSxjU4iHDE8juW186KD1fzmgSRokAfDep6qRQpcVN9icMOBOkof)GrZ36xgzY6sSxCfoLJJQI4Sd4kt6QzuNPgOSGq9tNcYZtcZFoBWWf4uuCw592NovHkEKiYuU4vL7fgJVFTXK8Y69HxtODvW0jj7oCbHqhIZEC(uWYEefsYZd9IQlE51sH(LtjW1SZ)Y9OIWYh2UEX1H5vRcYlkQpsxFNo7H7wqNa9yE2l9JzAWgSoRScTlb7H69k6xYMLlvGOtNgZARfTlBpgLuTF1XGQ7TmwsT2gc(I6mp(N8O(R8dO08NWuHH(7uYHup7nMCRbjyeFZ0PEc7HZWPXygGgpY92tsmuoiLMEJLvdKYvLuVUGAILIxEKx1EcPsyYvjZTneZo1bxaXcyH0c4NAqZeMNNcoXZy0HmCz5OGcLJIgm60ZKy4WjbB(vupVtNgnuN33nlxiBq8WDcSPn8ifGpwt4bZwvYAFXyqS8142BdZ54SiCrgkb6aL4M8oHLLIGrB86fsNbVXoVlKftDI1dMGcGx5ZOJ9rRgjaIiUkoGgCCaEhoceyBNxKVSnZDxejfXUuuBC)w6CE0ZcsCj5P)mKjR5DlK0oIWaaX9GsJ0WHOMZgzaRBX3ccF7PH)5tMEulFyXbRSzNmgbwJni0SMgA9XHMYrCbyuOnZkS2nl0ASRIgqzYwiKTdo2Og3)PjAB27XMUMwkpFUBAZSnIQ9K4iYXe3DofLHyazTb5aU)t2gQsLpIsHfeo0whcTMxk62AQushAF0Bx9rRPIlOiscqiNbQsPZHuucokoW7Xcujt0FZ46vKAwi)w8CFpIy05TlpPAubqR4LRO8CWgyLWfse8czbECnDjxT)ZRWIESEjP7SEdtEiwQ32BuaoEQmaLNmyveTeGW8CvGNiY5UaCXphNfoo)siRIZr2vXyOi9QcJpbeSGGauUrvyrBUYjZ)9AuqQQZ9QrbUjNZqu0aGGVBXqGmvvf)G0HYCcEWx2L4nAkTzmoK6WpHHwNODTun2NojXYP6CGZzy3Pu0F6nEmByxmydyrMOrS0XjGOvty)WzhS1OLK1O4((by01ECp2IRBsAh5Qm4SnKwNkXeUyPjSgAP5RUtajk9wvnSeH)b0LGepJWjErjOumVIRe61MCio5pq4qCwPxqDwgHfRWzuAhkTDE1B0Z1zT)fdkM7w5Z9EW468eUOKmv3n8AA668mQGsRs6L4IB8JtpMxu1ErTFiehHQtQ(qJFb(FxhxqWQFzorG9r1v5POk6ab7rzpIlx18TFloJm1MV04)pZkRpsPeDbC8qjxxz(Fyf1ogGHe79lJzRvYm5yKk5A5fkHMkzky5Du(Y4AuEss(ZuhCc1jbnA8FgxqgVUKsKycbQOlRJA0RWQXFxDv36YYzqUoB0QddPloermurL4VqKr))gbZJQJuCqAjKIJneYIZ1vzPcfip34LPeT()AL4xt7e7ncpscroDDkpIdiEPBSDDydYEZhUZi5)(D2Ba1697(RUobfXKM8Ir03YrOH9g)tNiyqzN2n(334BZxLCiF2SRn6EkPUNGW1Hd5bJurG7pxuzjHklkQwFPOAs(b8KfNzD7Njm(M3igBzFM6NFIdkhSFp4q)tGq5WgLC4AQlEFDen(pSLOIA8x04tMbolnzrn(3XwJuPbS5iLM1nPMeVSLs8AwY(RwXIpneuTyCs6Yq47JaJLN1i9QrV0yIYNPxUvPEr8zsyO14m1eEIcU)Th3WIUxk1Vtj1hxi)qrrCgQ)Z84kp4nLVF(I47mjpjLoL2MgceFo7L8r6FC6FXuOGF0NGUi(iNAWpJSWHj)PJHcz1TS23PO)nJhQlUQXV)1JjqR99LDDoVyGOoVrroUIMkRTXT2(2ga62b1hAGvWQGrjR2FUQMECPndtxlg8GIdmc66drFQGHsq)tJtnGLCrnHLmrnB3AcqeZg5I(e4DxhwTbQGSRxZJAaGYLddAmkAdnWgHtdBmLQdbol7Gll6hWwCK6W11XwqiK61shUmTGSh61AdvuVwSa0bRoazOpZIIy1uEnUFCz7xnXLNODpHSsIJklHNz(ORbG7eXcKpFViBJl1lsHocQvEghUzclxjfP6QMGT)OEmaj1VFl3LJ1MSOX)ur6uzA1XlOkmuWWbM5AdoEL6QpKyV2suuGdG9O3zyYM)pt7Z95R1ryskYmvekj62bwONVDI(AvKHWaEZ8ikNOVLZE3QEHeHGasVtIQ5BFTevtp4ntgyU0nBh)VqVrZ(cHf)EB0A(OXpDQKmxGR61TzXg3iayU2(AP)VRNmBPsO6)sMO3DxrIyUw8NGCmQdaHV1ktgczUf48JUDPfQuLtPWOmtqLmOIm1rVGveYs88scRnQSa2yVLO(aHV(ez9TvcTWg)pRT6h(jkWHWsG8JQ7e89jt1ijt)2ijf0kN2ZqovKouDFOVfvfmsgbxnl8GUkQNHOnUIdPUF1EvnQdwOmXXgGedMQt3krEEbItgdaIlQZlQ(6vGKWPkHfI3QZ9Dz8E0nxj7rtpX1AFXcupp3nEWy4iPMQtqoUTBJEJyHgjgA3Q)ATg2OHPQ2dp)9iA26wrVLb(DFS)qEQixAZdOiXXOdvUbt)39jxhwZ4MQtv9Uajs4k(xbj1Dl(DZBhwb9GN6vQg62lQB(9vo3BNrDzV)pxf6qxXI2EvNzTywVJvMWwMybU0us3ahfq1vgDUUMjlXszEsynOk3)UlPAg1mPi254eV6lxyjm4e9zbYWo)ke0L2F2y1sjwfR2uxHoVII5MvHzZwmuRYvx2PI6sKVCoTCg4QN1u03KQMlm0SUGXgZmym)pU)Np]] )
 
--- Register pack selector for Affliction
+

@@ -13,14 +13,35 @@ local Hekili = _G[ "Hekili" ]
 local class = Hekili.Class
 local state = Hekili.State
 
+-- Safe stance initialization to avoid nil checks in stance-based logic (mirrors Arms pattern).
+do
+    local st = rawget( Hekili, "State" )
+    if st and rawget( st, "current_stance" ) == nil then
+        local idx = type( GetShapeshiftForm ) == "function" and GetShapeshiftForm() or 0
+        local map = { [1] = "battle", [2] = "defensive", [3] = "berserker" }
+        rawset( st, "current_stance", map[ idx ] )
+    end
+end
+
 -- Ensure helper references exist (mirrors pattern in Arms file) to avoid undefined global warnings.
 local addStack = state and state.addStack
+local removeStack = state and state.removeStack
+local applyBuff, removeBuff, applyDebuff, removeDebuff = state and state.applyBuff, state and state.removeBuff, state and state.applyDebuff, state and state.removeDebuff
 if not addStack then
     addStack = function(aura, target, n)
         local b = state and state.buff and state.buff[aura]
         if not b then return end
         b.stack = math.min((b.stack or 0) + (n or 1), b.max_stack or 99)
         b.up = (b.stack or 0) > 0
+    end
+end
+
+if not removeStack then
+    removeStack = function(aura, n)
+        local b = state and state.buff and state.buff[aura]
+        if not b then return end
+        b.stack = math.max(0, (b.stack or 0) - (n or 1))
+        if b.stack == 0 then b.up = false end
     end
 end
 
@@ -934,36 +955,7 @@ spec:RegisterAuras( {
 } )
 
 spec:RegisterAuras( {
-    battle_shout = {
-        id = 6673,
-        duration = 3600,
-        max_stack = 1,
-    },
-    commanding_shout = {
-        id = 469,
-        duration = 3600,
-        max_stack = 1,
-    },
-    colossus_smash = {
-        id = 86346,
-        duration = 6,
-        max_stack = 1,
-    },
-    raging_blow = {
-        id = 131116,
-        duration = 12,
-        max_stack = 2,
-    },
-    enrage = {
-        id = 12880,
-        duration = function() return glyph.unending_rage.enabled and 8 or 6 end,
-        max_stack = 1,
-    },
-    berserker_rage = {
-        id = 18499,
-        duration = function() return glyph.unending_rage.enabled and 8 or 6 end,
-        max_stack = 1,
-    },
+    -- Unique/simple auras not previously defined above.
     meat_cleaver = {
         id = 85739,
         duration = 10,
@@ -974,37 +966,10 @@ spec:RegisterAuras( {
         duration = 10,
         max_stack = 1,
     },
-    
-    -- Talent-specific buffs/debuffs
-    avatar = {
-        id = 107574,
-        duration = 24,
-        max_stack = 1,
-    },
-    bladestorm = {
-        id = 46924,
-        duration = 6,
-        max_stack = 1,
-    },
-    bloodbath = {
-        id = 12292,
-        duration = 12,
-        max_stack = 1,
-    },
     bloodbath_dot = {
         id = 113344,
         duration = 6,
         tick_time = 1,
-        max_stack = 1,
-    },
-    dragon_roar = {
-        id = 118000,
-        duration = 4,
-        max_stack = 1,
-    },
-    second_wind = {
-        id = 29838,
-        duration = 3600,
         max_stack = 1,
     },
     vigilance = {
@@ -1012,49 +977,9 @@ spec:RegisterAuras( {
         duration = 12,
         max_stack = 1,
     },
-    
-    -- Defensives
-    die_by_the_sword = {
-        id = 118038,
-        duration = function() return glyph.die_by_the_sword.enabled and 4 or 8 end,
-        max_stack = 1,
-    },
-    shield_wall = {
-        id = 871,
-        duration = 12,
-        max_stack = 1,
-    },
-    spell_reflection = {
-        id = 23920,
-        duration = function() return glyph.spell_reflection.enabled and 4 or 5 end,
-        max_stack = 1,
-    },
     mass_spell_reflection = {
         id = 114028,
         duration = 5,
-        max_stack = 1,
-    },
-    enraged_regeneration = {
-        id = 55694,
-        duration = 5,
-        tick_time = 1,
-        max_stack = 1,
-    },
-    
-    -- Crowd control / utility
-    hamstring = {
-        id = 1715,
-        duration = 15,
-        max_stack = 1,
-    },
-    piercing_howl = {
-        id = 12323,
-        duration = 15,
-        max_stack = 1,
-    },
-    staggering_shout = {
-        id = 107566,
-        duration = 15,
         max_stack = 1,
     },
     shockwave = {
@@ -1072,24 +997,14 @@ spec:RegisterAuras( {
         duration = 15,
         max_stack = 1,
     },
-    rallying_cry = {
-        id = 97462,
-        duration = 10,
-        max_stack = 1,
-    },
-    demoralizing_shout = {
-        id = 1160,
-        duration = 10,
-        max_stack = 1,
-    },
     disrupting_shout = {
         id = 102060,
         duration = 4,
         max_stack = 1,
     },
-    intimidating_shout = {
-        id = 5246,
-        duration = 8,
+    staggering_shout = {
+        id = 107566,
+        duration = 15,
         max_stack = 1,
     },
     charge_root = {
@@ -1099,7 +1014,8 @@ spec:RegisterAuras( {
                 return 4
             elseif glyph.bull_rush.enabled then
                 return 1
-            end            return 0
+            end
+            return 0
         end,
         max_stack = 1,
     },
@@ -1195,6 +1111,26 @@ spec:RegisterAbilities( {
             end
         end,
     },
+
+    -- Major cooldown
+    recklessness = {
+        id = 1719,
+        cast = 0,
+        cooldown = 180,
+        gcd = "off",
+
+        spend = 0,
+        spendType = "rage",
+
+        toggle = "cooldowns",
+
+        startsCombat = false,
+        texture = 458972,
+
+        handler = function()
+            applyBuff( "recklessness" )
+        end,
+    },
     
     execute = {
         id = 5308,
@@ -1238,6 +1174,24 @@ spec:RegisterAbilities( {
         
         handler = function()
             removeBuff( "bloodsurge" )
+        end,
+    },
+
+    -- Rage dump; off-GCD in MoP with a short cooldown.
+    heroic_strike = {
+        id = 78,
+        cast = 0,
+        cooldown = 1.5,
+        gcd = "off",
+
+        spend = 30,
+        spendType = "rage",
+
+        startsCombat = true,
+        texture = 132282,
+
+        handler = function()
+            -- No extra state to manage
         end,
     },
     
@@ -1313,6 +1267,23 @@ spec:RegisterAbilities( {
         
         handler = function()
             applyBuff( "commanding_shout" )
+        end,
+    },
+
+    heroic_throw = {
+        id = 57755,
+        cast = 0,
+        cooldown = 30,
+        gcd = "spell",
+
+        spend = 0,
+        spendType = "rage",
+
+        startsCombat = true,
+        texture = 236171,
+
+        handler = function()
+            -- Ranged pull; no extra state
         end,
     },
     
@@ -1702,6 +1673,26 @@ spec:RegisterAbilities( {
             applyDebuff( "target", "disrupting_shout" )
         end,
     },
+
+    -- Interrupt
+    pummel = {
+        id = 6552,
+        cast = 0,
+        cooldown = 15,
+        gcd = "off",
+
+        spend = 0,
+        spendType = "rage",
+
+        toggle = "interrupts",
+
+        startsCombat = true,
+        texture = 132938,
+
+        handler = function()
+            -- Interrupt handled by engine
+        end,
+    },
     
     enraged_regeneration = {
         id = 55694,
@@ -1853,7 +1844,7 @@ spec:RegisterOptions( {
     damage = true,
     damageExpiration = 8,
     
-    potion = "golemblood",
+    potion = "mogu_power_potion",
     
     package = "Fury",
 } )

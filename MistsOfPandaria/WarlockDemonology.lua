@@ -726,6 +726,15 @@ spec:RegisterAuras( {
     },
 } )
 
+-- Provide numeric state expressions for demonic_fury to support bare-token usage in APLs.
+spec:RegisterStateExpr( "demonic_fury", function ()
+    -- Prefer explicit resource table if initialized, else fall back to aura stack, else 0.
+    if state.demonic_fury and state.demonic_fury.current ~= nil then
+        return state.demonic_fury.current
+    end
+    return ( state.buff.demonic_fury and state.buff.demonic_fury.stack ) or 0
+end )
+
 
 
 

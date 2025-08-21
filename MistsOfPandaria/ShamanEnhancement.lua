@@ -770,6 +770,7 @@ spec:RegisterAuras( {
         end,
     },
 
+
     lightning_shield = {
         id = 324,
         duration = 1800,
@@ -1471,9 +1472,10 @@ spec:RegisterAbilities( {
 
         handler = function()
             -- MoP 5.4.8: Deals 380% weapon damage (corrected from 450% in 5.3.0)
-            applyDebuff("target", "stormstrike")
-              -- Stormstrike debuff increases nature spell crit by 25% for 15 seconds
-            -- This affects Lightning Bolt, Chain Lightning, Lightning Shield, Earth Shock
+            -- Apply the Stormstrike debuff (tracked as 'stormstrike_debuff').
+            applyDebuff("target", "stormstrike_debuff")
+            -- This debuff increases nature spell crit by 25% for 15 seconds and
+            -- affects Lightning Bolt, Chain Lightning, Lightning Shield, Earth Shock.
         end,
     },
 
@@ -1492,7 +1494,7 @@ spec:RegisterAbilities( {
         usable = function() return buff.ascendance.up, "requires Ascendance" end,
         handler = function()
             -- Acts like Stormstrike during Ascendance window
-            applyDebuff("target", "stormstrike")
+            applyDebuff("target", "stormstrike_debuff")
         end,
     },
 
@@ -1526,13 +1528,9 @@ spec:RegisterAbilities( {
 
         -- MoP 5.4.8: 300% weapon damage (Patch 5.3.0), spreads Flame Shock to 4 enemies within 12 yards (Patch 5.0.4)
         handler = function()
-            if not glyph.lava_lash.enabled and debuff.flame_shock.up then
-                -- Spread Flame Shock to up to 4 nearby enemies within 12 yards
-                -- Authentic MoP 5.4.8 mechanic from Patch 5.0.4
-                removeBuff( "flame_shock" ) -- Remove from current target
-                applyDebuff( "target", "flame_shock" ) -- Reapply to refresh duration
-                -- Note: Spread mechanic to nearby enemies handled by game engine
-            end
+            -- If unglyphed and Flame Shock is present on the target, Lava Lash spreads it to nearby enemies.
+            -- The current target's Flame Shock is NOT removed or forcibly refreshed by Lava Lash.
+            -- Spreading to additional targets is handled by the game; no state changes needed here.
         end,
     },
 
@@ -1547,7 +1545,10 @@ spec:RegisterAbilities( {
         spend = 0.10,
         spendType = "mana",
 
-        usable = function() return debuff.flame_shock.up, "requires flame shock" end,
+        -- Usable if any enemy has Flame Shock ticking (not just the current target).
+        usable = function()
+            return state.active_flame_shock > 0, "requires flame shock on any enemy"
+        end,
 
         handler = function()
             -- No specific handler needed
@@ -1569,7 +1570,11 @@ spec:RegisterAbilities( {
         spendType = "mana",
 
         handler = function()
-            removeBuff("maelstrom_weapon")
+            -- Tier 15 4pc: 30% chance for LB/CL not to consume Maelstrom Weapon stacks.
+            local hasT15 = (state.set_bonus and (state.set_bonus.tier15_4pc or 0) > 0) or (buff.tier15_4pc_enhancement and buff.tier15_4pc_enhancement.up)
+            local consume = true
+            if hasT15 and math.random() < 0.30 then consume = false end
+            if consume then removeBuff("maelstrom_weapon") end
         end,
     },
 
@@ -1588,7 +1593,10 @@ spec:RegisterAbilities( {
         spendType = "mana",
 
         handler = function()
-            removeBuff("maelstrom_weapon")
+            local hasT15 = (state.set_bonus and (state.set_bonus.tier15_4pc or 0) > 0) or (buff.tier15_4pc_enhancement and buff.tier15_4pc_enhancement.up)
+            local consume = true
+            if hasT15 and math.random() < 0.30 then consume = false end
+            if consume then removeBuff("maelstrom_weapon") end
         end,
     },
 
@@ -1643,9 +1651,7 @@ spec:RegisterAbilities( {
 
         handler = function()
             applyDebuff("target", "frost_shock")
-            if talent.frozen_power.enabled then
-                applyDebuff("target", "frozen")
-            end
+            -- Frozen Power root effect is handled in-game; no explicit 'frozen' aura is registered here.
         end,
     },
 
@@ -1979,7 +1985,10 @@ spec:RegisterAbilities( {
         spendType = "mana",
 
         handler = function()
-            removeBuff("maelstrom_weapon")
+            local hasT15 = (state.set_bonus and (state.set_bonus.tier15_4pc or 0) > 0) or (buff.tier15_4pc_enhancement and buff.tier15_4pc_enhancement.up)
+            local consume = true
+            if hasT15 and math.random() < 0.30 then consume = false end
+            if consume then removeBuff("maelstrom_weapon") end
         end,
     },
 

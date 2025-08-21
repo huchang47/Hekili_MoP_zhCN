@@ -286,6 +286,14 @@ local function SimcWithResources( str )
         str = extendExpression( str, "gcd", "execute" )
     end
 
+    -- MoP Demo: Some imported APLs reference bare 'demonic_fury' as a numeric.
+    -- Convert bare tokens to the aura stack which mirrors the resource (0..1000) when Demo spec isn't active.
+    -- Handle boundaries: start, end, and non-word/dot separators.
+    str = str:gsub( "^demonic_fury$", "buff.demonic_fury.stack" )
+             :gsub( "^demonic_fury([^%w_%.])", "buff.demonic_fury.stack%1" )
+             :gsub( "([^%w_%.])demonic_fury$", "%1buff.demonic_fury.stack" )
+             :gsub( "([^%w_%.])demonic_fury([^%w_%.])", "%1buff.demonic_fury.stack%2" )
+
     return str
 end
 
@@ -549,7 +557,12 @@ do
         { "^!?(pet%.[a-z0-9_]+)%.up$", "%1.remains"                                   },
         { "^!?(pet%.[a-z0-9_]+)%.active$", "%1.remains"                               },
 
-        { "^(action%.[a-z0-9_]+)%.ready$", "%1.ready_time" }
+    { "^(action%.[a-z0-9_]+)%.ready$", "%1.ready_time" },
+
+    -- MoP Demo: tolerate bare 'demonic_fury' tokens from imported APLs by mapping
+    -- them to a numeric value even if the demo resource isn't fully initialized yet.
+    -- Prefer state.demonic_fury.current if available, else use the demonic_fury buff stack, else 0.
+    { "^demonic_fury$", "( (demonic_fury and demonic_fury.current) or buff.demonic_fury.stack or 0 )" }
     }
 
 
@@ -985,7 +998,7 @@ do
                     end
 
                     local isNumber = numeric and prev == nil and next == nil or prev and math_ops[ prev.a ] or next and math_ops[ next.a ]
-                    piece.s = scripts:EmulateSyntax( piece.s, isNumber, squawk )
+                    piece.s = scripts:EmulateSyntax( piece.s, isNumber )
                 end
 
                 if ( prev and prev.t == "op" and math_ops[ prev.a ] and not equality[ prev.a ] ) or ( next and next.t == "op" and math_ops[ next.a ] and not equality[ next.a ] ) then

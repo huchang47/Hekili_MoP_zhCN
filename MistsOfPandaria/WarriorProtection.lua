@@ -10,6 +10,16 @@ local addon, ns = ...
 local Hekili = _G[ addon ]
 local class, state = Hekili.Class, Hekili.State
 
+-- Safe stance initialization to avoid nil checks in stance-based logic (mirrors Fury/Arms pattern).
+do
+    local st = rawget( Hekili, "State" )
+    if st and rawget( st, "current_stance" ) == nil then
+        local idx = type( GetShapeshiftForm ) == "function" and GetShapeshiftForm() or 0
+        local map = { [1] = "battle", [2] = "defensive", [3] = "berserker" }
+        rawset( st, "current_stance", map[ idx ] )
+    end
+end
+
 -- Local helper shortcuts and safe fallbacks to avoid undefined global warnings.
 local rage = state.rage or { current = 0, max = 100 }
 local damage = state.damage or {}
@@ -22,6 +32,19 @@ if not addStack then
         b.up = (b.stack or 0) > 0
     end
 end
+
+-- Provide additional helper aliases/fallbacks like Fury to prevent nil globals.
+local removeStack = state and state.removeStack
+if not removeStack then
+    removeStack = function(aura, n)
+        local b = state and state.buff and state.buff[aura]
+        if not b then return end
+        b.stack = math.max(0, (b.stack or 0) - (n or 1))
+        if b.stack == 0 then b.up = false end
+    end
+end
+local applyBuff, removeBuff = state and state.applyBuff, state and state.removeBuff
+local applyDebuff, removeDebuff = state and state.applyDebuff, state and state.removeDebuff
 
 -- Aura scan helpers (fallback if not provided by ns):
 local FindUnitDebuffByID = ns.FindUnitDebuffByID
@@ -558,6 +581,29 @@ spec:RegisterAuras( {
             t.caster = "nobody"
         end,
     },
+
+    -- General Enrage tracking (used by some APL conditions)
+    enrage = {
+        id = 12880,
+        duration = 10,
+        max_stack = 1,
+        generate = function( t, auraType )
+            local aura = UA_GetPlayerAuraBySpellID( 12880 )
+            if aura then
+                t.name = aura.name
+                t.count = aura.applications or 1
+                t.expires = aura.expirationTime
+                t.applied = aura.expirationTime - 10
+                t.caster = "player"
+                return
+            end
+
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
     
     -- Enhanced Ability Tracking
     revenge = {
@@ -647,6 +693,29 @@ spec:RegisterAuras( {
             t.caster = "nobody"
         end,
     },
+
+    -- MoP: Thunder Clap applies Weakened Blows (10% physical damage reduction) on targets hit.
+    weakened_blows = {
+        id = 115798,
+        duration = 30,
+        max_stack = 1,
+        generate = function( t, auraType )
+            local aura = FindUnitDebuffByID( "target", 115798 )
+            if aura then
+                t.name = aura.name
+                t.count = aura.applications or 1
+                t.expires = aura.expirationTime
+                t.applied = aura.expirationTime - 30
+                t.caster = aura.caster or "player"
+                return
+            end
+
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
     
     sunder_armor = {
         id = 7386,
@@ -656,6 +725,11 @@ spec:RegisterAuras( {
             local aura = FindUnitDebuffByID( "target", 7386 )
             if aura then
                 t.name = aura.name
+
+                    -- Maintain Weakened Armor (shared raid debuff) alongside Sunder.
+                    if debuff.weakened_armor.stack < 3 then
+                        applyDebuff( "target", "weakened_armor" )
+                    end
                 t.count = aura.applications
                 t.expires = aura.expirationTime
                 t.applied = aura.expirationTime - 30
@@ -663,6 +737,29 @@ spec:RegisterAuras( {
                 return
             end
             
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
+
+    -- MoP raid-wide armor reduction debuff applied by Sunder/Devastate and other classes.
+    weakened_armor = {
+        id = 113746,
+        duration = 30,
+        max_stack = 3,
+        generate = function( t, auraType )
+            local aura = FindUnitDebuffByID( "target", 113746 )
+            if aura then
+                t.name = aura.name
+                t.count = aura.applications
+                t.expires = aura.expirationTime
+                t.applied = aura.expirationTime - 30
+                t.caster = aura.caster or "unknown"
+                return
+            end
+
             t.count = 0
             t.expires = 0
             t.applied = 0
@@ -771,6 +868,10 @@ spec:RegisterAuras( {
                 t.count = aura.applications
                 t.expires = aura.expirationTime
                 t.applied = aura.expirationTime - 4
+                -- Keep Weakened Armor in sync.
+                if debuff.weakened_armor.stack < 3 then
+                    applyDebuff( "target", "weakened_armor" )
+                end
                 t.caster = "player"
                 return
             end
@@ -1012,11 +1113,7 @@ spec:RegisterAuras( {
         duration = 3,
         max_stack = 1,
     },
-    thunder_clap_debuff = {
-        id = 6343,
-        duration = 30,
-        max_stack = 1,
-    },
+    -- Note: thunder_clap_debuff removed; use 'thunder_clap' aura (debuff on target) defined above.
     
     -- Shield Slam related auras
     shield_slam_debuff = {
@@ -1121,7 +1218,7 @@ spec:RegisterStateTable( "protection", {
     
     -- Buff/Debuff priorities
     maintain_buffs = { "battle_shout", "commanding_shout" },
-    maintain_debuffs = { "sunder_armor", "thunder_clap_debuff" },
+    maintain_debuffs = { "sunder_armor", "thunder_clap" },
     
     -- Cooldown usage guidelines
     use_on_pull = { "charge", "shield_slam" },
@@ -1190,6 +1287,9 @@ spec:RegisterAbilities( {
             else
                 applyDebuff( "target", "sunder_armor" )
             end
+
+            -- Ensure Weakened Armor raid debuff is maintained
+            applyDebuff( "target", "weakened_armor" )
         end,
     },
     
@@ -1248,7 +1348,9 @@ spec:RegisterAbilities( {
         texture = 136105,
         
         handler = function()
-            -- Apply Deep Wounds effect (handled by the game)
+            -- Maintain Thunder Clap debuff and Weakened Blows on targets hit.
+            applyDebuff( "target", "thunder_clap" )
+            applyDebuff( "target", "weakened_blows" )
         end,
     },
     
@@ -1295,7 +1397,7 @@ spec:RegisterAbilities( {
         id = 845,
         cast = 0,
         cooldown = 0,
-        gcd = "off",
+    gcd = "off",
         
         spend = 20,
         spendType = "rage",
@@ -1305,6 +1407,25 @@ spec:RegisterAbilities( {
         
         handler = function()
             -- No specific effect for Cleave
+        end,
+    },
+
+    execute = {
+        id = 5308,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        spend = 10,
+        spendType = "rage",
+
+        startsCombat = true,
+        texture = 135358,
+
+        usable = function() return target.health.pct < 20, "requires execute phase" end,
+
+        handler = function()
+            -- High damage finisher; no extra state changes needed here.
         end,
     },
     
@@ -2149,10 +2270,15 @@ spec:RegisterOptions( {
     damage = true,
     damageExpiration = 8,
     
-    potion = "golemblood",
+    potion = "mogu_power_potion",
     
     package = "Protection",
 } )
 
 spec:RegisterPack( "Protection", 20250809, [[Hekili:nRvCVnUUn8plbhqA7B3L5K20R9qBb2WgWEh2omG8g2)zBfBLgVABLjl3(6qG)SpsjBljBlhNB792WHE11IIKIK)OiLS)s)FYFtmrq9)2kVvR9UZ7(fRwT6oVR93iE)a1FZbs0lKNHhYjz4FYzIQqbTqGd9EkJeJSOGvYJGH93STmjv8J5(B7Z3Lxdp4VHuk2Z4(B2KvUJN8I)M9jXXu1mOfr(B(P9jfvH4pKQWA5xfY2b)DKiHLxfMMuiGH3X4vH)j6ljPjlKQ2UKuqj(qv4FNW5jm(xQc)RGctvt7RF4d4FtJyzBjIQVQ4wXIdnV6384Vf(FrknOypRu8XKDpwqfIK8NlwKrsYfWpbBl3TRy(m8xlke8aYZjbWqlkpu)stwaVDy5apKrYJbwpDzrYsYjA50LfoLfmZ8i6hJ2Zyf0hJP7O5fjVsR(QYI8hO7iLPIgRBrltq1CpH)mfvorsg9rVJhZyVsZOW6norX3NUZCchkZYOPYjGZeiJQuwsbU2wWPaTMtGxMhO(Ra0R(rmm7XgHG8PVaxBo)TuEbL)cLhWjknT1mwwqdShEUuxO54ZlIzVLBYjK8ebntPccEs(luXsKJrmwks9II9j004G3iPPWkbDtfpDV3jzYQZKjBtzS4GDL83XjQ8(QjbJe9IPJwBbGL8uOMWJi50abJZRnWOX4bPfjJ8ZF6glnjn559IIG)rz8Zn(JURJIuswZ6WsTiphW2faMGOxkoNjEGHp1DTinxLhoESoUcJhHvrqCc9HvwreraL9dPAd7TKLGuMBJ9GStSa5RNptShcxflO)SmDZPcAlG5d4EL(H8eP4vAanNMLqlEC5j5aHr7pVNm0nM6TVhGAga6tJnaX1O6Wg7SwJxOx8y6aTbThCXyS5xUNssf7xCis8qlrTCkqnQwtoEmjhs5GPJIjzq4uaK33lR4PA2abx)G3I1x5qRsHeebiapUNsPh6xgD661xnFu05sphkDmnJXjPj)lR84trMgHSd6D2IBGr59q0QxlZDn)se0AeEytJmHNPPWW0T2ZLBWmZHLJWCGGd4MRjI3N94f50xP8lMFz)8oOoE84LJZHhVGK(g59IlM3Nb1M)hwDLtT9afW6C6Uu1w89JN7qW8wFd4zsIA8qR74Dw6Y7OOQqWYLivdt61UMss2bQAx6xtIG0UV3zI34nxqsXn46rjStfzBkn2bNRPkGxwSVptNDAUQsDSrM36tQ8wvHq9seuyAHALyd3c5vc8SLTUb(euwa2tDyrToOMrJGhkybZS3fdAff80Dx5wJIHyDitkNnr1A0nj7XDX(Y8yaqfLsoGSFwmdRRHEi4ngmsbSxueU9RBoySJNBI4GULdv66Mlk1GWHKodxVOjfZVSU0lZxwdkhAeibB0lpC9ywz6RqMyOOEu4JWca0lRP4EV5DTunq6Bgrma6INfSLLkMIV0nF2t5maId1ON8s)cdTgDUmt6TEtyT7MKP26GD9wRgrO16iKdN9wdA93X(JdHrHsd(VaYSl)mJ87o22uc0Ug6RMI86o7ZeX2D6Gro6L3iVs)(M8aOr1q9WGQxhLsRLvVaLAwEEqZrap9mute01Z98DhnQIZ(l1TD1VTWfnDKPJqbZZHbhx1)4ytvgC7V5ncphvpS7FOgwytlgxu3H)fw4IlGWF6)SmHdHRHfSmGASM9mWebVaei4)kwu91)Csom0nFPk8VLxuEa5hsGstqMQJcUOL81ojVoYqt6TU5SH7rt)NDsFRlwt89oj2kVLEcl9Mg7Lw3DS0u2B4owGPJtkQcFJYH3d5fHjMatsGK1WbSbLQWTLIg6YzsxdSmnPoogjogYNSLuq)ceif(jWdzSllgBnG7nwDaeNNJDKfCNMwnmslDohRUvnMH74hzpI))QjT94FopJ61UJPLh9cUChuEqoNZtsJGEgcx6g80dxENtsvzXNciBye8uXyUcYRRC)8muUdzn6uvRJRCJkA7I(Ij4V73z7ftpNADhOtjTQzS8KYT2PHUP4nn7t6)PawLzXbk(hZAu8BTflgl4Vbw4r(F7Zx7Vr(o5HUBUTi8IVjpn)6s58)9(BIGoSP8ecq6WLivfo7rWavxMu4CyzmyzH4ixIl)bABk84r9zonyRBvHpbWYQWR83OwxWVL83x4)Tv)NRZdPwArzuPjkVRDkVzGJB4g70mZSGyKB3GCRzqJmxMIaiBTjz1zS6qYTN2omyTKn(gxn7P8polCSk8binGLVXKiuZ(Stn7KCffnOBCPBdE19Es11rxHssUXsxAZRIkYDN2ensOIXcSTbtKR3FAU2RFr5QqTQGq7B9082ImK9l9m9961JT3F5eGU2fUBOcpOEalGxMzzLH(y2gGuqRmvh7AWn1ibQRYYYgpXcEm8vHGv2t5T7DBnkWVwKQocgh5pYvhPzK6MMgcs3c0SpJDtjmSAUwLCnqDvNn00IZpDqI9TnPtozCJtgUglIBttmOug74PLQ(9En3qBZfxzK0Q5nJMM58fXQEIy145lgprT(wVghSFcU0EByJdUhg6CJb0X(MY0y5jz9mVClnl70zYjq(tJNwDUOH4N00vFHAkyB)lvtABwT2aVjVwoPaCb46EZBwWjDbWsEmbeL(Q4KiPzyrwgxiNr0hsJKRDrqtiva(A9TTjZLT0sXTlZcLsxq03HuEceZy3RNLgaJRsj32w3qjLXpEcEYbLQm0haXu3vzwtjvwFDdwd15BCW9(ntO8Ur1GMV5bRxpWx(GrqyNbhSOp5NcHrmPzXb42bkZnA3)fSSAJun2Ld3gxBwTPDbdUlJDk6Kzs3MtXDIBZnjU2PMB37RDEST9uFB3jtpIRsV)Sjzdx6T7TAgSep1Xim(UltOM9tu8SXARt94JSl0K5PvD1)Av8PWAtGPbS68rj00TJ(QoLAql5U)uau7Zn8vZlDX6laUk8hG6zxS2URiTsmX8A2F6c)AQ5xJQUuGNSOULgUlTYoEgMZrvmRGO)zknEohxF4dnMYA0P5oP2u35tGqzi74aw7nKBUMbtm5LzXOTFzd93eyWtqr3J(LdSo6WrKH1FVeoo5dZwPxjJcgyXHu6pAZa24VoN5Mu0U(qkgomyPryqx25pApdDCxxBWiJpgJXtJ3Hh34zUNSZVpcTG6rY4j)hwCZohjAEKLQmNTDJ2K3uBfAVcUo7RzvlrDF3dufrhgn4HbO(N))o]] )
+
+-- Register alternate pack placeholder for wowsims-inspired APL; users import the .simc file directly.
+spec:RegisterPack( "Protection (wowsims)", 20250820, [[# Import the file Priorities/WarriorProtection_wowsims.simc via the UI. This placeholder makes the pack selectable if imported.
+# This in-addon pack content will be replaced by the import process.
+]] )
 

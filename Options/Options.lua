@@ -9654,7 +9654,6 @@ do
     local ignore_actions = {        snapshot_stats = 1,
         flask = 1,
         food = 1
-        -- MoP: Removed augmentation = 1 (not applicable in MoP)
     }
 
     local expressions = {
@@ -9667,6 +9666,7 @@ do
         { "rtb_buffs%.will_lose%.([%w_]+)"                  , "rtb_buffs_will_lose_buff.%1"             },
         { "rtb_buffs%.will_lose"                            , "rtb_buffs_will_lose"                     },
         { "rtb_buffs%.total"                                , "rtb_buffs"                               },
+        { "spell%.usable%.([%w_]+)"                         , "action.%1.ready"                          },
         { "buff.supercharge_(%d).up"                        , "supercharge_%1"                          },
         { "hyperthread_wristwraps%.([%w_]+)%.first_remains" , "hyperthread_wristwraps.first_remains.%1" },
         { "hyperthread_wristwraps%.([%w_]+)%.count"         , "hyperthread_wristwraps.%1"               },
