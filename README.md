@@ -24,7 +24,7 @@ Survival ✅
 Mage: https://discordapp.com/channels/307520968895627264/1391065968951820373
 Arcane ❌
 Fire ❌
-Frost❌
+Frost⚠️
 
 Paladin:(https://discordapp.com/channels/307520968895627264/1391067822469157005
 Retribution ✅
@@ -48,12 +48,12 @@ Brewmaster✅
 
 Warlock:
 https://discordapp.com/channels/307520968895627264/1391067646941728858
-Affliction ❌
-Demonology ❌
+Affliction ✅
+Demonology ⚠️
 Destruction ❌
 
 Warrior: https://discordapp.com/channels/307520968895627264/1391065861204217897
-Arms❌
+Arms✅
 Fury ❌
 Protection ❌
 
