@@ -493,8 +493,6 @@ do
 
         { "^(.-)%.time_to_(.-)<=?(.-)$", "%1.time_to_%2-%3" },
 
-        { "^debuff%.festering_wound%.stack[>=]=?(.-)$" , "time_to_wounds(%1)" },
-        { "^dot%.festering_wound%.stack[>=]=?(.-)$"    , "time_to_wounds(%1)" },
         { "^rune<=?(.-)$"                              , "rune.timeTo(%1)"    },
         { "^rune>=?(.-)$"                              , "rune.timeTo(1+%1)"  },
         { "^rune.current<=?(.-)$"                      , "rune.timeTo(%1)"    },
