@@ -8,9 +8,9 @@
 
     local addon, ns = ...
     local Hekili = _G[ addon ]
-    
+
     if not Hekili then return end
-    
+
     local class, state = Hekili.Class, Hekili.State
 
     -- Safe initialization without triggering emulation unknown-key warnings (use rawget instead of state.field lookups).
@@ -240,7 +240,7 @@ do
                     forms[#forms+1] = string.format("[%d] id=%s active=%s name1=%s name2=%s", i, tostring(spellID), tostring(isActive), tostring(fName), tostring(fName2))
                 end
             end
-            local detail = string.format( " | buffs: battle=%s defensive=%s berserker=%s | expr: in_battle=%s in_defensive=%s in_berserker=%s | forms: %s", 
+            local detail = string.format( " | buffs: battle=%s defensive=%s berserker=%s | expr: in_battle=%s in_defensive=%s in_berserker=%s | forms: %s",
                 b and tostring(b.battle_stance and b.battle_stance.up) or 'nil',
                 b and tostring(b.defensive_stance and b.defensive_stance.up) or 'nil',
                 b and tostring(b.berserker_stance and b.berserker_stance.up) or 'nil',
@@ -320,7 +320,7 @@ spec:RegisterResource( 1, {
             return (state.last_ability and state.last_ability == "mortal_strike") and 10 or 0
         end,
     },
-    
+
     -- Berserker Rage rage generation (improved)
     berserker_rage = {
         aura = "berserker_rage",
@@ -334,7 +334,7 @@ spec:RegisterResource( 1, {
             return state.buff.berserker_rage.up and 5 or 0 -- 5 rage per second during Berserker Rage
         end,
     },
-    
+
     -- Deadly Calm rage efficiency (effectively rage generation)
     deadly_calm = {
         aura = "deadly_calm",
@@ -349,7 +349,7 @@ spec:RegisterResource( 1, {
             return state.buff.deadly_calm.up and 15 or 0
         end,
     },
-    
+
     -- Charge rage generation (MoP: Juggernaut talent gives 15 rage per charge)
     charge_rage = {
         last = function ()
@@ -360,7 +360,7 @@ spec:RegisterResource( 1, {
             return (state.last_ability and state.last_ability == "charge") and state.talent.juggernaut.enabled and 15 or 0
         end,
     },
-    
+
     -- Victory Rush/Impending Victory rage generation
     victory_rush_rage = {
         last = function ()
@@ -490,6 +490,7 @@ spec:RegisterTalents( {
     -- Tier 6 (Level 90) - Ultimate Abilities
     avatar                     = { 6, 1, 107574 }, -- Transform into a colossus for 24 sec, becoming immune to movement effects and increasing damage by 20%.
     bloodbath                  = { 6, 2, 12292 },  -- Your attacks trigger a bleeding DoT that lasts 1 min and stacks up to 3
+    storm_bolt                 = { 6, 3, 107570 }, -- Hurls your weapon at an enemy, stunning them for 4 sec.
 } )
 
 
@@ -525,7 +526,7 @@ spec:RegisterGlyphs( {
     [58122] = "Glyph of Victory Rush",        -- Victory Rush increases your movement speed by 50% for 6 sec.
     [58123] = "Glyph of Whirlwind",           -- Whirlwind generates 5 rage for each target hit.
     [58124] = "Glyph of Wind and Thunder",    -- Reduces the rage cost of Thunder Clap by 10.
-    
+
     -- Minor Glyphs (convenience and visual)
     [58125] = "Glyph of Battle",              -- You appear to be in a battle stance even when you're not.
     [58126] = "Glyph of Berserker Stance",    -- You appear to be in berserker stance even when you're not.
@@ -536,6 +537,19 @@ spec:RegisterGlyphs( {
     [58132] = "Glyph of Thunder Strike",      -- Your weapon attacks create lightning effects.
     [58133] = "Glyph of the Weaponmaster",    -- Your weapons appear to be of exceptional quality.
     [58134] = "Glyph of Intimidation",        -- Your character appears more menacing.
+
+    -- Missing glyphs referenced in abilities
+    [58135] = "Glyph of Bladestorm",          -- Reduces the cooldown of Bladestorm by 15 sec.
+    [58136] = "Glyph of Burning Anger",       -- Reduces the rage cost of Thunder Clap by 10.
+    [58137] = "Glyph of Bull Rush",           -- Charge now moves you a greater distance and through enemies.
+    [58138] = "Glyph of Long Charge",         -- Increases the range of your Charge ability by 5 yards.
+    [58139] = "Glyph of Rallying Cry",        -- Rallying Cry grants an additional 10% maximum health.
+    [58140] = "Glyph of Wind and Thunder",    -- Reduces the rage cost of Thunder Clap by 10.
+    [58141] = "Glyph of Colossus Smash",      -- Your Colossus Smash generates 10 additional Rage when it critically strikes.
+    [58142] = "Glyph of Overpower",           -- Overpower has a 25% chance to reset the cooldown on Mortal Strike.
+    [58143] = "Glyph of Slam",                -- Slam has a 25% chance to reset the cooldown on Overpower.
+    [58144] = "Glyph of Battle",              -- You appear to be in a battle stance even when you're not.
+    [58145] = "Glyph of Bloody Healing",      -- Increases the healing received from Bloodthirst by 40%.
 } )--]]
 
 -- Arms Warrior specific auras
@@ -556,7 +570,7 @@ spec:RegisterAuras( {
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID( "target", 86346 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -565,7 +579,7 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
@@ -611,7 +625,7 @@ spec:RegisterAuras( {
         duration = 6,
         max_stack = 1,
     },
-    
+
     -- Talent-specific buffs/debuffs
     avatar = {
         id = 107574,
@@ -649,7 +663,7 @@ spec:RegisterAuras( {
         duration = 12,
         max_stack = 1,
     },
-    
+
     -- Defensives
     die_by_the_sword = {
         id = 118038,
@@ -677,7 +691,7 @@ spec:RegisterAuras( {
         tick_time = 1,
         max_stack = 1,
     },
-    
+
     -- Crowd control / utility
     hamstring = {
         id = 1715,
@@ -730,7 +744,7 @@ spec:RegisterAuras( {
         max_stack = 1,
     },    charge_root = {
         id = 105771,
-        duration = function() 
+        duration = function()
             if talent.warbringer.enabled then
                 return 4
             elseif glyph.bull_rush.enabled then
@@ -766,14 +780,14 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     rend = {
         id = 94009,
         duration = 15,
@@ -789,14 +803,14 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     deep_wounds = {
         id = 115767,
         duration = 12,
@@ -812,69 +826,69 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     -- Missing auras referenced in action lists
     mortal_wounds = {
         id = 115804,
         duration = 10,
         max_stack = 1,
     },
-    
+
     sudden_execute = {
         id = 52437,
         duration = 10,
         max_stack = 1,
     },
-    
+
     charge = {
         id = 100,
         duration = 1,
         max_stack = 1,
     },
-    
+
     fear = {
         id = 5246,
         duration = 8,
         max_stack = 1,
     },
-    
+
     victory_rush = {
         id = 34428,
         duration = 0,
         max_stack = 1,
     },
-    
+
     blood_pact = {
         id = 6307,
         duration = 3600,
         max_stack = 1,
     },
-    
+
     expose_armor = {
         id = 8647,
         duration = 30,
         max_stack = 5,
     },
-    
+
     horn_of_winter = {
         id = 57330,
         duration = 300,
         max_stack = 1,
     },
-    
+
     sunder_armor = {
         id = 7386,
         duration = 30,
         max_stack = 5,
     },
-    
+
     -- Casting buff for spell reflection
     casting = {
         duration = function () return haste end,
@@ -884,14 +898,14 @@ spec:RegisterAuras( {
             return nil
         end,
     },
-    
+
     taste_for_blood = {
         id = 60503,
         duration = 9,
         max_stack = 5,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 60503 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -900,21 +914,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     slam_proc = {
         id = 46916,
         duration = 5,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 46916 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -923,21 +937,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     sudden_death = {
         id = 52437,
         duration = 10,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 52437 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -946,14 +960,14 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     bloodbath = {
         id = 113344,
         duration = 60,
@@ -969,40 +983,40 @@ spec:RegisterAuras( {
                 t.caster = debuff.caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     -- Shared Warrior Auras
     battle_stance = {
         id = 2457,
         duration = 3600,
     max_stack = 1
     },
-    
+
     defensive_stance = {
         id = 71,
         duration = 3600,
     max_stack = 1
     },
-    
+
     berserker_stance = {
         id = 2458,
         duration = 3600,
     max_stack = 1
     },
-    
+
     berserker_rage = {
         id = 18499,
         duration = 6,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 18499 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1011,21 +1025,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     deadly_calm = {
         id = 85730,
         duration = 10,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 85730 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1034,21 +1048,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     avatar = {
         id = 107574,
         duration = 24,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 107574 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1057,21 +1071,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     sweeping_strikes = {
         id = 12328,
         duration = 10,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 12328 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1080,21 +1094,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     recklessness = {
         id = 1719,
         duration = 12,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 1719 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1103,21 +1117,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     shield_wall = {
         id = 871,
         duration = 12,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 871 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1126,21 +1140,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     die_by_the_sword = {
         id = 118038,
         duration = 8,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 118038 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1149,21 +1163,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     spell_reflection = {
         id = 23920,
         duration = 5,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 23920 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1172,21 +1186,21 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     rallying_cry = {
         id = 97462,
         duration = 10,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 97462 )
-            
+
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1195,26 +1209,39 @@ spec:RegisterAuras( {
                 t.caster = caster
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-    
+
     commanding_shout = {
         id = 469,
         duration = 300,
         max_stack = 1
     },
-    
+
     battle_shout = {
         id = 6673,
         duration = 300,
         max_stack = 1
     },
-    
+
+    -- Missing auras referenced in APL
+    war_banner = {
+        id = 114207,
+        duration = 15,
+        max_stack = 1,
+    },
+
+    charge = {
+        id = 100,
+        duration = 1,
+        max_stack = 1,
+    },
+
 } )
 
 -- MoP Stance System - Abilities no longer require specific stances
@@ -1225,16 +1252,16 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 6,  -- MoP: 6 second cooldown
         gcd = "spell",
-        
+
         spend = function()
             -- MoP: Mortal Strike generates 10 rage instead of costing rage
             return -10
         end,
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 132355,
-        
+
         handler = function()
             -- Apply Mortal Strike debuff (healing reduction)
             applyDebuff( "target", "mortal_wounds", 10 )
@@ -1257,29 +1284,29 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 0,
         gcd = function() return 1.0 end,  -- MoP: Reduced global cooldown
-        
+
         spend = function()
             return buff.sudden_execute.up and 0 or 10
         end,
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 132223,
-        
+
         charges = function()
             -- MoP: Works off a charge system
             return buff.taste_for_blood.stack or 0
         end,
-        
+
         usable = function()
             return buff.taste_for_blood.up, "requires taste for blood charges (from mortal strike)"
         end,
-        
+
         handler = function()
             removeStack( "taste_for_blood", 1 )
-            
+
             -- Glyph of Overpower: 25% chance to reset Mortal Strike cooldown
-            if glyph.overpower.enabled and math.random() < 0.25 then
+            if glyph.overpower and glyph.overpower.enabled and math.random() < 0.25 then
                 setCooldown( "mortal_strike", 0 )
             end
         end,
@@ -1289,27 +1316,27 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 20,
         gcd = "spell",
-        
+
         spend = 20,  -- MoP: 20 rage cost
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 464973,
-        
+
         handler = function()
             -- Apply the signature Colossus Smash debuff (6 seconds, ignores armor)
             applyDebuff( "target", "colossus_smash", 6 )
-            
+
             -- MoP: Colossus Smash provides a damage window
-            if glyph.colossus_smash.enabled then
+            if glyph.colossus_smash and glyph.colossus_smash.enabled then
                 applyBuff( "berserker_stance", 15 ) -- Glyph grants Berserker Stance benefits
             end
-            
+
             -- Arms signature: Enhanced damage during Colossus Smash window
             applyBuff( "colossus_smash_window", 6 ) -- Player buff for damage calculations
         end,
-    },  
-    
+    },
+
 
         execute = {
             id = 5308,
@@ -1331,17 +1358,17 @@ spec:RegisterAbilities( {
             cast = 0,  -- MoP: Slam is now instant cast
             cooldown = 0,
             gcd = "spell",
-        
+
         spend = 25,  -- MoP: 25 rage cost
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 132340,
-        
+
         handler = function()
             -- MoP: Slam deals 275% weapon damage + 10% more during Colossus Smash
             -- Glyph of Slam: 25% chance to reset Overpower cooldown
-            if glyph.slam.enabled and math.random() < 0.25 then
+            if glyph.slam and glyph.slam.enabled and math.random() < 0.25 then
                 if not buff.taste_for_blood.up then
                     applyBuff( "taste_for_blood" )
                     buff.taste_for_blood.stack = 1
@@ -1349,7 +1376,7 @@ spec:RegisterAbilities( {
                     addStack( "taste_for_blood", nil, 1 )
                 end
             end
-            
+
             -- MoP: While Sweeping Strikes is active, 35% of Slam damage hits all enemies within 2 yards
             if buff.sweeping_strikes.up then
                 -- This is handled by the game engine
@@ -1361,16 +1388,16 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-        
+
         spend = 10,  -- WoW Sims: 10 rage cost
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 132155,
-        
+
         handler = function()
             applyDebuff( "target", "rend" )
-            
+
             -- Trigger Taste for Blood (Arms passive that builds stacks on Rend/auto crit)
             if not buff.taste_for_blood.up then
                 applyBuff( "taste_for_blood" )
@@ -1380,72 +1407,72 @@ spec:RegisterAbilities( {
             end
         end,
     },
-    
+
     -- Defensive / utility
     battle_shout = {
         id = 6673,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-        
-        spend = function() 
+
+        spend = function()
             -- MoP: Battle Shout generates rage when used
-            return -10 
+            return -10
         end,
         spendType = "rage",
-        
+
         startsCombat = false,
         texture = 132333,
-        
+
         handler = function()
             -- Apply Battle Shout buff (increases attack power)
             applyBuff( "battle_shout", 300 ) -- 5 minute duration in MoP
-            
+
             -- MoP: Battle Shout generates rage
             gain( 10, "rage" )
-            
+
             -- Glyph of Battle: Additional health bonus
-            if glyph.battle.enabled then
+            if glyph.battle and glyph.battle.enabled then
                 applyBuff( "battle_shout_health", 3600 ) -- 1 hour health bonus
             end
-            
+
             -- Improved shouts from talents would affect party/raid here
-            if talent.commanding_presence.enabled then
+            if talent.commanding_presence and talent.commanding_presence.enabled then
                 -- Enhanced buff duration and effects
                 buff.battle_shout.duration = 450 -- 7.5 minutes with talent
             end
         end,
     },
-    
+
     commanding_shout = {
         id = 469,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-        
+
         spend = function()
             -- MoP: Commanding Shout also generates rage when used
             return -10
         end,
         spendType = "rage",
-        
+
         startsCombat = false,
         texture = 132351,
-        
+
         handler = function()
             -- Apply Commanding Shout buff (increases stamina)
             applyBuff( "commanding_shout", 300 ) -- 5 minute duration in MoP
-            
+
             -- MoP: Commanding Shout generates rage
             gain( 10, "rage" )
-            
+
             -- Enhanced effects with talents
-            if talent.commanding_presence.enabled then
+            if talent.commanding_presence and talent.commanding_presence.enabled then
                 buff.commanding_shout.duration = 450 -- 7.5 minutes with talent
             end
-            
+
             -- Glyph of Rallying Cry synergy
-            if glyph.rallying_cry.enabled then
+            if glyph.rallying_cry and glyph.rallying_cry.enabled then
                 -- Commanding Shout provides additional health benefit
                 applyBuff( "commanding_shout_health", 300 )
             end
@@ -1456,20 +1483,20 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 10,  -- MoP: 10-second cooldown, can always maintain if you have rage
         gcd = "spell",
-        
+
         spend = 20,  -- Rage cost to maintain
         spendType = "rage",
-        
+
         startsCombat = false,
         texture = 132306,
-        
+
         handler = function()
             applyBuff( "sweeping_strikes" )
             -- MoP: Sweeping Strikes now deals 50% damage to targets (down from 100%)
             -- MoP: While active, 35% of Slam damage hits all enemies within 2 yards
         end,
     },
-    
+
        charge = {
          id = 1250619,
         cast = 0,
@@ -1485,22 +1512,22 @@ spec:RegisterAbilities( {
         startsCombat = true,
         texture = 132337,
     },
-    
+
     hamstring = {
         id = 1715,
         cast = 0,
         cooldown = 0,
         gcd = function() return glyph.hamstring.enabled and 0.5 or 1.5 end,
-        
-        spend = function() 
+
+        spend = function()
             if talent.warbringer.enabled then return 5 end
-            return 10 
+            return 10
         end,
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 132316,
-        
+
         handler = function()
             applyDebuff( "target", "hamstring" )
         end,
@@ -1510,20 +1537,20 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 60,
         gcd = "off",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "cooldowns",
-        
+
         startsCombat = false,
         texture = 464593,
-        
+
         handler = function()
             applyBuff( "deadly_calm" )
         end,
     },
-    
+
     berserker_rage = {
         id = 18499,
         cast = 0,
@@ -1533,386 +1560,386 @@ spec:RegisterAbilities( {
         spendType = "rage",
         startsCombat = false,
         texture = 136009,
-        
+
         handler = function()
             applyBuff( "berserker_rage" )
         end,
     },
-    
+
     heroic_leap = {
         id = 6544,
         cast = 0,
         cooldown = 45,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 236171,
-        
+
         handler = function()
             -- No specific effect, just the leap
         end,
     },
-    
+
     rallying_cry = {
         id = 97462,
         cast = 0,
         cooldown = 180,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "defensives",
-        
+
         startsCombat = false,
         texture = 132351,
-        
+
         handler = function()
             applyBuff( "rallying_cry" )
         end,
     },
-    
+
     die_by_the_sword = {
         id = 118038,
         cast = 0,
         cooldown = 180,
         gcd = "off",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "defensives",
-        
+
         startsCombat = false,
         texture = 132336,
-        
+
         handler = function()
             applyBuff( "die_by_the_sword" )
         end,
     },
-    
+
     intervene = {
         id = 3411,
         cast = 0,
-        cooldown = function() 
-            if talent.juggernaut.enabled or talent.double_time.enabled then
+        cooldown = function()
+            if talent.juggernaut and talent.juggernaut.enabled or talent.double_time and talent.double_time.enabled then
                 return 20
             end
-            return 30 
+            return 30
         end,
         charges = function()
-            if talent.juggernaut.enabled or talent.double_time.enabled then
+            if talent.juggernaut and talent.juggernaut.enabled or talent.double_time and talent.double_time.enabled then
                 return 2
             end
             return 1
         end,
-        recharge = function() 
-            if talent.juggernaut.enabled or talent.double_time.enabled then
+        recharge = function()
+            if talent.juggernaut and talent.juggernaut.enabled or talent.double_time and talent.double_time.enabled then
                 return 20
             end
-            return 30 
+            return 30
         end,
         gcd = "off",
-        
+
         spend = 0,
         spendType = "rage",
-        
-        range = function() 
-            if glyph.long_charge.enabled then
+
+        range = function()
+            if glyph.long_charge and glyph.long_charge.enabled then
                 return 30
             end
-            return 25 
+            return 25
         end,
-        
+
         startsCombat = false,
         texture = 132365,
-        
+
         handler = function()
-            if talent.safeguard.enabled then
+            if talent.safeguard and talent.safeguard.enabled then
                 -- Apply damage reduction to the target (handled by the game)
             end
         end,
     },
-    
+
     -- Talent abilities
     avatar = {
         id = 107574,
         cast = 0,
         cooldown = 180,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "cooldowns",
-        
+
         startsCombat = false,
         texture = 613534,
-        
+
         handler = function()
             applyBuff( "avatar" )
         end,
     },
-    
+
     bloodbath = {
         id = 12292,
         cast = 0,
         cooldown = 60,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "cooldowns",
-        
+
         startsCombat = false,
         texture = 236304,
-        
+
         handler = function()
             applyBuff( "bloodbath" )
         end,
     },
-    
+
     bladestorm = {
         id = 46924,
         cast = 0,
-        cooldown = function() return glyph.bladestorm.enabled and 75 or 90 end,
+        cooldown = function() return glyph.bladestorm and glyph.bladestorm.enabled and 75 or 90 end,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "cooldowns",
-        
+
         startsCombat = true,
         texture = 236303,
-        
+
         handler = function()
             applyBuff( "bladestorm" )
         end,
     },
-    
+
     dragon_roar = {
         id = 118000,
         cast = 0,
         cooldown = 60,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "cooldowns",
-        
+
         startsCombat = true,
         texture = 642418,
-        
+
         handler = function()
             applyDebuff( "target", "dragon_roar" )
         end,
     },
-    
+
     shockwave = {
         id = 46968,
         cast = 0,
         cooldown = 40,
         gcd = "spell",
-        
-        spend = function() 
-            if glyph.burning_anger.enabled then return 20 end
-            return 0 
+
+        spend = function()
+            if glyph.burning_anger and glyph.burning_anger.enabled then return 20 end
+            return 0
         end,
         spendType = "rage",
-        
+
         toggle = "cooldowns",
-        
+
         startsCombat = true,
         texture = 236312,
-        
+
         handler = function()
             applyDebuff( "target", "shockwave" )
         end,
     },
-    
+
     storm_bolt = {
         id = 107570,
         cast = 0,
         cooldown = 30,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "cooldowns",
-        
+
         startsCombat = true,
         texture = 613535,
-        
+
         handler = function()
             applyDebuff( "target", "storm_bolt" )
         end,
     },
-    
+
     vigilance = {
         id = 114030,
         cast = 0,
         cooldown = 120,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "cooldowns",
-        
+
         startsCombat = false,
         texture = 236331,
-        
+
         handler = function()
             applyBuff( "vigilance" )
         end,
     },
-    
+
     impending_victory = {
         id = 103840,
         cast = 0,
         cooldown = 30,
         gcd = "spell",
-        
+
         spend = 10,
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 589768,
-        
+
         handler = function()
-            local heal_amount = health.max * (glyph.bloody_healing.enabled and 0.2 or 0.1)
+            local heal_amount = health.max * (glyph.bloody_healing and glyph.bloody_healing.enabled and 0.2 or 0.1)
             gain( heal_amount, "health" )
         end,
     },
-    
+
     staggering_shout = {
         id = 107566,
         cast = 0,
         cooldown = 40,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 132346,
-        
+
         handler = function()
             applyDebuff( "target", "staggering_shout" )
         end,
     },
-    
+
     piercing_howl = {
         id = 12323,
         cast = 0,
         cooldown = 30,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 132117,
-        
+
         handler = function()
             applyDebuff( "target", "piercing_howl" )
         end,
     },
-    
+
     disrupting_shout = {
         id = 102060,
         cast = 0,
     -- Use static 15s; handler manually syncs pummel to avoid recursive cooldown lookups.
     cooldown = 15,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "interrupts",
-        
+
         startsCombat = true,
         texture = 613534,
-        
+
         handler = function()
             applyDebuff( "target", "disrupting_shout" )
             setCooldown( "pummel", 15 )
         end,
     },
-    
+
     pummel = {
         id = 6552,
         cast = 0,
     -- Static 15s; handler syncs disrupting_shout.
     cooldown = 15,
         gcd = "off",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         toggle = "interrupts",
-        
+
         startsCombat = true,
         texture = 132938,
-        
+
         handler = function()
             interrupt()
             setCooldown( "disrupting_shout", 15 )
         end,
     },
-    
+
     -- MoP-specific abilities
     thunder_clap = {
         id = 6343,
         cast = 0,
         cooldown = 6,
         gcd = "spell",
-        
-        spend = function() 
-            if glyph.wind_and_thunder.enabled then return 10 end
-            return 20 
+
+        spend = function()
+            if glyph.wind_and_thunder and glyph.wind_and_thunder.enabled then return 10 end
+            return 20
         end,
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 136105,
-        
+
         handler = function()
             -- MoP: With Blood and Thunder talent, applies Deep Wounds to all targets hit
-            if talent.blood_and_thunder.enabled then
+            if talent.blood_and_thunder and talent.blood_and_thunder.enabled then
                 applyDebuff( "target", "deep_wounds" )
             end
-            
+
             -- Base Thunder Clap slow effect
             applyDebuff( "target", "thunder_clap_slow" )
         end,
     },
-    
+
     deep_wounds = {
         id = 115767,
         cast = 0,
         cooldown = 0,
         gcd = "off",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         startsCombat = true,
         texture = 132090,
-        
+
         -- Passive ability triggered by critical strikes
         handler = function()
             applyDebuff( "target", "deep_wounds" )
         end,
     },
-    
+
     -- Missing abilities referenced in action lists
     heroic_throw = {
         id = 57755,
@@ -1925,7 +1952,7 @@ spec:RegisterAbilities( {
             -- Ranged attack
         end,
     },
-    
+
     auto_attack = {
         id = 6603,
         cast = 0,
@@ -1937,90 +1964,90 @@ spec:RegisterAbilities( {
             -- Auto attack handled by game
         end,
     },
-    
+
     -- Stance switching abilities (core MoP mechanic)
     battle_stance = {
         id = 2457,
         cast = 0,
         cooldown = 1.5, -- MoP: 1.5 second GCD for stance switching
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         startsCombat = false,
         texture = 132349,
-        
+
     usable = function() return state.current_stance ~= "battle" end,
-        
+
         handler = function()
             -- Remove other stances
             removeBuff( "defensive_stance" )
             removeBuff( "berserker_stance" )
-            
+
             -- Apply Battle Stance
             applyBuff( "battle_stance" )
             -- Set immediately so predictions/conditions respond without waiting on events.
             state.current_stance = "battle"
-            
+
             -- MoP: Stance switching incurs rage loss
             local rage_loss = ((state.rage and state.rage.current) or 0) * 0.25 -- Lose 25% of current rage
             spend( rage_loss, "rage" )
         end,
     },
-    
+
     defensive_stance = {
         id = 71,
         cast = 0,
         cooldown = 1.5,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         startsCombat = false,
         texture = 132341,
-        
+
     usable = function() return state.current_stance ~= "defensive" end,
-        
+
         handler = function()
             -- Remove other stances
             removeBuff( "battle_stance" )
             removeBuff( "berserker_stance" )
-            
+
             -- Apply Defensive Stance
             applyBuff( "defensive_stance" )
             state.current_stance = "defensive"
-            
+
             -- MoP: Stance switching incurs rage loss
             local rage_loss = ((state.rage and state.rage.current) or 0) * 0.25
             spend( rage_loss, "rage" )
         end,
     },
-    
+
     berserker_stance = {
         id = 2458,
         cast = 0,
         cooldown = 1.5,
         gcd = "spell",
-        
+
         spend = 0,
         spendType = "rage",
-        
+
         startsCombat = false,
         texture = 132275,
-        
+
     usable = function() return state.current_stance ~= "berserker" end,
-        
+
         handler = function()
             -- Remove other stances
             removeBuff( "battle_stance" )
             removeBuff( "defensive_stance" )
-            
+
             -- Apply Berserker Stance
             applyBuff( "berserker_stance" )
             state.current_stance = "berserker"
-            
+
             -- MoP: Stance switching incurs rage loss
             local rage_loss = ((state.rage and state.rage.current) or 0) * 0.25
             spend( rage_loss, "rage" )
@@ -2063,7 +2090,7 @@ spec:RegisterAbilities( {
         gcd = "off",
         spend = function()
             -- MoP: 30 rage baseline, free during Deadly Calm.
-            if buff.deadly_calm.up then return 0 end
+            if buff.deadly_calm and buff.deadly_calm.up then return 0 end
             return 30
         end,
         spendType = "rage",
@@ -2211,7 +2238,37 @@ spec:RegisterAbilities( {
             applyDebuff( "target", "sunder_armor" )
         end,
     },
-    
+
+    -- Missing abilities referenced in APL
+    shattering_throw = {
+        id = 64382,
+        cast = 0,
+        cooldown = 300,
+        gcd = "spell",
+        spend = 0,
+        spendType = "rage",
+        startsCombat = true,
+        texture = 132337,
+        handler = function()
+            -- Removes immunities and absorbs from target
+        end,
+    },
+
+    skull_banner = {
+        id = 114207,
+        cast = 0,
+        cooldown = 180,
+        gcd = "spell",
+        spend = 0,
+        spendType = "rage",
+        toggle = "cooldowns",
+        startsCombat = false,
+        texture = 236303,
+        handler = function()
+            applyBuff( "war_banner" )
+        end,
+    },
+
 } )
 
 -- Range
@@ -2220,19 +2277,19 @@ spec:RegisterRanges( "mortal_strike", "charge", "heroic_throw", "heroic_strike" 
 -- Options
 spec:RegisterOptions( {
     enabled = true,
-    
+
     aoe = 3,
-    
+
     gcd = 1645,
-    
+
     nameplates = true,
     nameplateRange = 8,
-    
+
     damage = true,
     damageExpiration = 8,
-    
+
     potion = "golemblood",
-    
+
     package = "Arms",
 } )
 
@@ -2374,7 +2431,7 @@ spec:RegisterStateExpr( "tank", function()
                         end
                     end
                 end
-                
+
                 if tank then
                     return UnitHealth(tank) / UnitHealthMax(tank) * 100
                 end
@@ -2384,6 +2441,6 @@ spec:RegisterStateExpr( "tank", function()
     }
 end )
 
-spec:RegisterPack( "Arms", 20250809, [[Hekili:vV1EpUTns8pllcoJKEjUYYw7dG1lqtVE4AaU0IZP)RKPLOxlSYsgIYRZEWqF2VHK6bfFj6Bx0dhksZUsKZmCE8BgoJs4SWVfUkbvHd)QVNFG3TE3n1FU)mV7cxv9YbC4QdO4Nqpc)qoAp8))PY9e6dFjRaLq3mP4yzm8IWvBoMMv9R5HBuPOV)IGBH1Eahh(1BMfUAxAscMVumjoC132LsQxt)dQEDdlRxxSf(94Q0I861zPKk41BlkRx)pWpLMLonCf7HuPa)DC8rGNFl8RSJeohTjdNe(5WvXLPv4YueLvBoUD704IScc5ijIShr2nTeVhLMdK((61GKX5hSTbRkScoogj8v1RBO9(IYkuw0PIJ5jtpEOE95Z6FNixN3Z1M1qQktFctz68l80q55K61Lm93dlbI71t9wTeq3fgPlJQKJu7tuZgAPQUxz4GiWQaJSQxkN5PxmV(1E89deEW9smIKH2t5Yn2vgvisfoc88I2KvuKmLuboOnKNBH7i)TcuV4zC5HIt4sklU1bLGbt1DoS1anNQzEJSrqExiSVnOQQmCezxXXQq6)TIu9)NbulUGakk(tz6b(Q)Twtw96FSE93O29giNptT81R3JYbv3ECE1f5LyWPWCqOZE3QMDxc3U1JrOE1ScJuPR5qrryHemQANo8c(lghTWCSiyhb9oOxlk3hTPiRAAZYy8YHds3gThq2WNeqDvKhvwGkVqgjSt7XVTNODfXpDc9m(c5t3(CkA3imH547oyIBmbRnZCmC3Md6C2yhiryMbhhj8NVoZCUVMtu967eeSD4YI04OQDLfN44x7bzLfRAffRcv(igS3qTeO8yoDN5Rq3mm6GDulDe6wbaWD03BpP(JLfnXoG6IaME2pRvcfo5P5W2FgNpsMD7bqJi9dJEmdYOJmb2msj4TOJzJzJs3dKc8G94zaA4sjk)rl6zZMQwpdJYz5X8i(phrlYKxQzeVg4o3knMYoHaLLzKaXffzjfNYjJzVyhYDyugaDEiUIfo575Mu6ufy0n)mocCD2NIjkzRSrFuXivOjt7LdkhWgPjv6Ye4KQf8MW5eGVeDG8orIJvWLlQEXLsVKmhkiyUGjp3iMSkIRaT6aF1gznyHWX7qjoUypiF2dZmGrpa)gOdufusA(JoGHBTeptKZT0fYB0oW6vP5rTKIfWRkZ8h3gr2(2df8)wsH2hcRrHoOMY)GWUjBJBz96UDwVgNwTJwRjuruAc8kuo)(U0L9ZRQxFknhwjSBynN2HZ5pLDl5nWjgGbH8dBOB8WHSuCY0WrlH8nO48M0iONrvsLg9EZvTWHTBp72KQfdq4Pa)rvfrjPnHBW95(qVCZfc7M(g5Lvv(gArO)VvK7Kd7G)2LkdSselbI4Fkdti5WFSNeGXiCofsAk9O(2PyMZxAkPTDbrh2HOXdI6dCjbx(eUmIka2tP0wAogLK9seGIV3PsMLU101cAjbsPlNJRfp5qX6Vn3(41BwG6CUgmamQjNI((LdU88LErMnzia6JEqhiZ6kYyH7xaTNQAZP2Um4g(5pHRMrZIwuj(7VYGk6LShGO)noLjSMe8VqXPOm(p)78Cf6UuLKu6)MivdoO(H2VpgJhIGcUWbPSG2VvMlMsa7lA7Xsw1vZUC0pfydi9pJu276bGySnnoTQX3ti(hvgJYPh7YsEf9v8kBDQmjYjm(aRaew7LiTqn6C4fQQwEBoLULR6GcEGk8oMNGhclqdKkOaJ4d8(HraZzmv7yuGeA)sdfJIZ4xX9snXdkQWiWY12k3yS(r7OMwcatP7F2U36fdHzcIA88xga3hXmjbhBoxLzaxzNedDnv2HWC6kTgaHM)PA3e8cYWnnVYCMfRwF7nc1YTVCSqHMHhmIzXHgPzSdP6uF67lQfKDZ2GXNlHf4CDh7ajnKybNN2LwMrVYYiy7DcfdzEp671R)eLsUORvNrHWf(TIzl1fLR5SlnhUgj1ZkbThKMOaEbsnlMjB)q9AVPI(xq(XOnVaWWGCCQOmXo8TeFd0Z3fg4Rqmjzxkolj6eklZogTehNRNJZnDs75ygIuXUwCIDeA9nTuUTvInxdodVqLLyEHaxy)PUil3mrlhgsiGYs)3dAAG7DWQN7shUfDT4UT9NCaMTyaHxeYlnhQYknbvnqcmJKlBld6Hw5xyljQe)iiGLikdyxFta(qZsC62hpN(yAgTDidspzQ505pj3JsX5m0rl7a9kET9uG)ki9A(yt6qIi341RUEongYp)su5rPcjfFbhsPTbGJvdyJrMWZvIkbNlHUx18w83puqWdFRUcUPT0xmjMarTdW0Zkv3BhlivFCHJtPWTU4XQE9aWWr7HNJ4m6Ao4G3TROmpQyB0j20rS1LsMrhsksOVK)vRCJpCVXtOYCq0iHR(19hGkjPHb3j9fPmT(laDpwbClC1Q9h3cfOqB3AX20mC4Q39U3bxlSe)PF)yww9A6V(f((jt76j7FD5pkkrFmD7YR0D8MCLrDTwIkVWEcRHet0Ys7slRJPmQk3Dv97JFlY6Vu)fME5ZSwb93sjhqvXSgHkQFOha2KCOmGgQS078zX5(8WTIRvAEcFK2l)LTtQHscLr(8qWaEjnsaob6Bw7ySQPunMWkp3M799gD)WLoP7DyK6dl9hDJKk19TC24hT(cNgFTniIDwUFUVh2mtg8O)mBZDV3vhxyU7IvZtvkwVT69Z0tgElL52rnn6EY7nD5HZNhP3B3VOZbwa6)E)GpOxs66uSGWO0f7)eLhXMhzw9szSgQo3ZWHCq7FPKvO6gw9mVMt48ZNLB(SHdNqJGfu3A608etsZeQe)WYRnCq7BaSa9vBNSrYBqS77jGOyR2GHxHw8HR)WKH4l3VCHjx22gHmWNvUNktKH5wm5kZNBg(YinDvV4CeQ8cQEy)hPDkDzBhHVyFx)GlG8(VzKNNUSlKqQ3TxeP6B8QnPZAekuSWLV3HTxLUFX2Xc2DVUCk)cpifmO8re9EiR5F5ds1m1ej)6q77jYG(dYkKPHisF2HNpR75DGm6iTq9aJayiImQD)n3Yq6lYDIUh7QiX58mpTSM2qlhKB)a2pCVbQ01MPUJG2VqsGoNpZOZTJPhSPUALz(Ac0Ug5ISzCvWdeUD(Jzy639jnUc8aZlY)uZ2LDejvVoFq2(FBC)wWWhVGpDvjPWDdL0gD2pXW(4V(wpBy)d2OHyI2oQor9HAIh4IWBwYyg5CplSJeS7t7uu8K)mrDMygJnuT)SyIBKxI2iNaVXUZiBVIFxsDsXD9rD)0V9lqOg17QPVie5yn4Qr0tH0qayXlClU64bukWWxMCIJ4yqTkggZg4KQFaBkSAUmRUyycLQTUwMKkihoQigu4gNu)xxYMmHCpiyunMSXrH3tmmiR7vKk(qMujcOjMysPP461eazujRc0nCJJIqoUkzmSp5tNcbgeMRQlusbZ3v3qD0zgc0ubtJtLoaJ2598P5E6oVn4b)ZM(0ibc02(MEef6hKn3rBWxC8dZ81UlHMjjTHB1U(UpQA6wyTECYv0MEprHFEA3VRPyCtAKrrL3vqN(7V13xNHAW(g(qdwLgIfLMcnS6AVjQdy5H(HR8d0rIzG0cdQsIQbQuDHevxyGO9ZIsIMZvP5Czj1anfhdLSrwS5DMoOQTnxxqI)OAYzMyG60I0ZabHDbKuw7mOmWcDJiswdhWbknoWjdKUBWpc()kdwAYWiRbJs6EXsvgqAHjcP4oyuA6hZJ0EUXJFaLgruxe1F009ZHHtn9eL6WlmRgwvj6hmuxzUsJeAI694Fq0LONr6D4UY24FSviupH1nPGgdttIlJZlqCWo6iTCMarYQF(gkdUPZq83Ha2nS)v1jnOaTPBg209HfbpFW76snk(qL)LQe(Fo]] )
+spec:RegisterPack( "Arms", 20250827, [[Hekili:vV1EVTnYr8plgb1i(Ul6OEz7ayzG84k6f0lxqvo0)JKRixzryksw(WkUqGF27S7Yh7BsvlCPfbjWMC3zMD2z(np4e3PUF1DDiQe7(5zoZw6C7SBMmBUZ8fURlFod7Uodf8i6b4hsq7H)9D57lip854uuizVfPv5bWlCxVPkkU8xtC3OJGoZElS2mCG7NVzQ76DrHHy2sXfbUR)6UOIAFYFr1(nSS2pDl87bLrPj1(XrfLWR3MMx7)3WpgfhnbKJ80TrXa3FvTprYQ9)NO88iYAE3x(7nR(3y7KqSVGscr5rO6pbB4pYiIzyTFzkSYOVbmMS1OYNjssrfUO(t1FIX)Ijz54G09BqL)4QFg(3YySxXU0Qs9ROyhSeCEuYdEL7YtpqO0REfW03JkGd2hJkYqLb7WG4rEClnGDgSdL)a(NI2UQmApELZXJLKhuojhL8a((B5xBEvIh738iQNFICfTAF6t494KscjA)5jHWRrjb47xkWluCSkbcstJdtpKumiRWFdhuvYewMqUdJIl3njlO8UzodUFukDVKN)e2dNG3hHlUF1Sb3yrP6(wnD4JwiEloPa2uXWRTQeSXaBH2BUp0PwyxzelOcQrAdnR971C(4Os6TBe8Qq4vOeMPmzzFyDT)HOeyLWUH1CyhoH9uQdWgIvf1OCdzJzzXr4Wj92zDCHi6PXPGPAHxXEuXoIsjeVPA72jIVysoEpceL7MQNmONqWfi7EmMyVWEWeCcAtmo8YxRNQvzhp2sgtCCrNbmXE2Rm1lmcF3SLxPxs2eNMgc(q74eMUN9DqEaF6hJXffjWFnREjmwdvN7y4qIZlW5pIZ9YrmFDkrXjKFDczvVKt48JhJk8A8n9Y2biogoCHyuy8ZEG9)Eo1n3t7u4MKMljs89RU2WbTOmnFV3M04so63)WbjVbXgyk4QMNkyYY90ZGDY9xF1LI4l3TAb1P)9XiiMf5mu7xvqJt9MA)eIZmnaaG3gsIQSpnhE12C8)QceV4NnzV3snbd(2h2Dsy6zcMkicRFSkoMeljjHGX0YEiAygoh4KGGO)IHqbVnucqyCp5Pm4RqKRhXKOM)CT))afeHIz)8xsPrJ1sZQcSxujE)pveNwUQKrIPNStZSLNa5ND2iFg9K1gc9HkVS0dGdAZJBDr5HdovoqHX82wL)SnH2kIbKpXPVxuEakHiD55nPfWGzWBJcIkVF1cNUyC)cd0aUN3rZt51qu8)YvI5OmPbz5Lf9PNiGFcy27va3OpsXcVOHinV4qAvsitzR9fDWE6ioxgkdaHXJvRD)0DxurYB1dGilP7v9HJvCyCDQJw2weJ2pczE2s6pCNbQaj)LtTI7e)subesaYk2JAmcqXqQ2aDoEKsNBhshytv1kZS1Su7AGuIsJcAVRjE0q2tEpeeUIIt8A2EVDPHacel6RoEK(k(Ou8w(9mJpl9wb7ooJ91G3umyK)vQlmySNKM8MMTlBZxu(Ym3P7)CzPVqIUc3ZMXgGJ8V3Usky(xjwdnfj9EI9ae0cLaAjsjd24HvBjwekWyGVEQWksTqKKOzIfScICrYloKMYljVyilc)CwHFvLS0MHKIfLJwRSb8lmSR2SvU8IHaqPB7S49ZeGZwIquYn(mGgjbbNKGhpGEcZlETp7KjMrKa6R)taeq1KL68FJSOOfIyzR5b)BvjFZXGwEF3P9T9WlV73)fatH4q4ZssOqgubk)LOToGXzKgfWui0Qmy8x(netoYE1xRCd5k3byfqIlbXOmUltwYhG3MxZc6UuVimLKZpoRfMPmkGKOHcRMlZQtgpujJ6RLjPce5iveNVKZzYXPNwU4(hVd6GAz5lu5nS4s5lqnXjAUWIXnU4kAVlnPOvmx5bG1DXOcblUXHZPzqvYaiidiA3QiAdHZlRTueibOgvDRsYvSDDyxuEmPrq6UwxYLxkTVHeSiiSjTNJDXt5T3Bn0b9rO2viBJlb(XW86TXvV71cxslMyp6BVzUJUBUg0WFRPtKsqGTnOS)sfmrBWTOfw114YPZ6YksFUnFG240(doRxSYQfsRK)WhBs6HLSXdG4MJiYJw5QVHS0J7SUKhOpxqlPDxYhKB1U(OKsC(tGKq2Yd5PGv3ffW58sf9GJ29p2emgN0ihBtExl7Ux)yFhvfVz7B1kbomc7T5zGEGXZH0CQbpxRIHeYIsG7lI7AiApOM9wwCFZcatRFWzcpEIaPl2fHJd9oGIJLO6svQUqIQlmq0yi3wpYzvwsNRsZ5YsQbAMds4ZK9fWAaa)LmFBZnDqdXqqluC0)McQ16ck7XnBqn5utmambJ2hfcEc2zaNWUaCgATny(MBXqSnEFcbwW6WzOxoU3PtwdVKfks3sP5(zG0pf9qumX4KZ(V7zDM)IEwjporWEXaPzRbCMyENcMdgLMaW37zV8kwIrC75gh2bKFjunwJh1F08DheDNA(AeedEw6aOCWCGMRyJMN)5KGwTph)TSuicz3Zv7y198Me9msVbxlzvF7aPN2tysEyGRLazBUyAW3fF)KU3WYIndiPGnwpPLJqXtwP05BE6U08ei9bVduey(lI)k4WUbQPv5t0PnmyBRzLk8vm6JX0o)r5QMMj8H66YVG)H8G0URHvuaVO5RUEZSPURpGYtaLyH76FDFgKynrcER0xuDs9NCxJQkb1G7617R2cjl5UM(kYx3TjZi4h)m9lf34h5(E31bWbeNhHiFcxlz9x7FxTpimmUcBtyvULGaBKWxarZ13HKA)Jhn8sE(oVNVcvwqy78t88qy6LT5mC)kG4o9uVvpb0DHr6Ql3sknvFHHdbhBwAKn9s4uh9I41V0JoyD2)G7KyeXqMWLBSRi02)OgYZUE7i)TCuVZvGWIBhHsWW10BhXwxQ5un1X4gFnVk6wMkYCpmQ9VIDm10jJE2kuQJ7AUADiEKe5XSFzN(Bb35Gh8YL8N1fL))Q79IZQ7TbBmz)z1frNHL8Om2ZpHESEs(e6C6fmoffJZxhyvKYHrhSdY0Vsc)GTErJtGLRKrcQCUqxndSyS0klU7chKUnAhfYClJgjJ425a4wM637izu3(gfCKrCvZ4eFFWvndG0HREJP4stnNeq3MxkA7lLDQra7ppDWi)qwEokNuwAIuaFOsfuv8aO(K6dQ9bfUdtBYpfAuEClhOpTzh2b7vgfnkrw2tePb9ILeQhBQdB3SoG9oHqAkUeiq33d3EgAktXg9MAMZ4KYrLDgzZ9vi1ITpk6Jshi7nzAVsi0SnsxuQdCDuQ2(6E1bCoks0u)2yslt66qX5qgL7eIqAVun9izSqDmqpnjg0liDiCADlfwyjN9UDxuXUYrDOMoti3jlW2C9BvNNRKVTOQ7m0RvdxTI5d02Iv7j0PtpOfDYSJpTpbT8M0Di6pRvbZz9110w7U82tzyaPxmFbZ((6iZsBrb6gxzDgzc32N0KvpIXQ2S7RGhI8muR4L0dQR5e0D7lwqI4j7pZb41DWsqelPYA0uTJPl1C61M99ziddm4JScReI5Z1QqMxkKc2v9AyMqmKlQ(j597Ki3jh2rfSlvgyfF)g4hxq7yeugXnaWNpfZC2sLhjyr9HWajpeqJPPe2A9cs1iEnNwIJu6YczSaPdhYtelDWA8mv71l)AbWMVMwNYLTGk9jTD3kHgBivgNC(r9w0TF3wjiU)BNicTEVYZ)GCH)o2ZbJBOJLZf7eMOzdzI54QR8ZwE3ooYKmbtl5)9xO7oKbO4rzGzN2vxTUss5SZIujCqPTpsPM2w(YMYzf8iPPDEqo2wSM00t7AVI4H9B7NCAx7fapcs1ni1uszVjvTZinZcJVlQIZunlDes5zwZxVnTwDtzJoKaPsdL32OYqW4CF1MSRHP)YOaX1Vm(jtYE4)rKVJrSWRnMlN1y3NKMwcZvPzYM676)dH6oCaBdrZg4swk(J5GZ6OZcwGz9ZNMCl8LnNmhFw71hxVEvV15SHOZaNUqPJ02rO4)ENZH)8qJmZOMVT2axlD8ZmCZipf3QwLOLUIAgWXy)31DBPVR7w65Q5R88b)kHwI9OtlVusbXNqF3i7PnquhSaFzTsadV854trPlmZEJiSgvBrJVTh9nk)M7mgBo1pDixV)Sg5tQHQnF2h1jvIMzC)0kv7)d1(Kz)IdosAsYSheuIVl1Z3fg4lh2e3uMzpsNehNRNJZnDs75y)iOzpoN(oxj3bB((SZnhA6ITz35y2jDZnL)MtzGHSh2Ym3LoCl6AAO2rrRxcuhWn7r0KVlx2hIX40PXHRPzj2dRzAQ1OS1uhkfMHTgR8EHOJw2d4Py1YhsOB43gi(MerUXPxDjnRB8Yx)lyqkTFlGHYKU5swAQ36YQL9wPzFRrLPw)cPVU8bZ5iQDaMEwPDE4gtA969lmJWiyi0KrHY8Yj8EHPMJpBAXTDc4mmYk9Fpg(3PmvDwIIW(J7)5p]] )
 
 -- Removed duplicate stance aura synthesis block; stance handled by early SyncStance logic.

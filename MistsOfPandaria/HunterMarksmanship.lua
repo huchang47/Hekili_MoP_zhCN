@@ -4,9 +4,9 @@
 -- Early return if not a Hunter
 if select(2, UnitClass('player')) ~= 'HUNTER' then return end
 
-    local addon, ns = ...
+local addon, ns = ...
 local Hekili = _G[ "Hekili" ]
-    
+
 -- Early return if Hekili is not available
 if not Hekili or not Hekili.NewSpecialization then return end
     
@@ -18,7 +18,7 @@ local state = Hekili.State
 local mm_last_spell_was_steady = false
 
 local strformat = string.format
-    local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
     local PTR = ns.PTR
 
     local spec = Hekili:NewSpecialization( 254, true )
@@ -28,8 +28,8 @@ local strformat = string.format
     -- Use MoP power type numbers instead of Enum
     -- Focus = 2 in MoP Classic
     spec:RegisterResource( 2, {
-        steady_shot = {
-            resource = "focus",
+    steady_shot = {
+        resource = "focus",
             cast = function(x) return x > 0 and x or nil end,
             aura = function(x)
                 -- Only predict focus if casting Steady Shot
@@ -38,7 +38,7 @@ local strformat = string.format
                 end
                 return nil
             end,
-            last = function()
+        last = function()
                 return state.buff.casting.applied
             end,
             interval = function() return state.buff.casting.duration end,
@@ -51,50 +51,50 @@ local strformat = string.format
             end,
         },
 
-        cobra_shot = {
-            resource = "focus",
+    cobra_shot = {
+        resource = "focus",
             cast = function(x) return x > 0 and x or nil end,
             aura = function(x) return x > 0 and "casting" or nil end,
 
-            last = function()
+        last = function()
                 return state.buff.casting.applied
-            end,
+        end,
 
             interval = function() return state.buff.casting.duration end,
             value = 14,
-        },
+    },
+    
+    dire_beast = {
+        resource = "focus",
+        aura = "dire_beast",
 
-        dire_beast = {
-            resource = "focus",
-            aura = "dire_beast",
+        last = function()
+            local app = state.buff.dire_beast.applied
+            local t = state.query_time
 
-            last = function()
-                local app = state.buff.dire_beast.applied
-                local t = state.query_time
+            return app + floor( ( t - app ) / 2 ) * 2
+        end,
 
-                return app + floor( ( t - app ) / 2 ) * 2
-            end,
-
-            interval = 2,
+        interval = 2,
             value = 5,
-        },
+    },
+    
+    fervor = {
+        resource = "focus",
+        aura = "fervor",
 
-        fervor = {
-            resource = "focus",
-            aura = "fervor",
-
-            last = function()
+        last = function()
                 return state.buff.fervor.applied
-            end,
+        end,
 
-            interval = 1,
+        interval = 1,
             value = 5,
             duration = 10,
         },
     } )
 
     -- Talents
-    spec:RegisterTalents( {
+spec:RegisterTalents( {
         -- Tier 1 (Level 15)
         posthaste = { 1, 1, 109215 }, -- Disengage also frees you from all movement impairing effects and increases your movement speed by 60% for 4 sec.
         narrow_escape = { 1, 2, 109298 }, -- When Disengage is activated, you also activate a web trap which encases all targets within 8 yards in sticky webs, preventing movement for 8 sec. Damage caused may interrupt the effect.
@@ -142,46 +142,46 @@ spec:RegisterAuras( {
         },
         aspect_of_the_iron_hawk = {
             id = 109260,
-            duration = 3600,
-            max_stack = 1,
-            generate = function( t )
+        duration = 3600,
+        max_stack = 1,
+        generate = function( t )
                 local name, _, _, _, _, _, caster = FindUnitBuffByID( "player", 109260 )
                 
                 if name then
                     t.name = name
-                    t.count = 1
+                t.count = 1
                     t.applied = state.query_time
                     t.expires = state.query_time + 3600
-                    t.caster = "player"
-                    return
-                end
+                t.caster = "player"
+                return
+            end
                 
-                t.count = 0
-                t.applied = 0
+            t.count = 0
+            t.applied = 0
                 t.expires = 0
-                t.caster = "nobody"
-            end,
-        },
+            t.caster = "nobody"
+        end,
+    },
         casting = {
             id = 116951,
-            generate = function( t )
+        generate = function( t )
                 local name, _, _, _, _, _, caster = FindUnitBuffByID( "player", 116951 )
                 
-                if name then
+            if name then
                     t.name = name
-                    t.count = 1
+                t.count = 1
                     t.applied = state.query_time
                     t.expires = state.query_time + 2.5
-                    t.caster = "player"
-                    return
-                end
+                t.caster = "player"
+                return
+            end
                 
-                t.count = 0
-                t.applied = 0
+            t.count = 0
+            t.applied = 0
                 t.expires = 0
-                t.caster = "nobody"
-            end,
-        },
+            t.caster = "nobody"
+        end,
+    },
         cobra_shot = {
             id = 19386,
         duration = 6,
@@ -219,10 +219,10 @@ spec:RegisterAuras( {
             -- Use the same aura as Aimed Shot! and alias it
             id = 82926,
             duration = 10,
-            max_stack = 1,
+        max_stack = 1,
             copy = "aimed_shot_instant"
-        },
-     steady_focus = {
+    },
+    steady_focus = {
         id = 53220,
         duration = 20,
         max_stack = 1,
@@ -234,23 +234,23 @@ spec:RegisterAuras( {
             id = 34720,
             duration = 12,
             max_stack = 3,
-            generate = function( t )
+        generate = function( t )
                 local name, _, _, count = FindUnitBuffByID( "player", 34720 )
-                if name then
+            if name then
                     t.name = name
                     t.count = count and count > 0 and count or 1
                     t.applied = state.query_time
                     t.expires = state.query_time + 12
-                    t.caster = "player"
-                    return
-                end
-                t.count = 0
-                t.applied = 0
+                t.caster = "player"
+                return
+            end
+            t.count = 0
+            t.applied = 0
                 t.expires = 0
-                t.caster = "nobody"
-            end,
-        },
-
+            t.caster = "nobody"
+        end,
+    },
+    
         hunters_mark = {
             id = 1130,
             duration = 300,
@@ -283,35 +283,35 @@ spec:RegisterAuras( {
         mend_pet = {
             id = 136,
             duration = 10,
-            max_stack = 1,
-            generate = function( t )
+        max_stack = 1,
+        generate = function( t )
                 local name, _, _, _, _, _, caster = FindUnitBuffByID( "pet", 136 )
                 
-                if name then
+            if name then
                     t.name = name
-                    t.count = 1
+                t.count = 1
                     t.applied = state.query_time
                     t.expires = state.query_time + 10
                     t.caster = "pet"
-                    return
-                end
+                return
+            end
                 
-                t.count = 0
-                t.applied = 0
+            t.count = 0
+            t.applied = 0
                 t.expires = 0
-                t.caster = "nobody"
-            end,
-        },
-
+            t.caster = "nobody"
+        end,
+    },
+    
         misdirection = {
             id = 34477,
             duration = 8,
             max_stack = 1
-        },
-
-        aspect_of_the_cheetah = {
-            id = 5118,
-            duration = 3600,
+    },
+    
+    aspect_of_the_cheetah = {
+        id = 5118,
+        duration = 3600,
             max_stack = 1
         },
 
@@ -336,7 +336,7 @@ spec:RegisterAuras( {
         black_arrow = {
             id = 3674,
             duration = 15,
-            max_stack = 1,
+        max_stack = 1,
             debuff = true
         },
 
@@ -348,7 +348,7 @@ spec:RegisterAuras( {
 
         piercing_shots = {
             id = 82924,
-            duration = 8,
+        duration = 8,
             max_stack = 1
         },
 
@@ -370,10 +370,10 @@ spec:RegisterAuras( {
             duration = 4,
             max_stack = 1
         },
-
-        wyvern_sting = {
-            id = 19386,
-            duration = 30,
+    
+    wyvern_sting = {
+        id = 19386,
+        duration = 30,
             max_stack = 1
         },
 
@@ -414,69 +414,69 @@ spec:RegisterAuras( {
         stampede = {
             id = 121818,
             duration = 12,
-            max_stack = 1,
+        max_stack = 1,
             
         },
 
         explosive_trap = {
             id = 13813,
             duration = 20,
-            max_stack = 1
-        },
+        max_stack = 1
+    },
         -- Dire Beast focus regen aura (used by resources)
         dire_beast = {
             id = 120694,
             duration = 15,
-            max_stack = 1
-        },
+        max_stack = 1
+    },
 
-        -- === PET ABILITY AURAS ===
-        -- Pet basic abilities
-        pet_dash = {
-            id = 61684,
-            duration = 16,
-            max_stack = 1,
-            generate = function( t )
-                if state.pet.alive then
-                    t.count = 1
-                    t.expires = 0
-                    t.applied = 0
-                    t.caster = "pet"
-                    return
-                end
-                t.count = 0
+    -- === PET ABILITY AURAS ===
+    -- Pet basic abilities
+    pet_dash = {
+        id = 61684,
+        duration = 16,
+        max_stack = 1,
+        generate = function( t )
+            if state.pet.alive then
+                t.count = 1
                 t.expires = 0
                 t.applied = 0
-                t.caster = "nobody"
-            end,
-        },
-        
-        pet_prowl = {
-            id = 24450,
-            duration = 3600,
-            max_stack = 1,
-            generate = function( t )
-                if state.pet.alive and state.pet.family == "cat" then
-                    t.count = 1
-                    t.expires = 0
-                    t.applied = 0
-                    t.caster = "pet"
-                    return
-                end
-                t.count = 0
+                t.caster = "pet"
+                return
+            end
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
+    
+    pet_prowl = {
+        id = 24450,
+        duration = 3600,
+        max_stack = 1,
+        generate = function( t )
+            if state.pet.alive and state.pet.family == "cat" then
+                t.count = 1
                 t.expires = 0
                 t.applied = 0
-                t.caster = "nobody"
-            end,
-        },
-        
-        -- Pet debuffs on targets
-        growl = {
-            id = 2649,
-            duration = 3,
-            max_stack = 1,
-            type = "Taunt",
-        },
+                t.caster = "pet"
+                return
+            end
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
+    
+    -- Pet debuffs on targets
+    growl = {
+        id = 2649,
+        duration = 3,
+        max_stack = 1,
+        type = "Taunt",
+    },
 
         widow_venom = {
             id = 82654,
@@ -532,27 +532,27 @@ spec:RegisterAuras( {
     spec:RegisterAbilities( {
        arcane_shot = {
             id = 3044,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
-            gcd = "spell",
+        gcd = "spell",
             spend = function () return buff.thrill_of_the_hunt.up and 10 or 30 end,
-            spendType = "focus",
-            startsCombat = true,
-            handler = function ()
+        spendType = "focus",
+        startsCombat = true,
+        handler = function ()
                 mm_last_spell_was_steady = false
-            end,
-        },
-        
+        end,
+    },
+    
         aspect_of_the_hawk = {
             id = 13165,
             cast = 0,
-            cooldown = 0,
-            gcd = "spell",
+        cooldown = 0,
+        gcd = "spell",
             
             startsCombat = false,
             texture = 136076,
-            
-            handler = function ()
+        
+        handler = function ()
                 apply_aspect( "aspect_of_the_hawk" )
             end,
         },
@@ -567,74 +567,74 @@ spec:RegisterAuras( {
 
             handler = function ()
                 applyDebuff( "target", "black_arrow" )
-            end,
-        },
-
-        cobra_shot = {
-            id = 77767,
+        end,
+    },
+    
+    cobra_shot = {
+        id = 77767,
             cast = function() return 2.0 / haste end,
-            cooldown = 0,
-            gcd = "spell",
-            school = "nature",
-            spend = -14,
-            spendType = "focus",
-            startsCombat = true,
-            
-            handler = function ()
+        cooldown = 0,
+        gcd = "spell",
+        school = "nature",
+        spend = -14,
+        spendType = "focus",
+        startsCombat = true,
+        
+        handler = function ()
                 -- Cobra Shot maintains Serpent Sting in MoP (key Survival mechanic)
-                if debuff.serpent_sting.up then
-                    debuff.serpent_sting.expires = debuff.serpent_sting.expires + 6
+            if debuff.serpent_sting.up then
+                debuff.serpent_sting.expires = debuff.serpent_sting.expires + 6
                     if debuff.serpent_sting.expires > query_time + 15 then
                         debuff.serpent_sting.expires = query_time + 15 -- Cap at max duration
-                    end
                 end
-            end,
-        },
-
+            end
+        end,
+    },
+    
 
         disengage = {
             id = 781,
-            cast = 0,
+        cast = 0,
             cooldown = 20,
             gcd = "off",
 
             startsCombat = false,
-
-            handler = function ()
+        
+        handler = function ()
                 applyBuff( "disengage" )
-            end,
-        },
-
+        end,
+    },
+    
 
 
         kill_command = {
             id = 34026,
-            cast = 0,
-            cooldown = 0,
-            gcd = "spell",
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
 
             spend = 40,
-            spendType = "focus",
-
-            startsCombat = true,
-
-            handler = function ()
+        spendType = "focus",
+        
+        startsCombat = true,
+        
+        handler = function ()
                 applyBuff( "kill_command" )
-            end,
-        },
-
+        end,
+    },
+    
         multi_shot = {
             id = 2643,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
-            gcd = "spell",
+        gcd = "spell",
 
             spend = function () return buff.thrill_of_the_hunt.up and 20 or 40 end,
-            spendType = "focus",
-
-            startsCombat = true,
-
-            handler = function ()
+        spendType = "focus",
+        
+        startsCombat = true,
+        
+        handler = function ()
                 -- Apply Multi-Shot buff for tracking
                 applyBuff( "multi_shot" )
                 
@@ -644,28 +644,28 @@ spec:RegisterAuras( {
                     applyDebuff( "target", "serpent_sting" )
                     -- Note: In a real implementation, this would spread to all targets in AoE range
                 end
-            end,
-        },
-
+        end,
+    },
+    
         rapid_fire = {
             id = 3045,
-            cast = 0,
+        cast = 0,
             cooldown = 300,
-            gcd = "off",
-
-            startsCombat = false,
+        gcd = "off",
+        
+        startsCombat = false,
             toggle = "cooldowns",
-
-            handler = function ()
+        
+        handler = function ()
                 applyBuff( "rapid_fire" )
-            end,
-        },
-
+        end,
+    },
+    
         steady_shot = {
             id = 56641,
             cast = function() return 2.0 / haste end,
             cooldown = 0,
-            gcd = "spell",
+        gcd = "spell",
             school = "physical",
 
             spend = -14,
@@ -673,8 +673,8 @@ spec:RegisterAuras( {
 
             startsCombat = true,
             texture = 132213,
-
-            handler = function ()
+        
+        handler = function ()
                 -- Track consecutive Steady Shot casts for Steady Focus buff
                 state.last_steady_shot = state.last_steady_shot or 0
                 state.steady_shot_chain = state.steady_shot_chain or 0
@@ -688,39 +688,39 @@ spec:RegisterAuras( {
                 if state.steady_shot_chain >= 2 then
                     applyBuff("steady_focus", 10)
                     state.steady_shot_chain = 0
-                end
-            end,
-        },
-
+            end
+        end,
+    },
+    
         serpent_sting = {
             id = 1978,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
-            gcd = "spell",
-            school = "nature",
+        gcd = "spell",
+        school = "nature",
             
-            spend = 15,
-            spendType = "focus",
+        spend = 15,
+        spendType = "focus",
             
-            startsCombat = true,
+        startsCombat = true,
 
-            handler = function ()
+        handler = function ()
                 applyDebuff( "target", "serpent_sting" )
-            end,
-        },
-
+        end,
+    },
+    
         explosive_shot = {
             id = 53301,
-            cast = 0,
+        cast = 0,
             cooldown = 6, -- 6-second cooldown in MoP
-            gcd = "spell",
-            
+        gcd = "spell",
+        
             spend = function() return buff.lock_and_load.up and 0 or 25 end,
-            spendType = "focus",
-
-            startsCombat = true,
-
-            handler = function ()
+        spendType = "focus",
+        
+        startsCombat = true,
+        
+        handler = function ()
                 -- Apply Explosive Shot DoT (fires a shot that explodes after a delay)
                 applyDebuff( "target", "explosive_shot" )
                 
@@ -732,70 +732,70 @@ spec:RegisterAuras( {
                 
                 -- Explosive Shot is the signature Survival ability
                 -- It does high fire damage and is central to the rotation
-            end,
-        },
-
+        end,
+    },
+    
         stampede = {
             id = 121818,
-            cast = 0,
+        cast = 0,
             cooldown = 300,
             gcd = "off",
-
+        
             startsCombat = true,
             toggle = "cooldowns",
-
-            handler = function ()
+        
+        handler = function ()
                 applyBuff( "stampede" )
-            end,
-        },
-
+        end,
+    },
+    
 
         tranquilizing_shot = {
             id = 19801,
-            cast = 0,
+        cast = 0,
             cooldown = 8,
-            gcd = "spell",
-
-            startsCombat = true,
-
-            handler = function ()
+        gcd = "spell",
+        
+        startsCombat = true,
+        
+        handler = function ()
                 -- Dispel magic effect
-            end,
-        },
-
-        silencing_shot = {
-            id = 34490,
-            cast = 0,
-            cooldown = 20,
+        end,
+    },
+    
+    silencing_shot = {
+        id = 34490,
+        cast = 0,
+        cooldown = 20,
             gcd = "spell",
-            school = "physical",
+        school = "physical",
 
-            talent = "silencing_shot",
-            startsCombat = true,
-            toggle = "interrupts",
+        talent = "silencing_shot",
+        startsCombat = true,
+        toggle = "interrupts",
 
             debuff = "casting",
             readyTime = state.timeToInterrupt,
 
-            handler = function ()
+        handler = function ()
                 applyDebuff( "target", "silencing_shot" )
                 -- interrupt() handled by the system
-            end,
-        },
-
+        end,
+    },
+    
         hunters_mark = {
             id = 1130,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
-            gcd = "spell",
-
+        gcd = "spell",
+        
             startsCombat = false,
-            
-            handler = function ()
+        
+        handler = function ()
                 applyDebuff( "target", "hunters_mark", 300 )
-            end,
-        },
-
+        end,
+    },
+    
         aimed_shot = {
             id = 19434,
             cast = 2.5,
@@ -806,38 +806,38 @@ spec:RegisterAuras( {
             spendType = "focus",
             
             startsCombat = true,
-
-            handler = function ()
+        
+        handler = function ()
                 -- Basic Aimed Shot handling
-            end,
-        },
-
+        end,
+    },
+    
         chimera_shot = {
             id = 53209,
-            cast = 0,
+        cast = 0,
             cooldown = 9,
-            gcd = "spell",
-
+        gcd = "spell",
+        
             spend = 45,
             spendType = "focus",
-
+        
             startsCombat = true,
-
-            handler = function ()
+        
+        handler = function ()
                 -- Refresh Serpent Sting to its full duration (15s) if present
                 if debuff.serpent_sting.up then
                     debuff.serpent_sting.expires = query_time + 15
-                end
-            end,
-        },
-
+            end
+        end,
+    },
+    
         -- === AUTO SHOT (PASSIVE) ===
         auto_shot = {
             id = 75,
-            cast = 0,
+        cast = 0,
             cooldown = function() return ranged_speed or 2.8 end,
-            gcd = "off",
-            school = "physical",
+        gcd = "off",
+        school = "physical",
             
             startsCombat = true,
             texture = 132215,
@@ -845,242 +845,242 @@ spec:RegisterAuras( {
 
         kill_shot = {
             id = 53351,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
-            gcd = "spell",
+        gcd = "spell",
             
             spend = 35,
             spendType = "focus",
             
             startsCombat = true,
             texture = 236174,
-
-            handler = function ()
+        
+        handler = function ()
                 -- Kill Shot for targets below 20% health
-            end,
-        },
-
+        end,
+    },
+    
         concussive_shot = {
             id = 5116,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
-            gcd = "spell",
-
+        gcd = "spell",
+        
             spend = 15,
             spendType = "focus",
-
+        
             startsCombat = true,
             texture = 132296,
-            
-            handler = function ()
+        
+        handler = function ()
                 applyDebuff( "target", "concussive_shot", 6 )
-            end,
-        },
-
+        end,
+    },
+    
         deterrence = {
             id = 19263,
-            cast = 0,
+        cast = 0,
             cooldown = 90,
-            gcd = "off",
-            
-            startsCombat = false,
+        gcd = "off",
+        
+        startsCombat = false,
             texture = 132369,
-
-            handler = function ()
+        
+        handler = function ()
                 applyBuff( "deterrence" )
-            end,
-        },
-
+        end,
+    },
+    
         feign_death = {
             id = 5384,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
             gcd = "off",
-
-            startsCombat = false,
+        
+        startsCombat = false,
             texture = 132293,
-
-            handler = function ()
+        
+        handler = function ()
                 -- Feign Death drops combat
-            end,
-        },
-
+        end,
+    },
+    
         mend_pet = {
             id = 136,
             cast = 3,
             cooldown = 0,
             gcd = "spell",
-            
-            startsCombat = false,
-
-            handler = function ()
+        
+        startsCombat = false,
+        
+        handler = function ()
                 applyBuff( "mend_pet" )
-            end,
-        },
+        end,
+    },
         revive_pet = {
             id = 982,
             cast = 6,
             cooldown = 0,
-            gcd = "spell",
-            
-            startsCombat = false,
-
-            handler = function ()
+        gcd = "spell",
+        
+        startsCombat = false,
+        
+        handler = function ()
                 -- Revive Pet ability
-            end,
-        },
-
+        end,
+    },
+    
         call_pet = {
-            id = 883,
-            cast = 0,
-            cooldown = 0,
-            gcd = "spell",
-
-            startsCombat = false,
-
-            usable = function() return not pet.alive, "no pet currently active" end,
-
-            handler = function ()
+        id = 883,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        
+        startsCombat = false,
+        
+        usable = function() return not pet.alive, "no pet currently active" end,
+        
+        handler = function ()
                 -- spec:summonPet( "hunter_pet" ) handled by the system
-            end,
-        },
-
+        end,
+    },
+    
         call_pet_1 = {
             id = 883,
-            cast = 0,
-            cooldown = 0,
-            gcd = "spell",
-            startsCombat = false,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        startsCombat = false,
             usable = function () return not pet.exists, "requires no active pet" end,
-            handler = function ()
+        handler = function ()
                 -- summonPet( "hunter_pet", 3600 ) handled by the system
-            end,
-        },
-
+        end,
+    },
+    
         call_pet_2 = {
             id = 83242,
-            cast = 0,
-            cooldown = 0,
-            gcd = "spell",
-            startsCombat = false,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        startsCombat = false,
             usable = function () return not pet.exists, "requires no active pet" end,
-            handler = function ()
+        handler = function ()
                 -- summonPet( "ferocity" ) handled by the system
-            end,
-        },
-
+        end,
+    },
+    
         call_pet_3 = {
             id = 83243,
             cast = 0,
-            cooldown = 0,
-            gcd = "spell",
-            startsCombat = false,
+        cooldown = 0,
+        gcd = "spell",
+        startsCombat = false,
             usable = function () return not pet.exists, "requires no active pet" end,
-            handler = function ()
+        handler = function ()
                 -- summonPet( "cunning" ) handled by the system
-            end,
-        },
-
-        dismiss_pet = {
-            id = 2641,
-            cast = 0,
-            cooldown = 0,
-            gcd = "spell",
-
-            startsCombat = false,
-            
-            usable = function() return pet.alive, "requires active pet" end,
-            
-            handler = function ()
+        end,
+    },
+    
+    dismiss_pet = {
+        id = 2641,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        
+        startsCombat = false,
+        
+        usable = function() return pet.alive, "requires active pet" end,
+        
+        handler = function ()
                 -- dismissPet() handled by the system
-            end,
-        },
+        end,
+    },
 
-        -- === BASIC PET ABILITIES ===
-        pet_growl = {
-            id = 2649,
-            cast = 0,
-            cooldown = 5,
-            gcd = "off",
-            school = "physical",
+    -- === BASIC PET ABILITIES ===
+    pet_growl = {
+        id = 2649,
+        cast = 0,
+        cooldown = 5,
+        gcd = "off",
+        school = "physical",
 
-            startsCombat = true,
+        startsCombat = true,
 
-            usable = function() return pet.alive, "requires a living pet" end,
+        usable = function() return pet.alive, "requires a living pet" end,
 
-            handler = function ()
-                -- Pet taunt - forces target to attack pet
-                applyDebuff( "target", "growl", 3 )
-            end,
-        },
+        handler = function ()
+            -- Pet taunt - forces target to attack pet
+            applyDebuff( "target", "growl", 3 )
+        end,
+    },
 
-        pet_claw = {
-            id = 16827,
-            cast = 0,
-            cooldown = 6,
-            gcd = "off",
-            school = "physical",
+    pet_claw = {
+        id = 16827,
+        cast = 0,
+        cooldown = 6,
+        gcd = "off",
+        school = "physical",
 
-            startsCombat = true,
+        startsCombat = true,
 
-            usable = function() return pet.alive and pet.family == "cat", "requires cat pet" end,
+        usable = function() return pet.alive and pet.family == "cat", "requires cat pet" end,
 
-            handler = function ()
-                -- Basic cat attack
-            end,
-        },
+        handler = function ()
+            -- Basic cat attack
+        end,
+    },
 
-        pet_bite = {
-            id = 17253,
-            cast = 0,
-            cooldown = 6,
-            gcd = "off",
-            school = "physical",
+    pet_bite = {
+        id = 17253,
+        cast = 0,
+        cooldown = 6,
+        gcd = "off",
+        school = "physical",
 
-            startsCombat = true,
+        startsCombat = true,
 
-            usable = function() return pet.alive and (pet.family == "wolf" or pet.family == "dog"), "requires wolf or dog pet" end,
+        usable = function() return pet.alive and (pet.family == "wolf" or pet.family == "dog"), "requires wolf or dog pet" end,
 
-            handler = function ()
-                -- Basic canine attack
-            end,
-        },
+        handler = function ()
+            -- Basic canine attack
+        end,
+    },
 
-        pet_dash = {
-            id = 61684,
-            cast = 0,
-            cooldown = 30,
-            gcd = "off",
-            school = "physical",
+    pet_dash = {
+        id = 61684,
+        cast = 0,
+        cooldown = 30,
+        gcd = "off",
+        school = "physical",
 
-            startsCombat = false,
+        startsCombat = false,
 
-            usable = function() return pet.alive, "requires a living pet" end,
+        usable = function() return pet.alive, "requires a living pet" end,
 
-            handler = function ()
-                applyBuff( "pet_dash", 16 )
-            end,
-        },
+        handler = function ()
+            applyBuff( "pet_dash", 16 )
+        end,
+    },
 
-        pet_prowl = {
-            id = 24450,
-            cast = 0,
-            cooldown = 0,
-            gcd = "off",
-            school = "physical",
+    pet_prowl = {
+        id = 24450,
+        cast = 0,
+        cooldown = 0,
+        gcd = "off",
+        school = "physical",
 
-            startsCombat = false,
+        startsCombat = false,
 
-            usable = function() return pet.alive and pet.family == "cat", "requires cat pet" end,
+        usable = function() return pet.alive and pet.family == "cat", "requires cat pet" end,
 
-            handler = function ()
-                applyBuff( "pet_prowl" )
-            end,
-        },
-
+        handler = function ()
+            applyBuff( "pet_prowl" )
+        end,
+    },
+    
         misdirection = {
             id = 34477,
-            cast = 0,
+        cast = 0,
             cooldown = 30,
             gcd = "off",
 
@@ -1095,27 +1095,27 @@ spec:RegisterAuras( {
             id = 5118,
             cast = 0,
             cooldown = 60,
-            gcd = "spell",
-            
-            startsCombat = false,
-            
-            handler = function ()
+        gcd = "spell",
+        
+        startsCombat = false,
+        
+        handler = function ()
                 apply_aspect( "aspect_of_the_cheetah" )
-            end,
-        },
-
+        end,
+    },
+    
         aspect_of_the_iron_hawk = {
             id = 109260,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
-            gcd = "spell",
-            
-            startsCombat = false,
-
-            handler = function ()
+        gcd = "spell",
+        
+        startsCombat = false,
+        
+        handler = function ()
                 apply_aspect( "aspect_of_the_iron_hawk" )
-            end,
-        },
+        end,
+    },
 
         a_murder_of_crows = {
             id = 131894,
@@ -1211,82 +1211,82 @@ spec:RegisterAuras( {
         },
 
 
-
-        explosive_trap = {
-            id = 13813,
-            cast = 0,
-            cooldown = 30,
-            gcd = "spell",
-            school = "fire",
-
-            startsCombat = false,
-
-            handler = function ()
+    
+    explosive_trap = {
+        id = 13813,
+        cast = 0,
+        cooldown = 30,
+        gcd = "spell",
+        school = "fire",
+        
+        startsCombat = false,
+        
+        handler = function ()
                 applyDebuff( "target", "explosive_trap" )
-            end,
-        },
-
+        end,
+    },
+    
         -- Additional talent abilities
         piercing_shots = {
             id = 82924,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
             gcd = "off",
-            
-            startsCombat = false,
-
-            handler = function ()
+        
+        startsCombat = false,
+        
+        handler = function ()
                 -- Passive talent, no active handling needed
-            end,
-        },
+        end,
+    },    
 
         careful_aim = {
             id = 82926,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
             gcd = "off",
-            
-            startsCombat = false,
-
-            handler = function ()
+        
+        startsCombat = false,
+        
+        handler = function ()
                 -- Passive talent, no active handling needed
-            end,
-        },
-
+        end,
+    },
+    
         -- Pet abilities that can be talented
         blink_strikes = {
             id = 109304,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
             gcd = "off",
-            
-            startsCombat = false,
-
-            handler = function ()
+        
+        startsCombat = false,
+        
+        handler = function ()
                 -- Passive talent, no active handling needed
-            end,
-        },
-
+        end,
+    },
+    
         -- Tier 2 Talents (Active abilities only)
         binding_shot = {
             id = 109248,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
-            gcd = "spell",
-            
+        gcd = "spell",
+        
             startsCombat = true,
-
-            handler = function ()
+        
+        handler = function ()
                 -- Passive talent, no active handling needed
-            end,
-        },
-
+        end,
+    },
+    
 
         intimidation = {
             id = 19577,
-            cast = 0,
+        cast = 0,
             cooldown = 0,
-            gcd = "spell",
+        gcd = "spell",
             
             startsCombat = true,
 
@@ -1315,25 +1315,25 @@ spec:RegisterAuras( {
             cooldown = 120,
             gcd = "off",
             
-            startsCombat = false,
+        startsCombat = false,
             toggle = "defensives",
-
-            handler = function ()
+        
+        handler = function ()
                 -- Self-heal ability
-            end,
-        },
-
+        end,
+    },
+    
         -- Tier 4 Talents (Active abilities only)
         fervor = {
             id = 82726,
-            cast = 0,
+        cast = 0,
             cooldown = 30,
-            gcd = "off",
-            
+        gcd = "off",
+        
             startsCombat = false,
             toggle = "cooldowns",
-
-            handler = function ()
+        
+        handler = function ()
                 applyBuff( "fervor" )
             end,
         },
@@ -1349,8 +1349,8 @@ spec:RegisterAuras( {
 
             handler = function ()
                 applyBuff( "dire_beast" )
-            end,
-        },
+        end,
+    },
 
         widow_venom = {
             id = 82654,
@@ -1426,20 +1426,20 @@ end )
 
     spec:RegisterStateExpr( "focus_deficit", function()
         return (state.focus.max or 100) - (state.focus.current or 0)
-    end )
+end )
 
-    spec:RegisterStateExpr( "pet_alive", function()
-        return pet.alive
-    end )
+spec:RegisterStateExpr( "pet_alive", function()
+    return pet.alive
+end )
 
-    spec:RegisterStateExpr( "bloodlust", function()
-        return buff.bloodlust
-    end )
+spec:RegisterStateExpr( "bloodlust", function()
+    return buff.bloodlust
+end )
 
     -- Threat is provided by engine; no spec override
 
-    -- === SHOT ROTATION STATE EXPRESSIONS ===
-    
+-- === SHOT ROTATION STATE EXPRESSIONS ===
+
     -- For Survival, Cobra Shot is the primary focus generator and maintains Serpent Sting
     spec:RegisterStateExpr( "should_cobra_shot", function()
         -- Cobra Shot is preferred for Survival when:
@@ -1450,9 +1450,9 @@ end )
         if (focus.current or 0) > 86 then return false end -- Don't cast if we'll cap focus
         
         -- Always prioritize Cobra Shot for Survival
-        return true
-    end )
-    
+    return true
+end )
+
     -- Steady Shot is not used in Survival, only as emergency fallback
     spec:RegisterStateExpr( "should_steady_shot", function()
         -- Survival should never use Steady Shot - always use Cobra Shot for focus generation
@@ -1460,69 +1460,69 @@ end )
     end )
     
     -- Focus management for Explosive Shot priority
-    spec:RegisterStateExpr( "focus_spender_threshold", function()
+spec:RegisterStateExpr( "focus_spender_threshold", function()
         -- Survival focus priorities:
         -- Explosive Shot: 25 focus (highest priority)
         -- Black Arrow: 35 focus
-        -- Arcane Shot: 20 focus
-        
+    -- Arcane Shot: 20 focus
+    
         -- During Lock and Load, save focus for multiple Explosive Shots
         if buff.lock_and_load.up then return 50 end
-        
-        -- Normal threshold allows for Explosive Shot priority
-        return 75
-    end )
     
+        -- Normal threshold allows for Explosive Shot priority
+    return 75
+end )
+
     -- Determines priority for shot rotation based on buffs and cooldowns
-    spec:RegisterStateExpr( "optimal_shot_window", function()
+spec:RegisterStateExpr( "optimal_shot_window", function()
         -- Optimal windows for Survival shot rotation:
         -- 1. When Explosive Shot is on cooldown
-        -- 2. When we have focus room
+    -- 2. When we have focus room
         -- 3. When maintaining DoTs
         
         if (focus.current or 0) < 25 then return false end
         if cooldown.explosive_shot.ready then return false end -- Save focus for Explosive Shot
-        
-        return true
-    end )
     
+    return true
+end )
+
 
 
     -- Options
-    spec:RegisterOptions( {
-        enabled = true,
+spec:RegisterOptions( {
+    enabled = true,
 
-        aoe = 3,
-        cycle = false,
+    aoe = 3,
+    cycle = false,
 
-        nameplates = false,
-        nameplateRange = 40,
-        rangeFilter = false,
+    nameplates = false,
+    nameplateRange = 40,
+    rangeFilter = false,
 
-        damage = true,
-        damageExpiration = 3,
+    damage = true,
+    damageExpiration = 3,
 
         potion = "tempered_potion",
-        package = "Marksmanship",
-    } )
+    package = "Marksmanship",
+} )
 
     spec:RegisterSetting( "focus_dump_threshold", 80, {
         name = "Focus Dump Threshold",
         desc = strformat( "Focus level at which to prioritize spending abilities like %s and %s to avoid Focus capping.",
             Hekili:GetSpellLinkWithTexture( spec.abilities.arcane_shot.id ),
             Hekili:GetSpellLinkWithTexture( spec.abilities.multi_shot.id ) ),
-        type = "range",
+    type = "range",
         min = 50,
         max = 120,
         step = 5,
-        width = 1.5
-    } )
+    width = 1.5
+} )
 
     spec:RegisterSetting( "mark_any", false, {
         name = strformat( "%s Any Target", Hekili:GetSpellLinkWithTexture( spec.abilities.hunters_mark.id ) ),
         desc = strformat( "If checked, %s may be recommended for any target rather than only bosses.", Hekili:GetSpellLinkWithTexture( spec.abilities.hunters_mark.id ) ),
-        type = "toggle",
-        width = "full"
-    } )
+    type = "toggle",
+    width = "full"
+} )
 
     spec:RegisterPack( "Marksmanship", 20250816, [[Hekili:DNvFVTTnt8plfdlTflvt2P2jBloaBdyinaRyyU)TKOLOSiIKOgjvcmGH(S)CKuVqjtj78mNUHHIMetE649YV7hVt2BM3x8whHeyVpp3D(c3BMT0z2s3R(4CV1IDfyV1fOWhrBH)ihLb)83rSh5zOCEcPqU5UukksQeoTKfcc4TEtjjv8PCVn21miAboewDb8NjKOiSwump0B9xsi8Qa5)rvb1hDvang(COGqZRcsjCbSDmLvfCp(rskXbSdgnMKcNUwkUtbdhsZ2GeF3QVpPmxGzC)mW0VKeV6DCSqqY3YDKR4JY3TFVaX2IfoeU)gkN)(lK65jSFev4y(4RCVOwsbjd7lO(re8DZwu9GTdUGkx7szGB1tewgohuprG91By)HqGIJ85jur1dTsaRhIst91F0xgd0QfrXsxQ2CX54mcMF3QRQE4BQc(vedhxMwf8ZKmiAMG44FecKBOpbX0BC)2QaTZufKGrPIKlH)aXIcrCH6zWrvbRLgsaA7wgMZHZiDxvWZercTewocNI2brs4OsaXzOA5pQzhQTmFWzLMFDmvBfofHI7UXv5b)jQGagXVryGfVPKLlp88i6ZWNWPYFbUb4tXONK4H(2mGsIkZkGhjbWgvbpIXf9nwA(hK5XJBVSyF5PlT1nLXXomPD5hdMLtzXfhy(3UsA)htPCWysbqKoh0LSDcP0uWhvpkYpRKfHz(0y)qg9zUDX4cuwbocBF3oZ1((LCSpGlZUKNsfRsq5rC7UQ0kH0YxyK8hXIrSL(AtOLD2lq25MbJErjLNIrr7ufisB8nkJSEXyAyjhmZ97pCvgodrY53UyCvhQXf1fFJj1ezKdSvmRaNl85s6gL1gH1wM5gQ4QTGtmMbWADbskiUJEbhCoAtko6IgzBwNjD3luU7TlCNWdAPyAZYDl5dbjbcomtR6fedagjqGTPijHKaitnSFJvp0jm30WtUB1Sjsziwikh36l6N4MfDA1mN2GbUZ1z54QeUsjTvHwkTNFYr2PnI5NegVUIZcvo8lgHYicGXVk4Dnu53vtTF)F8EduvhF75TeQVITxan4Wp9AcWVVFK7JapwKOdbW9Y7Ay6JkzAgEJW1pbltRcYLpxykPOJ)FelSFsSgeET7rWuZgtDVwLcJMtRHmwU70kG52vTiMQGlKIoK13aivFr45fe1Pu7aiJd90bph(WwZRlpgxXmBQ61kNAyS)9j2SMRmVAvtvFgtKAfApjQ3lRmvqSUZlH29G7yMWN8w)e09oSx9Cix7UWB9ZiwUCca5ahq1bjRGYe1dv82ESXVTkGH)RsOqaQL4uOzXauPGMbd2alec9kTfZDQEqPNyAk0uQIbcvYKKupJLvFqxoGWK8AslTTQhLrwVjAKtXrftlZ7jDuKuyyuk0gvh8puf8by5dUXwMA)KYtKN21dgzcSry8OsOZDM361zLXmYJERvBPgFZ0PHf(SAYWAuS3V4ToeioWmcYB9BQ5igGrQc2V32o14eGOPkyrZeAWbAKIeqUrECn7zIGmncqURmL7G2qgi8hNYhgH5WWcn3rQUfJQUX7HYWyB3wQRLVe)46rpyviwFP)cf79K8dkbbocJtUJMrEq3m6bDqfP(IJ5UD6QTcwQPFyunDClC(ybTzUMrTEf5MXlH8TjeJaQMPbYsf1n1mC0GdDLbkCWuB6QfF97bb4zAHTgkx(wmyKcTc(NA(7PCHjZOQEh75Mgnz0w9nM7(1zy9tZ5Sm6QS6yeu8aNU(ItBmiNe2OpxQcp2(gEMgr(o4oMHVCknVA)xqvvW7v(tncE4RPQkaCkxtp241vPsZZmyInFsByATtz5fy1PI6pFa)Cx17Wcuz9ZKHIX7PQpp3b9vP2UHxCvFx1qyBE6R8DCxDI3X9rt566yAGuJFB0lLRU3DrMHil3cDkKVMKgwYXwvXXiop(0UNT03lTBKZxdgJX2ywh1lqDggp(YXgp2wBgak6A3tSpJzhdK(6xFV8urSnm()FHwpJdA)FqmSvq0YtTz1zJ1k4)cawFnAi)05CBEVXTy4wnEKHlM3)i0Fpc2WinY0bzTDVLLsh1xOW0DNbNCQ0R0IAj)2ORMVoHb1GnFJen6PvmljRbQA(GNzU3KtCz9vX3ptB(64nbvYktJ7G1I5jA)N3)7p]] )

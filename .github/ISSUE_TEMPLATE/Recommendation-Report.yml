@@ -17,7 +17,7 @@ body:
           required: true
         - label: I confirm I am playing on official Blizzard servers (not private servers).
           required: true
-        - label: I checked for an [existing, open ticket](https://github.com/Hekili/hekili/labels/recommendation) for this issue and was not able to find one.
+        - label: I checked for an [existing, open ticket](https://github.com/Smufrik/Hekili/issues?q=state%3Aopen%20label%3Arecommendation) for this issue and was not able to find one.
           required: true
         - label: I have updated the issue title to clearly describe the problem.
           required: true
@@ -33,15 +33,10 @@ body:
         - DK - Blood
         - DK - Frost
         - DK - Unholy
-        - DH - Havoc
-        - DH - Vengeance
         - Druid - Balance
         - Druid - Feral
         - Druid - Guardian
         - Druid - Restoration
-        - Evoker - Augmentation
-        - Evoker - Devastation
-        - Evoker - Preservation
         - Hunter - Beast Mastery
         - Hunter - Marksmanship
         - Hunter - Survival
@@ -57,8 +52,8 @@ body:
         - Priest - Holy
         - Priest - Shadow
         - Rogue - Assassination
-        - Rogue - Outlaw
-        - Rogue - subtlety
+        - Rogue - Combat
+        - Rogue - Subtlety
         - Shaman - Elemental
         - Shaman - Enhancement
         - Shaman - Restoration
@@ -123,17 +118,6 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: sim-result
-    attributes:
-      label: Raidbots Sim Report (Link)
-      description: |
-        Please provide a [**Raidbots Quick Sim**](https://www.raidbots.com/simbot/quick) link for your character.  
-        Your simulation should use the **same talents, gear, and target count** you had when encountering the issue.  
-        This is needed for all 🛡️**Tank** and 🗡️**DPS** specializations. (➕**Healers may skip this step.**)
-
-        ⚠️ **If you do not provide a Raidbots link, your ticket may be declined.**
-      placeholder: https://www.raidbots.com/simbot/report/abcdEFghIjKlMNOPqrst
 
   - type: textarea
     id: addl-info

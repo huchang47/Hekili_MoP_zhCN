@@ -1,4 +1,4 @@
--- HunterSurvival.lua
+    -- HunterSurvival.lua
     -- july 2025 by smufrik
 
 -- Early return if not a Hunter
@@ -248,7 +248,7 @@ spec:RegisterAuras( {
 
 
     serpent_sting = { --- Debuff
-        id = 118253,
+        id = 118253,    
         duration = 15,
         tick_time = 3,
         type = "Ranged",
@@ -321,18 +321,18 @@ spec:RegisterAuras( {
             max_stack = 1
         },
 
-    black_arrow = {
+        black_arrow = {
             id = 3674,
             duration = 15,
             max_stack = 1,
             debuff = true
         },
 
-            lock_and_load = {
-        id = 56453,
-        duration = 8,
+        lock_and_load = {
+            id = 56453,
+            duration = 8,
         max_stack = 3,
-    },
+        },
 
         piercing_shots = {
             id = 82924,
@@ -601,7 +601,7 @@ spec:RegisterAuras( {
                 
                 -- Serpent Spread: spread/maintain Serpent Sting on primary target
                 -- Always apply/refresh Serpent Sting when Multi-Shot hits (Improved Serpent Sting / Serpent Spread behavior)
-                applyDebuff( "target", "serpent_sting" )
+                    applyDebuff( "target", "serpent_sting" )
             end,
         },
 

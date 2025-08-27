@@ -1705,8 +1705,8 @@ spec:RegisterStateExpr( "frost", function()
             return state.frost_runes.current
         end
         return 2 -- Default to 2 frost runes
-    end
-end )
+        end
+    end )
 spec:RegisterStateExpr( "unholy", function() 
     -- Safe rune counting that works in both game and emulation
     if GetRuneCooldown then
@@ -1722,8 +1722,8 @@ spec:RegisterStateExpr( "unholy", function()
             return state.unholy_runes.current
         end
         return 2 -- Default to 2 unholy runes
-    end
-end )
+        end
+    end )
 spec:RegisterStateExpr( "death", function() 
     -- Safe rune counting that works in both game and emulation
     if GetRuneCooldown and GetRuneType then

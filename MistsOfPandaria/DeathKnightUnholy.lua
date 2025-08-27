@@ -494,7 +494,7 @@ spec:RegisterGlyphs({
     [58644] = "disease",             -- Your diseases last 50% longer but deal 25% less damage
     [58645] = "resilient_grip",      -- Your Death Grip removes one movement impairing effect from yourself
     [58646] = "shifting_presences",  -- Reduces the rune cost to change presences by 1, but you cannot change presences while in combat
-
+    
     -- Minor glyphs - Cosmetic and convenience
     [58647] = "corpse_walker",  -- Your undead minions appear to be spectral
     [58648] = "the_geist",      -- Your ghoul appears as a geist
@@ -722,7 +722,7 @@ spec:RegisterAuras({
         max_stack = 1,
     },
     -- Suffering $w1 Shadow damage every $t1 sec. Erupts for damage split among all nearby enemies when the infected dies.
-    -- https://wowhead.com/spell=191587
+    -- https://wowhead.com/spell=191587  
     virulent_plague = {
         id = 191587,
         duration = 21,
@@ -1183,7 +1183,7 @@ local function UpdateRuneforge(slot, item)
         if not state.death_knight.runeforge then
             state.death_knight.runeforge = {}
         end
-
+        
         local link = GetInventoryItemLink("player", slot)
         local enchant = link and link:match("item:%d+:(%d+)")
 
@@ -2512,7 +2512,7 @@ spec:RegisterSetting("dps_shell", false, {
 })
 
 spec:RegisterSetting("pl_macro", nil, {
-    name = function()
+    name = function() 
         local plague_strike = spec.abilities and spec.abilities.plague_strike
         return plague_strike and strformat("%s Macro", Hekili:GetSpellLinkWithTexture(plague_strike.id)) or
             "Plague Strike Macro"
@@ -2532,7 +2532,7 @@ spec:RegisterSetting("pl_macro", nil, {
     type = "input",
     width = "full",
     multiline = true,
-    get = function()
+    get = function() 
         local plague_strike = class.abilities and class.abilities.plague_strike
         return plague_strike and "#showtooltip\n/use [@mouseover,harm,nodead][] " .. plague_strike.name or
             "#showtooltip\n/use [@mouseover,harm,nodead][] Plague Strike"

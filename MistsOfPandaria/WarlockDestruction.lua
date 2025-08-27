@@ -97,6 +97,7 @@ RegisterDestructionCombatLogEvent("SPELL_PERIODIC_DAMAGE", function(timestamp, e
             local emberGenerated = 0.1
             if critical then emberGenerated = emberGenerated * 2 end
             if state and state.burning_embers then state.burning_embers.generate(emberGenerated) end
+            if state then state.last_immolate_tick = timestamp or GetTime() end
         end
     end
 end)
@@ -186,14 +187,14 @@ spec:RegisterResource( 14, {
     -- Burning Ember generation from Immolate ticks
     immolate_generation = {
         last = function ()
-            return state.last_immolate_tick or 0
+            return rawget(state, "last_immolate_tick") or 0
         end,
         interval = 3, -- Immolate tick interval (15s / 5 ticks)
         value = function()
             -- Immolate generates 0.1 ember per tick (crit doubles) -> 10 ticks (~30s) ~1 ember overall.
             if not state.debuff.immolate.up then return 0 end
             local embers = 0.1
-            if state.last_critical_tick then embers = embers * 2 end
+            if rawget(state, "last_critical_tick") then embers = embers * 2 end
             return embers
         end,
     },
@@ -215,9 +216,9 @@ spec:RegisterResource( 14, {
         interval = 1,
         value = function()
             -- Incinerate grants 0.2 ember (5 casts per ember baseline) crits double.
-            if state.last_ability and state.last_ability == "incinerate" then
+            if rawget(state, "last_ability") == "incinerate" then
                 local v = 0.2
-                if state.last_critical_cast == "incinerate" then v = v * 2 end
+                if rawget(state, "last_critical_cast") == "incinerate" then v = v * 2 end
                 return v
             end
             return 0
@@ -232,7 +233,7 @@ spec:RegisterResource( 14, {
         interval = 1,
         value = function()
             -- Chaos Bolt consumes 1 full ember
-            return (state.last_ability and state.last_ability == "chaos_bolt") and -1 or 0
+            return (rawget(state, "last_ability") == "chaos_bolt") and -1 or 0
         end,
     },
     
@@ -244,7 +245,7 @@ spec:RegisterResource( 14, {
         interval = 1,
         value = function()
             -- Ember Tap consumes 1 Burning Ember
-            return (state.last_ability and state.last_ability == "ember_tap") and -1 or 0
+            return (rawget(state, "last_ability") == "ember_tap") and -1 or 0
         end,
     },
 }, {
@@ -551,7 +552,8 @@ spec:RegisterAuras( {    -- Core DoT/Debuff Mechanics with Advanced Generate Fun
                 -- Track enhanced effects
                 t.crit_bonus = 30 -- 30% critical strike bonus
                 t.ember_generation_bonus = 100 -- Double ember generation
-                t.time_remaining = expirationTime - GetTime()
+                local now = GetTime()
+                t.time_remaining = (expirationTime or now) - now
                 t.should_use_chaos_bolt = t.time_remaining > 3
                 return
             end
@@ -564,6 +566,30 @@ spec:RegisterAuras( {    -- Core DoT/Debuff Mechanics with Advanced Generate Fun
             t.ember_generation_bonus = 0
             t.time_remaining = 0
             t.should_use_chaos_bolt = false
+        end
+    },
+    -- Alias aura so APL conditions like buff.dark_soul.up work
+    dark_soul = {
+        id = 113858,
+        duration = 20,
+        max_stack = 1,
+        generate = function( t )
+            local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 113858 )
+            if name then
+                t.name = name
+                t.count = count > 0 and count or 1
+                t.expires = expirationTime
+                t.applied = expirationTime - duration
+                t.caster = caster
+                local now = GetTime()
+                t.remaining_time = (expirationTime or now) - now
+                return
+            end
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+            t.remaining_time = 0
         end
     },
     
@@ -672,22 +698,11 @@ spec:RegisterAuras( {    -- Core DoT/Debuff Mechanics with Advanced Generate Fun
         max_stack = 1,
     },
 
-    -- Fire and Brimstone (toggled spender enabling AoE application)
+    -- Fire and Brimstone aura (pure tracking only; ability defined in RegisterAbilities)
     fire_and_brimstone = {
-        id = 108683, -- MoP Fire and Brimstone ID
-        cast = 0,
-        cooldown = 0,
-        gcd = "off",
-        toggle = "cooldowns",
-        startsCombat = false,
-        handler = function()
-            -- Toggle style aura for simplified modeling
-            if buff.fire_and_brimstone and buff.fire_and_brimstone.up then
-                removeBuff( "fire_and_brimstone" )
-            else
-                applyBuff( "fire_and_brimstone" )
-            end
-        end,
+        id = 108683,
+        duration = 3600,
+        max_stack = 1,
     },
 
     -- Dark Intent self-buff for precombat (import action)
@@ -763,38 +778,7 @@ spec:RegisterAuras( {    -- Core DoT/Debuff Mechanics with Advanced Generate Fun
         end
     },
     
-    metamorphosis = {
-        id = 103958,
-        duration = 30,
-        max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 103958 )
-            
-            if name then
-                t.name = name
-                t.count = count > 0 and count or 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                
-                -- Track enhanced abilities
-                t.damage_bonus = 25 -- 25% damage increase
-                t.ember_generation_bonus = 50 -- 50% faster generation
-                t.enables_doom = true
-                t.enables_immolation_aura = true
-                return
-            end
-            
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-            t.damage_bonus = 0
-            t.ember_generation_bonus = 0
-            t.enables_doom = false
-            t.enables_immolation_aura = false
-        end
-    },
+    -- Removed Demonology artifacts (metamorphosis/doom) from Destruction
     
     fel_armor = {
         id = 28176,
@@ -1064,6 +1048,23 @@ spec:RegisterAbilities( {
             applyDebuff( "target", "rain_of_fire" )
         end,
     },
+
+    fire_and_brimstone = {
+        id = 108683,
+        cast = 0,
+        cooldown = 0,
+        gcd = "off",
+        toggle = "cooldowns",
+        startsCombat = false,
+        texture = 135808,
+        handler = function()
+            if buff.fire_and_brimstone.up then
+                removeBuff( "fire_and_brimstone" )
+            else
+                applyBuff( "fire_and_brimstone" )
+            end
+        end,
+    },
     
     fel_flame = {
         id = 77799,
@@ -1142,6 +1143,7 @@ spec:RegisterAbilities( {
         
         handler = function()
             applyBuff( "dark_soul_instability" )
+            applyBuff( "dark_soul" )
         end,
     },
     
@@ -1362,6 +1364,39 @@ end )
 
 spec:RegisterStateExpr( "spell_power", function()
     return GetSpellBonusDamage(3) -- Fire school
+end )
+
+-- Safety shims similar to Affliction to avoid loader N/A states
+spec:RegisterStateExpr( "ticking", function() return 0 end )
+spec:RegisterStateExpr( "remains", function() return 0 end )
+spec:RegisterStateExpr( "pet_health_pct", function() return state.pet_health_pct or 0 end )
+
+-- Emulator safety shims commonly referenced by APL imports.
+spec:RegisterStateExpr( "last_ability", function() return rawget(state, "last_ability") or "" end )
+spec:RegisterStateTable( "last_cast_time", setmetatable( {}, { __index = function() return 0 end } ) )
+spec:RegisterStateExpr( "tick_time", function() return 0 end )
+
+-- Some imports reference spell.dark_soul.*; provide minimal structure.
+spec:RegisterStateTable( "spell", setmetatable({
+    dark_soul = setmetatable({
+        charges = 1,
+        time_to_next_charge = 0,
+    }, { __index = function(_, key)
+        if key == "charges" then return 1 end
+        if key == "time_to_next_charge" then return 0 end
+        return 0
+    end }),
+}, { __index = function() return setmetatable({}, { __index = function() return 0 end }) end }) )
+
+-- State expression to mirror WoWSims APL expectations for embers
+spec:RegisterStateExpr( "burning_embers", function()
+    local be = state.burning_embers and state.burning_embers.current or 0
+    return be
+end )
+spec:RegisterStateExpr( "burning_embers_deficit", function()
+    local max = state.burning_embers and state.burning_embers.max or 4
+    local be = state.burning_embers and state.burning_embers.current or 0
+    return max - be
 end )
 
 -- Range

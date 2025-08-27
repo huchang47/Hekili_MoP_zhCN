@@ -28,6 +28,14 @@ local TargetDummies = ns.TargetDummies
 local format = string.format
 local insert, remove, wipe = table.insert, table.remove, table.wipe
 
+-- Performance optimizations
+-- - Throttling: Only update targets every 100ms unless forced
+-- - CVar caching: Cache nameplate settings via events instead of GetCVar calls
+-- - Debug control: Only build debug strings when debugTargets is enabled
+local lastTargetsUpdate, minUpdateInterval = 0, 0.10
+local showNPs = true  -- Cache nameplate CVars
+local needStationary = false  -- Only calculate if needed
+
 local unitIDs = { "target", "targettarget", "focus", "focustarget", "boss1", "boss2", "boss3", "boss4", "boss5", "arena1", "arena2", "arena3", "arena4", "arena5" }
 
 local npGUIDs = {}
@@ -36,6 +44,29 @@ local npUnits = {}
 Hekili.unitIDs = unitIDs
 Hekili.npGUIDs = npGUIDs
 Hekili.npUnits = npUnits
+
+-- Cache nameplate CVars via events to avoid GetCVar calls
+ns.RegisterEvent( "CVAR_UPDATE", function( _, name )
+    if name == "nameplateShowEnemies" or name == "nameplateShowAll" then
+        showNPs = GetCVar( "nameplateShowEnemies" ) == "1" and GetCVar( "nameplateShowAll" ) == "1"
+    end
+end )
+
+-- Initialize nameplate CVars
+ns.RegisterEvent( "PLAYER_ENTERING_WORLD", function()
+    showNPs = GetCVar( "nameplateShowEnemies" ) == "1" and GetCVar( "nameplateShowAll" ) == "1"
+    -- Setup pet-based detection
+    Hekili:SetupPetBasedTargetDetection()
+end )
+
+-- Setup pet detection when pet bar or action bars change
+ns.RegisterEvent( "PET_BAR_UPDATE", function()
+    Hekili:SetupPetBasedTargetDetection()
+end )
+
+ns.RegisterEvent( "ACTIONBAR_SLOT_CHANGED", function()
+    Hekili:SetupPetBasedTargetDetection()
+end )
 
 
 function Hekili:GetNameplateUnitForGUID( id )
@@ -465,13 +496,16 @@ do
 
     -- New Nameplate Proximity System
     function ns.getNumberTargets( forceUpdate )
-        if not forceUpdate then
+        -- Performance throttling
+        local now = GetTime()
+        if not forceUpdate and (now - lastTargetsUpdate) < minUpdateInterval then
             return lastCount, lastStationary
         end
+        lastTargetsUpdate = now
 
-        local debugging = true
-        local details = nil
-        local showNPs = GetCVar( "nameplateShowEnemies" ) == "1" and GetCVar( "nameplateShowAll" ) == "1"
+        local debugging = Hekili.DB and Hekili.DB.profile and Hekili.DB.profile.debugTargets
+        local details = debugging and "" or nil
+        -- showNPs is already cached by events
 
         wipe( counted )
 
@@ -745,6 +779,11 @@ do
 
         if details then
             Hekili.TargetDebug = details
+            -- Print debug info to chat if enabled
+            if debugging then
+                Hekili:Print("Target Detection Debug:")
+                Hekili:Print(details)
+            end
         end
 
         return count, stationary
@@ -1724,3 +1763,48 @@ function Hekili:HandlePetCommand( args )
         self:Print( "Unknown pet subcommand: " .. subcommand )
     end
 end
+
+-- Pet Bar Detection Functions
+local function GetPetBarAbility(spellName)
+    for i = 1, 10 do
+        local spellID = GetPetActionInfo(i)
+        if spellID then
+            local name = GetSpellInfo(spellID)
+            if name == spellName then
+                return i, spellID
+            end
+        end
+    end
+    return nil, nil
+end
+
+-- Pet Ability Range Check
+local function IsPetAbilityInRange(abilityName, target)
+    local slot, spellID = GetPetBarAbility(abilityName)
+    if slot then
+        -- Läs av range från pet bar slot
+        local isUsable, noMana = IsPetActionUsable(slot)
+        if isUsable then
+            -- Kontrollera range baserat på pet position
+            local petRange = GetPetActionRange(slot)
+            return petRange
+        end
+    end
+    return nil
+end
+
+-- Pet Bar Event Handling
+local petBarFrame = CreateFrame("Frame")
+petBarFrame:RegisterEvent("PET_BAR_UPDATE")
+petBarFrame:RegisterEvent("PET_BAR_UPDATE_COOLDOWN")
+
+petBarFrame:SetScript("OnEvent", function(self, event, ...)
+    if event == "PET_BAR_UPDATE" then
+        -- Uppdatera pet ability information
+        Hekili:ForceUpdate("PET_BAR_UPDATE")
+    end
+end)
+
+-- Expose pet detection functions globally
+Hekili.GetPetBarAbility = GetPetBarAbility
+Hekili.IsPetAbilityInRange = IsPetAbilityInRange

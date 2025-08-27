@@ -907,7 +907,7 @@ end )
             gcd = "spell",
             school = "nature",
 
-                spend = function () return buff.thrill_of_the_hunt.up and 0 or -14 end,
+            spend = function () return buff.thrill_of_the_hunt.up and 0 or -14 end,
             spendType = "focus",
 
             startsCombat = true,

@@ -17,7 +17,7 @@ body:
           required: true
         - label: I am not playing on a private server.
           required: true
-        - label: I checked for an [existing, open ticket](https://github.com/Hekili/hekili/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc) for this issue and was not able to find one.
+        - label: I checked for an [existing, open ticket](https://github.com/Smufrik/hekili-mop/issues?q=is%3Aissue%20state%3Aopen%20sort%3Aupdated-desc) for this issue and was not able to find one.
           required: true
         - label: I edited the title of this bug report (above) so that it describes the issue I am reporting.
           required: true
@@ -26,7 +26,7 @@ body:
     attributes:
       label: Describe the Issue
       description: Please describe the issue in question.  Be specific and describe what you see.  You can CTRL+V to paste a screenshot (image) or supply links to screenshot images.
-      placeholder: "Example: The addon is not loading for my Beast Mastery Demon Hunter.  The following error message appears in my BugSack."
+      placeholder: "Example: The addon is not loading for my Beast Mastery Priest.  The following error message appears in my BugSack."
     validations:
       required: true
   - type: textarea
@@ -35,9 +35,9 @@ body:
       label: How to Reproduce
       description: "Steps to reproduce the behavior"
       placeholder: |
-        1. Enter game as a Havoc Demon Hunter.
+        1. Enter game as a Shadow Priest.
         2. Change specialization to Beast Mastery.
-        3. Realize Beast Mastery Demon Hunters don't exist.
+        3. Realize Beast Mastery Priest don't exist.
     validations:
       required: true
   - type: input

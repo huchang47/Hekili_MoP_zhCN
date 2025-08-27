@@ -24,6 +24,8 @@ local function GetTargetDebuffByID(spellID)
     return FindUnitDebuffByID("target", spellID, "PLAYER")
 end
 
+
+
 local spec = Hekili:NewSpecialization( 265 ) -- Affliction spec ID for MoP
 
 -- Affliction-specific combat log event tracking
@@ -67,6 +69,22 @@ spec:RegisterStateExpr( "target_died", function()
     return rawget( state, "target_died" ) or false
 end )
 
+-- Safety shims to prevent unknown key warnings in parser/emulator.
+spec:RegisterStateExpr( "last_ability", function()
+    return rawget( state, "last_ability" ) or ""
+end )
+
+spec:RegisterStateTable( "last_cast_time", setmetatable( {}, { __index = function() return 0 end } ) )
+
+spec:RegisterStateExpr( "tick_time", function()
+    return 0
+end )
+
+-- Alias numeric soul_shards for APLs that expect a number and ensure key exists early.
+spec:RegisterStateExpr( "soul_shards", function()
+    return ( state.soul_shards and state.soul_shards.current ) or 0
+end )
+
 -- Pet management system for Affliction Warlock
 local function summon_demon(demon_type)
     -- Track which demon is active
@@ -78,13 +96,76 @@ end
 local function update_pet_stats()
     local pet_health = UnitHealth("pet") or 0
     local pet_max_health = UnitHealthMax("pet") or 1
-    local pet_health_pct = pet_health / pet_max_health
-    
-    -- Update pet health state for Dark Pact calculations
-    if state then
-        state.pet_health_pct = pet_health_pct
-    end
+    local pet_health_pct = pet_max_health > 0 and pet_health / pet_max_health or 0
+    state.pet_health_pct = pet_health_pct
 end
+
+spec:RegisterStateExpr("pet_health_pct", function()
+    return state.pet_health_pct or 0
+end)
+
+-- DoT snapshot tracking for percent_increase logic (now after spec and RegisterAfflictionCombatLogEvent)
+local dot_snapshot = {
+    agony = { value = 0 },
+    corruption = { value = 0 },
+    unstable_affliction = { value = 0 },
+}
+
+-- Helper to get current snapshot value (spell power + haste + mastery)
+local function get_dot_snapshot_value()
+    -- MoP: Use UnitStat for spell power (stat 5 = Intellect)
+    local spell_power = select(2, UnitStat("player", 5)) or 0
+    local haste = UnitSpellHaste and UnitSpellHaste("player") or 0
+    local mastery = GetMastery and GetMastery() or 0
+    -- Weighted sum, adjust as needed for MoP
+    return spell_power + haste + mastery
+end
+
+-- Calculate percent increase for a DoT
+local function get_dot_percent_increase(dot)
+    local last = dot_snapshot[dot] and dot_snapshot[dot].value or 0
+    local current = get_dot_snapshot_value()
+    if last == 0 then return 0 end
+    return math.floor((current - last) / last * 100)
+end
+
+-- Register state expressions for percent_increase
+for _, dot in ipairs({"agony", "corruption", "unstable_affliction"}) do
+    spec:RegisterStateExpr("dot." .. dot .. ".percent_increase", function()
+        return get_dot_percent_increase(dot)
+    end)
+end
+
+-- Alias for wowsims APL: dotPercentIncrease(spellId)
+spec:RegisterStateFunction("dotPercentIncrease", function(spellId)
+    local dot
+    if spellId == 980 then
+        dot = "agony"
+    elseif spellId == 172 then
+        dot = "corruption"
+    elseif spellId == 30108 then
+        dot = "unstable_affliction"
+    end
+    if not dot then return 0 end
+    local v = get_dot_percent_increase(dot)
+    if v == nil then return 0 end
+    return v
+end)
+
+-- Hook DoT application to update snapshot
+local dot_spell_ids = {
+    agony = 980, -- Agony
+    corruption = 172, -- Corruption
+    unstable_affliction = 30108, -- Unstable Affliction
+}
+
+RegisterAfflictionCombatLogEvent("SPELL_AURA_APPLIED", function(_, _, _, _, _, _, _, destName, _, _, _, spellID)
+    for dot, id in pairs(dot_spell_ids) do
+        if spellID == id and destName == UnitName("target") then
+            dot_snapshot[dot].value = get_dot_snapshot_value()
+        end
+    end
+end)
 
 -- Soul Shard generation tracking
 RegisterAfflictionCombatLogEvent("SPELL_CAST_SUCCESS", function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool)
@@ -444,6 +525,26 @@ spec:RegisterAuras( {
         tick_time = 3,
         max_stack = 1,
         pandemic = true,
+        generate = function( t )
+            local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 146739 )
+            if name and caster == "player" then
+                t.name = name
+                t.count = 1
+                t.expires = expirationTime
+                t.applied = expirationTime - duration
+                t.caster = caster
+                t.duration = duration
+            else
+                t.count = 0
+                t.expires = 0
+                t.applied = 0
+                t.caster = "nobody"
+                t.duration = 18
+            end
+            -- Derived helpers for APL compatibility
+            t.percent_increase = get_dot_percent_increase("corruption") or 0
+            t.refreshable = (t.expires - (state.query_time or GetTime())) <= (t.duration * 0.3)
+        end,
     },
     
     agony = {
@@ -452,6 +553,26 @@ spec:RegisterAuras( {
         tick_time = 2,
         max_stack = 10,
         pandemic = true,
+        generate = function( t )
+            local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 980 )
+            if name and caster == "player" then
+                t.name = name
+                t.count = count or 1
+                t.expires = expirationTime
+                t.applied = expirationTime - duration
+                t.caster = caster
+                t.duration = duration
+            else
+                t.count = 0
+                t.expires = 0
+                t.applied = 0
+                t.caster = "nobody"
+                t.duration = 24
+            end
+            -- Derived helpers for APL compatibility
+            t.percent_increase = get_dot_percent_increase("agony") or 0
+            t.refreshable = (t.expires - (state.query_time or GetTime())) <= (t.duration * 0.3)
+        end,
     },
     
     unstable_affliction = {
@@ -460,6 +581,26 @@ spec:RegisterAuras( {
         tick_time = 2,
         max_stack = 1,
         pandemic = true,
+        generate = function( t )
+            local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 30108 )
+            if name and caster == "player" then
+                t.name = name
+                t.count = 1
+                t.expires = expirationTime
+                t.applied = expirationTime - duration
+                t.caster = caster
+                t.duration = duration
+            else
+                t.count = 0
+                t.expires = 0
+                t.applied = 0
+                t.caster = "nobody"
+                t.duration = 14
+            end
+            -- Derived helpers for APL compatibility
+            t.percent_increase = get_dot_percent_increase("unstable_affliction") or 0
+            t.refreshable = (t.expires - (state.query_time or GetTime())) <= (t.duration * 0.3)
+        end,
     },
 
     haunt = {
@@ -802,24 +943,7 @@ spec:RegisterAuras( {
 
 -- Affliction Warlock abilities
 spec:RegisterAbilities( {
-    -- Core Rotational Abilities
-    shadow_bolt = {
-        id = 686,
-        cast = function() return 2.5 * haste end,
-        cooldown = 0,
-        gcd = "spell",
-        
-        spend = 0.075,
-        spendType = "mana",
-        
-        startsCombat = true,
-        texture = 136197,
-        
-        handler = function()
-            -- Soul shard generation is handled by the resource system automatically
-        end,
-    },
-    
+    -- Core Rotational Abilities (Shadow Bolt is not used by MoP Affliction)
     haunt = {
         id = 48181,
         cast = function() return 1.5 * haste end,
@@ -1271,22 +1395,7 @@ spec:RegisterAbilities( {
         end,
     },
 
-    summon_pet = {
-        id = 688, -- Imp
-        cast = function() return 6 * haste end,
-        cooldown = 0,
-        gcd = "spell",
-        
-        spend = 0.64,
-        spendType = "mana",
-        
-        startsCombat = false,
-        texture = 136218,
-        
-        handler = function()
-            -- Summon demon pet
-        end,
-    },
+    -- (removed legacy generic summon_pet; use explicit summons or alias below)
     
     summon_infernal = {
         id = 1122,
@@ -1342,16 +1451,82 @@ spec:RegisterAbilities( {
         startsCombat = false,
         texture = 463286,
         
+        usable = function()
+            if buff.soulburn.up then return false, "soulburn active" end
+            local shards = ( state.soul_shards and state.soul_shards.current ) or 0
+            if shards < 1 then return false, "requires 1 soul shard" end
+            return true
+        end,
+
         handler = function()
             applyBuff( "soulburn" )
         end,
     },
+    
+    -- Summon demons (MoP: cost 1 Soul Shard, 6s cast)
+    summon_imp = {
+        id = 688,
+        cast = function() return 6 * haste end,
+        cooldown = 0,
+        gcd = "spell",
+        spend = 1,
+        spendType = "soul_shards",
+        startsCombat = false,
+        texture = 136218,
+        handler = function()
+            -- Summon Imp
+        end,
+    },
+    summon_voidwalker = {
+        id = 697,
+        cast = function() return 6 * haste end,
+        cooldown = 0,
+        gcd = "spell",
+        spend = 1,
+        spendType = "soul_shards",
+        startsCombat = false,
+        texture = 136221,
+        handler = function()
+            -- Summon Voidwalker
+        end,
+    },
+    summon_succubus = {
+        id = 712,
+        cast = function() return 6 * haste end,
+        cooldown = 0,
+        gcd = "spell",
+        spend = 1,
+        spendType = "soul_shards",
+        startsCombat = false,
+        texture = 136220,
+        handler = function()
+            -- Summon Succubus
+        end,
+    },
+    summon_felhunter = {
+        id = 691,
+        cast = function() return 6 * haste end,
+        cooldown = 0,
+        gcd = "spell",
+        spend = 1,
+        spendType = "soul_shards",
+        startsCombat = false,
+        texture = 136217,
+        handler = function()
+            -- Summon Felhunter
+        end,
+    },
+
+    -- (dispatcher version removed; alias mapping provided in aliases section)
 } )
 
 -- Ability aliases for action list compatibility
 spec:RegisterAbilities( {
     unstable_affliction = { id = 30108, alias = "cast_unstable_affliction" },
     malefic_grasp = { id = 103103, alias = "cast_malefic_grasp" },
+    seed_of_corruption = { id = 27243, alias = "cast_seed_of_corruption" },
+    -- Generic import alias used by APLs like summon_pet,pet_type=felhunter
+    summon_pet = { id = 691, alias = "summon_felhunter" },
 } )
 
 -- State Expressions for Affliction
@@ -1364,6 +1539,12 @@ spec:RegisterStateExpr( "current_soul_shards", function() return state.soul_shar
 spec:RegisterStateTable( "focus", setmetatable({ current = 0 }, { __index = function() return 0 end }) )
 spec:RegisterStateExpr( "ticking", function() return 0 end )
 spec:RegisterStateExpr( "remains", function() return 0 end )
+
+-- Movement shim used by some imported APLs
+spec:RegisterStateExpr( "movement", function()
+    -- Provide a minimal structure with remains for conditions like movement.remains>0
+    return setmetatable({ remains = 0 }, { __index = function(_, k) if k == "remains" then return 0 end return 0 end })
+end )
 
 spec:RegisterStateExpr( "nightfall_proc", function()
     return buff.nightfall.up and 1 or 0
@@ -1389,8 +1570,29 @@ spec:RegisterStateExpr( "spell_power", function()
     return GetSpellBonusDamage(6) -- Shadow school
 end )
 
+-- Expose options to APL via state expressions
+spec:RegisterStateExpr( "soc_spread", function()
+    return state.settings and state.settings.soc_spread and 1 or 0
+end )
+
+-- Pet management settings exposure
+spec:RegisterStateExpr( "auto_resummon_pet", function()
+    return state.settings and state.settings.auto_resummon_pet and 1 or 0
+end )
+
+spec:RegisterStateExpr( "need_pet", function()
+    -- Returns 1 if auto-resummon is enabled and we need to summon or swap to preferred pet.
+    if not ( state.settings and state.settings.auto_resummon_pet ) then return 0 end
+    if not ( pet and pet.alive ) then return 1 end
+    local pref = ( state.settings and state.settings.preferred_pet ) or "felhunter"
+    local fam = UnitCreatureFamily and UnitCreatureFamily( "pet" ) or nil
+    if not fam then return 1 end
+    local desired = ({ imp = "Imp", voidwalker = "Voidwalker", succubus = "Succubus", felhunter = "Felhunter" })[ pref ] or "Felhunter"
+    return fam ~= desired and 1 or 0
+end )
+
 -- Range
-spec:RegisterRanges( "shadow_bolt", "agony", "fear" )
+spec:RegisterRanges( "agony", "fear" )
 
 -- Options
 spec:RegisterOptions( {
@@ -1411,7 +1613,38 @@ spec:RegisterOptions( {
     package = "Affliction",
 } )
 
+-- Settings
+spec:RegisterSetting( "soc_spread", true, {
+    name = strformat( "Enable %s Spread", Hekili:GetSpellLinkWithTexture( 27243 ) ),
+    desc = strformat( "When enabled, the APL may use %s with %s to spread DoTs in AoE. Disable to avoid SoC spread on cleave.",
+        Hekili:GetSpellLinkWithTexture( 27243 ), Hekili:GetSpellLinkWithTexture( 74434 ) ),
+    type = "toggle",
+    width = "full",
+} )
+
+spec:RegisterSetting( "preferred_pet", "felhunter", {
+    name = "Preferred Demon (Precombat)",
+    desc = "Which demon to keep active outside combat.",
+    type = "select",
+    width = 1.5,
+    values = function()
+        return {
+            imp = "Imp",
+            voidwalker = "Voidwalker",
+            succubus = "Succubus",
+            felhunter = "Felhunter",
+        }
+    end,
+} )
+
+spec:RegisterSetting( "auto_resummon_pet", true, {
+    name = "Auto Resummon Preferred Pet (OOC)",
+    desc = "If enabled, precombat recommendations will summon or swap to your preferred demon.",
+    type = "toggle",
+    width = 1.5,
+} )
+
 -- Default pack for MoP Affliction Warlock
-spec:RegisterPack( "Affliction", 20250821, [[Hekili:LR1wVTnYv4FlgfqXknvljLPStGLb6(utWI8c3I(gjhro0IR4fvEXEnGa)T35cjf5mNziLRDsbksCC0C5C(oN5CDg5A6(7UoHOkS73TmSSnUZYCL16B2S(ZUovVCe76CefCa9i5)KHsj)7FpkkjoOkopJo1lj5OqkjkZRlcit76SRooP6RzU7aO7A71UoO6Q95fUooP1rfXhCD2hhgI5Baxg46877JlB8P)GA8BzFJFEe5Zmg34NexwrMokVOX)FGpeNeVIGMI8O4ecg(ln()lursEWHV04FgVn(nFJtGYvhlWb5P7qv)1T)siQ4GxCwfoRcEbL1PP5zEhXvFI8JhvTSncNSVMSNIpfhT9kYWRqjXpHHjWXC6yFIQa3(hOqSxjU4iHDE8juW186KD1fzmgSRokAfDep6qRQpcVN9icMOBOkof)GrZ36xgzY6sSxCfoLJJQI4Sd4kt6QzuNPgOSGq9tNcYZtcZFoBWWf4uuCw592NovHkEKiYuU4vL7fgJVFTXK8Y69HxtODvW0jj7oCbHqhIZEC(uWYEefsYZd9IQlE51sH(LtjW1SZ)Y9OIWYh2UEX1H5vRcYlkQpsxFNo7H7wqNa9yE2l9JzAWgSoRScTlb7H69k6xYMLlvGOtNgZARfTlBpgLuTF1XGQ7TmwsT2gc(I6mp(N8O(R8dO08NWuHH(7uYHup7nMCRbjyeFZ0PEc7HZWPXygGgpY92tsmuoiLMEJLvdKYvLuVUGAILIxEKx1EcPsyYvjZTneZo1bxaXcyH0c4NAqZeMNNcoXZy0HmCz5OGcLJIgm60ZKy4WjbB(vupVtNgnuN33nlxiBq8WDcSPn8ifGpwt4bZwvYAFXyqS8142BdZ54SiCrgkb6aL4M8oHLLIGrB86fsNbVXoVlKftDI1dMGcGx5ZOJ9rRgjaIiUkoGgCCaEhoceyBNxKVSnZDxejfXUuuBC)w6CE0ZcsCj5P)mKjR5DlK0oIWaaX9GsJ0WHOMZgzaRBX3ccF7PH)5tMEulFyXbRSzNmgbwJni0SMgA9XHMYrCbyuOnZkS2nl0ASRIgqzYwiKTdo2Og3)PjAB27XMUMwkpFUBAZSnIQ9K4iYXe3DofLHyazTb5aU)t2gQsLpIsHfeo0whcTMxk62AQushAF0Bx9rRPIlOiscqiNbQsPZHuucokoW7Xcujt0FZ46vKAwi)w8CFpIy05TlpPAubqR4LRO8CWgyLWfse8czbECnDjxT)ZRWIESEjP7SEdtEiwQ32BuaoEQmaLNmyveTeGW8CvGNiY5UaCXphNfoo)siRIZr2vXyOi9QcJpbeSGGauUrvyrBUYjZ)9AuqQQZ9QrbUjNZqu0aGGVBXqGmvvf)G0HYCcEWx2L4nAkTzmoK6WpHHwNODTun2NojXYP6CGZzy3Pu0F6nEmByxmydyrMOrS0XjGOvty)WzhS1OLK1O4((by01ECp2IRBsAh5Qm4SnKwNkXeUyPjSgAP5RUtajk9wvnSeH)b0LGepJWjErjOumVIRe61MCio5pq4qCwPxqDwgHfRWzuAhkTDE1B0Z1zT)fdkM7w5Z9EW468eUOKmv3n8AA668mQGsRs6L4IB8JtpMxu1ErTFiehHQtQ(qJFb(FxhxqWQFzorG9r1v5POk6ab7rzpIlx18TFloJm1MV04)pZkRpsPeDbC8qjxxz(Fyf1ogGHe79lJzRvYm5yKk5A5fkHMkzky5Du(Y4AuEss(ZuhCc1jbnA8FgxqgVUKsKycbQOlRJA0RWQXFxDv36YYzqUoB0QddPloermurL4VqKr))gbZJQJuCqAjKIJneYIZ1vzPcfip34LPeT()AL4xt7e7ncpscroDDkpIdiEPBSDDydYEZhUZi5)(D2Ba1697(RUobfXKM8Ir03YrOH9g)tNiyqzN2n(334BZxLCiF2SRn6EkPUNGW1Hd5bJurG7pxuzjHklkQwFPOAs(b8KfNzD7Njm(M3igBzFM6NFIdkhSFp4q)tGq5WgLC4AQlEFDen(pSLOIA8x04tMbolnzrn(3XwJuPbS5iLM1nPMeVSLs8AwY(RwXIpneuTyCs6Yq47JaJLN1i9QrV0yIYNPxUvPEr8zsyO14m1eEIcU)Th3WIUxk1Vtj1hxi)qrrCgQ)Z84kp4nLVF(I47mjpjLoL2MgceFo7L8r6FC6FXuOGF0NGUi(iNAWpJSWHj)PJHcz1TS23PO)nJhQlUQXV)1JjqR99LDDoVyGOoVrroUIMkRTXT2(2ga62b1hAGvWQGrjR2FUQMECPndtxlg8GIdmc66drFQGHsq)tJtnGLCrnHLmrnB3AcqeZg5I(e4DxhwTbQGSRxZJAaGYLddAmkAdnWgHtdBmLQdbol7Gll6hWwCK6W11XwqiK61shUmTGSh61AdvuVwSa0bRoazOpZIIy1uEnUFCz7xnXLNODpHSsIJklHNz(ORbG7eXcKpFViBJl1lsHocQvEghUzclxjfP6QMGT)OEmaj1VFl3LJ1MSOX)ur6uzA1XlOkmuWWbM5AdoEL6QpKyV2suuGdG9O3zyYM)pt7Z95R1ryskYmvekj62bwONVDI(AvKHWaEZ8ikNOVLZE3QEHeHGasVtIQ5BFTevtp4ntgyU0nBh)VqVrZ(cHf)EB0A(OXpDQKmxGR61TzXg3iayU2(AP)VRNmBPsO6)sMO3DxrIyUw8NGCmQdaHV1ktgczUf48JUDPfQuLtPWOmtqLmOIm1rVGveYs88scRnQSa2yVLO(aHV(ez9TvcTWg)pRT6h(jkWHWsG8JQ7e89jt1ijt)2ijf0kN2ZqovKouDFOVfvfmsgbxnl8GUkQNHOnUIdPUF1EvnQdwOmXXgGedMQt3krEEbItgdaIlQZlQ(6vGKWPkHfI3QZ9Dz8E0nxj7rtpX1AFXcupp3nEWy4iPMQtqoUTBJEJyHgjgA3Q)ATg2OHPQ2dp)9iA26wrVLb(DFS)qEQixAZdOiXXOdvUbt)39jxhwZ4MQtv9Uajs4k(xbj1Dl(DZBhwb9GN6vQg62lQB(9vo3BNrDzV)pxf6qxXI2EvNzTywVJvMWwMybU0us3ahfq1vgDUUMjlXszEsynOk3)UlPAg1mPi254eV6lxyjm4e9zbYWo)ke0L2F2y1sjwfR2uxHoVII5MvHzZwmuRYvx2PI6sKVCoTCg4QN1u03KQMlm0SUGXgZmym)pU)Np]] )
+spec:RegisterPack( "Affliction", 20250824, [[Hekili:D3ZAVnoos(BjybmC6K2NTCC60lscWCtV3UtdStV4CV3(nlRitNOnYs(KKt3zrG)TFfjLO4JIKs2UpmZIEE0rISQIfR3SOYIjl(6I5RIQil(1GXbZgFtWvJcMo9dZcwmV61TKfZ3gf)C0JWFjlAd8F)P1RttIRsYZOV6108OvuquMVRigE9I5pSljT6xYw8agCdcMTyE0UQNYlwmF(MDRlsEEX8NswTIWNbPmEX8V(us5(L0)nA)YA8VFz(A4NzyE)Y0KYk41RZl2V8VqEojnzeqof5RtsbI4pSF5)iQinp(5)4(LTe8(LVF)Y)(wkvTcMBr(gyC5)J5jBk3)zoKlhTTGeNV5HOQlU7)yvuXZHjzvKSk8buUBZM8SWTKQlH)nKYWUBnj9PDWCkUmz9DNvfLcZE0JfjBYtkiH5RdlJIlswNetgrYIEiLSAWzWKhrH)lK9Fgi()A(FB)YVwKK9mPA)Y)NOIe64G17WKSKQKO0K)fDfiOKAgr(wsgb()rFlQa(BLLNJt1VudWlP7O3vXXt4KWh2TED5L5BVRewpVeLUJC34(aHGJgctclFnlwfanJCKgH2h4g0f4g0F4ojCtu2UO0JyjhC8Gysi57XP7wrocyeCcGbFJjC1UIi6uuHuqVavWPduBlsYlsQEvdguTtBIadofYC44DcZQWVDqCn8hyLKSy4lFx6d7kYOaTkzd52GXdoJo(r03esF1ODBhW(HYNIkwvE)DtWb12C2omBj8pJwrcljfGHmyDWEb(KEkcmXkq(KrxRIQG9FMzivY0jZcz5MOcWAzA(JjXcadGloknnK)JHuxlCQ5fXS9o08hJx5FujvKnDayKSvu)eRtE8PQllH9J4k(23d5LLdQIkEeCxqx4Hv5HRsOm)617xQ9amuX525GxW51ByGpW75)e8F)w0wWRrwm4CL6ePSIXDQYHFC720x3V8t5FvHEl2LHS2zivHqz7k3ntsQAvEvziIebJS)Bf5XWous5tjzpwVvvlgc7CeWvoqljz0HaSeVeeehqCyn0APMjnsOmV6m6ytciR9kiOwth)3rXGZ1AjY9l3vYI7Gghsmiqw043LsjvpbV5l)5F(t8yr2V8bsA(3QHZNam0WKLaYtrzRsBaW8VUF53sQEQwOKURb0jD9ZHXFnIokT4DG4xs2alVxOqby47IR2vq8Yq2atGYiG)pdb(eaJtjr8zqF1lKqydEtcP8UG3Et9j3h0AYIpRWOTP(Xquoc4bGDgk0ymK)ugW)IPlCkRRiVkIZAKyIW(uE2QegQ9tdWU2N5)XueSK8)UJWumG)izbQvWca7gi2oioUWhlIk3EjnoXIIDBRvbSkRnOrC0kCLnU6ZOQe)VrfRLhYSsc2rZt7gsdlblcmdngi1al(bip24v55BEChqSM733ovs4zvzi)T8OHftRoU4g8f4dFjzRjfzq8uMIx3HJVwiZKeMdGlf2452zLL0EVSqOpXUrLk(PuT7HVhzWJhUIW2jyJbE63YE7n1Nvq2a2jkVD2BV1o7sqIlpBa6aV58Zr8GCp2yVywdhHXzlBwZebpOXGLYsUt77dhITtOYKo)T3q81nD254i09g)rIqnuQRwRemPy3JXsFinpFv6UYkql6T34pIuat6zG1j9m6WcxVJzIaLocG9yf6vsAM8Ds8Uks42NIkjN3STj5KVXEwjQu8dKkMdiRIX9XI0euLmt7hMcHYgteOTl2KCGNAEXVSE)s6tapQG)YLWUwjn4aQp5IvVVoAhWN(gE4pnrcrDYtYEmjJOrzrpMNX21pdG6i2pblL4NnvhIZzofGhigE7JSmNDzabalIWirTletg5DTqH7OCdbyTzXVQkc8TNiGnSmy19PV81sEOfVOVU63gTz4D4(Eo(T6Jdt8GYM)EwHryr1cM1jRliLGW)Wn8WP4Hm)yA(drP6MyeB3T72Bjf0GcbZoXfeqRd4hGcA77Bm4cowg4AwZCkVOjUyhPsdsG5poW701XUfjpBcE2PhSrliSpmO7aSXj0pVdmAYtmjjUj0VArAQhy6RxPZlPpKMkfjLSbaBjxlI7RZ4LJWTknD8GnrzrJ2gxDVirRwlOGqeR0NGrfyupYaLU3IcyzZCxOhKydGV9oi)zmCljMRyJxddPjRH5WvEetiJqwrFODyWxk8NTFj)HQb28PcwAim7iDDrHJnSL31MUfKSWC7voz8GvmjT4DLS42FkkD97BQAe86DPnlZFAf31weyq8VqTyisnRJ(afHY5pqc8qVUgJfCtNcy8QbXG5nAaGMzuud(7NmRxW3YUKwYfOlKRWq0v2qedaz0e3xdPHrvYo1CNP4od6fA42yazRmciGuULKMkc4TnLBRchotf003fprCu2yRm)uDFKYA5clhFCMih2FMLYSCglddAYJbwm0QQSEhFbUjFfeNOASGQvfRob8l0RYieXFi3Dy(w6pC5kY6ODPv3nUUqJgUara5V1JF2GG7xCrMbHIcWUeARDi4uKRfIuCmYnjes(oy3KCz8RW7cRLx6oCqflHabqgAVshgv)DQhZecuXLrrwsdndzxnUnMhfkX0Ulie6VDYOz4jqRl1Fb26xk4oRuMz2bir4jOrReJzaHOuewaFwjnh5E4kQp)eRJOfrP6JtDCa3PTOCekfQUva0PwRtDfrwl(Y2RvWWisvee03ixdgJ7m5WuhptrF0Fg8DZqLvFJkuEtmC5)jfVBtVqY9g1xD(UQgFC6E3ucRLpjLTIO8tRVoo88BBKpUETtCqgg54PpkobdkHyIbMee(rECy5wiJSvA6o3F31E0D44noQSkSKMqci262ky3qANv26mB5uQxZHkUlOnrFpu9zZ4k36ELqvWcA4fIHFRHWKvxFE8T1K307gpAMjAqJCwUE8hIewNKDCkUCwd3AOUqY06qdLXpQhidXbhy0C37gXUx3e(KTrwJUFeg)H0bfMqVYaL42BW3p6KLFdEypRKKSO5XfKah9NeNoSwX6fEjDA97iWeTWHwTXl3Kk1dSxm9UN59ngiYr1PrlrPCZl0aJov3A71EedKhyzT7qbfrxaNII)zleQAC4ukRU1)Eoj9FgrwrYkdJHitOzT203F2ZYRg(RjPHRtHqr6e8mMoVgDu5Zon)bprIsREIj)(bZfRGymBUgisR58iRGnjATeRkI0Cj2SwlnIYAfDPR2SsS9i0(0OtGJE8NQa0B5ZK9IAh2Tv8ZsVeYwlV92Hx6IZ7czOuUcvkPwgwANu2qKdUgxcufyMHKyXnNhn4UqahtS22HARbv1v2q5Dm2PLlztgmEFoShkgI1kKshyxOIMkXRsdcFf0ZmHDkuulrI652A5b2cb08hQ9gjoQkr)W9hfDlvDpgXkfo8x2Vm2SNCCjElgTkLQhzvtRsW7)PFIdxMvGVSE9(L)z2zOTF5pxR010gtLQDtdTN5UWB))P4VUv)d)O6dmGERcxFa0KRmbKqlTxa6dgakQiokJoGIccpCaX(8nJvp)dJ5snLZiK(qdYgaQHZoW5hTzeVSmnV6oQmdZ7OWkz5RzrBHXaPFXsfJMe2RdWAHcly8CXX1SI34()xSo3B5xa7gBs(xAbsj3WJxOE0sg9oYvdgIGXzdmoMbJQ9ImTBo3krGgS2emGinG3bS3rqkcx0yYGoolHYzfZwctcbZxnWxStnT)aRXtzkOzV)VxsKBVs1Z)Ed78(OnjNeRH13QgIn1GqnIA9MqwU8B(75yrNSxx8FKqaE7To4lh36W4ZrrjV)774QfVVXfR2aZvBGJoS()3xTbN0vlYE7VNxTEKKr2B)9SKCVVqaTlPJg3b44UlcpU2Lv6b(2w4vRB4L8gYg6f9ROvtSmF7NM3I5VarHaZqCx4MSy(3IkO5EvUy(VSzBEb7kPnjqRJVhT)ZlMxULedZ86zlMZEi962XXm83(v2f4RobUf)NlMZNp7c5Xws87uxrYw(J9YDwmhgmKhBs0I5NTFPXIz)YbWSBzi7xE)DaLVOcirnsPfqiSez6KX6aiuTyo1zKRLvtXw0wwMLPrg9nbyTF5TaTgm2nXAS4cyRzGzie9Kkwj9vyo4bCTF5vSxBQbdWD)YBAxvSzsPQPwPQZynWOwRgU8T3KFClQbQUouKwKWgdfjx5djiL2wGjZI9ybDTdKIZz(WPRGyei3rrGSqfiZGsox7KCSxJix7NqC2032kSbpB6yjgIo8OeYhSsiElxddBcrY6e4BrNsTPwmxuCQfZzkR3C4iUfhIscrH4hpCiYwkT1SGP78bjwxBHSOiAYykMmPbjKZSLWtNfZAsoWq2KK1cKg2i7VfMXGMOIeuBnSArSy(yn7oNIwUHItilBaY6kYUTtPV1ZyIdRnzlx7jU(Jz9NKFUCnO4phtkh2wcMXFTHvYPQYJQTA4YZL2m1c2XRDVU6dYJcHWJOttG4iZnuB8F5WkxlyRBKMoROQBQYaX1TVJhSPCKsuncNgFu9yozgIdyN2qSS5Ci(qN2xFO62Hu9)jrKdzeuh8QkoAkvzbHbcgDozeOzCUlIfXr9f7xodFVHBKdzzi5xfDT0zN3sRkVKnMxFh0UTO3W8gJUioIOb6ZYYz8eowF2nkFSMRypKYUAl5fxhCMdfiCBCt0nQAAYYRDpRYuwym62vTh7Zp0qUqPn7gN7V1QZ0my5MmNmgXm1e7XGIkuCgnec2931zuMU9MuX(kPiU2KyXgzklJDqCSvlSmRDqmwdt2ihLGNCCNBDh5t3vYcSRK5y3vDHHPBzpELUf)Gh0icOWECkg2imIaRTi9nRxSlwRoLeirjA3Kt3r4OtqiXeQrroXAZ15Kl0wwHjQQQtPkCDCxJ3JZ6GTiZnUoVCFz6Vro6N6OTBHi)4kzq06KUH56ZT3p05YC5HO6zvIqJN7(Ic3jX3HS)XMid2EX5oZxzknQm3QS2LC)Xqmoe1DOW)VtP7PBfXWeRMCv(HFtMpm)gtCA4c3AUvF)oR3Kh)fEWSf3g6j2PLcKcZ9OVA06HYPNpL7mfDeHjsgpolZK)ChCNjIRSUSiz2R7A9XikE2befJlbsJu08jrEsjaCPwJ0QCj22RRZT8YRv(u)YgxZVN5SS6t4Hu6dkZqZatLkCCZSnjfB1D)JcYXl4MztLYiTnv6SlxuBtc2BT6)GGY7ocM5xd2MVfKuqvlLBxUG5NM0wNIK2k)uPCKuO(Hy5ebgQMk(NTLSwBJ3OBMZ51DNr42RLOGgAAdoFexd5ixQXj29Gylge7SNRT7fxX8R4e803P6n)RJ3XE2k1w9lXYY5aUo8hWnHhLB3HGHh4ihLRDTbDdljeDFXosjJVn5TFk4(FM5g1MLQjWUZshcFwkgXHDyXxHrwEoWD5UH7O2mqqTDpBwYu4qk9F)jREM(KAn1SX6nnbm9GQ3vp(8cWwm2R1IKVaica8tNbOReAp44QWjnTceSRLMxj)Zimo9gIA)sZeL06IiJDEJEjInIHUk0inEIoOy3wReB5EpUPKi4eeVjI0to6qACsxvqPPbO6ohoaNdh4Hdh8BnoCGGdRiRfGvBMdNBzrE8FR4w2oKL(R9Ar263XAVA2XCuRjmUfoS7dZOVuNTt3htYhxoPpc29usRQTZxqCIOyO01xAzPCW0(qSY7OX6(TPHYqB7Lobb6TBWL5eNtM7S0zjyPF)LTgPWT8md4FgKPCRUHw5M)htCfT7npLFFNBPtTVDWkRLwMq7P2yEK0wZKI3JOk7v8oyfrfW1ze65tdTJ1c2cyY4MvGndykKSYjNIuLvfc)4)wsFKFgP7Zxq6oX34rkRWryDRRZY7YZqS9Sv4oDOg61FZ9gUJAVoADuxQUH)CwKyRO9SJbZr5sDMOnrIE(fSUJOUSAr956xFDa9ARUN)UrrQ(gT)(qbZgTINQU8l(Kg(E7V(tAXv7VAvGLgH)7wfwZEY)LRcMzEAxDwsKmc0SFk6Ws9238K9lAf5(gvlWbmxkDIsnHyqle1Dt4hI2cSbN0P)(sbZ48bGNa74jqGhDBP(XdkhseQfIrPdeKbsGu3SYbcsriJO2moqGgOauSoE2nqdSqQ0npXViwyWwxV)qHDacS7VoT7KdLJpUpAanPjXiQ(R(6nRItcD1FJaEPlFz74qzwH0SFog1HFjocJECsOsEhYL6ZrDBhCYc5UK3o)6FUY5bliO0jJUgNIKABPMAqwXdg4h5Lo40)zqtiFyCONU9Z3T2eVh1k2BRvD6AtCN3cQokrYJCe5lwg75gHAExtjTXxG4I3wppt8pPAkS3Ety4R7ZS3z5o55yTHR3RZWc9JXO7Kdog90mmgtzUX34RfZNPjFy0KlU4e1TmqnxxmvEvVWIurNcfyUJxfH2t87D7xoE0m7O35jSq7ktmgQZoWPxAo9rpONxicAkisBndXL6Nk1uCQeTZUN0IST179Gcj2f5TBqK36N6xDB(yToA)yAi)6Zwv5WYUYwd53d)cEVcUN1RgYhZFWb0em6QJwWM3UH5IdQXwqI61(zBE43xaLcu64SeD08i2)gWSWrLzehj(qRfCDwRtl1d72rlRAbu3u3MWD9EH3eRIfWPm43jUyYS9A5pommyyVLaqKtTR1yHuUs2P5r0CKvTcAOhQS)SpSxLvBNLG1pSCYXmZ(ORHT35NI64rtPHnAh4JTv4hFTAQC9062)NXyoUE4wPeuT9MdwKU(jZAjjTBKTAw8QnTfsGQ(rdEuuo815vcwABQUbPrc50zIywsdsjBmS01qc00pdq(YfiFZouSECl3)35cPfXu80ZrntuMGLIYcjWt)uSsNN00UNdzUAu(81XSqQ3MJ1j9RqqnnfiwGL(jhSy6cu0eARKpZcg7ic9vG8d57ANZYoG4QwU95CDU3sLyOTOfD4JcqhH)ejxmTwAC7NP344ds4qy1YDo4kcn3mgr4wX7O6hvpmRrho5hifTK4dWNRuzzFp9KXO7VREnX40F6IPkXp1EooRe)zX)h]] )
 
 

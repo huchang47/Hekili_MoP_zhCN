@@ -17,8 +17,8 @@ if playerClass ~= 'DEATHKNIGHT' then return end
 local addon, ns = ...
 local Hekili = _G["Hekili"]
 
-if not Hekili or not Hekili.NewSpecialization then
-    return
+if not Hekili or not Hekili.NewSpecialization then 
+    return 
 end
 
 local class = Hekili.Class
@@ -129,7 +129,7 @@ bloodCombatLogFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags =
             CombatLogGetCurrentEventInfo()
-
+        
         if sourceGUID == UnitGUID("player") then
             local handlers = bloodCombatLogEvents[subevent]
             if handlers then
@@ -203,44 +203,44 @@ RegisterBloodCombatLogEvent("SPELL_AURA_APPLIED",
     function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags,
              destRaidFlags, spellID, spellName, spellSchool)
         if spellID == 77535 then     -- Blood Shield
-            -- Track Blood Shield absorption for optimization
-        elseif spellID == 49222 then -- Bone Armor
-            -- Track Bone Armor stacks
-        elseif spellID == 55233 then -- Vampiric Blood
-            -- Track Vampiric Blood for survival cooldown
-        end
-    end)
+        -- Track Blood Shield absorption for optimization
+    elseif spellID == 49222 then -- Bone Armor
+        -- Track Bone Armor stacks
+    elseif spellID == 55233 then -- Vampiric Blood
+        -- Track Vampiric Blood for survival cooldown
+    end
+end)
 
 -- Crimson Scourge proc tracking
 RegisterBloodCombatLogEvent("SPELL_AURA_APPLIED",
     function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags,
              destRaidFlags, spellID, spellName, spellSchool)
         if spellID == 81141 then     -- Crimson Scourge
-            -- Track Crimson Scourge proc for free Death and Decay
-        elseif spellID == 59052 then -- Freezing Fog
-            -- Track Freezing Fog proc for Howling Blast
-        end
-    end)
+        -- Track Crimson Scourge proc for free Death and Decay
+    elseif spellID == 59052 then -- Freezing Fog
+        -- Track Freezing Fog proc for Howling Blast
+    end
+end)
 
 -- Disease application tracking
 RegisterBloodCombatLogEvent("SPELL_AURA_APPLIED",
     function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags,
              destRaidFlags, spellID, spellName, spellSchool)
         if spellID == 55078 then     -- Blood Plague
-            -- Track Blood Plague for disease management
-        elseif spellID == 55095 then -- Frost Fever
-            -- Track Frost Fever for disease management
-        end
-    end)
+        -- Track Blood Plague for disease management
+    elseif spellID == 55095 then -- Frost Fever
+        -- Track Frost Fever for disease management
+    end
+end)
 
 -- Death Strike healing tracking
 RegisterBloodCombatLogEvent("SPELL_HEAL",
     function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags,
              destRaidFlags, spellID, spellName, spellSchool, amount)
-        if spellID == 45470 then -- Death Strike
-            -- Track Death Strike healing for survival optimization
-        end
-    end)
+    if spellID == 45470 then -- Death Strike
+        -- Track Death Strike healing for survival optimization
+    end
+end)
 
 -- Register resources
 -- MoP: Use legacy power type constants
@@ -797,10 +797,10 @@ spec:RegisterAura("tier15_4pc_blood", {
 
 spec:RegisterGear(15, 6,
     {                                                                                          -- Tier 16 (Siege of Orgrimmar)
-        { 99625, head = 99625, shoulder = 99628, chest = 99626, hands = 99627, legs = 99629 }, -- LFR
-        { 98310, head = 98310, shoulder = 98313, chest = 98311, hands = 98312, legs = 98314 }, -- Normal
-        { 99170, head = 99170, shoulder = 99173, chest = 99171, hands = 99172, legs = 99174 }, -- Heroic
-        { 99860, head = 99860, shoulder = 99863, chest = 99861, hands = 99862, legs = 99864 }, -- Mythic
+    { 99625, head = 99625, shoulder = 99628, chest = 99626, hands = 99627, legs = 99629 }, -- LFR
+    { 98310, head = 98310, shoulder = 98313, chest = 98311, hands = 98312, legs = 98314 }, -- Normal
+    { 99170, head = 99170, shoulder = 99173, chest = 99171, hands = 99172, legs = 99174 }, -- Heroic
+    { 99860, head = 99860, shoulder = 99863, chest = 99861, hands = 99862, legs = 99864 }, -- Mythic
     })
 
 spec:RegisterAura("tier16_2pc_blood", {
@@ -841,27 +841,27 @@ spec:RegisterTalents({
     roiling_blood      = { 1, 1, 108170 }, -- Your Pestilence refreshes disease durations and spreads diseases from each diseased target to all other targets.
     plague_leech       = { 1, 2, 123693 }, -- Extract diseases from an enemy target, consuming up to 2 diseases on the target to gain 1 Rune of each type that was removed.
     unholy_blight      = { 1, 3, 115989 }, -- Causes you to spread your diseases to all enemy targets within 10 yards.
-
+    
     -- Tier 2 (Level 57)
     lichborne          = { 2, 1, 49039 },  -- Draw upon unholy energy to become undead for 10 sec, immune to charm, fear, and sleep effects.
     anti_magic_zone    = { 2, 2, 51052 },  -- Places an Anti-Magic Zone that reduces spell damage taken by party members by 40%.
     purgatory          = { 2, 3, 114556 }, -- An unholy pact that prevents fatal damage, instead absorbing incoming healing.
-
+    
     -- Tier 3 (Level 58)
     deaths_advance     = { 3, 1, 96268 },  -- For 8 sec, you are immune to movement impairing effects and take 50% less damage from area of effect abilities.
     chilblains         = { 3, 2, 50041 },  -- Victims of your Chains of Ice, Howling Blast, or Remorseless Winter are Chilblained, reducing movement speed by 50% for 10 sec.
     asphyxiate         = { 3, 3, 108194 }, -- Lifts an enemy target off the ground and crushes their throat, silencing them for 5 sec.
-
+    
     -- Tier 4 (Level 60)
     death_pact         = { 4, 1, 48743 },  -- Sacrifice your ghoul to heal yourself for 20% of your maximum health.
     death_siphon       = { 4, 2, 108196 }, -- Inflicts Shadow damage to target enemy and heals you for 100% of the damage done.
     conversion         = { 4, 3, 119975 }, -- Continuously converts 2% of your maximum health per second into 20% of maximum health as healing.
-
+    
     -- Tier 5 (Level 75)
     blood_tap          = { 5, 1, 45529 }, -- Consume 5 charges from your Blood Charges to immediately activate a random depleted rune.
     runic_empowerment  = { 5, 2, 81229 }, -- When you use a rune, you have a 45% chance to immediately regenerate that rune.
     runic_corruption   = { 5, 3, 51462 }, -- When you hit with a Death Coil, Frost Strike, or Rune Strike, you have a 45% chance to regenerate a rune.
-
+    
     -- Tier 6 (Level 90)
     gorefiends_grasp   = { 6, 1, 108199 }, -- Shadowy tendrils coil around all enemies within 20 yards of a hostile target, pulling them to the target's location.
     remorseless_winter = { 6, 2, 108200 }, -- Surrounds the Death Knight with a swirling blizzard that grows over 8 sec, slowing enemies by up to 50% and reducing their melee and ranged attack speed by up to 20%.
@@ -895,7 +895,7 @@ spec:RegisterGlyphs({
     [59327] = "unholy_command",      -- Immediately finishes the cooldown of your Death Grip upon dealing a killing blow to a target that grants experience or honor.
     [58616] = "unholy_frenzy",       -- Causes your Unholy Frenzy to no longer deal damage to the affected target.
     [58676] = "vampiric_blood",      -- Increases the bonus healing received while your Vampiric Blood is active by an additional 15%, but your Vampiric Blood no longer grants you health.
-
+    
     -- Minor Glyphs (convenience and visual)
     [58669] = "army_of_the_dead", -- The ghouls summoned by your Army of the Dead no longer taunt their target.
     [59336] = "corpse_explosion", -- Teaches you the ability Corpse Explosion.
@@ -914,9 +914,9 @@ spec:RegisterGlyphs({
 -- Enhanced Tier Sets with comprehensive bonuses for Blood Death Knight tanking
 spec:RegisterGear(13, 8,
     {                                                                                          -- Tier 14 (Heart of Fear) - Death Knight
-        { 88183, head = 86098, shoulder = 86101, chest = 86096, hands = 86097, legs = 86099 }, -- LFR
-        { 88184, head = 85251, shoulder = 85254, chest = 85249, hands = 85250, legs = 85252 }, -- Normal
-        { 88185, head = 87003, shoulder = 87006, chest = 87001, hands = 87002, legs = 87004 }, -- Heroic
+    { 88183, head = 86098, shoulder = 86101, chest = 86096, hands = 86097, legs = 86099 }, -- LFR
+    { 88184, head = 85251, shoulder = 85254, chest = 85249, hands = 85250, legs = 85252 }, -- Normal
+    { 88185, head = 87003, shoulder = 87006, chest = 87001, hands = 87002, legs = 87004 }, -- Heroic
     })
 
 -- Reduces the cooldown of your Vampiric Blood ability by 20 sec.
@@ -934,9 +934,9 @@ spec:RegisterAura("tier14_4pc_blood", {
 
 spec:RegisterGear(14, 8,
     {                                                                                          -- Tier 15 (Throne of Thunder) - Death Knight
-        { 96548, head = 95101, shoulder = 95104, chest = 95099, hands = 95100, legs = 95102 }, -- LFR
-        { 96549, head = 95608, shoulder = 95611, chest = 95606, hands = 95607, legs = 95609 }, -- Normal
-        { 96550, head = 96004, shoulder = 96007, chest = 96002, hands = 96003, legs = 96005 }, -- Heroic
+    { 96548, head = 95101, shoulder = 95104, chest = 95099, hands = 95100, legs = 95102 }, -- LFR
+    { 96549, head = 95608, shoulder = 95611, chest = 95606, hands = 95607, legs = 95609 }, -- Normal
+    { 96550, head = 96004, shoulder = 96007, chest = 96002, hands = 96003, legs = 96005 }, -- Heroic
     })
 
 spec:RegisterAura("tier15_2pc_blood", {
@@ -953,10 +953,10 @@ spec:RegisterAura("tier15_4pc_blood", {
 
 spec:RegisterGear(15, 8,
     {                                                                                          -- Tier 16 (Siege of Orgrimmar) - Death Knight
-        { 99683, head = 99455, shoulder = 99458, chest = 99453, hands = 99454, legs = 99456 }, -- LFR
-        { 99684, head = 98340, shoulder = 98343, chest = 98338, hands = 98339, legs = 98341 }, -- Normal
-        { 99685, head = 99200, shoulder = 99203, chest = 99198, hands = 99199, legs = 99201 }, -- Heroic
-        { 99686, head = 99890, shoulder = 99893, chest = 99888, hands = 99889, legs = 99891 }, -- Mythic
+    { 99683, head = 99455, shoulder = 99458, chest = 99453, hands = 99454, legs = 99456 }, -- LFR
+    { 99684, head = 98340, shoulder = 98343, chest = 98338, hands = 98339, legs = 98341 }, -- Normal
+    { 99685, head = 99200, shoulder = 99203, chest = 99198, hands = 99199, legs = 99201 }, -- Heroic
+    { 99686, head = 99890, shoulder = 99893, chest = 99888, hands = 99889, legs = 99891 }, -- Mythic
     })
 
 spec:RegisterAura("tier16_2pc_blood", {
@@ -984,7 +984,7 @@ spec:RegisterCombatLogEvent(function(_, subtype, _, sourceGUID, sourceName, _, _
         if subtype == "SPELL_CAST_SUCCESS" then
             if spellID == 49998 then     -- Death Strike
                 state.last_death_strike = GetTime()
-            elseif spellID == 45462 then -- Plague Strike
+            elseif spellID == 45462 then -- Plague Strike  
                 state.last_plague_strike = GetTime()
             elseif spellID == 49930 then -- Blood Boil
                 state.last_blood_boil = GetTime()
@@ -1016,7 +1016,7 @@ spec:RegisterAuras({
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 77535)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1025,21 +1025,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     bone_shield = {
         id = 49222,
         duration = 300,
         max_stack = 6,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 49222)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1048,21 +1048,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     crimson_scourge = {
         id = 81141,
         duration = 15,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 81141)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1071,21 +1071,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     vampiric_blood = {
         id = 55233,
         duration = 10,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 55233)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1094,21 +1094,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     dancing_rune_weapon = {
         id = 49028,
         duration = 12,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 49028)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1117,21 +1117,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     riposte = {
         id = 145677,
         duration = 20,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 145677)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1140,21 +1140,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     vengeance = {
         id = 132365,
         duration = 20,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 145677)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1163,7 +1163,7 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
@@ -1178,7 +1178,7 @@ spec:RegisterAuras({
         max_stack = 5,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 145677)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1187,7 +1187,7 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
@@ -1203,7 +1203,7 @@ spec:RegisterAuras({
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 48743)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1212,14 +1212,14 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     -- Disease Tracking with Enhanced Generate Functions
     blood_plague = {
         id = 55078,
@@ -1228,7 +1228,7 @@ spec:RegisterAuras({
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("target", 55078,
                 "PLAYER")
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1237,14 +1237,14 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     frost_fever = {
         id = 55095,
         duration = 30,
@@ -1252,7 +1252,7 @@ spec:RegisterAuras({
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID("target", 55095,
                 "PLAYER")
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1261,14 +1261,14 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     -- Proc Tracking Auras
     will_of_the_necropolis = {
         id = 81162,
@@ -1276,7 +1276,7 @@ spec:RegisterAuras({
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 81162)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1285,14 +1285,14 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     -- Soul Reaper Haste
     soul_reaper = {
         id = 114868,
@@ -1300,7 +1300,7 @@ spec:RegisterAuras({
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 114868)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1309,14 +1309,14 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     -- Tier Set Coordination Auras
     t14_blood_2pc = {
         id = 105588,
@@ -1324,7 +1324,7 @@ spec:RegisterAuras({
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 105588)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1333,21 +1333,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     t14_blood_4pc = {
         id = 105589,
         duration = 20,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 105589)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1356,21 +1356,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     t15_blood_2pc = {
         id = 138165,
         duration = 10,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 138165)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1379,21 +1379,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     t15_blood_4pc = {
         id = 138166,
         duration = 30,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 138166)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1402,21 +1402,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     t16_blood_2pc = {
         id = 144901,
         duration = 12,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 144901)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1425,21 +1425,21 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     t16_blood_4pc = {
         id = 144902,
         duration = 25,
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 144902)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1448,14 +1448,14 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     -- Defensive Cooldown Tracking
     icebound_fortitude = {
         id = 48792,
@@ -1464,7 +1464,7 @@ spec:RegisterAuras({
         max_stack = 1,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 48792)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1473,14 +1473,14 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
             t.caster = "nobody"
         end
     },
-
+    
     quickflip_deflection_plates = {
         id = 82176,
         duration = 12,
@@ -1493,7 +1493,7 @@ spec:RegisterAuras({
         max_stack = 12,
         generate = function(t)
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 114851)
-
+            
             if name then
                 t.name = name
                 t.count = count or 1
@@ -1502,7 +1502,7 @@ spec:RegisterAuras({
                 t.caster = caster
                 return
             end
-
+            
             t.count = 0
             t.expires = 0
             t.applied = 0
@@ -1528,14 +1528,14 @@ spec:RegisterAuras({
         duration = 3600,
         max_stack = 1,
     },
-
+    
     -- Utility and Control
     death_grip = {
         id = 49560, -- Taunt debuff
         duration = 3,
         max_stack = 1
     },
-
+    
     dark_command = {
         id = 56222,
         duration = 3,
@@ -1549,31 +1549,31 @@ spec:RegisterAuras({
         tick_time = 1.0,
         max_stack = 1
     },
-
+    
     dark_succor = {
         id = 101568,
         duration = 20,
         max_stack = 1
     },
-
+    
     necrotic_strike = {
         id = 73975,
         duration = 10,
         max_stack = 15
     },
-
+    
     chains_of_ice = {
         id = 45524,
         duration = 8,
         max_stack = 1
     },
-
+    
     mind_freeze = {
         id = 47528,
         duration = 4,
         max_stack = 1
     },
-
+    
     strangulate = {
         id = 47476,
         duration = 5,
@@ -1842,19 +1842,19 @@ spec:RegisterAbilities({
         toggle = "defensives",
     },
 
-    death_strike = {
+     death_strike = {
         id = 49998,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-
+        
         spend_runes = { 0, 1, 1 }, -- 0 Blood, 1 Frost, 1 Unholy
 
         gain = 20,
         gainType = "runicpower",
-
+        
         startsCombat = true,
-
+        
         handler = function()
             local heal_amount = min(health.max * 0.25, health.max * 0.07)
             heal(heal_amount)
@@ -1871,12 +1871,12 @@ spec:RegisterAbilities({
         cast = 0,
         cooldown = 30,
         gcd = "spell",
-
+        
         spend = function() return buff.crimson_scourge.up and 0 or 1 end,
         spendType = function() return buff.crimson_scourge.up and nil or "unholy_runes" end,
-
+        
         startsCombat = true,
-
+        
         usable = function()
             return buff.crimson_scourge.up or runes.unholy.count > 0 or runes.death.count > 0
         end,
@@ -1897,54 +1897,54 @@ spec:RegisterAbilities({
         cast = 0,
         cooldown = 30,
         gcd = "off",
-
+        
         startsCombat = false,
-
+        
         handler = function()
             applyBuff("death's_advance")
         end,
     },
-
+    
     -- Empower Rune Weapon
     empower_rune_weapon = {
         id = 47568,
         cast = 0,
         cooldown = 300,
         gcd = "off",
-
+        
         toggle = "cooldowns",
-
+        
         startsCombat = false,
-
+        
         handler = function()
             gain(25, "runicpower")
         end,
     },
-
+    
     frost_presence = {
         id = 48266,
         cast = 0,
         cooldown = 1,
         gcd = "off",
-
+        
         startsCombat = false,
-
+        
         handler = function()
             if buff.blood_presence.up then removeBuff("blood_presence") end
             if buff.unholy_presence.up then removeBuff("unholy_presence") end
             applyBuff("frost_presence")
         end,
     },
-
+    
     -- Heart Strike
     heart_strike = {
         id = 55050,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-
+        
         spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
-
+        
         startsCombat = true,
     },
 
@@ -1953,30 +1953,30 @@ spec:RegisterAbilities({
         cast = 0,
         cooldown = 20,
         gcd = "spell",
-
+        
         startsCombat = false,
-
+        
         handler = function()
             applyBuff("horn_of_winter")
             gain(10, "runic_power")
         end,
     },
-
+    
     icebound_fortitude = {
         id = 48792,
         cast = 0,
         cooldown = function() return glyph.icebound_fortitude.enabled and 90 or 180 end,
         gcd = "off",
-
+        
         toggle = "defensives",
-
+        
         startsCombat = false,
-
+        
         handler = function()
             applyBuff("icebound_fortitude")
         end,
     },
-
+    
     icy_touch = {
         id = 45477,
         cast = 0,
@@ -1984,24 +1984,24 @@ spec:RegisterAbilities({
         gcd = "spell",
 
         spend_runes = { 0, 1, 0 }, -- 0 Blood, 1 Frost, 0 Unholy
-
+        
         startsCombat = true,
-
+        
         handler = function()
             applyDebuff("target", "frost_fever")
         end,
     },
-
+    
     mind_freeze = {
         id = 47528,
         cast = 0,
         cooldown = 15,
         gcd = "off",
-
+        
         toggle = "interrupts",
-
+        
         startsCombat = true,
-
+        
         handler = function()
             if active_enemies > 1 and talent.asphyxiate.enabled then
             end
@@ -2013,12 +2013,12 @@ spec:RegisterAbilities({
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-
+        
         spend = 1,
         spendType = "death_runes",
-
+        
         startsCombat = true,
-
+        
         handler = function()
             applyDebuff("target", "necrotic_strike")
         end,
@@ -2038,15 +2038,15 @@ spec:RegisterAbilities({
             applyDebuff("target", "blood_plague")
         end,
     },
-
+    
     path_of_frost = {
         id = 3714,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-
+        
         startsCombat = false,
-
+        
         spend_runes = { 0, 1, 0 }, -- 0 Blood, 1 Frost, 0 Unholy
 
         handler = function()
@@ -2100,17 +2100,17 @@ spec:RegisterAbilities({
         spend = 30,
         spendType = "runicpower",
     },
-
+    
     raise_dead = {
         id = 46584,
         cast = 0,
         cooldown = 120,
         gcd = "spell",
-
+        
         startsCombat = false,
-
+        
         toggle = "cooldowns",
-
+        
         handler = function()
         end,
     },
@@ -2120,7 +2120,7 @@ spec:RegisterAbilities({
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-
+        
         spend = 30,
         spendType = "runicpower",
 
@@ -2133,7 +2133,7 @@ spec:RegisterAbilities({
         cast = 0,
         cooldown = 30,
         gcd = "off",
-
+        
         startsCombat = false,
 
         spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
@@ -2144,7 +2144,7 @@ spec:RegisterAbilities({
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-
+        
         spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
 
         startsCombat = true,
@@ -2153,13 +2153,13 @@ spec:RegisterAbilities({
             applyDebuff("target", "soul_reaper")
         end,
     },
-
+    
     strangulate = {
         id = 47476,
         cast = 0,
         cooldown = 60,
         gcd = "off",
-
+        
         toggle = "interrupts",
 
         spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
@@ -2170,22 +2170,22 @@ spec:RegisterAbilities({
             applyDebuff("target", "strangulate")
         end,
     },
-
+    
     unholy_presence = {
         id = 48265,
         cast = 0,
         cooldown = 1,
         gcd = "off",
-
+        
         startsCombat = false,
-
+        
         handler = function()
             if buff.frost_presence.up then removeBuff("frost_presence") end
             if buff.blood_presence.up then removeBuff("blood_presence") end
             applyBuff("unholy_presence")
         end,
     },
-
+    
     vampiric_blood = {
         id = 55233,
         cast = 0,
@@ -2193,14 +2193,14 @@ spec:RegisterAbilities({
         gcd = "off",
 
         toggle = "defensives",
-
+        
         startsCombat = false,
-
+        
         handler = function()
             applyBuff("vampiric_blood")
         end,
     },
-
+    
     --- TALENT ABILITIES ---
 
     -- Talent: Extract diseases from target to gain runes (MoP 5.5.0)
@@ -2234,7 +2234,7 @@ spec:RegisterAbilities({
             gain(runes_gained, "runes")
         end,
     },
-
+    
     -- Talent: Surrounds the caster with unholy energy that damages nearby enemies
     unholy_blight = {
         id = 115989,
@@ -2336,11 +2336,11 @@ spec:RegisterStateExpr("death", function()
         return 0 -- Fallback for emulation
     end
 end)
-
--- Convert runes to death runes (Blood Tap, etc.)
+    
+    -- Convert runes to death runes (Blood Tap, etc.)
 spec:RegisterStateFunction("convert_to_death_rune", function(rune_type, amount)
-    amount = amount or 1
-
+        amount = amount or 1
+        
     if rune_type == "blood" and state.blood_runes.current >= amount then
         state.blood_runes.current = state.blood_runes.current - amount
         state.death_runes.count = state.death_runes.count + amount
@@ -2352,10 +2352,10 @@ spec:RegisterStateFunction("convert_to_death_rune", function(rune_type, amount)
         state.death_runes.count = state.death_runes.count + amount
     end
 end)
-
--- Add function to check runic power generation
+    
+    -- Add function to check runic power generation
 spec:RegisterStateFunction("gain_runic_power", function(amount)
-    -- Logic to gain runic power
+        -- Logic to gain runic power
     gain(amount, "runicpower")
 end)
 

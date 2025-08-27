@@ -1,26 +1,62 @@
-# Warlock: Destruction (Adapted from wowsims MoP APL)
-## Precombat
-actions.precombat+=/dark_intent
-actions.precombat+=/summon_pet,pet_type=imp
-actions.precombat+=/snapshot_stats
-actions.precombat+=/grimoire_of_sacrifice,if=talent.grimoire_of_sacrifice.enabled
-actions.precombat+=/immolate,if=time=0
-actions.precombat+=/potion,name=jade_serpent_potion
+# Warlock: Destruction - WoWSims
+## Prepull
+actions.precombat+=/potion,name=jade_serpent_potion,if=time=-1.75
+actions.precombat+=/incinerate,if=time=-1.75
 
 ## Default
-actions+=/havoc,target=2,if=active_enemies>1
-actions+=/fel_flame,moving=1,if=movement.remains>gcd
-actions+=/immolate,if=remains<tick_time|!ticking
-actions+=/conflagrate,if=charges=2|buff.backdraft.stack<2
-actions+=/shadowburn,if=target.health.pct<20&burning_embers>=1
-actions+=/dark_soul,if=(burning_embers>=2|burning_embers>=1&burning_embers.deficit<0.5)&target.health.pct>20
-# Chaos Bolt usage: prioritize inside Dark Soul; avoid casting with Backdraft to preserve faster Incinerates.
-actions+=/chaos_bolt,if=buff.dark_soul.up&burning_embers>=1&target.health.pct>20&buff.backdraft.down
-actions+=/chaos_bolt,if=burning_embers>=2&buff.backdraft.down
-actions+=/chaos_bolt,if=burning_embers.deficit<0.5&buff.backdraft.down
-actions+=/chaos_bolt,if=target.time_to_die<15&burning_embers>=1&buff.backdraft.down
-actions+=/fire_and_brimstone,if=active_enemies>=4&burning_embers>=2
-actions+=/rain_of_fire,if=active_enemies>=3&burning_embers>=1&target.time_to_die>8
-actions+=/incinerate,if=buff.backdraft.up
-actions+=/conflagrate
-actions+=/incinerate
+actions+=/call_action_list,name=variables
+actions+=/call_action_list,name=ogcd
+actions+=/run_action_list,name=opener,strict=1,if=time<=5
+actions+=/run_action_list,name=move,if=moving
+actions+=/call_action_list,name=cleave,if=active_enemies=2
+actions+=/call_action_list,name=aoe,if=active_enemies>2
+actions+=/call_action_list,name=st
+
+## Variables
+actions.variables+=/variable,name=execute_phase,op=set,value=target.health.pct<20
+actions.variables+=/variable,name=cds_active,op=set,value=buff.dark_soul.up|buff.jade_serpent_potion.up|trinket.stat.any.up
+
+## OGCDs
+actions.ogcd+=/dark_soul,if=(cooldown.dark_soul.ready&remaining_time<=22)|(spell.dark_soul.charges>0&spell.dark_soul.time_to_next_charge<=57&remaining_time<=77)|(buff.jade_serpent_potion.up)
+actions.ogcd+=/berserking,if=variable.cds_active
+actions.ogcd+=/blood_fury,if=variable.cds_active
+actions.ogcd+=/arcane_torrent,if=mana.pct<80&burning_embers<4
+actions.ogcd+=/lifeblood,if=variable.cds_active
+actions.ogcd+=/use_item,slot=hands,if=cooldown.synapse_springs.ready&variable.cds_active
+actions.ogcd+=/summon_doomguard,if=remaining_time<=61
+
+## Opener
+actions.opener+=/immolate,if=!ticking
+actions.opener+=/conflagrate,if=charges=2
+
+## Movement
+actions.move+=/fel_flame,if=!talent.kiljaedens_cunning.enabled
+actions.move+=/incinerate,if=talent.kiljaedens_cunning.enabled
+
+## Cleave (2 targets)
+actions.cleave+=/havoc,target=2
+actions.cleave+=/shadowburn,if=variable.execute_phase
+actions.cleave+=/chaos_bolt,if=buff.backdraft.stack<3&burning_embers>=1
+actions.cleave+=/immolate,cycle_targets=1,if=remains<=tick_time
+actions.cleave+=/conflagrate
+actions.cleave+=/incinerate
+
+## AoE (3+ targets)
+actions.aoe+=/rain_of_fire,if=!ticking
+actions.aoe+=/fire_and_brimstone,if=burning_embers>=2
+actions.aoe+=/immolate,cycle_targets=1,max_cycle_targets=5,if=remains<=tick_time
+actions.aoe+=/conflagrate
+actions.aoe+=/incinerate
+
+## Single Target
+actions.st+=/immolate,cycle_targets=1,max_cycle_targets=3,if=remains<=tick_time
+actions.st+=/immolate,if=remains<=gcd|remains<=7.5&buff.dark_soul.up
+actions.st+=/shadowburn,if=variable.execute_phase
+actions.st+=/chaos_bolt,if=burning_embers>=1&buff.backdraft.stack<3&(buff.jade_serpent_potion.up|trinket.stat.any.icd_ready|buff.dark_soul.up)
+actions.st+=/chaos_bolt,if=burning_embers>=2&buff.backdraft.stack<3
+actions.st+=/chaos_bolt,if=burning_embers.deficit<0.5&buff.backdraft.stack<3
+actions.st+=/chaos_bolt,if=target.time_to_die<15&burning_embers>=1&buff.backdraft.stack<3
+actions.st+=/conflagrate,if=charges=2
+actions.st+=/immolate,if=remains<=tick_time
+actions.st+=/conflagrate
+actions.st+=/incinerate

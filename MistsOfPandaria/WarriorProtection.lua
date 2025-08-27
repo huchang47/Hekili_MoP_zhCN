@@ -73,7 +73,7 @@ local function rage_amount( isOffhand )
     -- MoP rage generation calculation
     local hit_factor = 6.5
     local speed = (isOffhand and state.swings.offhand_speed or state.swings.mainhand_speed)/state.haste
-    local rage_multiplier = state.talent.anger_management.enabled and 1.25 or 1
+    local rage_multiplier = state.talent and state.talent.anger_management and state.talent.anger_management.enabled and 1.25 or 1
 
     return hit_factor * speed * rage_multiplier * (isOffhand and 0.5 or 1)
 end
@@ -123,7 +123,7 @@ spec:RegisterResource( 1, { -- Rage = 1 in MoP
         end,
 
         interval = 2,
-        value = function() return talent.second_wind.rank * 2 end,
+        value = function() return (state.talent and state.talent.second_wind and state.talent.second_wind.rank or 0) * 2 end,
     },
 
     mainhand = {
@@ -1133,7 +1133,85 @@ spec:RegisterAuras( {
         duration = 3,
         max_stack = 1,
     },
-    
+
+    -- Missing auras required by APL
+    colossus_smash = {
+        id = 86346,
+        duration = 6,
+        max_stack = 1,
+        generate = function( t )
+            local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID( "target", 86346 )
+
+            if name then
+                t.name = name
+                t.count = count or 1
+                t.expires = expirationTime
+                t.applied = expirationTime - duration
+                t.caster = caster
+                return
+            end
+
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end
+    },
+
+    deadly_calm = {
+        id = 85730,
+        duration = 10,
+        max_stack = 1,
+    },
+
+    sudden_death = {
+        id = 52437,
+        duration = 10,
+        max_stack = 1,
+    },
+
+    sweeping_strikes = {
+        id = 12328,
+        duration = 10,
+        max_stack = 1,
+    },
+
+    charge = {
+        id = 100,
+        duration = 1,
+        max_stack = 1,
+    },
+
+    recklessness = {
+        id = 1719,
+        duration = 12,
+        max_stack = 1,
+    },
+
+    fear = {
+        id = 5246,
+        duration = 8,
+        max_stack = 1,
+    },
+
+    blood_pact = {
+        id = 6307,
+        duration = 3600,
+        max_stack = 1,
+    },
+
+    expose_armor = {
+        id = 8647,
+        duration = 30,
+        max_stack = 5,
+    },
+
+    horn_of_winter = {
+        id = 57330,
+        duration = 300,
+        max_stack = 1,
+    },
+
 } )
 
 -- Protection Warrior State Variables and Helper Functions
@@ -1220,6 +1298,150 @@ spec:RegisterStateTable( "protection", {
     maintain_buffs = { "battle_shout", "commanding_shout" },
     maintain_debuffs = { "sunder_armor", "thunder_clap" },
     
+    -- Missing abilities required by APL
+    colossus_smash = {
+        id = 86346,
+        cast = 0,
+        cooldown = 20,
+        gcd = "spell",
+
+        spend = 20,
+        spendType = "rage",
+
+        startsCombat = true,
+        texture = 464973,
+
+        handler = function()
+            applyDebuff( "target", "colossus_smash", 6 )
+        end,
+    },
+
+    deadly_calm = {
+        id = 85730,
+        cast = 0,
+        cooldown = 60,
+        gcd = "off",
+
+        spend = 0,
+        spendType = "rage",
+
+        toggle = "cooldowns",
+        startsCombat = false,
+        texture = 464593,
+
+        handler = function()
+            applyBuff( "deadly_calm" )
+        end,
+    },
+
+    sudden_death = {
+        id = 52437,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        spend = 0,
+        spendType = "rage",
+
+        startsCombat = true,
+        texture = 132346,
+
+        handler = function()
+            applyBuff( "sudden_death" )
+        end,
+    },
+
+    sweeping_strikes = {
+        id = 12328,
+        cast = 0,
+        cooldown = 10,
+        gcd = "spell",
+
+        spend = 20,
+        spendType = "rage",
+
+        startsCombat = false,
+        texture = 132306,
+
+        handler = function()
+            applyBuff( "sweeping_strikes" )
+        end,
+    },
+
+    shieldwave = {
+        id = 46968,
+        cast = 0,
+        cooldown = 40,
+        gcd = "spell",
+
+        spend = function()
+            if glyph.burning_anger and glyph.burning_anger.enabled then return 20 end
+            return 0
+        end,
+        spendType = "rage",
+
+        toggle = "cooldowns",
+        startsCombat = true,
+        texture = 236312,
+
+        handler = function()
+            applyDebuff( "target", "shieldwave" )
+        end,
+    },
+
+    whirlwind = {
+        id = 1680,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        spend = 30,
+        spendType = "rage",
+
+        startsCombat = true,
+        texture = 132369,
+
+        handler = function()
+            -- AoE damage handled by engine
+        end,
+    },
+
+    recklessness = {
+        id = 1719,
+        cast = 0,
+        cooldown = 300,
+        gcd = "off",
+
+        spend = 0,
+        spendType = "rage",
+
+        toggle = "cooldowns",
+        startsCombat = true,
+        texture = 132109,
+
+        handler = function()
+            applyBuff( "recklessness" )
+        end,
+    },
+
+    skull_banner = {
+        id = 114207,
+        cast = 0,
+        cooldown = 180,
+        gcd = "spell",
+
+        spend = 0,
+        spendType = "rage",
+
+        toggle = "cooldowns",
+        startsCombat = false,
+        texture = 236303,
+
+        handler = function()
+            applyBuff( "skull_banner" )
+        end,
+    },
+
     -- Cooldown usage guidelines
     use_on_pull = { "charge", "shield_slam" },
     use_on_aoe = { "thunder_clap", "cleave" },
@@ -1231,7 +1453,7 @@ spec:RegisterStateTable( "protection", {
 -- MoP Protection Warrior specific functions
 spec:RegisterHook( "reset_precast", function()
     -- Reset any Protection-specific state
-    if talent.vigilance.enabled and buff.vigilance.down then
+    if state.talent and state.talent.vigilance and state.talent.vigilance.enabled and buff.vigilance.down then
         -- Track vigilance target if needed
     end
     
@@ -1556,14 +1778,14 @@ spec:RegisterAbilities( {
     charge = {
         id = 100,
         cast = 0,
-        cooldown = function() 
-            if talent.juggernaut.enabled or talent.double_time.enabled then
+        cooldown = function()
+            if state.talent and ((state.talent.juggernaut and state.talent.juggernaut.enabled) or (state.talent.double_time and state.talent.double_time.enabled)) then
                 return 20
             end
-            return 20 
+            return 20
         end,
         charges = function()
-            if talent.juggernaut.enabled or talent.double_time.enabled then
+            if state.talent and ((state.talent.juggernaut and state.talent.juggernaut.enabled) or (state.talent.double_time and state.talent.double_time.enabled)) then
                 return 2
             end
             return 1
@@ -1572,7 +1794,7 @@ spec:RegisterAbilities( {
         gcd = "off",
         
         spend = function()
-            if talent.juggernaut.enabled then return -15 end
+            if state.talent and state.talent.juggernaut and state.talent.juggernaut.enabled then return -15 end
             return 0
         end,
         spendType = "rage",
@@ -1588,7 +1810,7 @@ spec:RegisterAbilities( {
         texture = 132337,
         
         handler = function()
-            if talent.warbringer.enabled or glyph.bull_rush.enabled then
+            if (state.talent and state.talent.warbringer and state.talent.warbringer.enabled) or glyph.bull_rush.enabled then
                 applyDebuff( "target", "charge_root" )
             end
         end,
@@ -1598,19 +1820,19 @@ spec:RegisterAbilities( {
         id = 3411,
         cast = 0,
         cooldown = function() 
-            if talent.juggernaut.enabled or talent.double_time.enabled then
+            if state.talent and ((state.talent.juggernaut and state.talent.juggernaut.enabled) or (state.talent.double_time and state.talent.double_time.enabled)) then
                 return 20
             end
             return 30 
         end,
         charges = function()
-            if talent.juggernaut.enabled or talent.double_time.enabled then
+            if state.talent and ((state.talent.juggernaut and state.talent.juggernaut.enabled) or (state.talent.double_time and state.talent.double_time.enabled)) then
                 return 2
             end
             return 1
         end,
         recharge = function() 
-            if talent.juggernaut.enabled or talent.double_time.enabled then
+            if state.talent and ((state.talent.juggernaut and state.talent.juggernaut.enabled) or (state.talent.double_time and state.talent.double_time.enabled)) then
                 return 20
             end
             return 30 
@@ -1631,7 +1853,7 @@ spec:RegisterAbilities( {
         texture = 132365,
         
         handler = function()
-            if talent.safeguard.enabled then
+            if state.talent and state.talent.safeguard and state.talent.safeguard.enabled then
                 -- Apply damage reduction to the target (handled by the game)
             end
         end,
@@ -2275,10 +2497,148 @@ spec:RegisterOptions( {
     package = "Protection",
 } )
 
-spec:RegisterPack( "Protection", 20250809, [[Hekili:nRvCVnUUn8plbhqA7B3L5K20R9qBb2WgWEh2omG8g2)zBfBLgVABLjl3(6qG)SpsjBljBlhNB792WHE11IIKIK)OiLS)s)FYFtmrq9)2kVvR9UZ7(fRwT6oVR93iE)a1FZbs0lKNHhYjz4FYzIQqbTqGd9EkJeJSOGvYJGH93STmjv8J5(B7Z3Lxdp4VHuk2Z4(B2KvUJN8I)M9jXXu1mOfr(B(P9jfvH4pKQWA5xfY2b)DKiHLxfMMuiGH3X4vH)j6ljPjlKQ2UKuqj(qv4FNW5jm(xQc)RGctvt7RF4d4FtJyzBjIQVQ4wXIdnV6384Vf(FrknOypRu8XKDpwqfIK8NlwKrsYfWpbBl3TRy(m8xlke8aYZjbWqlkpu)stwaVDy5apKrYJbwpDzrYsYjA50LfoLfmZ8i6hJ2Zyf0hJP7O5fjVsR(QYI8hO7iLPIgRBrltq1CpH)mfvorsg9rVJhZyVsZOW6norX3NUZCchkZYOPYjGZeiJQuwsbU2wWPaTMtGxMhO(Ra0R(rmm7XgHG8PVaxBo)TuEbL)cLhWjknT1mwwqdShEUuxO54ZlIzVLBYjK8ebntPccEs(luXsKJrmwks9II9j004G3iPPWkbDtfpDV3jzYQZKjBtzS4GDL83XjQ8(QjbJe9IPJwBbGL8uOMWJi50abJZRnWOX4bPfjJ8ZF6glnjn559IIG)rz8Zn(JURJIuswZ6WsTiphW2faMGOxkoNjEGHp1DTinxLhoESoUcJhHvrqCc9HvwreraL9dPAd7TKLGuMBJ9GStSa5RNptShcxflO)SmDZPcAlG5d4EL(H8eP4vAanNMLqlEC5j5aHr7pVNm0nM6TVhGAga6tJnaX1O6Wg7SwJxOx8y6aTbThCXyS5xUNssf7xCis8qlrTCkqnQwtoEmjhs5GPJIjzq4uaK33lR4PA2abx)G3I1x5qRsHeebiapUNsPh6xgD661xnFu05sphkDmnJXjPj)lR84trMgHSd6D2IBGr59q0QxlZDn)se0AeEytJmHNPPWW0T2ZLBWmZHLJWCGGd4MRjI3N94f50xP8lMFz)8oOoE84LJZHhVGK(g59IlM3Nb1M)hwDLtT9afW6C6Uu1w89JN7qW8wFd4zsIA8qR74Dw6Y7OOQqWYLivdt61UMss2bQAx6xtIG0UV3zI34nxqsXn46rjStfzBkn2bNRPkGxwSVptNDAUQsDSrM36tQ8wvHq9seuyAHALyd3c5vc8SLTUb(euwa2tDyrToOMrJGhkybZS3fdAff80Dx5wJIHyDitkNnr1A0nj7XDX(Y8yaqfLsoGSFwmdRRHEi4ngmsbSxueU9RBoySJNBI4GULdv66Mlk1GWHKodxVOjfZVSU0lZxwdkhAeibB0lpC9ywz6RqMyOOEu4JWca0lRP4EV5DTunq6Bgrma6INfSLLkMIV0nF2t5maId1ON8s)cdTgDUmt6TEtyT7MKP26GD9wRgrO16iKdN9wdA93X(JdHrHsd(VaYSl)mJ87o22uc0Ug6RMI86o7ZeX2D6Gro6L3iVs)(M8aOr1q9WGQxhLsRLvVaLAwEEqZrap9mute01Z98DhnQIZ(l1TD1VTWfnDKPJqbZZHbhx1)4ytvgC7V5ncphvpS7FOgwytlgxu3H)fw4IlGWF6)SmHdHRHfSmGASM9mWebVaei4)kwu91)Csom0nFPk8VLxuEa5hsGstqMQJcUOL81ojVoYqt6TU5SH7rt)NDsFRlwt89oj2kVLEcl9Mg7Lw3DS0u2B4owGPJtkQcFJYH3d5fHjMatsGK1WbSbLQWTLIg6YzsxdSmnPoogjogYNSLuq)ceif(jWdzSllgBnG7nwDaeNNJDKfCNMwnmslDohRUvnMH74hzpI))QjT94FopJ61UJPLh9cUChuEqoNZtsJGEgcx6g80dxENtsvzXNciBye8uXyUcYRRC)8muUdzn6uvRJRCJkA7I(Ij4V73z7ftpNADhOtjTQzS8KYT2PHUP4nn7t6)PawLzXbk(hZAu8BTflgl4Vbw4r(F7Zx7Vr(o5HUBUTi8IVjpn)6s58)9(BIGoSP8ecq6WLivfo7rWavxMu4CyzmyzH4ixIl)bABk84r9zonyRBvHpbWYQWR83OwxWVL83x4)Tv)NRZdPwArzuPjkVRDkVzGJB4g70mZSGyKB3GCRzqJmxMIaiBTjz1zS6qYTN2omyTKn(gxn7P8polCSk8binGLVXKiuZ(Stn7KCffnOBCPBdE19Es11rxHssUXsxAZRIkYDN2ensOIXcSTbtKR3FAU2RFr5QqTQGq7B9082ImK9l9m9961JT3F5eGU2fUBOcpOEalGxMzzLH(y2gGuqRmvh7AWn1ibQRYYYgpXcEm8vHGv2t5T7DBnkWVwKQocgh5pYvhPzK6MMgcs3c0SpJDtjmSAUwLCnqDvNn00IZpDqI9TnPtozCJtgUglIBttmOug74PLQ(9En3qBZfxzK0Q5nJMM58fXQEIy145lgprT(wVghSFcU0EByJdUhg6CJb0X(MY0y5jz9mVClnl70zYjq(tJNwDUOH4N00vFHAkyB)lvtABwT2aVjVwoPaCb46EZBwWjDbWsEmbeL(Q4KiPzyrwgxiNr0hsJKRDrqtiva(A9TTjZLT0sXTlZcLsxq03HuEceZy3RNLgaJRsj32w3qjLXpEcEYbLQm0haXu3vzwtjvwFDdwd15BCW9(ntO8Ur1GMV5bRxpWx(GrqyNbhSOp5NcHrmPzXb42bkZnA3)fSSAJun2Ld3gxBwTPDbdUlJDk6Kzs3MtXDIBZnjU2PMB37RDEST9uFB3jtpIRsV)Sjzdx6T7TAgSep1Xim(UltOM9tu8SXARt94JSl0K5PvD1)Av8PWAtGPbS68rj00TJ(QoLAql5U)uau7Zn8vZlDX6laUk8hG6zxS2URiTsmX8A2F6c)AQ5xJQUuGNSOULgUlTYoEgMZrvmRGO)zknEohxF4dnMYA0P5oP2u35tGqzi74aw7nKBUMbtm5LzXOTFzd93eyWtqr3J(LdSo6WrKH1FVeoo5dZwPxjJcgyXHu6pAZa24VoN5Mu0U(qkgomyPryqx25pApdDCxxBWiJpgJXtJ3Hh34zUNSZVpcTG6rY4j)hwCZohjAEKLQmNTDJ2K3uBfAVcUo7RzvlrDF3dufrhgn4HbO(N))o]] )
+-- State Expressions for MoP Protection Warrior
+spec:RegisterStateExpr( "rage_deficit", function()
+    return ((state.rage and state.rage.max) or 100) - ((state.rage and state.rage.current) or 0)
+end )
 
--- Register alternate pack placeholder for wowsims-inspired APL; users import the .simc file directly.
-spec:RegisterPack( "Protection (wowsims)", 20250820, [[# Import the file Priorities/WarriorProtection_wowsims.simc via the UI. This placeholder makes the pack selectable if imported.
-# This in-addon pack content will be replaced by the import process.
-]] )
+spec:RegisterStateExpr( "current_rage", function()
+    return (state.rage and state.rage.current) or 0
+end )
+
+spec:RegisterStateExpr( "rage_time_to_max", function()
+    return (state.rage and state.rage.time_to_max) or 0
+end )
+
+spec:RegisterStateExpr( "rage_per_second", function()
+    return (state.rage and state.rage.per_second) or 0
+end )
+
+-- Average stance base rage/sec (excludes ability-specific and damage-taken gains).
+spec:RegisterStateExpr( "stance_rage_per_second", function()
+    local stance = state.current_stance
+    if stance == "battle" then
+        return state.combat and 3.5 or 0
+    elseif stance == "berserker" then
+        return state.combat and 1.75 or 0
+    elseif stance == "defensive" then
+        return 1/3 -- 1 rage every 3 seconds.
+    end
+    return 0
+end )
+
+spec:RegisterStateExpr( "should_use_execute", function()
+    return target.health_pct <= 20
+end )
+
+-- APL compatibility: some imported lines reference is_execute_phase.
+-- Treat execute phase as target below 20% HP (classic execute threshold).
+spec:RegisterStateExpr( "is_execute_phase", function()
+    return target.health_pct < 20
+end )
+
+-- Stance convenience expressions for APL clarity.
+spec:RegisterStateExpr( "in_battle_stance", function()
+    local b = state.buff
+    return (b and b.battle_stance and b.battle_stance.up) or state.current_stance == "battle"
+end )
+spec:RegisterStateExpr( "in_defensive_stance", function()
+    local b = state.buff
+    return (b and b.defensive_stance and b.defensive_stance.up) or state.current_stance == "defensive"
+end )
+spec:RegisterStateExpr( "in_berserker_stance", function()
+    local b = state.buff
+    return (b and b.berserker_stance and b.berserker_stance.up) or state.current_stance == "berserker"
+end )
+
+spec:RegisterStateExpr( "no_stance", function()
+    return state.current_stance == nil
+end )
+
+-- Expose current_stance itself as a safe state expression so accesses don't trigger Unknown key errors before it's set.
+spec:RegisterStateExpr( "current_stance", function()
+    return rawget( state, "current_stance" ) -- may be nil until detected or set by a stance ability/event.
+end )
+
+spec:RegisterStateExpr( "colossus_smash_remains", function()
+    return debuff.colossus_smash.remains
+end )
+
+spec:RegisterStateExpr( "mortal_strike_remains", function()
+    return cooldown.mortal_strike.remains
+end )
+
+spec:RegisterStateExpr( "overpower_charges", function()
+    return buff.taste_for_blood.stack or 0
+end )
+
+spec:RegisterStateExpr( "sweeping_strikes_active", function()
+    return buff.sweeping_strikes.up
+end )
+
+spec:RegisterStateExpr( "deep_wounds_remains", function()
+    return debuff.deep_wounds.remains
+end )
+
+spec:RegisterStateExpr( "incoming_damage_3s", function()
+    return (state.damage and state.damage.incoming_damage_3s) or 0
+end )
+
+spec:RegisterStateExpr( "movement_distance", function()
+    return (state.movement and state.movement.distance) or 0
+end )
+
+spec:RegisterStateExpr( "movement_moving", function()
+    return (state.movement and state.movement.moving) or false
+end )
+
+spec:RegisterStateExpr( "target_time_to_die", function()
+    return target.time_to_die or 0
+end )
+
+spec:RegisterStateExpr( "target_health_pct", function()
+    return target.health_pct or 100
+end )
+
+spec:RegisterStateExpr( "health_pct", function()
+    return health.pct or 100
+end )
+
+spec:RegisterStateExpr( "target_casting", function()
+    return target.casting or false
+end )
+
+spec:RegisterStateExpr( "target_cast_interruptible", function()
+    return target.cast_interruptible or false
+end )
+
+spec:RegisterStateExpr( "tank", function()
+    -- Return tank information for group scenarios
+    return {
+        health = {
+            pct = function()
+                -- Find the tank in the group/raid
+                local tank = nil
+                if IsInGroup() then
+                    for i = 1, GetNumGroupMembers() do
+                        local unit = IsInRaid() and "raid" .. i or "party" .. i
+                        if UnitExists(unit) and UnitGroupRolesAssigned(unit) == "TANK" then
+                            tank = unit
+                            break
+                        end
+                    end
+                end
+
+                if tank then
+                    return UnitHealth(tank) / UnitHealthMax(tank) * 100
+                end
+                return 100 -- Default if no tank found
+            end
+        }
+    }
+end )
+
+spec:RegisterPack( "Protection", 20250827, [[Hekili:nRvCVnUUn8plbhqA7B3L5K20R9qBb2WgWEh2omG8g2)zBfBLgVABLjl3(6qG)SpsjBljBlhNB792WHE11IIKIK)OiLS)s)FYFtmrq9)2kVvR9UZ7(fRwT6oVR93iE)a1FZbs0lKNHhYjz4FYzIQqbTqGd9EkJeJSOGvYJGH93STmjv8J5(B7Z3Lxdp4VHuk2Z4(B2KvUJN8I)M9jXXu1mOfr(B(P9jfvH4pKQWA5xfY2b)DKiHLxfMMuiGH3X4vH)j6ljPjlKQ2UKuqj(qv4FNW5jm(xQc)RGctvt7RF4d4FtJyzBjIQVQ4wXIdnV6384Vf(FrknOypRu8XKDpwqfIK8NlwKrsYfWpbBl3TRy(m8xlke8aYZjbWqlkpu)stwaVDy5apKrYJbwpDzrYsYjA50LfoLfmZ8i6hJ2Zyf0hJP7O5fjVsR(QYI8hO7iLPIgRBrltq1CpH)mfvorsg9rVJhZyVsZOW6norX3NUZCchkZYOPYjGZeiJQuwsbU2wWPaTMtGxMhO(Ra0R(rmm7XgHG8PVaxBo)TuEbL)cLhWjknT1mwwqdShEUuxO54ZlIzVLBYjK8ebntPccEs(luXsKJrmwks9II9j004G3iPPWkbDtfpDV3jzYQZKjBtzS4GDL83XjQ8(QjbJe9IPJwBbGL8uOMWJi50abJZRnWOX4bPfjJ8ZF6glnjn559IIG)rz8Zn(JURJIuswZ6WsTiphW2faMGOxkoNjEGHp1DTinxLhoESoUcJhHvrqCc9HvwreraL9dPAd7TKLGuMBJ9GStSa5RNptShcxflO)SmDZPcAlG5d4EL(H8eP4vAanNMLqlEC5j5aHr7pVNm0nM6TVhGAga6tJnaX1O6Wg7SwJxOx8y6aTbThCXyS5xUNssf7xCis8qlrTCkqnQwtoEmjhs5GPJIjzq4uaK33lR4PA2abx)G3I1x5qRsHeebiapUNsPh6xgD661xnFu05sphkDmnJXjPj)lR84trMgHSd6D2IBGr59q0QxlZDn)se0AeEytJmHNPPWW0T2ZLBWmZHLJWCGGd4MRjI3N94f50xP8lMFz)8oOoE84LJZHhVGK(g59IlM3Nb1M)hwDLtT9afW6C6Uu1w89JN7qW8wFd4zsIA8qR74Dw6Y7OOQqWYLivdt61UMss2bQAx6xtIG0UV3zI34nxqsXn46rjStfzBkn2bNRPkGxwSVptNDAUQsDSrM36tQ8wvHq9seuyAHALyd3c5vc8SLTUb(euwa2tDyrToOMrJGhkybZS3fdAff80Dx5wJIHyDitkNnr1A0nj7XDX(Y8yaqfLsoGSFwmdRRHEi4ngmsbSxueU9RBoySJNBI4GULdv66Mlk1GWHKodxVOjfZVSU0lZxwdkhAeibB0lpC9ywz6RqMyOOEu4JWca0lRP4EV5DTunq6Bgrma6INfSLLkMIV0nF2t5maId1ON8s)cdTgDUmt6TEtyT7MKP26GD9wRgrO16iKdN9wdA93X(JdHrHsd(VaYSl)mJ87o22uc0Ug6RMI86o7ZeX2D6Gro6L3iVs)(M8aOr1q9WGQxhLsRLvVaLAwEEqZrap9mute01Z98DhnQIZ(l1TD1VTWfnDKPJqbZZHbhx1)4ytvgC7V5ncphvpS7FOgwytlgxu3H)fw4IlGWF6)SmHdHRHfSmGASM9mWebVaei4)kwu91)Csom0nFPk8VLxuEa5hsGstqMQJcUOL81ojVoYqt6TU5SH7rt)NDsFRlwt89oj2kVLEcl9Mg7Lw3DS0u2B4owGPJtkQcFJYH3d5fHjMatsGK1WbSbLQWTLIg6YzsxdSmnPoogjogYNSLuq)ceif(jWdzSllgBnG7nwDaeNNJDKfCNMwnmslDohRUvnMH74hzpI))QjT94FopJ61UJPLh9cUChuEqoNZtsJGEgcx6g80dxENtsvzXNciBye8uXyUcYRRC)8muUdzn6uvRJRCJkA7I(Ij4V73z7ftpNADhOtjTQzS8KYT2PHUP4nn7t6)PawLzXbk(hZAu8BTflgl4Vbw4r(F7Zx7Vr(o5HUBUTi8IVjpn)6s58)9(BIGoSP8ecq6WLivfo7rWavxMu4CyzmyzH4ixIl)bABk84r9zonyRBvHpbWYQWR83OwxWVL83x4)Tv)NRZdPwArzuPjkVRDkVzGJB4g70mZSGyKB3GCRzqJmxMIaiBTjz1zS6qYTN2omyTKn(gxn7P8polCSk8binGLVXKiuZ(Stn7KCffnOBCPBdE19Es11rxHssUXsxAZRIkYDN2ensOIXcSTbtKR3FAU2RFr5QqTQGq7B9082ImK9l9m9961JT3F5eGU2fUBOcpOEalGxMzzLH(y2gGuqRmvh7AWn1ibQRYYYgpXcEm8vHGv2t5T7DBnkWVwKQocgh5pYvhPzK6MMgcs3c0SpJDtjmSAUwLCnqDvNn00IZpDqI9TnPtozCJtgUglIBttmOug74PLQ(9En3qBZfxzK0Q5nJMM58fXQEIy145lgprT(wVghSFcU0EByJdUhg6CJb0X(MY0y5jz9mVClnl70zYjq(tJNwDUOH4N00vFHAkyB)lvtABwT2aVjVwoPaCb46EZBwWjDbWsEmbeL(Q4KiPzyrwgxiNr0hsJKRDrqtiva(A9TTjZLT0sXTlZcLsxq03HuEceZy3RNLgaJRsj32w3qjLXpEcEYbLQm0haXu3vzwtjvwFDdwd15BCW9(ntO8Ur1GMV5bRxpWx(GrqyNbhSOp5NcHrmPzXb42bkZnA3)fSSAJun2Ld3gxBwTPDbdUlJDk6Kzs3MtXDIBZnjU2PMB37RDEST9uFB3jtpIRsV)Sjzdx6T7TAgSep1Xim(UltOM9tu8SXARt94JSl0K5PvD1)Av8PWAtGPbS68rj00TJ(QoLAql5U)uau7Zn8vZlDX6laUk8hG6zxS2URiTsmX8A2F6c)AQ5xJQUuGNSOULgUlTYoEgMZrvmRGO)zknEohxF4dnMYA0P5oP2u35tGqzi74aw7nKBUMbtm5LzXOTFzd93eyWtqr3J(LdSo6WrKH1FVeoo5dZwPxjJcgyXHu6pAZa24VoN5Mu0U(qkgomyPryqx25pApdDCxxBWiJpgJXtJ3Hh34zUNSZVpcTG6rY4j)hwCZohjAEKLQmNTDJ2K3uBfAVcUo7RzvlrDF3dufrhgn4HbO(N))o]] )
+
+
 

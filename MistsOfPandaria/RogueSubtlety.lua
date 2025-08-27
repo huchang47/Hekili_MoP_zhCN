@@ -80,17 +80,17 @@ spec:RegisterResource( 3, { -- Energy with Subtlety-specific enhancements
     
   -- NOTE: Relentless Strikes energy is not modeled as random regen to keep the engine deterministic.
 
-  find_weakness_energy = {
-    aura = "find_weakness",
-    last = function ()
-      return state.buff.find_weakness.applied or 0
-    end,
-    interval = 1,
-    value = function()
-      -- Find Weakness provides energy efficiency bonus
-      return state.buff.find_weakness.up and 3 or 0 -- +3 energy per second with Find Weakness
-    end,
-  },
+    find_weakness_energy = {
+        aura = "find_weakness",
+        last = function ()
+            return state.buff.find_weakness.applied or 0
+        end,
+        interval = 1,
+        value = function()
+            -- Find Weakness provides energy efficiency bonus
+            return state.buff.find_weakness.up and 3 or 0 -- +3 energy per second with Find Weakness
+        end,
+    },
 }, {
     -- Enhanced base energy regeneration for Subtlety with Shadow mechanics
     base_regen = function ()
@@ -722,7 +722,7 @@ spec:RegisterAbilities( {
     gcd = "totem",
     school = "physical",
 
-  spend = function () return 35 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
+    spend = function () return 35 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
     spendType = "energy",
 
     startsCombat = true,
@@ -811,7 +811,7 @@ spec:RegisterAbilities( {
     gcd = "totem",
     school = "physical",
 
-  spend = function () return 25 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
+    spend = function () return 25 * ( ( talent.shadow_focus.enabled and ( buff.stealth.up ) ) and 0.25 or 1 ) end,
     spendType = "energy",
 
     startsCombat = false,

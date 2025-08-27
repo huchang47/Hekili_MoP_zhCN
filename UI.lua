@@ -117,6 +117,63 @@ local performanceSettings = {
     [3] = { refreshRate = 0.1,  combatRate = 0.05, frameCeiling = 10 }, -- High
 }
 
+-- FPS smoothing system for stable budget calculations
+local fpsTracker = {
+    samples = {}, -- Sliding window of FPS samples
+    maxSamples = 30, -- 30 samples for smoothing
+    smoothedFPS = 60, -- Current smoothed FPS value
+    lastUpdate = 0, -- Last update time
+    updateInterval = 0.1 -- Update every 100ms
+}
+
+local function updateSmoothedFPS()
+    local now = GetTime()
+    if now - fpsTracker.lastUpdate >= fpsTracker.updateInterval then
+        local currentFPS = GetFramerate()
+        
+        -- Add to sliding window
+        table.insert( fpsTracker.samples, currentFPS )
+        if #fpsTracker.samples > fpsTracker.maxSamples then
+            table.remove( fpsTracker.samples, 1 )
+        end
+        
+        -- Calculate smoothed average
+        local sum = 0
+        for _, fps in ipairs( fpsTracker.samples ) do
+            sum = sum + fps
+        end
+        fpsTracker.smoothedFPS = sum / #fpsTracker.samples
+        fpsTracker.lastUpdate = now
+    end
+    
+    return fpsTracker.smoothedFPS
+end
+
+-- Expose smoothed FPS for use in other places
+function Hekili.GetSmoothedFPS()
+    return updateSmoothedFPS()
+end
+
+-- Calculate frame budget based on user percentage
+local function calculateFrameBudget()
+    local smoothedFPS = updateSmoothedFPS()
+    local frameBudget = Hekili.DB.profile.performance.frameBudget or 0.7
+    
+    -- local rawFPS = GetFramerate()
+    
+    -- Calculate frame time
+    local frameTime = 1000 / math.max( smoothedFPS, 30 ) -- min 30 FPS
+    
+    -- Apply user percentage directly to frame time
+    local userBudget = frameTime * frameBudget
+    
+    -- Debug output
+    -- print(string.format("[Hekili Budget] Setting: %d%%, Raw FPS: %.1f, Smoothed FPS: %.1f, Frame Time: %.2fms, Budget: %.2fms",
+    --     frameBudget, rawFPS, smoothedFPS, frameTime, userBudget))
+    
+    return userBudget
+end
+
 
 function Hekili:GetScale()
     return PixelUtil.GetNearestPixelSize( 1, PixelUtil.GetPixelToUIUnitFactor(), 1 )
@@ -1290,7 +1347,6 @@ do
             end
 
             local postRecs = debugprofilestop()
-                
 if self.HasRecommendations then
                 if fullUpdate and conf.glow.enabled then
                     madeUpdate = true
@@ -2406,14 +2462,14 @@ if self.HasRecommendations then
                     local spf = 1000 / ( rate > 0 and rate or 100 )
                     -- Use perf ceiling to bound per-frame work budget.
                     local ceiling = perf.frameCeiling or 15
-                    -- Apply user-configured percentage of the frame cap (defaults to 0.8 if unset).
-                    local capPct = (p.performance and p.performance.frameCapPct) or 0.8
+                    -- Use enhanced frame budget calculation with FPS smoothing
+                    local frameBudget = calculateFrameBudget()
                     if HekiliEngine.threadUpdates then
                         -- One min() with all candidates; guard against division by zero.
                         local dyn = 1.1 * HekiliEngine.threadUpdates.meanWorkTime / max( 1, floor( HekiliEngine.threadUpdates.meanFrames or 1 ) )
-                        Hekili.maxFrameTime = capPct * min( ceiling, 16.667, spf, dyn )
+                        Hekili.maxFrameTime = min( ceiling, 16.667, spf, dyn )
                     else
-                        Hekili.maxFrameTime = capPct * min( ceiling, 16.667, spf )
+                        Hekili.maxFrameTime = min( ceiling, 16.667, spf )
                     end
                 end
 
@@ -2570,16 +2626,19 @@ if self.HasRecommendations then
 
         -- Indicator Icons.
         b.Icon = b.Icon or b:CreateTexture( nil, "OVERLAY" )
-        b.Icon: SetSize( max( 10, b:GetWidth() / 3 ), max( 10, b:GetHeight() / 3 ) )
+        b.Icon:SetSize( conf.indicators.width or 20, conf.indicators.height or 20 )
 
-        if conf.keepAspectRatio and b.Icon:GetHeight() ~= b.Icon:GetWidth() then
-            local biggest = max( b.Icon:GetHeight(), b.Icon:GetWidth() )
-            local height = 0.5 * b.Icon:GetHeight() / biggest
-            local width = 0.5 * b.Icon:GetWidth() / biggest
+        local zoom = 1 - ( ( conf.indicators.zoom or 0) / 200 )
+
+        if conf.indicators.keepAspectRatio and conf.indicators.height ~= conf.indicators.width then
+            local biggest = max( conf.indicators.height or 20, conf.indicators.width or 20 )
+            local height = 0.5 * zoom * ( conf.indicators.height or 20 ) / biggest
+            local width = 0.5 * zoom * ( conf.indicators.width or 20 ) / biggest
 
             b.Icon:SetTexCoord( 0.5 - width, 0.5 + width, 0.5 - height, 0.5 + height )
         else
-            b.Icon:SetTexCoord( 0, 1, 0, 1 )
+            local half = 0.5 * zoom
+            b.Icon:SetTexCoord( 0.5 - half, 0.5 + half, 0.5 - half, 0.5 + half )
         end
 
         local iconAnchor = conf.indicators.anchor or "RIGHT"
@@ -3054,8 +3113,7 @@ function ns.primeTooltipColors()
         "coroutine",
         "math",
         "string",
-        "table"
-    )
+        "table" )
     Color( "|cffddaaff", -- Some of WoW's aliases for standard Lua functions
         -- math
         "abs",
