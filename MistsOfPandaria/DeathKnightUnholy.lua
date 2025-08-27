@@ -543,41 +543,29 @@ spec:RegisterAuras({
         mechanic = "taunt",
         max_stack = 1
     },
-    -- Your next Death Strike is free and heals for an additional $s1% of maximum health.
-    -- https://wowhead.com/spell=101568
-    dark_succor = {
-        id = 101568,
-        duration = 20,
-        max_stack = 1
-    },
     -- Talent: $?$w2>0[Transformed into an undead monstrosity.][Gassy.] Damage dealt increased by $w1%.
     -- https://wowhead.com/spell=63560
     dark_transformation = {
         id = 63560,
         duration = 30,
-        type = "Magic",
         max_stack = 1,
-        generate = function(t)
-            local name, _, count, _, duration, expires, caster, _, _, spellID, _, _, _, _, timeMod, v1, v2, v3 =
-                FindUnitBuffByID("pet", 63560)
+        generate = function ( t )
+            local name, _, count, _, duration, expires, caster = FindUnitBuffByID( "pet", 63560 )
 
             if name then
-                t.name = t.name or name or class.abilities.dark_transformation.name
-                t.count = count > 0 and count or 1
+                t.name = name
+                t.count = 1
                 t.expires = expires
-                t.duration = duration
                 t.applied = expires - duration
-                t.caster = "player"
+                t.caster = caster
                 return
             end
 
-            t.name = t.name or class.abilities.dark_transformation.name
             t.count = 0
             t.expires = 0
-            t.duration = class.auras.dark_transformation.duration
             t.applied = 0
             t.caster = "nobody"
-        end
+        end,
     },
     -- Inflicts $s1 Shadow damage every sec.
     death_and_decay = {
@@ -603,7 +591,7 @@ spec:RegisterAuras({
     -- Suffering $w1 Frost damage every $t1 sec.
     -- https://wowhead.com/spell=55095
     frost_fever = {
-        id = 55921,
+        id = 55095,
         duration = 30,
         tick_time = 3,
         max_stack = 1,
@@ -681,21 +669,33 @@ spec:RegisterAuras({
     },
     -- Your next Death Coil cost no Runic Power and is guaranteed to critically strike.
     sudden_doom = {
-        id = 49530,
+        id = 81340,
         duration = 10,
         max_stack = 1
     },
-    -- Shadow Infusion stacks that empower your ghoul.
+
+    -- Grants your successful Death Coils a chance to empower your active Ghoul, increasing its damage dealt by 10% for 30 sec.  Stacks up to 5 times.
     shadow_infusion = {
         id = 91342,
         duration = 30,
-        max_stack = 5
-    },
-    -- Dark Empowerment increases ghoul damage by 50%.
-    dark_empowerment = {
-        id = 91342, -- Reusing shadow_infusion ID as it's related
-        duration = 30,
-        max_stack = 1
+        max_stack = 5,
+        generate = function ( t )
+            local name, _, count, _, duration, expires, caster = FindUnitBuffByID( "pet", 91342 )
+
+            if name then
+                t.name = name
+                t.count = count
+                t.expires = expires
+                t.applied = expires - duration
+                t.caster = caster
+                return
+            end
+
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
     },
     -- Silenced.
     strangulate = {
@@ -778,14 +778,6 @@ spec:RegisterAuras({
         id = 49016,
         duration = 30,
         max_stack = 1
-    },
-
-    -- Festering Wounds that burst when consumed by abilities
-    festering_wound = {
-        id = 194310,
-        duration = 30,
-        max_stack = 6,
-        type = "Disease"
     },
 
     -- Unholy Blight area effect
@@ -949,7 +941,6 @@ spec:RegisterStateTable("death_knight", setmetatable({
     runeforge = setmetatable({}, mt_runeforges)
 }, {
     __index = function(t, k)
-        if k == "fwounded_targets" then return state.active_dot.festering_wound end
         if k == "disable_iqd_execute" then return state.settings.disable_iqd_execute and 1 or 0 end
         return 0
     end,
@@ -971,30 +962,6 @@ end)
 
 spec:RegisterStateExpr("dnd_remains", function()
     return state.debuff.death_and_decay.remains
-end)
-
-spec:RegisterStateExpr("spreading_wounds", function()
-    if state.talent.infected_claws.enabled and state.pet.ghoul.up then return false end
-    -- MoP: No azerite/festermight logic; keep a simple cycling heuristic.
-    return state.settings.cycle and state.cooldown.death_and_decay.remains < 9 and
-        state.active_dot.festering_wound <
-        (state.spell_targets and state.spell_targets.festering_strike or state.active_enemies)
-end)
-
-spec:RegisterStateFunction("time_to_wounds", function(x)
-    if debuff.festering_wound.stack >= x then return 0 end
-    return 3600
-    --[[No timeable wounds mechanic in SL?
-    if buff.unholy_frenzy.down then return 3600 end
-
-    local deficit = x - debuff.festering_wound.stack
-    local swing, speed = state.swings.mainhand, state.swings.mainhand_speed
-
-    local last = swing + ( speed * floor( query_time - swing ) / swing )
-    local fw = last + ( speed * deficit ) - query_time
-
-    if fw > buff.unholy_frenzy.remains then return 3600 end
-    return fw--]]
 end)
 
 spec:RegisterHook("step", function(time)
@@ -1039,27 +1006,6 @@ spec:RegisterGear({
         }
     }
 })
-
--- not until BFA
--- local wound_spender_set = false
-
-local TriggerInflictionOfSorrow = setfenv(function()
-    applyBuff("infliction_of_sorrow")
-end, state)
-
-local ApplyFestermight = setfenv(function(woundsPopped)
-    -- Festermight doesn't exist in MoP, removing this function but keeping structure for compatibility
-    return woundsPopped
-end, state)
-
-local PopWounds = setfenv(function(attemptedPop, targetCount)
-    targetCount = targetCount or 1
-    local realPop = targetCount
-    realPop = ApplyFestermight(removeDebuffStack("target", "festering_wound", attemptedPop) * targetCount)
-    gain(realPop * 10, "runic_power") -- MoP gives 10 RP per rune spent, not 3 per wound
-
-    -- Festering Scythe doesn't exist in MoP
-end, state)
 
 spec:RegisterHook("TALENTS_UPDATED", function()
     class.abilityList.any_dnd = "|T136144:0|t |cff00ccff[Any " .. class.abilities.death_and_decay.name .. "]|r"
@@ -1139,23 +1085,7 @@ spec:RegisterHook("reset_precast", function()
         debuff.death_and_decay.applied = debuff.death_and_decay.expires - 10
     end
 
-    -- MoP doesn't have vampiric strike or gift of the sanlayn
-
-    -- In MoP, scourge strike is the primary wound spender
-    -- Not until BfA???
-    --class.abilities.wound_spender = class.abilities.scourge_strike
-    --cooldown.wound_spender = cooldown.scourge_strike
-
-    -- if not wound_spender_set then
-    --     class.abilityList.wound_spender = "|T237530:0|t |cff00ccff[Wound Spender]|r"
-    --     wound_spender_set = true
-    -- end
-
-    -- MoP doesn't have infliction of sorrow
-
     if Hekili.ActiveDebug then Hekili:Debug("Pet is %s.", pet.alive and "alive" or "dead") end
-
-    -- MoP doesn't have festering scythe (spell ID 458128)
 end)
 
 -- MoP runeforges are different
@@ -1323,7 +1253,7 @@ spec:RegisterAbilities({
 
         handler = function()
             removeBuff("blood_charge", 5)
-            gain(1, "runes") -- this is wrong
+            -- gain(1, "runes") -- this is wrong
         end,
     },
 
@@ -1499,27 +1429,28 @@ spec:RegisterAbilities({
         end,
     },
 
-    -- Talent: Your $?s207313[abomination]?s58640[geist][ghoul] deals $344955s1 Shadow damag...
+    -- Pet transformed into an undead monstrosity. Damage dealt increased by 100%. --
     dark_transformation = {
         id = 63560,
         cast = 0,
-        cooldown = 60,
+        cooldown = 0,
         gcd = "spell",
 
-        talent = "dark_transformation",
-        startsCombat = false,
+        spend_runes = {0,0,1},
 
+        startsCombat = false,
+        texture = 342913,
         usable = function()
-            if Hekili.ActiveDebug then Hekili:Debug("Pet is %s.", pet.alive and "alive" or "dead") end
-            return pet.alive, "requires a living ghoul"
+            if pet.ghoul.down then return false, "requires a living ghoul" end
+            if buff.shadow_infusion.stacks < 5 then return false, "requires five stacks of shadow_infusion" end 
+            return true 
         end,
+
         handler = function()
             applyBuff("dark_transformation")
-
-            if talent.shadow_infusion.enabled then
-                applyBuff("dark_empowerment")
-            end
+            removeBuff("shadow_infusion")
         end,
+
     },
 
     -- Corrupts the targeted ground, causing ${$52212m1*11} Shadow damage over $d to...
@@ -1553,20 +1484,17 @@ spec:RegisterAbilities({
         cooldown = 0,
         gcd = "spell",
 
-        spend = function()
-            return 40 - (buff.sudden_doom.up and 40 or 0)
-        end,
+        spend = function() return buff.sudden_doom.up and 0 or 32 end,
         spendType = "runic_power",
 
         startsCombat = true,
+        texture = 136145,
 
         handler = function()
-            if buff.sudden_doom.up then
-                removeBuff("sudden_doom")
-            end
+            removeBuff("sudden_doom")
         end
     },
-
+    
     -- Opens a gate which you can use to return to Ebon Hold.    Using a Death Gate ...
     death_gate = {
         id = 50977,
@@ -1614,7 +1542,6 @@ spec:RegisterAbilities({
 
         handler = function()
             gain(health.max * 0.25, "health")
-            dismissPet("ghoul")
         end
     },
 
@@ -1626,7 +1553,6 @@ spec:RegisterAbilities({
         gcd = "spell",
 
         spend = function()
-            if buff.dark_succor.up then return 0 end
             return 40
         end,
         spendType = "runic_power",
@@ -1634,7 +1560,6 @@ spec:RegisterAbilities({
         startsCombat = true,
 
         handler = function()
-            removeBuff("dark_succor")
         end
     },
 
@@ -1940,11 +1865,7 @@ spec:RegisterAbilities({
 
         startsCombat = false,
 
-        -- Only cast to apply/refresh the buff and when RP is meaningfully low (<=60) like retail logic.
         usable = function()
-            if buff.horn_of_winter.up and buff.horn_of_winter.remains > 6 then return false, "buff active" end
-            local rp = (state.runic_power and state.runic_power.current) or 0
-            return rp <= 60, "runic power high"
         end,
 
         handler = function()
@@ -2039,13 +1960,6 @@ spec:RegisterAbilities({
         cast = 0,
         cooldown = 0,
         copy = "any_dnd_stub"
-    },
-
-    wound_spender = {
-        name = "|T237530:0|t |cff00ccff[Wound Spender]|r",
-        cast = 0,
-        cooldown = 0,
-        copy = "wound_spender_stub"
     },
 
     control_undead = {
@@ -2278,6 +2192,7 @@ spec:RegisterStateTable("death_runes", setmetatable({
     end
 }))
 
+
 -- Legacy rune type expressions for SimC compatibility
 spec:RegisterStateExpr("blood", function()
     if GetRuneCooldown then
@@ -2291,12 +2206,39 @@ spec:RegisterStateExpr("blood", function()
         return 2 -- Fallback for emulation
     end
 end)
+spec:RegisterStateExpr("pure_blood", function()
+    if GetRuneCooldown then
+        local count = 0
+        for i = 1, 2 do
+            local start, duration, ready = GetRuneCooldown(i)
+            local type = GetRuneType(i)
+            if ready and type ~= 4 then count = count + 1 end
+        end
+        return count
+    else
+        return 2 -- Fallback for emulation
+    end
+end)
+
 spec:RegisterStateExpr("frost", function()
     if GetRuneCooldown then
         local count = 0
         for i = 5, 6 do
             local start, duration, ready = GetRuneCooldown(i)
             if ready then count = count + 1 end
+        end
+        return count
+    else
+        return 2 -- Fallback for emulation
+    end
+end)
+spec:RegisterStateExpr("pure_frost", function()
+    if GetRuneCooldown then
+        local count = 0
+        for i = 5, 6 do
+            local start, duration, ready = GetRuneCooldown(i)
+            local type = GetRuneType(i)
+            if ready and type ~= 4 then count = count + 1 end
         end
         return count
     else
@@ -2392,18 +2334,6 @@ end)
 
 
 -- MoP Unholy DK-specific state expressions
-spec:RegisterStateExpr("festering_wounds_available", function()
-    return debuff.festering_wound.stack or 0
-end)
-
-spec:RegisterStateExpr("festering_wounds_max", function()
-    return 6 -- Maximum 6 Festering Wounds in MoP
-end)
-
-spec:RegisterStateExpr("festering_wounds_deficit", function()
-    return 6 - (debuff.festering_wound.stack or 0)
-end)
-
 spec:RegisterStateExpr("sudden_doom_proc", function()
     return buff.sudden_doom.up
 end)
@@ -2429,7 +2359,6 @@ end)
 -- MoP Unholy rotation tracking
 spec:RegisterStateExpr("unholy_rotation_phase", function()
     if not state.diseases_maintained then return "disease_setup" end
-    if state.festering_wounds_available < 3 then return "festering_build" end
     if state.sudden_doom_proc then return "sudden_doom" end
     if (state.runic_power and state.runic_power.current or 0) >= 80 then return "runic_power_spend" end
     return "standard_rotation"
@@ -2473,26 +2402,6 @@ end)
 
 
 spec:RegisterRanges("festering_strike", "mind_freeze", "death_coil")
-
-spec:RegisterOptions({
-    enabled = true,
-
-    aoe = 2,
-
-    nameplates = true,
-    nameplateRange = 10,
-    rangeFilter = false,
-
-    damage = true,
-    damageExpiration = 8,
-
-    cycle = true,
-    cycleDebuff = "festering_wound",
-
-    potion = "tempered_potion",
-
-    package = "Unholy",
-})
 
 spec:RegisterSetting("dnd_while_moving", true, {
     name = strformat("Allow %s while moving", Hekili:GetSpellLinkWithTexture(43265)),
@@ -2561,16 +2470,6 @@ spec:RegisterSetting("plague_leech_priority", "expire", {
         expire = "Disease Expiration Only",
         rune_generation = "Rune Generation Priority"
     },
-    width = "full"
-})
-
-spec:RegisterSetting("festering_wound_threshold", 3, {
-    name = "Festering Wound Threshold",
-    desc = "Minimum Festering Wounds before using Scourge Strike",
-    type = "range",
-    min = 1,
-    max = 6,
-    step = 1,
     width = "full"
 })
 
