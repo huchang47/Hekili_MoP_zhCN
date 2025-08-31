@@ -1914,13 +1914,15 @@ spec:RegisterAbilities({
 	soul_reaper = {
 		id = 130736,
 		cast = 0,
-		cooldown = 0,
+		cooldown = 6,
 		gcd = "spell",
 
 		spend_runes = { 0, 0, 1 }, -- 0 Blood, 0 Frost, 1 Unholy
 
-		talent = "soul_reaper",
 		startsCombat = true,
+        gain = 10,
+        gainType = "runic_power",
+        texture = 636333,
 
 		handler = function()
 			applyDebuff("target", "soul_reaper")
