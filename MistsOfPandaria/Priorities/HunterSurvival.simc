@@ -30,12 +30,14 @@ actions+=/kill_shot,if=target.health.pct<=20
 # Cast Black Arrow on cooldown (if target will live for full duration)
 actions+=/black_arrow,if=!debuff.black_arrow.up&focus>=35&target.time_to_die>=8
 
-# Cast Arcane Shot if you have sufficient focus to still execute steps 3 and 5 afterwards
-actions+=/arcane_shot,if=focus>=50
 
-# Cast Cobra Shot (focus generation)
-actions+=/cobra_shot,if=should_cobra_shot&focus>=14
-actions+=/steady_shot,if=should_steady_shot&focus>=14
+# Use Arcane Shot as focus dump when we have sufficient focus and few targets
+actions+=/arcane_shot,if=focus>=50&active_enemies<=2
+actions+=/multi_shot,if=focus>=50&active_enemies>=2
+
+# Cast Cobra Shot (focus generation) when we don't have enough focus for dumps
+actions+=/cobra_shot,if=should_cobra_shot
+actions+=/steady_shot,if=should_steady_shot
 
 # 13. Defensive and Utility - BOTTOM PRIORITY
 actions+=/call_action_list,name=defensive
@@ -46,13 +48,17 @@ actions+=/call_action_list,name=aspects
 # OPENER ROTATION (First ~12 seconds)
 # Requested sequence:
 # Explosive Shot → Black Arrow → A Murder of Crows → Fervor → Multi-Shot → Stampede + Everything (springs, racial, pot) → Explosive Shot
+# During the opener, if Lock and Load procs, immediately fire Explosive Shot and delay sting/glaive/dumps
+actions.opener+=/explosive_shot,if=buff.lock_and_load.up
 actions.opener+=/explosive_shot,if=cooldown.explosive_shot.ready&focus>=40
 actions.opener+=/black_arrow,if=!debuff.black_arrow.up&focus>=35
 # Try to cast AMoC now; if focus is low, Fervor will be used just after to enable it on the next GCD.
 actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus>=60
 actions.opener+=/fervor,if=talent.fervor.enabled&cooldown.fervor.ready&(focus<60|(talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus<60))
 actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus>=60
-actions.opener+=/multi_shot,if=focus>=40
+# If LnL did NOT proc, weave in Multi-Shot/Serpent before big cooldowns
+actions.opener+=/multi_shot,if=focus>=60&!buff.lock_and_load.up
+actions.opener+=/serpent_sting,if=!debuff.serpent_sting.up&target.time_to_die>15&!buff.lock_and_load.up
 # Stampede + Everything bundle (includes Rapid Fire and trinkets)
 actions.opener+=/stampede,if=cooldown.stampede.ready
 actions.opener+=/rapid_fire,if=cooldown.rapid_fire.ready&!buff.rapid_fire.up
@@ -62,6 +68,10 @@ actions.opener+=/use_item,slot=trinket2
 actions.opener+=/blood_fury,if=cooldown.blood_fury.ready
 actions.opener+=/berserking,if=cooldown.berserking.ready
 actions.opener+=/potion,name=virmens_bite_potion
+# If LnL DID proc, finish CDs first, then add Multi-Shot/Serpent
+actions.opener+=/multi_shot,if=focus>=60&!debuff.serpent_sting.up
+actions.opener+=/serpent_sting,if=!debuff.serpent_sting.up&target.time_to_die>15
+actions.opener+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_toss.ready&focus>=15&!buff.lock_and_load.up
 actions.opener+=/explosive_shot,if=cooldown.explosive_shot.ready&focus>=40
 
 # LOCK AND LOAD BURST PHASE - Based on official guide
@@ -118,9 +128,12 @@ actions.cooldowns+=/potion,name=virmens_bite_potion,if=buff.bloodlust.up
 # PRIORITY: Lock and Load takes precedence over AoE abilities for maximum damage
 # Explosive Shot when Lock and Load proc is active (HIGHEST PRIORITY)
 actions.aoe+=/explosive_shot,if=buff.lock_and_load.up
+# FOCUS MANAGEMENT - AoE (3+ enemies)
+# Use Multi-Shot as focus dump when we have 3+ targets for optimal AoE damage
+actions.aoe+=/multi_shot,if=focus>=50&active_enemies>=3
 # Kill Shot in execute range
 actions.aoe+=/kill_shot,if=target.health.pct<=20
-# For 4+ enemies: Multi-Shot spam priority (only when not in Lock and Load)
+# For 4+ enemies: Multi-Shot spam priority (only when not in Lock and Load) - Higher priority for dense packs
 actions.aoe+=/multi_shot,if=focus>=50&active_enemies>=4&!buff.lock_and_load.up
 # Explosive Trap (if enemies are stacking)
 actions.aoe+=/explosive_trap,if=active_enemies>=4&!debuff.explosive_trap.up&target.time_to_die>20

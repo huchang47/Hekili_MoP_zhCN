@@ -5,7 +5,7 @@
 # Pre-combat setup and pet management
 actions.precombat+=/aspect_of_the_cheetah,if=!buff.aspect_of_the_cheetah.up&!mounted&moving
 actions.precombat+=/aspect_of_the_hawk,if=!buff.aspect_of_the_hawk.up&!talent.aspect_of_the_iron_hawk.enabled
-actions.precombat+=/aspect_of_the_iron_hawk,if=!buff.aspect_of_the_hawk.up&!buff.aspect_of_the_iron_hawk.up&!moving
+actions.precombat+=/aspect_of_the_iron_hawk,if=!buff.aspect_of_the_hawk.up&!buff.aspect_of_the_iron_hawk.up&!moving&time>1&time<5
 actions.precombat+=/call_pet_1,if=!pet_alive
 actions.precombat+=/hunters_mark,if=(settings.mark_any|target.is_boss)&active_dot.hunters_mark=0&target.time_to_die>15
 actions.precombat+=/potion,name=virmens_bite_potion
@@ -37,9 +37,9 @@ actions+=/call_action_list,name=tier_bonuses
 actions.opener+=/hunters_mark,if=(settings.mark_any|target.is_boss)&active_dot.hunters_mark=0&target.time_to_die>15
 actions.opener+=/bestial_wrath,if=pet.alive&focus>=50
 actions.opener+=/kill_command,if=pet.alive&buff.bestial_wrath.up
-actions.opener+=/rapid_fire
-actions.opener+=/stampede
-actions.opener+=/use_item,slot=hands
+actions.opener+=/rapid_fire,if=time>5
+actions.opener+=/stampede,if=time>5
+actions.opener+=/use_item,slot=hands,if=cooldown.synapse_springs.ready
 actions.opener+=/use_item,slot=trinket1
 actions.opener+=/use_item,slot=trinket2
 actions.opener+=/blood_fury
@@ -94,12 +94,12 @@ actions.cooldowns+=/powershot,if=talent.powershot.enabled&focus>=45
 # Racial abilities and trinkets
 actions.cooldowns+=/blood_fury,if=buff.bestial_wrath.up|target.time_to_die<=60
 actions.cooldowns+=/berserking,if=buff.bestial_wrath.up|target.time_to_die<=60
-actions.cooldowns+=/use_item,slot=trinket1,if=buff.bestial_wrath.up|target.time_to_die<=60
-actions.cooldowns+=/use_item,slot=trinket2,if=buff.bestial_wrath.up|target.time_to_die<=60
+actions.cooldowns+=/use_item,slot=trinket1,if=(buff.bestial_wrath.up|target.time_to_die<=60)&time>15
+actions.cooldowns+=/use_item,slot=trinket2,if=(buff.bestial_wrath.up|target.time_to_die<=60)&time>15
 
 # Focus Fire priority (adapted from interface priority list)
 actions.focus_fire_management+=/focus_fire,if=pet.alive&buff.frenzy.stack>=5&!buff.bestial_wrath.up&(cooldown.bestial_wrath.remains>5|buff.frenzy.remains<1.5)
-actions.focus_fire_management+=/use_item,slot=hands,if=cooldown.synapse_springs.ready&(buff.bestial_wrath.up|target.time_to_die<=60)
+actions.focus_fire_management+=/use_item,slot=hands,if=cooldown.synapse_springs.ready&(buff.bestial_wrath.up|target.time_to_die<=60)&time>15
 actions.focus_fire_management+=/blood_fury,if=buff.bestial_wrath.up
 
 # Set up resources and pets for Bestial Wrath window per wowsims guidance
@@ -137,7 +137,7 @@ actions.aoe+=/serpent_sting,cycle_targets=1,if=!debuff.serpent_sting.up&target.t
 actions.aoe+=/serpent_sting,if=!debuff.serpent_sting.up&active_enemies>=3&active_enemies<=4
 # Note: prioritize maintaining Beast Cleave when ToTH active
 # Maintain Beast Cleave: refresh with Multi-Shot when the buff is missing or about to fall off.
-actions.aoe+=/multi_shot,if=buff.thrill_of_the_hunt.up&(buff.beast_cleave.remains<1.5|!buff.beast_cleave.up)
+actions.aoe+=/multi_shot,if=buff.thrill_of_the_hunt.up&(buff.beast_cleave.remains<1.5|!buff.beast_cleave.up)&focus>=40
 actions.aoe+=/multi_shot,if=(active_enemies=2|(active_enemies>=3&active_enemies<=4))&(buff.beast_cleave.remains<1.5|!buff.beast_cleave.up)&focus>=40|focus>=40&active_enemies>=5
 actions.aoe+=/glaive_toss,if=talent.glaive_toss.enabled&focus>=15&active_enemies>=5
 actions.aoe+=/barrage,if=talent.barrage.enabled&focus>=60&active_enemies>=5

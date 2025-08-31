@@ -2407,6 +2407,8 @@ spec:RegisterStateExpr( "health_pct", function()
     return health.pct or 100
 end )
 
+
+
 spec:RegisterStateExpr( "target_casting", function()
     return target.casting or false
 end )

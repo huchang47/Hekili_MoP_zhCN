@@ -150,36 +150,111 @@ do
         return petAction > 0 and petAction or nil
     end
 
+    function Hekili:GetMacroPetAbility( actionSlot )
+        if not actionSlot then return nil end
+
+        local actionType, id, subType = GetActionInfo( actionSlot )
+        if actionType ~= "macro" then return nil end
+
+        local name, icon, body = GetMacroInfo( id )
+        if not body then return nil end
+
+        local spells = petSpells[ myClass ]
+        if not spells then return nil end
+
+        for spellID, _ in pairs( spells ) do
+            if spellID ~= "best" and spellID ~= "count" then
+                local spellName = GetSpellInfo( spellID )
+                if spellName and body:find( spellName, 1, true ) then
+                    return spellID
+                end
+            end
+        end
+
+        return nil
+    end
+
     function Hekili:SetupPetBasedTargetDetection()
         petAction = 0
         petSlot = 0
 
-        if not self:CanUsePetBasedTargetDetection() then return end
-        if not UnitExists( "pet" ) then return false end
+        if not self:CanUsePetBasedTargetDetection() then return false end
 
         local spells = petSpells[ myClass ]
         local success = false
 
-        -- 1. Först: Kolla pet action bar (som nu)
-        for i = 1, NUM_PET_ACTION_SLOTS do
-            local name, texture, isToken, isActive, autoCastAllowed, autoCastEnabled, spellID, checksRange, inRange = GetPetActionInfo( i )
-            
-            if spellID and spells[ spellID ] and checksRange then
-                petAction = spellID
-                petSlot = i  -- Pet action bar slot (1-10)
-                return true
+        -- 1. Först: Kolla pet action bar (prioritet)
+        if UnitExists( "pet" ) and not UnitIsDead( "pet" ) then
+            for i = 1, NUM_PET_ACTION_SLOTS do
+                local name, texture, isToken, isActive, autoCastAllowed, autoCastEnabled, spellID, checksRange, inRange = GetPetActionInfo( i )
+
+                if spellID and spells[ spellID ] and checksRange then
+                    petAction = spellID
+                    petSlot = i  -- Pet action bar slot (1-10)
+                    success = true
+                    break
+                end
             end
         end
 
-        -- 2. Sedan: Kolla player action bars för macros med pet abilities
-        for i = 1, 180 do
-            local slotType, spell = GetActionInfo( i )
+        -- 2. Om inte funnet på pet action bar: Kolla player action bars för macros med pet abilities
+        if not success then
+            for i = 1, 180 do
+                local slotType, spell = GetActionInfo( i )
 
-            if slotType and spell and spells[ spell ] then
-                petAction = spell
-                petSlot = i + 1000  -- Markerad som player action bar slot
-                return true
+                -- För MoP: Kolla också efter macros som innehåller pet abilities
+                if slotType == "macro" then
+                    local macroSpell = self:GetMacroPetAbility( i )
+                    if macroSpell and spells[ macroSpell ] then
+                        petAction = macroSpell
+                        petSlot = i + 1000  -- Markerad som player action bar slot
+                        success = true
+                        break
+                    end
+                elseif slotType and spell and spells[ spell ] then
+                    petAction = spell
+                    petSlot = i + 1000  -- Markerad som player action bar slot
+                    success = true
+                    break
+                end
             end
+        end
+
+        -- 3. För MoP: Om ingen specifik pet ability hittades men vi har en pet, använd fallback mode
+        if not success and UnitExists( "pet" ) and not UnitIsDead( "pet" ) then
+            -- Försök hitta bästa pet ability som spelaren har tillgång till
+            local bestSpell = spells.best
+            if bestSpell then
+                -- Kolla om vi har denna ability på pet action bar (även utan range checking)
+                for i = 1, NUM_PET_ACTION_SLOTS do
+                    local name, texture, isToken, isActive, autoCastAllowed, autoCastEnabled, spellID, checksRange, inRange = GetPetActionInfo( i )
+                    if spellID == bestSpell then
+                        petAction = bestSpell
+                        petSlot = i
+                        success = true
+                        break
+                    end
+                end
+
+                -- Om inte på pet action bar, skapa en fallback för range detection
+                if not success then
+                    petAction = bestSpell
+                    petSlot = 999  -- Special marker för fallback mode
+                    success = true
+                end
+            else
+                -- Om vi inte ens har en "best" ability definierad, använd fallback med standard range
+                petAction = 0  -- Ingen specifik ability
+                petSlot = 999  -- Fallback mode
+                success = true
+            end
+        end
+
+        -- 4. Sista försöket: Om allt annat misslyckas men vi har en pet, använd fallback
+        if not success and UnitExists( "pet" ) and not UnitIsDead( "pet" ) then
+            petAction = 0  -- Ingen specifik ability
+            petSlot = 999  -- Fallback mode
+            success = true
         end
 
         return success
@@ -187,27 +262,76 @@ do
 
     function Hekili:TargetIsNearPet( unit )
         if petSlot == 0 then return false end
-        
+
         -- Om petSlot är 1-10, det är en pet action bar slot
         if petSlot <= NUM_PET_ACTION_SLOTS then
             local name, texture, isToken, isActive, autoCastAllowed, autoCastEnabled, spellID, checksRange, inRange = GetPetActionInfo( petSlot )
-            return inRange
+            if checksRange then
+                return inRange
+            else
+                -- Om ability inte checks range automatiskt, använd fallback
+                return self:GetPetToTargetRange( unit ) <= self:GetPetDetectionRange()
+            end
+        elseif petSlot == 999 then
+            -- Fallback mode: always use pet-to-target distance against configured pet detection range
+            return self:GetPetToTargetRange( unit ) <= self:GetPetDetectionRange()
         else
             -- Annars är det en player action bar slot (macro eller dragen ability)
-            local playerSlot = petSlot - 1000
-            return IsActionInRange( playerSlot, unit )
+            -- For macros/player action slots in MoP, rely on pet-to-target distance, not IsActionInRange.
+            return self:GetPetToTargetRange( unit ) <= self:GetPetDetectionRange()
         end
     end
 
-    -- New function: Get pet's detection range based on current pet ability
+    -- Ny funktion för att mäta range mellan pet och target (för MoP)
+    function Hekili:GetPetToTargetRange( unit )
+        if not UnitExists( "pet" ) or UnitIsDead( "pet" ) or not UnitExists( unit ) then
+            return 999  -- Långt bort
+        end
+
+        -- Försök använda CheckInteractDistance först (fungerar ofta i MoP)
+        -- These are coarse buckets; we'll still compare against the configured pet ability range (e.g., 5y/7y).
+        if CheckInteractDistance( unit, 3 ) then return 10 end  -- Within ~10 yards
+        if CheckInteractDistance( unit, 2 ) then return 20 end  -- Within ~20-28 yards
+        if CheckInteractDistance( unit, 4 ) then return 35 end  -- Within ~28-38 yards
+
+        -- Om CheckInteractDistance inte fungerar, använd UnitInRange
+        if UnitInRange( unit ) then
+            return 40  -- Inom standard range
+        end
+
+        -- Som sista utväg: använd positionsbaserad beräkning
+        local petX, petY = UnitPosition( "pet" )
+        local targetX, targetY = UnitPosition( unit )
+
+        if petX and petY and targetX and targetY then
+            local distance = math.sqrt( (petX - targetX)^2 + (petY - targetY)^2 )
+            return distance
+        end
+
+        return 999  -- Okänt, anta långt bort
+    end
+
+    -- Förbättrad funktion: Get pet's detection range based on current pet ability
     function Hekili:GetPetDetectionRange()
         if petSlot == 0 then return 0 end
-        
-        local spells = petSpells[ myClass ]
-        if not spells then return 0 end
-        
-        -- Return the range for the current pet ability
-        return spells[ petAction ] or 0
+
+        if petAction > 0 then
+            local spells = petSpells[ myClass ]
+            if spells and spells[ petAction ] then
+                return spells[ petAction ]
+            end
+        end
+
+        -- För MoP: Om vi har en aktiv pet, använd en standard range baserat på pet typ
+        if UnitExists( "pet" ) and not UnitIsDead( "pet" ) then
+            local petName = UnitName( "pet" )
+            -- Försök gissa range baserat på pet namn eller typ
+            -- De flesta pet abilities har 5 yards range, men vissa som Screech har 7 yards
+            return 5  -- Standard för de flesta pet abilities
+        end
+
+        -- Absolut fallback
+        return 5
     end
 
     -- New function: Check if target is within pet's detection range
@@ -223,14 +347,17 @@ do
     end
 
     function Hekili:PetBasedTargetDetectionIsReady( skipRange )
-        if petSlot == 0 then return false, "No suitable pet ability found on pet action bar or player action bars." end
-        if not UnitExists( "pet" ) then return false, "No active pet." end
-        if UnitIsDead( "pet" ) then return false, "Pet is dead." end
-
-        -- If we have a target and the target is out of our pet's range, don't use pet detection.
-        if not skipRange and UnitExists( "target" ) and not self:TargetIsNearPet( "target" ) then 
-            return false, "Player has target and player's target not in range of pet." 
+        if petSlot == 0 then
+            -- Auto-setup pet detection if not configured
+            self:SetupPetBasedTargetDetection()
+            if petSlot == 0 then
+                return false, "No suitable pet ability found on pet action bar or player action bars.\n\nPlease:\n1. Place a pet ability (Bite, Claw, Smack, etc.) on your pet action bar\n2. OR create a macro with a pet ability and place it on your action bars\n\nSupported abilities: Bite (17253), Claw (16827), Smack (49966), etc."
+            end
         end
+
+        if not UnitExists( "pet" ) then return false, "No active pet.\n\nPlease summon your pet to enable pet-based target detection." end
+        if UnitIsDead( "pet" ) then return false, "Pet is dead.\n\nPlease revive your pet to enable pet-based target detection." end
+
         return true
     end
 
@@ -246,6 +373,12 @@ do
         local spellName = GetSpellInfo( petAction )
         if petSlot <= NUM_PET_ACTION_SLOTS then
             return "Using pet action bar slot " .. petSlot .. " (" .. (spellName or "Unknown") .. ")"
+        elseif petSlot == 999 then
+            if petAction > 0 then
+                return "Using fallback detection with " .. (spellName or "Unknown") .. " (" .. self:GetPetDetectionRange() .. " yard range)"
+            else
+                return "Using fallback detection with standard pet range (" .. self:GetPetDetectionRange() .. " yards)"
+            end
         else
             local playerSlot = petSlot - 1000
             return "Using player action bar slot " .. playerSlot .. " (" .. (spellName or "Unknown") .. ")"

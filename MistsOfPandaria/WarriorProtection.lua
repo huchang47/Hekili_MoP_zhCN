@@ -1257,6 +1257,8 @@ spec:RegisterStateExpr( "health_pct", function()
     return ( health.current / health.max ) * 100
 end )
 
+
+
 spec:RegisterStateExpr( "threat_status", function()
     -- Simplified threat status: 0 = no threat, 1 = threat, 2 = high threat
     -- In practice, this would be calculated from combat log events

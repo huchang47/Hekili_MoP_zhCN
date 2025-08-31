@@ -1082,6 +1082,9 @@ spec:RegisterAuras( {
             startsCombat = true,
             toggle = "cooldowns",
 
+            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
+            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
+
             handler = function ()
                 applyDebuff( "target", "a_murder_of_crows" )
             end,
@@ -1095,6 +1098,9 @@ spec:RegisterAuras( {
 
             startsCombat = true,
             toggle = "cooldowns",
+
+            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
+            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
 
             handler = function ()
                 applyDebuff( "target", "lynx_rush" )
@@ -1286,6 +1292,9 @@ spec:RegisterAuras( {
             startsCombat = false,
             toggle = "cooldowns",
 
+            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
+            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
+
             handler = function ()
                 applyBuff( "fervor" )
             end,
@@ -1299,6 +1308,9 @@ spec:RegisterAuras( {
             
             startsCombat = true,
             toggle = "cooldowns",
+
+            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
+            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
 
             handler = function ()
                 applyBuff( "dire_beast" )
@@ -1461,4 +1473,70 @@ spec:RegisterAuras( {
         width = "full"
     } )
 
-    spec:RegisterPack( "Survival", 20250816, [[Hekili:vV17YTnUr8NLmzQgRj(0jlB56ENTNrXrjX5ITYyPRD6xKimfKfRPi5X)ih3Xd)yFa6JyFs6UaGKaKaKs2YzA)WDNfjWUlwSyXV93YB6btNmD8CsmD61962RF3to44ohCC3J7D40XXpgqNooGyFp5o4p8iRG)94KW1oRjU4lE01NmhfqKFsOn8YPJVnXXn(sVP3wvQ9p8OE9GXgqTHh3V)0XlDMpNYhlnYE64jlDIsTW)HKAj0BQL)c432Xo(EPwUorXWRx4hMA9z69oUoDMoM9q0miOSz)51S1f1JCRlD(03dVIjGSHmZFXS4L0zljpCpx5Hob8bmy83gEXKuRRgC9Gpn8QHxdYbEBmn0HmD8BsTUnzXIovftNKGuRwPwWiIjUuV4sJXj03JpWmRkg8cLSYTurAgrHAscmTQZhdycXth7hq9OH150OFpW1pYznDw0s)4soSrFB41dVj16Mrtgm5YrxNAT3hDcJItTsF6GEPwruBFV5rTHrq)JeAumDo(q4p9SP)sQ1WmHNAngKEQ1)5F9VtTEVlS9NAnim0)bXJgaBkjHZPH8qIlG3ejE1hPHRXqc2pUkXn25NKK14yYQa6CqbVdu3AA4JXlD8Udm0OGq4pI2p1kKy7qCH)iWpUTyELSm5ThBFF35(p41r110jKsM)iB7zHVDcyENFwQ1rDBCVEoLTxElUQNrWfD22SKCoSFXwI0irHFOPW9zRyUmCR3gDyL28MecwBSFQLnb3XgCL)fPwE(paocNf5khpr6YEyMJ(bhxxi(d8mjr4(5)ibNozrmU7GYJBlWuHhJhCH4oqW0Vd)8tx8HoYl)SJlLn1Sdkm3qUdV6W06ZpM5ZpYOpxO0fS1JEnjExH43lxdNIki16PNypCNVaeIhIdBxSvYnhCv134QsnOlFQRWte8ZUW0p2qSsK4ysPqeJNEUnXBoUfVNJNTBcmh4eojWbwUW5F45ep4pJHdy3tJJAR90tMk5Ua04(ZgxB5tkevYSfGoK8CzzdLEPCcWIhJk5edEGLGjhP3qF0JeebhY5jme274ixmTaFAGC)lgKRWjCq2eY)nmNd6w)K6vAs9ytQCMAnM8TU((Wsoj8XmRTi3r2ByYYCIPczrdJOH3dl9kYk)nmzvopehZWANWvuVOz3ccEgKGLNAsibXVXzB(462MV10vxSl8MtxqGte6UXtjY)QbxET89AF7MlhDZLt(7PwF9YXtk0HnX1Dg)hZqSik5zCwrzhOb3mdOYmUlrCPBT3lWNllZFDktsQzUPiD3jOS2oOdKTF0qy55ht4yR27W3H5YcVdpUMA9tPwtg9TIv9MTEXhdoByXTYbZiCoZ4LmrIpvxMzfJRhyCF1hV)NLd5Rakt84ndurWsseM05Zx(PppC8e5DLhws94qfxtLsCgM4zYAzPmC9XBs9MpdrZYYAizUkVCgZg0Lcophkne2yJNffJNiuxvh2brvQgsbo53ty3GI7a(lw4GWqsTUlXbZ4oiiW9rHxyfXXlg(hamcxjiWgomMIBJdPlcPrlrbElmXl8VnKWrV0wpIdfdodZbpiOdg)nl2F2ChkBJ8G(1D9rTGeVGbVOcupCrNfZcRJk75bH(2qqeMG1LdBmGecLv4(yBJx7PEBRU8f6UNjBvaLu4AEb8Bmhn323JhUX9vCms3sDr0Q96(NaBMsCJx2wfZbZTYFtNaBywNEgo86UtsgONotsfOCjhkIHlZa5bjUmVpR(Pfj4dMNeYo)Bi(OjePMJxGxFsDxkscTjE1eSmG9(mVnUsE0pbJfWfquc7Oc7uGWEquNqumUMOFNANeJdlMgaV6qrqvFbe1hiHQ3ZlTK63T2BLTXtuMnAPdCG7xi27Wu9vDYGqsCNpRqIL9UW9H1FxVqcWQeIQnjcj8D5dt79(Q3pGzR(aDbCTnlIH5)(DW96e)ipT1OjtgD1MD9Gu(05zIulCbvt4i8okwLRqItIh5o6k2g(Zx7zeeWGbeecvMU6wIwGa5rPkvoBVKsJjllzOFoXJv3tg1iml8kF2DNdVy0vVFa7AQHFBWnS0(tBSoFHEKk1FLpQeEPeR8xlWB9c5pydjQOoYt0GZylnIgiXOWbWw0BaLg1u1hiNaA8mcMfSuid(8dQV6Q9WlGIJzfaSIeI4cEKxeOibOdaX1pkIv5wRmKiZMd37SKfIendNwQfCWSBdx0wutI0m5XTfG8QjUvQGNs5Pgn6RFy0F7AzgUAehIuDD5KaSVEgz2xKROOSrEwkz2ciriCg05HR8i(dcapNdSm0c7FlQ5REi1pJY(lkkVVuHffLJBo(FNtmGGzJIdbvO3P2WFt1DxLcGAG4ENlbJQJHTRsHwFI9gOSb2zGQB7YGt04MKeSEhK8a06AQhGQO6E5A23Is9v5eHpgikNpiWkc9xbaC9UZXJsdzWYVZ1FnfppKGJKJwSr8Ns1MRQYBi8tKKBX7Gz1w9tzI2jEj4DH8GHfERibkVvKV7SkbSn6IfqctTl5YufKX2v1tx80DSNloNGpRToaS60tjAe2E9yG3HMjEPeRNCsPE94JPei3y)WqieVmZ58DSWY7SAqMEkJ93CuBA8csAVrKvdUtGJJZ9cRiawilyp(orR(zwaHBcIEQggCSvRJoFskmVLtVtS(IPFUTD4RJU43GBGU(dqTIJga)73)73WOd4ZdgpSXl0QuP5DGA4vkafqt1uQksqomG988Zt5y7hfVpsxEXPU2zKFwA(rODqlyihzdxCGLNyaR0v06lgQHkE3kSuO5EUMkIvU81yY94cgYF5hYIfORPsrcLCqBCzSgBeHXQ9UeBVxmlrvUN1GvSFEFkuQneR8daZVMvCGnjiGDEOb)x57ooP70mYbffOuBK5shxcVMUslNpm8JdVE8L)1HIGZFFYLFLvGsL77KfIYfEkE2SksnJPP0WLz)K)QOyi2RbKklHeYXDICIteSbI(KEfsALt0CiW2wCyU2oRWcpM7aa0DDjmeDf5qjE)rcK85FcBr5vIAgXTWtf5a)h7SPO4ReAddlukpqDk6Gfurlp84AAONGjmTaqugHwei9KqUlpADx5xXaC8a4WoZRgqKBakJOrdqE08GBK81NBcxoBXfn5fzlEYGB(0WjJB3y(2S60)fnPEZZerTbONE2yQX1yMXb(dvW7OINzozf7ZdOsMAEcvTCjkNHvhhYTBmTXlnTlYFBo9uWPH7OV4uRsD3tvVFe9xh9oSzSm24)f1EJhfqwjFbWE(EizZC3NxMXwYpAI31(DLl5TG(FKswLI105qlNmPA8iK4iO0QtAFFc8wbBN5AMeY4)JyJOJuS6ATrbTNQAUbEX5BpMQxYmbUMPUDQkNf7mUynvAKzwnL5ZKhz44PH8v2rZIGRPBpnNMZo(sy5KL1dsMeHVl)BrcYntc9Wc3a4hRc8dzmRDsPpZOoPFbeBs8sOm)XWPSfHo3JSg6VWbVt7TPwgj(7lPF5TMy)l9lCTe1jNaY3D2pRL)V9DwC2BQLEWwVrqmylo)yBIWrAYmjzbPBTEZMrn4MOU8j1OoBGjqCTAEnwqIhtp508PF0YSQHJFVke790tQK61ULiVrz68oRBRQN5o)G(IGG6BICU1LTc4)KXC9(yPxNXBumAJO4p9GEnpLCkaYM15NDOWA2(2(2S6aqfOIutREEMg3f9Yv2gk1nxUjOPWs0K0d8NBxBF3yXzTlBiR8QsPnSSayd9NT2yTDFxwLTrv0HOrYsbF(zh1Tv9FFgYw323cvzBihIfl0UmAPtpRxxfLTZAoQSniDnS8oL6TZTe(Md7RBh7StumZx7wDkB9sfIlTf2x1V1uBmvskKFXokVk32N5io4iL49IBPLML0tLNgpZ122qYMtCLxQFMk2Igo2S0f9Aui7n(RKfhS2puw8f)FZ3kBXTU87V0M(O2KgTYtUOrwB5rqMVZ0N66V(k)PUQX8R02gE2S6BwuRMAuu269yDEmol6s6rTfyT02(Rw8J(NEC3NEAVDK9bcRD7)3WNuu4SYLzSOLD0x9QgTM1JnLtaQnKtZSk6oIY8k3xubiA1EPuvAqK8mO8Qv7JTY4mwVWunhD9aRr5K1gLnDG90EYoRvukguLouPzM59crDML75u1zYBrbpRTMgDSBZLXIUErnVGjGxT(xGsF30cJc)Mg45ADIgWR)wvuJBxNlAYk2eeLGb860LIMmUsG106FYcUojl4Q6)hmvOgbOK39dHtatkBNXiGybBOLlfgsoqpwuxrxxKUIrxZyAjfh0VREXj1HfuAsZ4idZqUtkmdOuRxo)SE6Ny1MNifYk1Uf9ZwTHisRC9nxPLAJv0lt5oCijrDnsPvnnrjlcUxF9QrUpgsQrx7sAvtRsKvdVwNNXNcfdE(pWVgQcpsoRo7k0aYc85bpKdOt(OHSm)XHOtwRBe8k224285kPxxsFqssRnnFhtfRQkFdt5f6MfvUfFBr)A1VTi9g6ZeVNiAFN8HhP3W2q4ET2RAG8tpP(5b12Gg2myHBOgevsYr3Vj(6QyIBCS9YOmWWNhKHtBkFPr5f0C6H9BYVKbByJ)OG0lWgqrNJFr(Zekt1VGwlJZ)1R7YAjD5L0Gzj0r(0xai4Q9rUSK3qGTVknjUSTOTs7(DZAPswpdo7iXnwAx(BvdFn7NXg6IwHgDBQ5V6OWv4(QHH5swWwYzLjAJFBj2z38MYw2G2EIBftCliVL1a2P)3p]] )
+    spec:RegisterPack( "Survival", 20250831, [[Hekili:vV12YTnYr0VLTCfgXYAPPU54SRLQIwI2wETeDjsNu5fsoKyijIab4IlswPuHhZhq(eZxs6UNbaZam4cLOxx5H1RiXmD3tp9Lt3n44dgpA8qlwiF81h29Wt6(MJoOd8hhFYbJhg(Wg(4HByZVLTe(dx2A4Fhg5FN9Dmh8bp44XSqce4f5phE44HZISDcV0D8mZufw6g(C4Bpb(Zv2wwCXs5bZhpC0k7G4P4)XINkzB8uVfWNNhA75gp1XoieE8cp)4PFKFRTJDNXdPVeLcgsB6pVMowCx2mhU143bpIiqYsM4Tys4k(KvS7VvWCF7nIf0B4x6F(O4Px176EFO)v9VgOd80qUVnB8WFkE6SOfl6uKmDI2epTv8uyfHmhUByU1y775kwyIufcAHCs5wYidRiJnrBk7uNUgqechp0Bd3L7xLsJ)TnoEb23XNeSYlmNcBWx6FD)BINEZGr9gD5GRJNU37T9dcJNg)4bhgpnGp3Z1kOnSc(VhXdc5w4xc)P7C(VepTFcXJNoeOE80)7)()ep9DoW1F80E((E3l)QEWLsKVf3xysCo8Ka5JEp3)o0KG(WvroH2)ScTggYwVHBbm4La7UJ7)q4kB3LGGgSXh(JG9JN6ZMBZCG)yJxyB5(kizxe5t7duIGmqQnyh2GW8zpuAzUw4FYG)DJV3CKU2RxZTSbhbNhaZwBFUbYsBZI7WGLeecC4vlDyWZFLv06nbQwf0fUdWRjWEMGoF41CLgsZ98CS8U3TJ(LyhFoZ6bYqAH38iqrE2PXtpUBPx6atoQkRvlojCZW7Tjm8AlXqvH(hDsg9vwjs8JlZHDYA6shnENJx55m)g5dNIqV4PZzOnxVR8opEQR39YlgjZXyko0xMyQCVTJd4bbxcrbOf5)mc3oBriAFH0tilWwHVgd9qx6U8VbF8dNFrh1JFIdFErnXvNudPxefxMX7Ix3fvlNuQoxY0f05XmNKplJ87LYH3ImiE6JpsF5o)aijp4j1o7Quio4P611DQ2DsIuvwH9eip)Lsm(wJHsmf07s0N39ZGzVnisxpyKWJhSVUNZqpBBx1arVAi3hcxeIgCqUl45ZSxMDo08X1KBTi9MC8Ftd8jdemFcfBjXRmK5VKh2j0EnFsO3elBqOolE6bNunltvnAefLK)Aj6Waz03CAWsdkplY1c972Z2DUteShiXbBdQMFpf(KIwgcbIVLhg02yOUewkSgqH7GU1hG0h5YemgTIvuIIq5HQAHSVM4szjqxbcDGzr9bx2MaigRitKuIhg4GMCITHeoF89ecl1dhKSJ0pJBkF86CB6WCB6qAt5JdBqMN545bh6i)hse3Sy6jpHOv5bVYOf3hSKUfnmZtR0Nq0kFidby07S9xZDdMmdi8ei1TWfxsb5NXD)0DWV4Yls9Txy7AhScGECraLmpiCFkVa4RZSSm5WxRJDjUOKqV79TRW99G8(VfIjlaLaemOKOXQlWyC4ghCrHse6Mg49(SH3qwalyWvOjOWAghx17YRvb8(LBUCWnxo6FaMmxoCugpMZCCMi(WeSifnLkC5q5jbFBQcMjclAjA8kX0j2lbOQkMPq1SmngWXPD2oOdaIAqF445fYWVcIeF0ltSPqy8)C80rd(s2PUzNx8RbLnC4wBJX0pJeEfrK5XnHdut4oSJbO2ZIOQn2SIfGPn(4LF4J9hos9w5EHlkjbk4r8JCltAlX(urC1E4esgmHxZS)M(P6Ooy5M6MuGs(DmcykEd4TyHnwFs80Lr2yoZEB2GfuqAH1mB3qgc4ifLXWqr9nzGC95l85bRqcod245EZ8zI6pAVtcSyauxJQE8Cc1EHsIWdDInlComxEv8umbPJOEYnmFQkR2LeY94U6bRmfVOkOG3cQYYpa)gPOfY(EcZnHUsu6XmUdwg7HD)tGmZzoHRARhGLuRIN0zZCyxV9uC5Mq4zQ(jtIKEf05uOyPrjcOWiXH0(uJvweHFHvKp5)xI9rDf6vU9c843ufGrM)CMRrJLVIo49OhNw7CqkFXQLt81VNJgh4jkiI8Di3c5cj7Of87tdQvIjZjctM8rUORMAavwpvoJOIjGivbKCo63wUzOIBnCjlfILycfXvPQ6XYZ9phMOL4UErlxLQHiZGcDFayBKJ1efzWe00cRpie9TKcDwvbzFPjSQ65KWiKxWxai9iRu6c8RH2o2Hpicvoy0Obx1SuskXWTsiPrKV6IWXyErQnAqWAMlBjFnzt905Es3kjOhB85Z9wpJze8rQNHwB8MVIZdzRYjOFmYLAHrsBAjj8kpkFD)ZhC176rPg7)LE3qPAgxBthL8rPVJR9qMiq)T27ojcYNzZmByxtlrziBNz19OQEHOMoQMPaOdDjYIA)vlGNrtG2WdNWWiV5mzWV)atWjY29EysVWqQOX1mFelYdI(5id6Advfb4NPMWKf)XcY1TImrcMGBlEkehQBtRAqDNc7we12tTZXcyMzTngHzoQ3nFO)OHTRfbuIZ2Vyaryi7wmel6tXTW2md7)o0PONhWr2mmWbfeMIZTM9n71rRHaES10ahkGgre00iie54kiLRjWNTRhvPbxhdzf0vDVFW5FDO6qki9fD8i1OmndOgPCMQTeV2mMkO9LAipGRRrDpXaHAA7Z2DKj)Z6GxPcScH4Y)gFEuicOL5QlevcIQSUlxUcgp3hNPj)fDLyWg2A0aW2ZNYbTNNlIhxOkDte2CwmcJ6pAVCfAlMTzr2witexm1RTepcHUT2gfwwHjzEOH(Sn50ckEcJGNkboMYzg2pUGqqKHWqTRSApvzuIGuNZ1uIH4ASSsmkhlC5OG)EbRTScikh6MkOnHfKTRbyRKzsMryLiZk05LJnvkrvq1mqHsaVfAUy4NAwHpp48FdUWU(cWPzqp4FF3xVHIO(XEd7xBAHcbPxcSbochbhgFUPG74CJGfSNRx65DUh1zp8BsSwAN0(5C7paLdE2GJOjdgso4IRY8jjEw5dAsuY0KFjHx43HYHLC2L5uqnocAzbUlVAnSfQSqk)QsghJsX(PJVtR4oCmCqs87iVG5SnBiqx1O)YB4(MUJtAUNeSFLwMRSDyIQLYDCUO)77F9Wl)B9LgNFD0LFMa7RQajiSQerRtPAAwmEE1WMZTC1UxkEuqiy7vnQ3Wv(CwyNa7Wiz38Yx4PDGfyyl(uL4vLMhw2ayxhhCbzubIG7(7raUQ)fCfLwvxTdVmWg(FZt2IMUsYn0SqdQT(wmLuOaxU)ba8NRStwQ8iTzqARWyRJpubfS6QnfXVGay7cPkSTkAqKkaAROwbqD1cJ7S(7wHXTYWQYLbAWGpFXG)(1fauwvKwLHYLow99n)wASV0vpBMFI8nQZFhHLUMQHbtRgi(Inqbm2KHwMo9PmVUQ7M(tyq6zJ5(efVYSbCxHd5pKbC3GP6LBOPkj7LZVTcqKQZRr306d0ta4JuPOfV2ldr2oCMtvbCuoyw1XTAu3yEkT6d0wSgWkxSieWHhuKqF3L2UCUiV3shOqu0FicxPaHqTTEwzQQ6S8gMWJuPI2FoH02HRsrIKgDiFfV8flGi)gpY5hYlPx3ZK3LORd03l9tWVRD1aolDaWBpFY0tAtmUS2lNnY8CVhrI3OaJtspFJEZrlZtsV0U4jqmf657ttiwtmgiUX8ZFZAOKW3sVpvPTG1GwqH712J1ElLTtvm18mOAG84zhS(vKbHte2eZkM9EoWzPBsB8UPdMNYDbjtdWpkFtrp41qgwMVl6dbGixVXZN614BI1Flq7e)jGIrHRGiUdHc5x4BFl2hvVf2ycJxavAxwRq)u8NErz9dn(tcUe0jTLSV80xzSJO7BV40FQYgM26NKTkTLOJHnH4yJdlJYY2q26NAwZsBc7s3uT8SMEJIN1YpJzT1K4tAJpnVA1(mIRFVcT68Xh1BZz7wIYRk0GZt72Qy56NDWjsJGQhLFQ0LCceFK6L)(OxWPY3cuqgrY)2doS(TKgnozxND6rsPz7h(E9SJ5XrgjvpYoYCwch3ftuxvgYntDHiyO9aOizU8nHCT9Zeh31UCS4QNkTHHtgWLmL8kT129Z6wvg1BQckKuEIZo94UTQ(TKrv62(bzRkdP9NGmTZ3oH3E6HD1y2oBe1QYGsh8uVP0BSxlPU5OtmDJD6BqXKe0VxJCwvIvAHIY12jDBP7ZcQp1DL166Q20z4Muu57(jeRfbkTbKOmvSRKQUuz9quzTQnGugsCBN9B9ret7eucl2Iz7wp1LJ1vs7g)RJaxSXFGe4d()NFJeO0(d5NjrgqcbhngrSKmonyNvgbTvAKwd0AlJhrAWY(rn8RFN)rnyq8l0obrO9QBIrR6AGrY591M0yIQ7u4JERzAzSTmTebZE7R7(4J7TJKpGyTB)drNa2a74FIbgoggZG86UsK(nWn5zclQug9IkIhTD)8amj0skR5vR38ld7kRteA7lFpiLhj9(wuKAG35eOo517JTn4uQVt6IJP(nvlDsAzrtx4HgJwL02hnbQq3GmSZ0(oOVZ893P4ofTdqK90qtf09gEEVp(BJxqzViS7C)aduuPTMkXwm0n0wL3j0K4jv4OTlt8rxtpRH3se4728BrQVBgHBMEZqHTBdUJxOxV12n526KIMulM0XA3pL26eUCL8yu)KyC9MeJRI)0SZyJe19l)dPBALXSDwV0Kh4sg5CMGKwjdz1Ln1zLygMggDlf7Gt6AMCktygPMYooUKDOojzsaYn65ZuQFvBJfhESIjRY4MnVB9bcRCYnpC5w6dw2mnvNWRcfnni5wvme5el4dpXmBuNJRcBmnU4wvmQyv2ik1)jmpxQ(Z)ahPBMgjfI6UcMLkbFA1siq)R6AOsZV)W)nX1gHBLUg3MzUAMx7w4hsXAlgq6VwCaPMf0NiqAP1(oz6PMfSgIJU1EfnKF8r9zC2Ueo0m82nKdY2oikBQj66IfBu7At6ezzZ4SeVnTXLMIr)ThDsD6LeydnEYMMjynLNKIFrDwNjS(z8gUJ7)73l5UXUk(CEp3vqh5X3sqWn(TzpTJ8FhEH2ZFaAA)1pQao(IVN65PDdXM)d9Lq)PQpoUQ26SvVq5LBsHVW4OuyG3L9YLBQ0BPAUIXqLtc2YE5w2SLErU5W08x678cundCjnh8X53yTJFjBR0BPX4)3d]] )
+
+    -- Pet targeting debug command: /hpetdebug
+    SLASH_HEKILIPETDEBUG1 = "/hpetdebug"
+    SlashCmdList.HEKILIPETDEBUG = function( msg )
+        if not Hekili then
+            print( "Hekili not loaded." )
+            return
+        end
+
+        print( "=== HEKILI PET TARGETING DIAGNOSTICS ===" )
+
+        -- Check if pet-based detection is available for this class
+        local canUse = Hekili:CanUsePetBasedTargetDetection()
+        print( "Pet detection available for class: " .. tostring(canUse) )
+
+        if canUse then
+            -- Check pet status
+            local petExists = UnitExists( "pet" )
+            local petAlive = not UnitIsDead( "pet" )
+            print( "Pet exists: " .. tostring(petExists) )
+            print( "Pet alive: " .. tostring(petAlive) )
+
+            if petExists and petAlive then
+                -- Check setup status
+                local hasSpell = Hekili:HasPetBasedTargetSpell()
+                print( "Pet spell configured: " .. tostring(hasSpell) )
+
+                if hasSpell then
+                    local status = Hekili:GetPetAbilityDetectionStatus()
+                    print( "Detection status: " .. status )
+
+                    -- Check if ready
+                    local ready, reason = Hekili:PetBasedTargetDetectionIsReady()
+                    print( "Detection ready: " .. tostring(ready) )
+                    if not ready then
+                        print( "Reason: " .. reason )
+                    else
+                        print( "Pet-based target detection is working!" )
+                    end
+                else
+                    print( "No pet ability configured. Setup will be attempted automatically." )
+                    Hekili:SetupPetBasedTargetDetection()
+                    local newStatus = Hekili:GetPetAbilityDetectionStatus()
+                    print( "After setup: " .. newStatus )
+                end
+            else
+                if not petExists then
+                    print( "ERROR: No pet summoned. Please summon your pet." )
+                else
+                    print( "ERROR: Pet is dead. Please revive your pet." )
+                end
+            end
+        else
+            print( "Pet-based detection not available for Hunters." )
+        end
+
+        -- Check nameplate settings
+        local nameplatesEnabled = GetCVar( "nameplateShowEnemies" ) == "1"
+        print( "Enemy nameplates enabled: " .. tostring(nameplatesEnabled) )
+
+        if not nameplatesEnabled then
+            print( "WARNING: Enemy nameplates are disabled. Enable them for better target detection." )
+        end
+
+        print( "=== END DIAGNOSTICS ===" )
+    end
