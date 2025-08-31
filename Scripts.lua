@@ -386,6 +386,10 @@ local function SimToLua( str, modifier )
     -- Condense bracketed expressions.
     str = str:gsub("%b[]", space_killer)
 
+    -- Global shorthand: some APLs use 'remaining_time' as fight duration shorthand.
+    -- Replace any standalone token occurrences (including within functions) with fight_remains.
+    str = str:gsub("%f[%w_]remaining_time%f[^%w_]", "fight_remains")
+
     return HandleLanguageIncompatibilities( str )
 end
 scripts.SimToLua = SimToLua
@@ -560,7 +564,15 @@ do
     -- MoP Demo: tolerate bare 'demonic_fury' tokens from imported APLs by mapping
     -- them to a numeric value even if the demo resource isn't fully initialized yet.
     -- Prefer state.demonic_fury.current if available, else use the demonic_fury buff stack, else 0.
-    { "^demonic_fury$", "( (demonic_fury and demonic_fury.current) or buff.demonic_fury.stack or 0 )" }
+    { "^demonic_fury$", "( (demonic_fury and demonic_fury.current) or buff.demonic_fury.stack or 0 )" },
+
+    -- MoP Warlock: tolerate bare 'soul_shards' and 'burning_embers' tokens (some APLs expect numeric).
+    { "^soul_shards$", "( (soul_shards and soul_shards.current) or 0 )" },
+    { "^burning_embers$", "( (burning_embers and burning_embers.current) or 0 )" },
+    { "^burning_embers\\.deficit$", "( (burning_embers and burning_embers.max - burning_embers.current) or 0 )" },
+
+    -- Some APLs use 'remaining_time' as fight_remaining shorthand.
+    { "^remaining_time$", "fight_remains" }
     }
 
 

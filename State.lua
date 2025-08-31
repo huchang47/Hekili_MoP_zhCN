@@ -5964,8 +5964,8 @@ do
 				return remains > 0 and t.v1 * t.count or 0
 			end
 
-			local duration = remains > 0 and (expires - applied) or aura.duration or 30
-			local apply_duration = aura.duration or duration
+			local duration = remains > 0 and (expires - applied) or (aura and aura.duration) or 30
+			local apply_duration = (aura and aura.duration) or duration
 
 			if k == "duration" then
 				return duration
@@ -5985,7 +5985,7 @@ do
 				return t.pmultiplier
 			end
 
-			local tick_time = aura.tick_time or (3 * state.haste)
+			local tick_time = (aura and aura.tick_time) or (3 * state.haste)
 			if k == "tick_time" then
 				return tick_time
 			end

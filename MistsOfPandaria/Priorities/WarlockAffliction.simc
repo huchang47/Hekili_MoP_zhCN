@@ -6,11 +6,10 @@ actions.precombat+=/snapshot_stats
 actions.precombat+=/grimoire_of_sacrifice,if=talent.grimoire_of_sacrifice.enabled
 actions.precombat+=/soulburn,if=time=0&talent.soulburn.enabled
 actions.precombat+=/haunt,if=time=0
-actions.precombat+=/potion,name=jade_serpent_potion
+
 
 ## Default
 actions=use_item,name=trinket1,if=cooldown.dark_soul.remains<5
-actions+=/potion,name=jade_serpent_potion,if=buff.dark_soul.up
 actions+=/berserking,if=buff.dark_soul.up
 actions+=/blood_fury,if=buff.dark_soul.up
 actions+=/dark_soul,if=!talent.archimondes_vengeance.enabled|cooldown.archimondes_vengeance.remains>15

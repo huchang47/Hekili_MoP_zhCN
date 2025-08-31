@@ -80,10 +80,7 @@ spec:RegisterStateExpr( "tick_time", function()
     return 0
 end )
 
--- Alias numeric soul_shards for APLs that expect a number and ensure key exists early.
-spec:RegisterStateExpr( "soul_shards", function()
-    return ( state.soul_shards and state.soul_shards.current ) or 0
-end )
+-- (Do not alias soul_shards; let the resource table exist at state.soul_shards for APL access.)
 
 -- Pet management system for Affliction Warlock
 local function summon_demon(demon_type)
@@ -524,6 +521,7 @@ spec:RegisterAuras( {
         duration = 18,
         tick_time = 3,
         max_stack = 1,
+        debuff = true,
         pandemic = true,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 146739 )
@@ -552,6 +550,7 @@ spec:RegisterAuras( {
         duration = 24,
         tick_time = 2,
         max_stack = 10,
+        debuff = true,
         pandemic = true,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 980 )
@@ -580,6 +579,7 @@ spec:RegisterAuras( {
         duration = 14,
         tick_time = 2,
         max_stack = 1,
+        debuff = true,
         pandemic = true,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 30108 )
@@ -607,12 +607,14 @@ spec:RegisterAuras( {
         id = 48181,
         duration = 8,
         max_stack = 1,
+        debuff = true,
     },
     
     curse_of_elements = {
         id = 1490,
         duration = 300,
         max_stack = 1,
+        debuff = true,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 1490 )
             
@@ -639,6 +641,7 @@ spec:RegisterAuras( {
         duration = 18,
         tick_time = 3,
         max_stack = 1,
+        debuff = true,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 27243 )
             
@@ -692,6 +695,7 @@ spec:RegisterAuras( {
         duration = 3,
         tick_time = 1,
         max_stack = 1,
+        debuff = true,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 103103 )
             
@@ -718,6 +722,7 @@ spec:RegisterAuras( {
         duration = 6,
         tick_time = 1,
         max_stack = 1,
+        debuff = true,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 1120 )
             
@@ -883,6 +888,7 @@ spec:RegisterAuras( {
         duration = 5,
         tick_time = 1,
         max_stack = 1,
+        debuff = true,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = GetTargetDebuffByID( 689 )
             
@@ -1534,17 +1540,10 @@ spec:RegisterAbilities( {
 spec:RegisterStateExpr( "soul_shards_deficit", function() return state.soul_shards and ( state.soul_shards.max - state.soul_shards.current ) or 0 end )
 spec:RegisterStateExpr( "current_soul_shards", function() return state.soul_shards and state.soul_shards.current or 0 end )
 
--- Minimal safety shims for malformed imports that may reference unit "focus" or bare ticking/remains.
--- These prevent compiler errors without changing behavior.
-spec:RegisterStateTable( "focus", setmetatable({ current = 0 }, { __index = function() return 0 end }) )
-spec:RegisterStateExpr( "ticking", function() return 0 end )
-spec:RegisterStateExpr( "remains", function() return 0 end )
+-- Rely on the resource system to create `state.soul_shards`; avoid shadow proxy tables that can mask initialization.
 
--- Movement shim used by some imported APLs
-spec:RegisterStateExpr( "movement", function()
-    -- Provide a minimal structure with remains for conditions like movement.remains>0
-    return setmetatable({ remains = 0 }, { __index = function(_, k) if k == "remains" then return 0 end return 0 end })
-end )
+-- Provide minimal movement table for APL references like movement.remains
+spec:RegisterStateTable( "movement", setmetatable( { remains = 0 }, { __index = function() return 0 end } ) )
 
 spec:RegisterStateExpr( "nightfall_proc", function()
     return buff.nightfall.up and 1 or 0
@@ -1608,7 +1607,7 @@ spec:RegisterOptions( {
     damage = true,
     damageExpiration = 8,
     
-    potion = "jade_serpent",
+    potion = nil,
     
     package = "Affliction",
 } )

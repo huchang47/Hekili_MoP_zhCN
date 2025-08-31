@@ -20,19 +20,7 @@ local spec = Hekili:NewSpecialization( 267 ) -- Destruction spec ID for MoP
 
 local strformat = string.format
 local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
-local function UA_GetPlayerAuraBySpellID(spellID)
-    for i = 1, 40 do
-        local name, _, count, _, duration, expires, caster, _, _, id = UnitBuff("player", i)
-        if not name then break end
-        if id == spellID then return name, _, count, _, duration, expires, caster end
-    end
-    for i = 1, 40 do
-        local name, _, count, _, duration, expires, caster, _, _, id = UnitDebuff("player", i)
-        if not name then break end
-        if id == spellID then return name, _, count, _, duration, expires, caster end
-    end
-    return nil
-end
+-- Avoid direct global UnitBuff/UnitDebuff scanning helpers (use ns.FindUnitBuffByID / FindUnitDebuffByID instead).
 
 -- Advanced Combat Log Event Tracking for Destruction Warlock
 local destructionCombatLogFrame = CreateFrame("Frame")
@@ -96,7 +84,7 @@ RegisterDestructionCombatLogEvent("SPELL_PERIODIC_DAMAGE", function(timestamp, e
             -- Generate a fractional ember; 10 ticks (30s) ~1 ember. Crits double the tick's contribution.
             local emberGenerated = 0.1
             if critical then emberGenerated = emberGenerated * 2 end
-            if state and state.burning_embers then state.burning_embers.generate(emberGenerated) end
+            if state then state.gain( emberGenerated, "burning_embers" ) end
             if state then state.last_immolate_tick = timestamp or GetTime() end
         end
     end
@@ -261,6 +249,9 @@ spec:RegisterResource( 14, {
         return state.talent.molten_core.enabled and 0.2 or 0 -- 20% bonus from Molten Core
     end,
 } )
+
+-- Ensure burning_embers numeric alias exists for APL conditions like burning_embers>=1
+-- Provide numeric fallbacks via Scripts.lua translator; avoid redefining here to prevent recursion.
 
 -- Comprehensive Tier Set and Gear Registration
 -- T14 - Curse of the Elements (Raid Finder/Normal/Heroic)
@@ -914,7 +905,7 @@ spec:RegisterAbilities( {
         
         handler = function()
             -- Generate Burning Embers
-            if state.burning_embers and state.burning_embers.generate then state.burning_embers.generate( 0.1 ) end -- 0.1 fragment per cast
+            gain( 0.1, "burning_embers" ) -- 0.1 fragment per cast
             
             -- Consume Backdraft
             if buff.backdraft.up then
@@ -970,7 +961,7 @@ spec:RegisterAbilities( {
             buff.backdraft.stack = 3
             
             -- Generate Burning Embers
-            if state.burning_embers and state.burning_embers.generate then state.burning_embers.generate( 0.1 ) end
+            gain( 0.1, "burning_embers" )
             
             -- Remove Immolate if not using the glyph
             if not glyph.conflagrate.enabled then
@@ -1089,7 +1080,7 @@ spec:RegisterAbilities( {
             end
             
             -- Generate Burning Embers
-            if state.burning_embers and state.burning_embers.generate then state.burning_embers.generate( 0.1 ) end
+            gain( 0.1, "burning_embers" )
         end,
     },
     
@@ -1139,7 +1130,7 @@ spec:RegisterAbilities( {
         toggle = "cooldowns",
         
         startsCombat = false,
-        texture = 538042,
+        texture = 463284,
         
         handler = function()
             applyBuff( "dark_soul_instability" )
@@ -1164,8 +1155,8 @@ spec:RegisterAbilities( {
         end,
     },
     
-    summon_doomguard = {
-        id = 18540,
+    summon_terrorguard = {
+        id = 112927,
         cast = 0,
         cooldown = 600,
         gcd = "spell",
@@ -1176,10 +1167,10 @@ spec:RegisterAbilities( {
         spendType = "mana",
         
         startsCombat = false,
-        texture = 603013,
+        texture = 615098,
         
         handler = function()
-            -- Summon Doomguard for 1 minute
+            -- Summon Terrorguard for 1 minute (MoP Destruction)
         end,
     },
     
@@ -1332,9 +1323,7 @@ spec:RegisterAbilities( {
     },
 } )
 
--- State Expressions for Destruction
-spec:RegisterStateExpr( "burning_embers_deficit", function() return state.burning_embers and ( state.burning_embers.max - state.burning_embers.current ) or 0 end )
-spec:RegisterStateExpr( "current_burning_embers", function() return state.burning_embers and state.burning_embers.current or 0 end )
+-- State Expressions for Destruction (removed conflicting burning_embers expressions)
 
 spec:RegisterStateExpr( "backlash_proc", function()
     return buff.backlash.up and 1 or 0
@@ -1376,6 +1365,9 @@ spec:RegisterStateExpr( "last_ability", function() return rawget(state, "last_ab
 spec:RegisterStateTable( "last_cast_time", setmetatable( {}, { __index = function() return 0 end } ) )
 spec:RegisterStateExpr( "tick_time", function() return 0 end )
 
+-- Minimal movement table to satisfy APL references like movement.remains
+spec:RegisterStateTable( "movement", setmetatable( { remains = 0 }, { __index = function() return 0 end } ) )
+
 -- Some imports reference spell.dark_soul.*; provide minimal structure.
 spec:RegisterStateTable( "spell", setmetatable({
     dark_soul = setmetatable({
@@ -1388,16 +1380,6 @@ spec:RegisterStateTable( "spell", setmetatable({
     end }),
 }, { __index = function() return setmetatable({}, { __index = function() return 0 end }) end }) )
 
--- State expression to mirror WoWSims APL expectations for embers
-spec:RegisterStateExpr( "burning_embers", function()
-    local be = state.burning_embers and state.burning_embers.current or 0
-    return be
-end )
-spec:RegisterStateExpr( "burning_embers_deficit", function()
-    local max = state.burning_embers and state.burning_embers.max or 4
-    local be = state.burning_embers and state.burning_embers.current or 0
-    return max - be
-end )
 
 -- Range
 spec:RegisterRanges( "incinerate", "immolate", "conflagrate" )
@@ -1422,6 +1404,6 @@ spec:RegisterOptions( {
 } )
 
 -- Default pack for MoP Destruction Warlock
-spec:RegisterPack( "Destruction", 20250811, [[Hekili:TE17VTjst4)wQQusJUCCgsCs6vBl1(2pCnQxvLOv3hEvbwdlMvgy52DjU5ue)TFZS8RfBijUx)qITHN5zMD(5oE2EFXZnIOOEFYzMZ8z3yBBzF5Szox55QUVG65wqc3s2aFjNKb)xrLkbhF89PCsekUKxkcHx55UUKLQ(qU36X58saBbneE8vx75MWIIO1yPYqp3VKWKvb4FKQGgTwfWJHFhQy88QGuMubVoMlQc(d6wwkZYZv)q9PGgtktvWx)K(urZjRtPrEVZZnuWuubJ45IuDh1NMtZyuGRvvb21pLNdMe5ooyjkIydv5564PaBDpUQ)QFg)ow(MHKdpJMrZvwcAgHLxt)MWiRmY37vsmn1pov7mBibSxqrxmPr3r3IQaflCRVILbUMhEOk4f1pbzPtbSSmEk6(bsVCssdtWtjq6YQaNAYwxghBTg88rcsSYsQGVQvQtp5H8CW43iA4F(K8x7eTsOKuvIvrOQMPzvbNGAsKd2SpnBnvG(PLdIdYeseFhcc1XvtQJxnotDhNruYiQ3cYCyHSAdCM18QGZ0Og5eScpb92zerS1hs)trZ869mZopwcHl9xZHutDMUGvu)I)h(IQG3bVPkOucP7)oK4lyC48X(hiadXCwe857b1uf4c65COy4oolQkiKivWrOkyhtLaK0g1aZMJSqLuXDGSXaokuV8H8qwofdBsltxOoM3DoSklMo(8OoLgXgKabXqDa8MjdGte9MGQXCPa9V(zs)HX5Jtp2ZEQKDSU0xX9JyuTsSN)eEZJr7hrtnG)lNuZgfZXmb1NKh5VwWYKkEUUM2E)wEpUMU45LXmW3aPm30BgcO7Mpp2hnhTbmDRW9CyLfgT96YW1CO78nwxldIrCZnXzWXayqPlusfYZwtgDaZG66)Iis5HBHI53JdllBME9Q3grkuuO2nwWZGcx(oj41Rc(t(NRcE7N)4z71yHLRGHjDZGkOk)6rYSmJJTSeA3N7xGdSgCY2Zj(OdduKuCU1ginGJ5eqWqsGxd1luRwj6u5OWEIPb6jwqoXSXNtDLzuOGx)5WiaC(2r0jzs8Ycy)XScUq1CHGtBM)FAvGG(3LG5bEAjhvlPuXZiAxputLdt9SQU9JqGgsrHO0xZLLfitiG27ACQ(UaN2b8Ijb2Em6XE5KynYd7HpFs49Zb7rF1KO76I3d(6PTKUMl9OV5Oq)6JcT9SJd(0bMdBAziMZKIz2KXqGhjU21lWa(rgATNo2oKED(CmpnLVtpvNukiqRHDubfVBakjdKsHWAPaV5l24v1IlNRlgkZhGokcbd3hNSMiHRyCBvWVI)Ujzb(9TJun11U7Nv9KrlTE)Z0HR(2ApN6Qr7i9CQWmlEr)aU(rHGhZsP17IKXKsDePr6g)ZgyeOGfc(yblFlvbEGa4swQAH0(oytGiuxQec8y6DuX9DxV7EmafMwgHdrPWn4OI2aZ))RskYent(n46E7syHjMOj533R1Myo97fP4nBs751mfOvPVbwNs0QMVutbeY(gsAK5JCm08owAQXjQHsvluT3q)O8sC0VoljLRa)5hYAD3o7Tdh8sOBFPkHl8CDZkJfST4ewTF3Z9Lvb)WZqRU9LG4FUn7T62AflT6sO)LL)MrU44a6Z(oVDS7sO(ycW5Kczcx5dlmbHKrXmAc65S4LpNjVJtzBQRMfy86YzJJREAkMEJEM3xpLSdkaqpP786RPT0bPdFx)18wzBIUB91ZR3EDPnkX(R(Ucw71uktJTbYIUvzF4Hx0SeRPignurPA2xDPZdpm2EQlCmLTFWzTpEVDww4m7KHxyD1YbhYUUJO4VAFOAtypPpz8Dnwa7zC2jhyaRGfMUfIg)aRa(MFkRaoWr3n)fpThSq4HEQrppNmYUmpMw2ZL(FrCtN9XXZH7MSWE(ih4NG0dVsYivrlV8aIhKZAEbLXe)IPdeg2)QBgu21fY7cTMlpnr524mOVcU3)(]] )
+spec:RegisterPack( "Destruction", 20250831, [[Hekili:LIvBVnoUr4FlhoGGeCzvTLxhN9o7a0EBr7gGUTakT7hkojrlrBZlsIcKujRbm0V9odPE1sYsU3h2nYsCEMHZBpdP7C3xCDcjkQ7xTNzVC2JlMBzVy2Izp46OoMsDDsjbVs2dpKqIH))ZuPsKfOy8e8BhJ4KqedjpteaF31zBgls9Le3TDb22EP9cyTP0a41pSY15almKAwlvg468YbMm3h)hj3Vq15(8DWV16m3pIjvWN3Xf5()D6RSiMLRJ(LOzWtPjub80x17mAczBen09V46eiykQGrCD(Hq62SD7SyXX8iWcTYsDDifBPYx6QalCqicoqe7PGzSj33Uw4aEYUiYEHrELRtm)n6igtUVIertuwWw53juWBi9cYssyj7TkLOsb7OrEGgIhX8UcezjbmWJvzXbrusdBwH7t41n2KhiVXdAQ4lAkVrG)aV2I(DAqMI6LEGiP1Ojpqc5VVntKG4SyqC0rSTqcrOGStzjvWJ5(RZ9xK7FtUpcaS)8OXBPciU8eeyM3iWCGWLEB5r4E8RF8mT0j23qVcAmHLaiUgquXcE1tXW6GGJGNYZ4EKOZcWDjIBF5cTDwp0Czn8)Twf4ZLQ(sD6Xyp3uCIjF3R9BDwmHn1fdKTKzFqOfOKC)tNY9B9Lvwllciq8kKiE1d6menyj2Wb8RlX58qAZeNEYmQnXHtPUfCncwYRu9NuwKKJwSGqpbLeE0SZ7SjZ9VBOKULxLfApIfoKwEyIAXkKUJfWuA0M1mMDvQB1fAbHjEwyELNI7fYOAKMVC4Y1)pTHh)J1L(RFAAP8nQ97lrE(SPv8pF(eR(Haejl6ITacirrEMF4HmGgEqpdrDz9JSVY6jHahQYVCnk6omENLy7kblqP7)ucVilzy0nm1xS2fOpHSKPHNMQ9I1zOKVr9a1gZ6jR4sUIcwXlwGDo8pnD4jCAFvttswPYKVKkOb84TKEZyopKHLBwRw2FIiojMGLA(W3iIiEWR)CUFJj)Y9)qU)34FdQaKgTxNT1J25qZFjofrP2kxn(uugTQBXbkjsDWknW0xYEMEPfB028a9KupUA6PFn2gVtBEKTQwXbHsptW1SxXO1OZ0bDlAN6cDs84782XeJq02lDqnqiaEKKqVTcW7R4j9YJ2Pf10Msy5eA)vwXoEVULtSvNUrZf9OaxCaNhbe(jnIFfmXaRXo2(dkVwgSnqHENj(csdh5ikQHOvudqv6mneNVIsMRe63vEMLx0QB1qQC1Qw8)vyD54D1GonYZQWatbOcDQ00MwQxqI48qVDzIJJ0ULKqQk(ECwVm1Wx(ynYerajbDtcbCGJl3(9IMyeBhvBM91JTCrhG0Ezlc(YCc5XesQK6jtHs59Ygzg9Qvzexvc3fNIPNG8dn43Kzq5vIxiNhVpJicDl6f)g4QWfuC0xGZ35DI2pklpIBQGVJfrnN1nMjLWhHKWS0uUqvC829idjlOQbL0k3p3)lkJq6(9X0KqAiSIde41uqXhrSzCylapbfDrzHyEoLPoqf)C(Z6E3)3)TKIirJL)295(VFGfCO5QHMG1An3pHJG)90iCKXOACdXNqLtRv6VahxxuQMxmqaSn)gcAyZxz3qZVZIIASJkGuvUuT3q)QKmmpevmgdTYF(lXOddFXNo7ocGpcrQm1bUW1XjoBNG9kstQ97Uo)iWGng3w(Z)iSS)LGMMb23Z)I(SoWCgG2(DsiyoqTjmgdyHPCJSzs8clE2yisRks5FAZFQUb49SDBW2lB(ascd(kTA(SzGVkHbroN4)EKqAtfx74lf7S2CvNnavXI0tIDVz(TnZlTU1BwoQOOZaxVzqTXThZCuOeMsXYPL2ypUSaTBxbFAcckvLU4)thpNvLZeeV8zJyTM34EE6gy2I71dsSPZ4kRTNnfiR7b1gVoZLC6upZKuUl(N)TF9Zn2bymg0uL4Ot62HylVPvhT1BSTV70PBhGD8Pz3mbwripz15WUA1DDmWAQm0c7PVCxjQ4TMQeT5J0zMfCARFC2nT5Yw)XoIxXcnv9LbCoaxr89y3OnAcfu0lZlDZuqUGAb4HeCHMCbb(m38dZRYj01Wnqr)BSRtXaGO0)qXuP9SSgdXP3aMeaSS0G))ak0JXoDvIIL(GGv3iPrbJDXJDK)SUIJlVXE(vDJey0oB8(t1tV2iJZ0MbqxFxL3BwqJEm1lO(wKAfYBv73Jy13abkwF3zX6fNLU90M59auv4P1G4MMWvH5QzV7ZsQdC9bFL3T0X9N5)vWRT4N6ZTbDyXg9noPs)znM119GigFr7nT95In4oUZXr2SCmVGbXEDbfkRZ(hohYECSRx06OE9s11zBlgZ2AdyZfdf4Nov3Q0A5nDpxAByUUSuTiNNHEwQ4ndKZE7Wx55PtDmZ7UkLApGsVcqkV2Y1Zk9AxhADVvY1Zx2TqDIqpypZXZbgkHP3Czz7Xh1NXW9)9d]] )
 
 -- Register pack selector for Destruction
