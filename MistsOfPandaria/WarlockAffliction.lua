@@ -126,10 +126,15 @@ local function get_dot_percent_increase(dot)
     return math.floor((current - last) / last * 100)
 end
 
--- Register state expressions for percent_increase
+-- Register state expressions for percent_increase with safe aura access
 for _, dot in ipairs({"agony", "corruption", "unstable_affliction"}) do
     spec:RegisterStateExpr("dot." .. dot .. ".percent_increase", function()
-        return get_dot_percent_increase(dot)
+        -- Safe access to avoid nil aura errors
+        local aura_table = state.debuff and state.debuff[dot]
+        if aura_table and aura_table.up then
+            return get_dot_percent_increase(dot)
+        end
+        return 0
     end)
 end
 
@@ -144,9 +149,15 @@ spec:RegisterStateFunction("dotPercentIncrease", function(spellId)
         dot = "unstable_affliction"
     end
     if not dot then return 0 end
-    local v = get_dot_percent_increase(dot)
-    if v == nil then return 0 end
-    return v
+
+    -- Safe access to avoid nil aura errors
+    local aura_table = state.debuff and state.debuff[dot]
+    if aura_table and aura_table.up then
+        local v = get_dot_percent_increase(dot)
+        if v == nil then return 0 end
+        return v
+    end
+    return 0
 end)
 
 -- Hook DoT application to update snapshot
@@ -1458,14 +1469,14 @@ spec:RegisterAbilities( {
         texture = 463286,
         
         usable = function()
-            if buff.soulburn.up then return false, "soulburn active" end
+            if buff.soul_burn.up then return false, "soul burn active" end
             local shards = ( state.soul_shards and state.soul_shards.current ) or 0
             if shards < 1 then return false, "requires 1 soul shard" end
             return true
         end,
 
         handler = function()
-            applyBuff( "soulburn" )
+            applyBuff( "soul_burn" )
         end,
     },
     
@@ -1537,8 +1548,22 @@ spec:RegisterAbilities( {
 
 -- State Expressions for Affliction
 -- Avoid naming collision with the soul_shards resource table; rely on resource access or the alias below.
-spec:RegisterStateExpr( "soul_shards_deficit", function() return state.soul_shards and ( state.soul_shards.max - state.soul_shards.current ) or 0 end )
-spec:RegisterStateExpr( "current_soul_shards", function() return state.soul_shards and state.soul_shards.current or 0 end )
+spec:RegisterStateExpr( "soul_shards_deficit", function()
+    local r = class and class.resources and class.resources.soul_shards and class.resources.soul_shards.state
+    if r then
+        local max_val = r.max or 0
+        local cur = r.current or 0
+        return max_val - cur
+    end
+    return 0
+end )
+spec:RegisterStateExpr( "current_soul_shards", function()
+    local r = class and class.resources and class.resources.soul_shards and class.resources.soul_shards.state
+    if r then
+        return r.current or 0
+    end
+    return 0
+end )
 
 -- Rely on the resource system to create `state.soul_shards`; avoid shadow proxy tables that can mask initialization.
 

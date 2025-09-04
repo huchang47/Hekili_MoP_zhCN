@@ -1,32 +1,35 @@
-# Warlock: Destruction - WoWSims
+# Warlock: Destruction - WoWSims Enhanced
 ## Prepull
-; removed jade serpent potion usage
 actions.precombat+=/incinerate,if=time=-1.75
 
 ## Default
 actions+=/call_action_list,name=variables
-actions+=/call_action_list,name=ogcd
+actions+=/call_action_list,name=cooldowns
 actions+=/run_action_list,name=opener,strict=1,if=time<=5
 actions+=/run_action_list,name=move,if=moving
 actions+=/call_action_list,name=cleave,if=active_enemies=2
-actions+=/call_action_list,name=aoe,if=active_enemies>2
+actions+=/call_action_list,name=aoe,if=active_enemies>=3
 actions+=/call_action_list,name=st
+
+## Multidot Immolate (for efficient DoT spreading)
+actions+=/immolate,cycle_targets=1,max_cycle_targets=3,if=should_refresh_immolate&active_enemies>=2
 
 ## Variables
 actions.variables+=/variable,name=execute_phase,op=set,value=target.health.pct<20
 actions.variables+=/variable,name=cds_active,op=set,value=buff.dark_soul.up|trinket.stat.any.up
 
-## OGCDs
-actions.ogcd+=/dark_soul,if=(cooldown.dark_soul.ready&fight_remains<=22)|(spell.dark_soul.charges>0&spell.dark_soul.time_to_next_charge<=57&fight_remains<=77)
-actions.ogcd+=/berserking,if=variable.cds_active
-actions.ogcd+=/blood_fury,if=variable.cds_active
-actions.ogcd+=/arcane_torrent,if=mana.pct<80&burning_embers<4
-actions.ogcd+=/lifeblood,if=variable.cds_active
-actions.ogcd+=/use_item,slot=hands,if=cooldown.synapse_springs.ready&variable.cds_active
-actions.ogcd+=/summon_terrorguard,if=fight_remains<=61
+## Cooldowns
+actions.cooldowns+=/dark_soul,if=should_use_dark_soul
+actions.cooldowns+=/berserking,if=variable.cds_active
+actions.cooldowns+=/blood_fury,if=variable.cds_active
+actions.cooldowns+=/arcane_torrent,if=mana.pct<80
+actions.cooldowns+=/lifeblood,if=variable.cds_active
+actions.cooldowns+=/use_item,slot=hands,if=cooldown.synapse_springs.ready&variable.cds_active
+actions.cooldowns+=/summon_doomguard,if=!talent.grimoire_of_supremacy.enabled&fight_remains<=61
+actions.cooldowns+=/summon_terrorguard,if=talent.grimoire_of_supremacy.enabled&fight_remains<=61
 
 ## Opener
-actions.opener+=/immolate,if=!ticking
+actions.opener+=/immolate,if=should_refresh_immolate
 actions.opener+=/conflagrate,if=charges=2
 
 ## Movement
@@ -34,29 +37,24 @@ actions.move+=/fel_flame,if=!talent.kiljaedens_cunning.enabled
 actions.move+=/incinerate,if=talent.kiljaedens_cunning.enabled
 
 ## Cleave (2 targets)
-actions.cleave+=/havoc,target=2
-actions.cleave+=/shadowburn,if=variable.execute_phase
-actions.cleave+=/chaos_bolt,if=buff.backdraft.stack<3&burning_embers>=1
-actions.cleave+=/immolate,cycle_targets=1,if=remains<=tick_time
+actions.cleave+=/havoc,target=2,if=should_cast_havoc
+actions.cleave+=/shadowburn,if=should_cast_shadowburn
+actions.cleave+=/chaos_bolt,if=should_cast_chaos_bolt
+actions.cleave+=/immolate,cycle_targets=1,if=should_refresh_immolate
 actions.cleave+=/conflagrate
 actions.cleave+=/incinerate
 
 ## AoE (3+ targets)
-actions.aoe+=/rain_of_fire,if=!ticking
-actions.aoe+=/fire_and_brimstone,if=burning_embers>=2
-actions.aoe+=/immolate,cycle_targets=1,max_cycle_targets=5,if=remains<=tick_time
+actions.aoe+=/rain_of_fire,if=should_cast_rain_of_fire
+actions.aoe+=/fire_and_brimstone,if=should_toggle_fnb
+actions.aoe+=/immolate,cycle_targets=1,max_cycle_targets=5,if=should_refresh_immolate
 actions.aoe+=/conflagrate
 actions.aoe+=/incinerate
 
 ## Single Target
-actions.st+=/immolate,cycle_targets=1,max_cycle_targets=3,if=remains<=tick_time
-actions.st+=/immolate,if=remains<=gcd|remains<=7.5&buff.dark_soul.up
-actions.st+=/shadowburn,if=variable.execute_phase
-actions.st+=/chaos_bolt,if=burning_embers>=1&buff.backdraft.stack<3&(trinket.stat.any.icd_ready|buff.dark_soul.up)
-actions.st+=/chaos_bolt,if=burning_embers>=2&buff.backdraft.stack<3
-actions.st+=/chaos_bolt,if=burning_embers.deficit<0.5&buff.backdraft.stack<3
-actions.st+=/chaos_bolt,if=target.time_to_die<15&burning_embers>=1&buff.backdraft.stack<3
+actions.st+=/immolate,if=should_refresh_immolate
+actions.st+=/shadowburn,if=should_cast_shadowburn
+actions.st+=/chaos_bolt,if=should_cast_chaos_bolt
 actions.st+=/conflagrate,if=charges=2
-actions.st+=/immolate,if=remains<=tick_time
 actions.st+=/conflagrate
-actions.st+=/incinerate
+actions.st+=/incinerate,if=should_incinerate

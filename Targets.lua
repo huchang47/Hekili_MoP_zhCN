@@ -907,7 +907,12 @@ do
         if count ~= lastCount or stationary ~= lastStationary then
             lastCount = count
             lastStationary = stationary
-            if Hekili:GetToggleState( "mode" ) == "reactive" then HekiliDisplayAOE:UpdateAlpha() end
+            if Hekili:GetToggleState( "mode" ) == "reactive" then
+                local aoeDisplay = Hekili.DisplayPool and Hekili.DisplayPool["AOE"]
+                if aoeDisplay and aoeDisplay.UpdateAlpha then
+                    aoeDisplay:UpdateAlpha()
+                end
+            end
         end
 
         if details then

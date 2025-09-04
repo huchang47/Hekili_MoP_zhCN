@@ -416,20 +416,20 @@ spec:RegisterAuras( {    -- Core DoT/Debuff Mechanics with Advanced Generate Fun
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID( "target", 348 )
-            
+
             if name and caster == "player" then
                 t.name = name
                 t.count = count > 0 and count or 1
                 t.expires = expirationTime
                 t.applied = expirationTime - duration
                 t.caster = caster
-                
+
                 -- Track pandemic refresh window (30% of duration)
                 t.pandemic_threshold = t.applied + (duration * 0.7)
                 t.can_pandemic = expirationTime <= GetTime() + (duration * 0.3)
                 return
             end
-            
+
             t.count = 0
             t.expires = 0
             t.applied = 0
@@ -438,6 +438,7 @@ spec:RegisterAuras( {    -- Core DoT/Debuff Mechanics with Advanced Generate Fun
             t.can_pandemic = false
         end
     },
+    
     conflagrate = {
         id = 17962,
         duration = 10,
@@ -711,6 +712,13 @@ spec:RegisterAuras( {    -- Core DoT/Debuff Mechanics with Advanced Generate Fun
             return true
         end,
     },
+
+    -- Bloodlust for Dark Soul timing
+    bloodlust = {
+        id = 2825,
+        duration = 40,
+        max_stack = 1,
+    },
     
     -- Utility
     dark_regeneration = {
@@ -888,26 +896,28 @@ spec:RegisterAbilities( {
     -- Core Rotational Abilities
     incinerate = {
         id = 29722,
-        cast = function() 
-            if buff.backdraft.up then 
+        cast = function()
+            if buff.backdraft.up then
                 return (2.5 * haste) * 0.7 -- 30% cast speed increase with Backdraft
             end
-            return 2.5 * haste 
+            return 2.5 * haste
         end,
         cooldown = 0,
         gcd = "spell",
-        
+
         spend = 0.075,
         spendType = "mana",
-        
+
         startsCombat = true,
         texture = 135789,
+
         
+
         handler = function()
             -- Generate Burning Embers
             gain( 0.1, "burning_embers" ) -- 0.1 fragment per cast
-            
-            -- Consume Backdraft
+
+            -- Consume Backdraft (prioritize using it)
             if buff.backdraft.up then
                 if buff.backdraft.stack > 1 then
                     removeStack( "backdraft" )
@@ -923,13 +933,15 @@ spec:RegisterAbilities( {
         cast = function() return 1.5 * haste end,
         cooldown = 0,
         gcd = "spell",
-        
+
         spend = 0.09,
         spendType = "mana",
-        
+
         startsCombat = true,
         texture = 135817,
+
         
+
         handler = function()
             applyDebuff( "target", "immolate" )
             -- Generate Burning Embers over time
@@ -972,23 +984,25 @@ spec:RegisterAbilities( {
     
     chaos_bolt = {
         id = 116858,
-        cast = function() 
-            if buff.backdraft.up then 
+        cast = function()
+            if buff.backdraft.up then
                 return (3 * haste) * 0.7 -- 30% cast speed increase with Backdraft
             end
-            return 3 * haste 
+            return 3 * haste
         end,
         cooldown = 0,
         gcd = "spell",
-        
+
         spend = 1,
         spendType = "burning_embers",
-        
+
         startsCombat = true,
-        texture = 135808,
+        texture = 236291,
+
         
+
         handler = function()
-            -- Consume Backdraft if active
+            -- Consume Backdraft if active (prioritize spending it)
             if buff.backdraft.up then
                 if buff.backdraft.stack > 1 then
                     removeStack( "backdraft" )
@@ -1004,20 +1018,18 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 12,
         gcd = "spell",
-        
+
         spend = 1,
         spendType = "burning_embers",
-        
+
         startsCombat = true,
         texture = 136191,
+
         
-        usable = function()
-            return target.health_pct < 20, "requires target below 20% health"
-        end,
-        
+
         handler = function()
             applyDebuff( "target", "shadowburn" )
-            
+
             -- If target dies with Shadowburn, refund 2 Burning Embers
             -- This is handled separately based on target death events
         end,
@@ -1028,13 +1040,15 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = function() return talent.mannoroths_fury.enabled and 0 or 8 end,
         gcd = "spell",
-        
+
         spend = function() return talent.mannoroths_fury.enabled and 0 or 1 end,
         spendType = "burning_embers",
-        
+
         startsCombat = true,
-        texture = 135804,
+        texture = 136186,
+
         
+
         handler = function()
             applyDebuff( "target", "rain_of_fire" )
         end,
@@ -1048,6 +1062,9 @@ spec:RegisterAbilities( {
         toggle = "cooldowns",
         startsCombat = false,
         texture = 135808,
+
+        
+
         handler = function()
             if buff.fire_and_brimstone.up then
                 removeBuff( "fire_and_brimstone" )
@@ -1062,13 +1079,15 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 1.5,
         gcd = "spell",
-        
+
         spend = 0.06,
         spendType = "mana",
-        
+
         startsCombat = true,
         texture = 236253,
+
         
+
         handler = function()
             -- Extend Immolate by 6 seconds
             if debuff.immolate.up then
@@ -1078,7 +1097,7 @@ spec:RegisterAbilities( {
                     debuff.immolate.expires = query_time + 15
                 end
             end
-            
+
             -- Generate Burning Embers
             gain( 0.1, "burning_embers" )
         end,
@@ -1089,13 +1108,15 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 25,
         gcd = "spell",
-        
+
         spend = 0.06,
         spendType = "mana",
-        
+
         startsCombat = true,
         texture = 460695,
+
         
+
         handler = function()
             applyDebuff( "target", "havoc" )
         end,
@@ -1126,12 +1147,14 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 120,
         gcd = "off",
-        
+
         toggle = "cooldowns",
-        
+
         startsCombat = false,
         texture = 463284,
+
         
+
         handler = function()
             applyBuff( "dark_soul_instability" )
             applyBuff( "dark_soul" )
@@ -1321,6 +1344,25 @@ spec:RegisterAbilities( {
             applyBuff( "grimoire_of_sacrifice" )
         end,
     },
+
+    summon_doomguard = {
+        id = 18540,
+        cast = 0,
+        cooldown = 600,
+        gcd = "spell",
+
+        toggle = "cooldowns",
+
+        spend = 1,
+        spendType = "burning_embers",
+
+        startsCombat = false,
+        texture = 615103,
+
+        handler = function()
+            -- Summon pet using Burning Embers
+        end,
+    },
 } )
 
 -- State Expressions for Destruction (removed conflicting burning_embers expressions)
@@ -1331,6 +1373,23 @@ end )
 
 spec:RegisterStateExpr( "backdraft_charges", function()
     return buff.backdraft.up and buff.backdraft.stack or 0
+end )
+
+-- Enhanced Backdraft management per Icy Veins guide
+spec:RegisterStateExpr( "backdraft_worth_using", function()
+    if not buff.backdraft.up then return false end
+    local stacks = buff.backdraft.stack or 0
+    local time_left = buff.backdraft.expires - GetTime()
+    -- Use Backdraft if you have 2+ stacks or <5 seconds remaining (don't waste)
+    return stacks >= 2 or time_left < 5
+end )
+
+spec:RegisterStateExpr( "backdraft_worth_saving", function()
+    if not buff.backdraft.up then return false end
+    local stacks = buff.backdraft.stack or 0
+    local time_left = buff.backdraft.expires - GetTime()
+    -- Save Backdraft for Chaos Bolt if we have high embers and buffs
+    return stacks >= 1 and time_left > 10 and state.burning_embers.current >= 3.5
 end )
 
 spec:RegisterStateExpr( "molten_core_bonus", function()
@@ -1351,8 +1410,135 @@ spec:RegisterStateExpr( "ember_tap_ready", function()
     return be >= 1 and 1 or 0
 end )
 
+-- Enhanced Ember economy management per Icy Veins guide
+spec:RegisterStateExpr( "should_spend_embers", function()
+    local be = state.burning_embers and state.burning_embers.current or 0
+    -- Spend at 3.5+ embers, especially during high-value buffs
+    return be >= 3.5 or (be >= 1 and buff.dark_soul_instability.up)
+end )
+
+spec:RegisterStateExpr( "embers_capped_soon", function()
+    local be = state.burning_embers and state.burning_embers.current or 0
+    -- Consider capped if we have 9+ embers (max is 10)
+    return be >= 9
+end )
+
+-- Dark Soul timing per guide
+spec:RegisterStateExpr( "dark_soul_timing_good", function()
+    -- Use Dark Soul when trinkets/intellect procs are active or imminent
+    local has_proc = buff.backlash.up or buff.molten_core.up
+    -- Check for Bloodlust using the addon's buff system
+    local bloodlust_active = buff.bloodlust and buff.bloodlust.up or false
+    return has_proc or bloodlust_active or buff.dark_soul_instability.up
+end )
+
+-- AoE detection
+spec:RegisterStateExpr( "should_use_aoe", function()
+    return active_enemies >= 3
+end )
+
+spec:RegisterStateExpr( "optimal_aoe_targets", function()
+    local targets = active_enemies or 1
+    -- Fire and Brimstone optimal at 3+ targets
+    -- Rain of Fire optimal at 4+ targets
+    return targets
+end )
+
 spec:RegisterStateExpr( "spell_power", function()
     return GetSpellBonusDamage(3) -- Fire school
+end )
+
+-- Removed burning_embers state expression to avoid recursion with resource access
+
+-- Centralized decision logic for actions (usable conditions extracted from abilities)
+spec:RegisterStateExpr( "should_incinerate", function()
+    if not buff.backdraft.up then return true end
+    local stacks = buff.backdraft.stack or 0
+    local time_left = (buff.backdraft.expires or GetTime()) - GetTime()
+    local be = state.burning_embers and state.burning_embers.current or 0
+    if be >= 3.5 and buff.dark_soul_instability.up and stacks == 1 then
+        return false
+    end
+    return stacks >= 2 or time_left < 5
+end )
+
+spec:RegisterStateExpr( "should_refresh_immolate", function()
+    if not debuff.immolate.up then return true end
+    local remaining = (debuff.immolate.expires or GetTime()) - GetTime()
+    local tick_freq = 3 -- Immolate tick frequency
+    local cast_time = 1.5 -- Immolate cast time (can be reduced by haste)
+
+    -- Always refresh if remaining time <= tick frequency
+    if remaining <= tick_freq then return true end
+
+    -- Refresh early if we can snapshot Dark Soul
+    if buff.dark_soul_instability.up then
+        local ds_remaining = (buff.dark_soul_instability.expires or GetTime()) - GetTime()
+        if cast_time < ds_remaining and remaining <= 7.5 then
+            return true
+        end
+    end
+
+    -- Standard pandemic refresh (70% of duration = 10.5s, but WoWSims uses 7.5s)
+    return remaining <= 7.5
+end )
+
+spec:RegisterStateExpr( "should_cast_chaos_bolt", function()
+    local be = state.burning_embers and state.burning_embers.current or 0
+    local bd = buff.backdraft.up and (buff.backdraft.stack or 0) or 0
+    return be >= 3.5 and bd <= 2
+end )
+
+spec:RegisterStateExpr( "should_cast_shadowburn", function()
+    local be = state.burning_embers and state.burning_embers.current or 0
+    local bd = buff.backdraft.up and (buff.backdraft.stack or 0) or 0
+    if target.health_pct < 20 and be >= 3.5 and bd <= 2 then return true end
+    if target.health_pct < 35 and be >= 1 then return true end
+    return false
+end )
+
+spec:RegisterStateExpr( "should_cast_rain_of_fire", function()
+    local targets = active_enemies or 1
+    local be = state.burning_embers and state.burning_embers.current or 0
+    return targets >= 4 or (targets >= 6 and be >= 1)
+end )
+
+spec:RegisterStateExpr( "should_toggle_fnb", function()
+    local targets = active_enemies or 1
+    local be = state.burning_embers and state.burning_embers.current or 0
+    return targets >= 3 or (targets >= 6 and be < 1)
+end )
+
+spec:RegisterStateExpr( "should_cast_fel_flame", function()
+    if talent.kiljaedens_cunning.enabled then return false end
+    -- Use registered movement table (dynamically created by RegisterStateTable)
+    local movement_remains = rawget(_G, "movement") and rawget(_G, "movement").remains or 0
+    return movement_remains > 0
+end )
+
+spec:RegisterStateExpr( "should_cast_havoc", function()
+    local targets = active_enemies or 1
+    local be = state.burning_embers and state.burning_embers.current or 0
+    return (targets >= 2 and targets <= 5) or (be >= 1 and targets >= 2)
+end )
+
+spec:RegisterStateExpr( "should_use_dark_soul", function()
+    -- High priority: Major procs (Dark Soul, trinket procs)
+    if buff.dark_soul_instability.up then return true end
+
+    -- Medium priority: Strong procs for snapshotting
+    local has_proc = buff.backlash.up or buff.molten_core.up
+    if has_proc then return true end
+
+    -- Burn phase: High ember count for spending
+    local be = state.burning_embers and state.burning_embers.current or 0
+    if be >= 3.5 then return true end
+
+    -- Late fight: Use available charges
+    -- Note: We don't have direct access to fight_remaining, but we can use time-based logic
+    -- This would need to be enhanced with target time_to_die tracking
+
+    return false
 end )
 
 -- Safety shims similar to Affliction to avoid loader N/A states
@@ -1403,7 +1589,8 @@ spec:RegisterOptions( {
     package = "Destruction",
 } )
 
--- Default pack for MoP Destruction Warlock
-spec:RegisterPack( "Destruction", 20250831, [[Hekili:LIvBVnoUr4FlhoGGeCzvTLxhN9o7a0EBr7gGUTakT7hkojrlrBZlsIcKujRbm0V9odPE1sYsU3h2nYsCEMHZBpdP7C3xCDcjkQ7xTNzVC2JlMBzVy2Izp46OoMsDDsjbVs2dpKqIH))ZuPsKfOy8e8BhJ4KqedjpteaF31zBgls9Le3TDb22EP9cyTP0a41pSY15almKAwlvg468YbMm3h)hj3Vq15(8DWV16m3pIjvWN3Xf5()D6RSiMLRJ(LOzWtPjub80x17mAczBen09V46eiykQGrCD(Hq62SD7SyXX8iWcTYsDDifBPYx6QalCqicoqe7PGzSj33Uw4aEYUiYEHrELRtm)n6igtUVIertuwWw53juWBi9cYssyj7TkLOsb7OrEGgIhX8UcezjbmWJvzXbrusdBwH7t41n2KhiVXdAQ4lAkVrG)aV2I(DAqMI6LEGiP1Ojpqc5VVntKG4SyqC0rSTqcrOGStzjvWJ5(RZ9xK7FtUpcaS)8OXBPciU8eeyM3iWCGWLEB5r4E8RF8mT0j23qVcAmHLaiUgquXcE1tXW6GGJGNYZ4EKOZcWDjIBF5cTDwp0Czn8)Twf4ZLQ(sD6Xyp3uCIjF3R9BDwmHn1fdKTKzFqOfOKC)tNY9B9Lvwllciq8kKiE1d6menyj2Wb8RlX58qAZeNEYmQnXHtPUfCncwYRu9NuwKKJwSGqpbLeE0SZ7SjZ9VBOKULxLfApIfoKwEyIAXkKUJfWuA0M1mMDvQB1fAbHjEwyELNI7fYOAKMVC4Y1)pTHh)J1L(RFAAP8nQ97lrE(SPv8pF(eR(Haejl6ITacirrEMF4HmGgEqpdrDz9JSVY6jHahQYVCnk6omENLy7kblqP7)ucVilzy0nm1xS2fOpHSKPHNMQ9I1zOKVr9a1gZ6jR4sUIcwXlwGDo8pnD4jCAFvttswPYKVKkOb84TKEZyopKHLBwRw2FIiojMGLA(W3iIiEWR)CUFJj)Y9)qU)34FdQaKgTxNT1J25qZFjofrP2kxn(uugTQBXbkjsDWknW0xYEMEPfB028a9KupUA6PFn2gVtBEKTQwXbHsptW1SxXO1OZ0bDlAN6cDs84782XeJq02lDqnqiaEKKqVTcW7R4j9YJ2Pf10Msy5eA)vwXoEVULtSvNUrZf9OaxCaNhbe(jnIFfmXaRXo2(dkVwgSnqHENj(csdh5ikQHOvudqv6mneNVIsMRe63vEMLx0QB1qQC1Qw8)vyD54D1GonYZQWatbOcDQ00MwQxqI48qVDzIJJ0ULKqQk(ECwVm1Wx(ynYerajbDtcbCGJl3(9IMyeBhvBM91JTCrhG0Ezlc(YCc5XesQK6jtHs59Ygzg9Qvzexvc3fNIPNG8dn43Kzq5vIxiNhVpJicDl6f)g4QWfuC0xGZ35DI2pklpIBQGVJfrnN1nMjLWhHKWS0uUqvC829idjlOQbL0k3p3)lkJq6(9X0KqAiSIde41uqXhrSzCylapbfDrzHyEoLPoqf)C(Z6E3)3)TKIirJL)295(VFGfCO5QHMG1An3pHJG)90iCKXOACdXNqLtRv6VahxxuQMxmqaSn)gcAyZxz3qZVZIIASJkGuvUuT3q)QKmmpevmgdTYF(lXOddFXNo7ocGpcrQm1bUW1XjoBNG9kstQ97Uo)iWGng3w(Z)iSS)LGMMb23Z)I(SoWCgG2(DsiyoqTjmgdyHPCJSzs8clE2yisRks5FAZFQUb49SDBW2lB(ascd(kTA(SzGVkHbroN4)EKqAtfx74lf7S2CvNnavXI0tIDVz(TnZlTU1BwoQOOZaxVzqTXThZCuOeMsXYPL2ypUSaTBxbFAcckvLU4)thpNvLZeeV8zJyTM34EE6gy2I71dsSPZ4kRTNnfiR7b1gVoZLC6upZKuUl(N)TF9Zn2bymg0uL4Ot62HylVPvhT1BSTV70PBhGD8Pz3mbwripz15WUA1DDmWAQm0c7PVCxjQ4TMQeT5J0zMfCARFC2nT5Yw)XoIxXcnv9LbCoaxr89y3OnAcfu0lZlDZuqUGAb4HeCHMCbb(m38dZRYj01Wnqr)BSRtXaGO0)qXuP9SSgdXP3aMeaSS0G))ak0JXoDvIIL(GGv3iPrbJDXJDK)SUIJlVXE(vDJey0oB8(t1tV2iJZ0MbqxFxL3BwqJEm1lO(wKAfYBv73Jy13abkwF3zX6fNLU90M59auv4P1G4MMWvH5QzV7ZsQdC9bFL3T0X9N5)vWRT4N6ZTbDyXg9noPs)znM119GigFr7nT95In4oUZXr2SCmVGbXEDbfkRZ(hohYECSRx06OE9s11zBlgZ2AdyZfdf4Nov3Q0A5nDpxAByUUSuTiNNHEwQ4ndKZE7Wx55PtDmZ7UkLApGsVcqkV2Y1Zk9AxhADVvY1Zx2TqDIqpypZXZbgkHP3Czz7Xh1NXW9)9d]] )
+-- Enhanced pack for MoP Destruction Warlock following Icy Veins guide
+-- Updated: 2025-01-01 - Enhanced with proper Backdraft management, Ember economy, and AoE rotation
+spec:RegisterPack( "Destruction", 20250101, [[Hekili:LIvBVnoUr4FlhoGGeCzvTLxhN9o7a0EBr7gGUTakT7hkojrlrBZlsIcKujRbm0V9odPE1sYsU3h2nYsCEMHZBpdP7C3xCDcjkQ7xTNzVC2JlMBzVy2Izp46OoMsDDsjbVs2dpKqIH))ZuPsKfOy8e8BhJ4KqedjpteaF31zBgls9Le3TDb22EP9cyTP0a41pSY15almKAwlvg468YbMm3h)hj3Vq15(8DWV16m3pIjvWN3Xf5()D6RSiMLRJ(LOzWtPjub80x17mAczBen09V46eiykQGrCD(Hq62SD7SyXX8iWcTYsDDifBPYx6QalCqicoqe7PGzSj33Uw4aEYUiYEHrELRtm)n6igtUVIertuwWw53juWBi9cYssyj7TkLOsb7OrEGgIhX8UcezjbmWJvzXbrusdBwH7t41n2KhiVXdAQ4lAkVrG)aV2I(DAqMI6LEGiP1Ojpqc5VVntKG4SyqC0rSTqcrOGStzjvWJ5(RZ9xK7FtUpcaS)8OXBPciU8eeyM3iWCGWLEB5r4E8RF8mT0j23qVcAmHLaiUgquXcE1tXW6GGJGNYZ4EKOZcWDjIBF5cTDwp0Czn8)Twf4ZLQ(sD6Xyp3uCIjF3R9BDwmHn1fdKTKzFqOfOKC)tNY9B9Lvwllciq8kKiE1d6menyj2Wb8RlX58qAZeNEYmQnXHtPUfCncwYRu9NuwKKJwSGqpbLeE0SZ7SjZ9VBOKULxLfApIfoKwEyIAXkKUJfWuA0M1mMDvQB1fAbHjEwyELNI7fYOAKMVC4Y1)pTHh)J1L(RFAAP8nQ97lrE(SPv8pF(eR(Haejl6ITacirrEMF4HmGgEqpdrDz9JSVY6jHahQYVCnk6omENLy7kblqP7)ucVilzy0nm1xS2fOpHSKPHNMQ9I1zOKVr9a1gZ6jR4sUIcwXlwGDo8pnD4jCAFvttswPYKVKkOb84TKEZyopKHLBwRw2FIiojMGLA(W3iIiEWR)CUFJj)Y9)qU)34FdQaKgTxNT1J25qZFjofrP2kxn(uugTQBXbkjsDWknW0xYEMEPfB028a9KupUA6PFn2gVtBEKTQwXbHsptW1SxXO1OZ0bDlAN6cDs84782XeJq02lDqnqiaEKKqVTcW7R4j9YJ2Pf10Msy5eA)vwXoEVULtSvNUrZf9OaxCaNhbe(jnIFfmXaRXo2(dkVwgSnqHENj(csdh5ikQHOvudqv6mneNVIsMRe63vEMLx0QB1qQC1Qw8)vyD54D1GonYZQWatbOcDQ00MwQxqI48qVDzIJJ0ULKqQk(ECwVm1Wx(ynYerajbDtcbCGJl3(9IMyeBhvBM91JTCrhG0Ezlc(YCc5XesQK6jtHs59Ygzg9Qvzexvc3fNIPNG8dn43Kzq5vIxiNhVpJicDl6f)g4QWfuC0xGZ35DI2pklpIBQGVJfrnN1nMjLWhHKWS0uUqvC829idjlOQbL0k3p3)lkJq6(9X0KqAiSIde41uqXhrSzCylapbfDrzHyEoLPoqf)C(Z6E3)3)TKIirJL)295(VFGfCO5QHMG1An3pHJG)90iCKXOACdXNqLtRv6VahxxuQMxmqaSn)gcAyZxz3qZVZIIASJkGuvUuT3q)QKmmpevmgdTYF(lXOddFXNo7ocGpcrQm1bUW1XjoBNG9kstQ97Uo)iWGng3w(Z)iSS)LGMMb23Z)I(SoWCgG2(DsiyoqTjmgdyHPCJSzs8clE2yisRks5FAZFQUb49SDBW2lB(ascd(kTA(SzGVkHbroN4)EKqAtfx74lf7S2CvNnavXI0tIDVz(TnZlTU1BwoQOOZaxVzqTXThZCuOeMsXYPL2ypUSaTBxbFAcckvLU4)thpNvLZeeV8zJyTM34EE6gy2I71dsSPZ4kRTNnfiR7b1gVoZLC6upZKuUl(N)TF9Zn2bymg0uL4Ot62HylVPvhT1BSTV70PBhGD8Pz3mbwripz15WUA1DDmWAQm0c7PVCxjQ4TMQeT5J0zMfCARFC2nT5Yw)XoIxXcnv9LbCoaxr89y3OnAcfu0lZlDZuqUGAb4HeCHMCbb(m38dZRYj01Wnqr)BSRtXaGO0)qXuP9SSgdXP3aMeaSS0G))ak0JXoDvIIL(GGv3iPrbJDXJDK)SUIJlVXE(vDJey0oB8(t1tV2iJZ0MbqxFxL3BwqJEm1lO(wKAfYBv73Jy13abkwF3zX6fNLU90M59auv4P1G4MMWvH5QzV7ZsQdC9bFL3T0X9N5)vWRT4N6ZTbDyXg9noPs)znM119GigFr7nT95In4oUZXr2SCmVGbXEDbfkRZ(hohYECSRx06OE9s11zBlgZ2AdyZfdf4Nov3Q0A5nDpxAByUUSuTiNNHEwQ4ndKZE7Wx55PtDmZ7UkLApGsVcqkV2Y1Zk9AxhADVvY1Zx2TqDIqpypZXZbgkHP3Czz7Xh1NXW9)9d]] )
 
 -- Register pack selector for Destruction

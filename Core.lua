@@ -5,7 +5,7 @@ local addon, ns = ...
 local Hekili = _G[addon]
 
 -- Global display frame declarations
-_G.HekiliDisplayAOE = _G.HekiliDisplayAOE or {}
+-- Note: Display frames are created with global names like HekiliDisplayAOE
 
 local class = Hekili.Class
 local state = Hekili.State
@@ -2228,9 +2228,10 @@ local aoeDisplayRule = function(p)
 		return true
 	end
 	if mode == "reactive" and ns.getNumberTargets() < (spec.aoe or 3) then
-		if HekiliDisplayAOE.RecommendationsStr then
-			HekiliDisplayAOE.RecommendationsStr = nil
-			HekiliDisplayAOE.NewRecommendations = true
+		local aoeDisplay = Hekili.DisplayPool and Hekili.DisplayPool["AOE"]
+		if aoeDisplay and aoeDisplay.RecommendationsStr then
+			aoeDisplay.RecommendationsStr = nil
+			aoeDisplay.NewRecommendations = true
 		end
 		return false
 	end
