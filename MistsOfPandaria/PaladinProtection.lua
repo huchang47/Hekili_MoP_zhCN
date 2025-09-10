@@ -1268,6 +1268,23 @@ end
 -- Range
 spec:RegisterRanges( "judgment", "avengers_shield", "hammer_of_justice", "rebuke", "crusader_strike", "hammer_of_the_righteous" )
 
+spec:RegisterAbilities({
+    rebuke = {
+        id = 96231,
+        cast = 0,
+        cooldown = 15,
+        gcd = "off",
+
+        toggle = "interrupts",
+        startsCombat = true,
+
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+
+        handler = function() interrupt() end,
+    },
+})
+
 -- Options
 spec:RegisterOptions( {
     enabled = true,

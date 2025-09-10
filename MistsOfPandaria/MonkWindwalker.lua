@@ -499,7 +499,10 @@ local function RegisterWindwalkerSpec()
 
             toggle = "interrupts",
 
-            handler = function() end
+            debuff = "casting",
+            readyTime = state.timeToInterrupt,
+
+            handler = function() interrupt() end
         },
         chi_torpedo = {
             id = 115008,

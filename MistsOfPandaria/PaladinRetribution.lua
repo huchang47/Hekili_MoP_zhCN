@@ -1432,11 +1432,6 @@ spec:RegisterAbilities( {
             if state.buff.divine_purpose.up then
                 removeBuff("divine_purpose")
             end
-
-            -- Divine Purpose talent proc chance
-            if state.talent.divine_purpose.enabled and not state.buff.divine_purpose.up and math.random() < 0.15 then
-                applyBuff("divine_purpose")
-            end
         end
     },
 
@@ -1459,11 +1454,6 @@ spec:RegisterAbilities( {
             -- Divine Storm mechanic
             if state.buff.divine_purpose.up then
                 removeBuff("divine_purpose")
-            end
-
-            -- Divine Purpose talent proc chance
-            if state.talent.divine_purpose.enabled and not state.buff.divine_purpose.up and math.random() < 0.15 then
-                applyBuff("divine_purpose")
             end
         end
     },
@@ -1542,11 +1532,6 @@ spec:RegisterAbilities( {
             end
 
             applyBuff("inquisition", duration)
-
-            -- Divine Purpose talent proc chance
-            if state.talent.divine_purpose.enabled and not state.buff.divine_purpose.up and math.random() < 0.15 then
-                applyBuff("divine_purpose")
-            end
         end
     },
 
@@ -1983,11 +1968,6 @@ spec:RegisterAbilities( {
             if state.talent.eternal_flame.enabled then
                 applyBuff("eternal_flame")
             end
-
-            -- Divine Purpose talent proc chance
-            if state.talent.divine_purpose.enabled and not state.buff.divine_purpose.up and math.random() < 0.15 then
-                applyBuff("divine_purpose")
-            end
         end
     },
 
@@ -2183,6 +2163,23 @@ spec:RegisterAbilities( {
 
 -- Range
 spec:RegisterRanges( "judgment", "hammer_of_justice", "rebuke", "crusader_strike" )
+
+spec:RegisterAbilities({
+    rebuke = {
+        id = 96231,
+        cast = 0,
+        cooldown = 15,
+        gcd = "off",
+
+        toggle = "interrupts",
+        startsCombat = true,
+
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+
+        handler = function() interrupt() end,
+    },
+})
 
 -- Options
 spec:RegisterOptions( {

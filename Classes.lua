@@ -1,4 +1,5 @@
 -- Classes.lua
+---@diagnostic disable: undefined-global, need-check-nil, assign-type-mismatch
 -- January 2025
 
 local addon, ns = ...
@@ -31,22 +32,37 @@ else
     GetActiveLossOfControlDataCount = function() return 0 end
 end
 -- MoP compatible item and spell functions
-local GetItemCooldown = _G.GetItemCooldown or function(item)
-    if type(item) == "number" then
-        return _G.GetItemCooldown and _G.GetItemCooldown(item) or 0, 0
-    else
-        return 0, 0
+local function SafeGetItemCooldown( item )
+    -- Check for modern C_Item API first
+    if C_Item and C_Item.GetItemCooldown and type( item ) == "number" then
+        local cooldownInfo = C_Item.GetItemCooldown( item )
+        if cooldownInfo and type(cooldownInfo) == "table" then
+            -- Extract values safely - C_Item.GetItemCooldown returns a table with startTime and duration
+            local startTime = (cooldownInfo).startTime
+            local duration = (cooldownInfo).duration
+            return (startTime or 0), (duration or 0)
+        end
+    -- Fallback to legacy API if available
+    elseif rawget( _G, "GetItemCooldown" ) and type( item ) == "number" then
+        -- Use rawget to avoid directly referencing a deprecated global
+        local getter = rawget( _G, "GetItemCooldown" )
+        local start, duration = getter( item ) -- luacheck: ignore 113
+        return start or 0, duration or 0
     end
+    return 0, 0
 end
 
 -- Safe local aliases for inventory-based APIs used by tinkers; avoid referencing _G inside setfenv'd functions.
-local GetInventoryItemCooldown = _G.GetInventoryItemCooldown or function(unit, slot)
+local GetInventoryItemCooldown = rawget( _G, "GetInventoryItemCooldown" ) or function(unit, slot)
     return 0, 0, 0
 end
-local GetInventoryItemSpell = _G.GetInventoryItemSpell or function(unit, slot)
-    return nil
+-- Safe fallback for GetInventoryItemSpell - used for tinker detection
+-- Note: This API may not be available in all WoW versions
+---@diagnostic disable-next-line: undefined-field
+local GetInventoryItemSpell = rawget( _G, "GetInventoryItemSpell" ) or function(unit, slot)
+    return nil, nil
 end
-local INVSLOT_HAND = _G.INVSLOT_HAND or 10
+local INVSLOT_HAND = rawget( _G, "INVSLOT_HAND" ) or 10
 local GetInventoryItemID = _G.GetInventoryItemID or function(unit, slot)
     local link = _G.GetInventoryItemLink and _G.GetInventoryItemLink(unit, slot)
     if not link then return nil end
@@ -99,49 +115,57 @@ do
     end
 end
 UpdateTinkerHand()
--- Use modern C_Spell.GetSpellDescription when available, fallback to deprecated GetSpellDescription for older versions
-local GetSpellDescription = (C_Spell and C_Spell.GetSpellDescription) or _G.GetSpellDescription or function(spellID)
+-- Capture original GetSpellInfo early so downstream helpers can safely reference it.
+local OriginalGetSpellInfo = rawget(_G, "GetSpellInfo")
+local GetSpellInfo = OriginalGetSpellInfo
+local _GetSpellDescription = (C_Spell and rawget(C_Spell, "GetSpellDescription")) or rawget(_G, "GetSpellDescription")
+local function GetSpellDescription(spellID)
+    if type(_GetSpellDescription) == "function" then
+        return _GetSpellDescription(spellID)
+    end
     local tooltip = CreateFrame("GameTooltip", "HekiliTooltip", nil, "GameTooltipTemplate")
     tooltip:SetSpell(spellID)
     return _G[tooltip:GetName() .. "TextLeft2"]:GetText() or ""
 end
 
-local GetSpellTexture = _G.GetSpellTexture or function(spellID)
+local GetSpellTexture = rawget(_G, "GetSpellTexture") or function(spellID)
     local _, _, icon = GetSpellInfo(spellID)
     return icon or "Interface\\Icons\\INV_Misc_QuestionMark"
 end
 
-local GetSpellLink = _G.GetSpellLink or function(spellID)
-    local name = GetSpellInfo(spellID)
+local GetSpellLink = rawget(_G, "GetSpellLink") or function(spellID)
+    local name = GetSpellInfo and GetSpellInfo(spellID)
     if name then
         return "|cff71d5ff|Hspell:" .. spellID .. "|h[" .. name .. "]|h|r"
     end
     return nil
 end
 
--- Use original GetSpellInfo for MoP
-local GetSpellInfo = _G.GetSpellInfo
-
--- MoP compatible item functions
-local GetItemSpell = _G.GetItemSpell or function(item)
-    local spellName, spellID = _G.GetItemSpell and _G.GetItemSpell(item) or nil, nil
-    return spellName, spellID
+-- MoP compatible item functions (use rawget to avoid direct deprecated references)
+local _GetItemSpell = rawget( _G, "GetItemSpell" )
+local function GetItemSpell( item )
+    if type( _GetItemSpell ) == "function" then
+        return _GetItemSpell( item )
+    end
+    return nil, nil
 end
 
-local GetItemCount = _G.GetItemCount or function(item, includeBank, includeCharges)
-    return _G.GetItemCount and _G.GetItemCount(item, includeBank, includeCharges) or 0
+local _GetItemCount = rawget( _G, "GetItemCount" )
+local function GetItemCount( item, includeBank, includeCharges )
+    if type( _GetItemCount ) == "function" then
+        return _GetItemCount( item, includeBank, includeCharges ) or 0
+    end
+    return 0
 end
 
-local IsUsableItem = _G.IsUsableItem or function(item)
-    local usable, noMana = _G.IsUsableItem and _G.IsUsableItem(item) or false, false
-    return usable, noMana
+local _IsUsableItem = rawget( _G, "IsUsableItem" )
+local function IsUsableItem( item )
+    if type( _IsUsableItem ) == "function" then
+        local usable, noMana = _IsUsableItem( item )
+        return usable or false, noMana or false
+    end
+    return false, false
 end
-
--- Save the original GetSpellInfo before we override it
-local OriginalGetSpellInfo = _G.GetSpellInfo
-
--- Don't override GetSpellInfo globally, use it locally where needed
-local GetSpellInfo = OriginalGetSpellInfo
 
 local UnitBuff, UnitDebuff = ns.UnitBuff, ns.UnitDebuff
 
@@ -2248,7 +2272,7 @@ all:RegisterAuras({
             local max_events = GetActiveLossOfControlDataCount()
 
             if max_events > 0 then
-                local spell, start, duration, remains = "none", 0, 0, 0
+                local spell, start, duration, remains = 0, 0, 0, 0
 
                 for i = 1, max_events do
                     local event = GetActiveLossOfControlData( i )
@@ -2287,7 +2311,7 @@ all:RegisterAuras({
             local max_events = GetActiveLossOfControlDataCount()
 
             if max_events > 0 then
-                local spell, start, duration, remains = "none", 0, 0, 0
+                local spell, start, duration, remains = 0, 0, 0, 0
 
                 for i = 1, max_events do
                     local event = GetActiveLossOfControlData( i )
@@ -2329,7 +2353,7 @@ all:RegisterAuras({
             local max_events = GetActiveLossOfControlDataCount()
 
             if max_events > 0 then
-                local spell, start, duration, remains = "none", 0, 0, 0
+                local spell, start, duration, remains = 0, 0, 0, 0
 
                 for i = 1, max_events do
                     local event = GetActiveLossOfControlData( i )
@@ -2371,7 +2395,7 @@ all:RegisterAuras({
             local max_events = GetActiveLossOfControlDataCount()
 
             if max_events > 0 then
-                local spell, start, duration, remains = "none", 0, 0, 0
+                local spell, start, duration, remains = 0, 0, 0, 0
 
                 for i = 1, max_events do
                     local event = GetActiveLossOfControlData( i )
@@ -2414,7 +2438,7 @@ all:RegisterAuras({
             local max_events = GetActiveLossOfControlDataCount()
 
             if max_events > 0 then
-                local spell, start, duration, remains = "none", 0, 0, 0
+                local spell, start, duration, remains = 0, 0, 0, 0
 
                 for i = 1, max_events do
                     local event = GetActiveLossOfControlData( i )
@@ -2456,7 +2480,7 @@ all:RegisterAuras({
             local max_events = GetActiveLossOfControlDataCount()
 
             if max_events > 0 then
-                local spell, start, duration, remains = "none", 0, 0, 0
+                local spell, start, duration, remains = 0, 0, 0, 0
 
                 for i = 1, max_events do
                     local event = GetActiveLossOfControlData( i )
@@ -2499,7 +2523,7 @@ all:RegisterAuras({
             local max_events = GetActiveLossOfControlDataCount()
 
             if max_events > 0 then
-                local spell, start, duration, remains = "none", 0, 0, 0
+                local spell, start, duration, remains = 0, 0, 0, 0
 
                 for i = 1, max_events do
                     local event = GetActiveLossOfControlData( i )
@@ -2880,7 +2904,7 @@ do
             end,
 
             readyTime = function ()
-                local start, duration = GetItemCooldown( potion.item )
+                local start, duration = SafeGetItemCooldown( potion.item )
                 return max( 0, start + duration - query_time )
             end,
 
@@ -3270,7 +3294,7 @@ all:RegisterAbilities( {
         end,
 
         readyTime = function ()
-            local start, duration = GetItemCooldown( talent.pact_of_gluttony.enabled and 224464 or 5512 )
+            local start, duration = SafeGetItemCooldown( talent.pact_of_gluttony.enabled and 224464 or 5512 )
             return max( 0, start + duration - query_time )
         end,
 
@@ -3302,7 +3326,7 @@ all:RegisterAbilities( {
         end,
 
         readyTime = function ()
-            local start, duration = GetItemCooldown( 205146 )
+            local start, duration = SafeGetItemCooldown( 205146 )
             return max( 0, start + duration - query_time )
         end,
 

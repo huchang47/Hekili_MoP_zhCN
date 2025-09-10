@@ -111,6 +111,11 @@ local SpellIsSelfBuff = SpellIsSelfBuff or function(spellID)
     return false
 end
 
+-- Ensure UnitBuff is locally referenced (prevents undefined-global linter warnings)
+local UnitBuff = rawget( _G, "UnitBuff" ) or function( ... )
+    return nil
+end
+
 -- MoP: GetSpecialization/GetSpecializationInfo compatibility
 local GetSpecialization = GetSpecialization or function()
     -- Enhanced MoP Classic spec detection

@@ -1689,6 +1689,9 @@ spec:RegisterAbilities( {
         startsCombat = true,
         texture = 132938,
 
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+
         handler = function()
             -- Interrupt handled by engine
         end,

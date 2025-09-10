@@ -1186,12 +1186,17 @@ kidney_shot = {
     kick = {
         id = 1766,
         cast = 0,
-        cooldown = 24,
+        cooldown = 10,
         gcd = "off",
+        
+        toggle = "interrupts",
         
         startsCombat = true,
         interrupt = true,
-        
+
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+
         handler = function()
             interrupt()
         end,

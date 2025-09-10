@@ -1274,10 +1274,9 @@ spec:RegisterAbilities( {
         
         toggle = "interrupts",
         startsCombat = true,
-
-        handler = function ()
-            interrupt()
-        end,
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+        handler = function () interrupt() end,
     },
     
     -- Increases your dodge chance by 50% for 10 sec.

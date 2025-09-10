@@ -1889,6 +1889,9 @@ spec:RegisterAbilities( {
         startsCombat = true,
         texture = 132938,
 
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+
         handler = function()
             interrupt()
             setCooldown( "disrupting_shout", 15 )

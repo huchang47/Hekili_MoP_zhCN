@@ -1406,6 +1406,9 @@ spec:RegisterAbilities( {
         
         startsCombat = true,
         
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+
         handler = function ()
             if active_enemies > 1 and talent.asphyxiate.enabled then
                 -- potentially apply interrupt debuff with talent

@@ -533,6 +533,12 @@ spec:RegisterAuras( {
         duration = 10,
         max_stack = 1,
     },
+    solar_beam = {
+        id = 78675,
+        duration = 5,
+        max_stack = 1,
+        mechanic = "silence",
+    },
     incarnation_chosen_of_elune = {
         id = 102560,
         duration = 30,
@@ -1021,6 +1027,24 @@ spec:RegisterAbilities( {    starfire = {
                 applyBuff("natures_grace")
             end
               eclipse.last_spell = "wrath"
+        end,
+    },
+    
+    solar_beam = {
+        id = 78675,
+        cast = 0,
+        cooldown = 60,
+        gcd = "off",
+        
+        startsCombat = true,
+        texture = 252188,
+        
+        toggle = "interrupts",
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+        
+        handler = function()
+            applyDebuff( "target", "solar_beam" )
         end,
     },
     

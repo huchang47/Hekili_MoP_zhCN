@@ -752,8 +752,8 @@ spec:RegisterAbilities( {
         
         toggle = "interrupts",
         interrupt = true,
-        
-        usable = function() return target.casting end,
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
         
         handler = function()
             -- Interrupt spell (actual interruption handled by Hekili core)

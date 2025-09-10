@@ -42,15 +42,12 @@ actions.snek+=/natures_swiftness,if=variable.opt_use_ns&(talent.dream_of_cenariu
 actions.snek+=/healing_touch,if=variable.opt_use_ns&(buff.natures_swiftness.up|buff.predatory_swiftness.up)
 actions.snek+=/regrowth,if=variable.opt_snek_weave&buff.predatory_swiftness.up&energy.current<=40
 
-# Bear weave (optional)
-actions.bear+=/bear_form,if=variable.opt_bear_weave&!buff.bear_form.up&should_bear_weave&(time>action.cat_form.lastCast+gcd.max)
 actions.bear+=/thrash
 actions.bear+=/cat_form,if=buff.clearcasting.up
+actions.bear+=/cat_form,if=buff.bear_form.up&(energy.deficit<=10|(dot.rake.remains<=3|dot.rip.remains<=2|cooldown.tigers_fury.remains<=2))
 actions.bear+=/maul,if=!buff.clearcasting.up&rage.current>=30
 actions.bear+=/mangle_bear
 actions.bear+=/lacerate,if=variable.opt_bear_weave&buff.bear_form.up&dot.lacerate.remains<=3
-actions.bear+=/cat_form,if=buff.bear_form.up&(time>action.bear_form.lastCast+gcd.max)
-
 # Wrath weave during Heart of the Wild
 actions.wrath+=/wrath,if=variable.opt_wrath_weave&should_wrath_weave
 
@@ -60,9 +57,9 @@ actions.st+=/savage_roar,if=!buff.savage_roar.up&combo_points.current>0
 actions.st+=/rip,if=combo_points.current>=5&(dot.rip.down|dot.rip.remains<=2|rip_stronger)
 actions.st+=/rake,if=dot.rake.down|dot.rake.remains<=3|rake_stronger
 actions.st+=/thrash,if=buff.clearcasting.up&(dot.thrash.down|dot.thrash.remains<=3)
-actions.st+=/shred,if=(buff.berserk.up|buff.clearcasting.up&(dot.thrash.up|combo_points.current>=5))&!(disable_shred_when_solo&active_enemies=1&!in_group)
+actions.st+=/shred,if=(buff.berserk.up|buff.clearcasting.up&(dot.thrash.up|combo_points.current>=5))&!(disable_shred_when_solo&active_enemies=1)
 actions.st+=/mangle_cat,if=combo_points.current<5&buff.berserk.down&buff.clearcasting.down
-actions.st+=/shred,if=energy.deficit<=10|!(dot.rip.remains<=2|buff.savage_roar.remains<=4|dot.rake.remains<=3)
+actions.st+=/shred,if=(energy.deficit<=10|!(dot.rip.remains<=2|buff.savage_roar.remains<=4|dot.rake.remains<=3))&!(disable_shred_when_solo&active_enemies=1)
 
 # AOE core
 actions.aoe+=/tigers_fury,if=energy.current<=35+variable.tf_bonus&buff.berserk.down

@@ -633,12 +633,11 @@ spec:RegisterAbilities( {
 
     toggle = "interrupts",
 
-    usable = function () return target.casting, "target not casting" end,
+    debuff = "casting",
+    readyTime = state.timeToInterrupt,
 
     handler = function ()
-      if target.casting then
-        -- interrupt() -- Simplified for Hekili
-      end
+      interrupt()
     end
   },
 

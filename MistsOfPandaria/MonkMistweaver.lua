@@ -517,6 +517,24 @@ local function RegisterMistweaverSpec()
             end
         },
 
+        -- Interrupt
+        spear_hand_strike = {
+            id = 116705,
+            cast = 0,
+            cooldown = 10,
+            gcd = "off",
+
+            toggle = "interrupts",
+            startsCombat = true,
+
+            debuff = "casting",
+            readyTime = state.timeToInterrupt,
+
+            handler = function()
+                interrupt()
+            end
+        },
+
         -- Talent Abilities
 
         chi_brew = {

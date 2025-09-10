@@ -329,7 +329,9 @@ local function RegisterBrewmasterSpec()
             gcd = "off",
             toggle = "interrupts",
             startsCombat = true,
-            handler = function() end
+            debuff = "casting",
+            readyTime = state.timeToInterrupt,
+            handler = function() interrupt() end
         },
         legacy_of_the_emperor = {
             id = 115921,

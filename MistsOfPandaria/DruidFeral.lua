@@ -138,7 +138,8 @@ local tick_calculator = setfenv( function( t, action, pmult )
     if action == "primal_wrath" then aura = "rip" end
 
     local class = _G["Hekili"] and _G["Hekili"].Class or {}
-    local duration = class.auras and class.auras[ aura ] and class.auras[ aura ].duration or 0
+    local duration_field = class.auras and class.auras[ aura ] and class.auras[ aura ].duration or 0
+    local duration = type( duration_field ) == "function" and duration_field() or duration_field
     local app_duration = min( ttd, duration )
     local app_ticks = app_duration / tick_time
 
@@ -1279,6 +1280,8 @@ spec:RegisterAbilities( {
         form = function ()
             return buff.bear_form.up and "bear_form" or "cat_form"
         end,
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
         handler = function ()
             interrupt()
         end,
@@ -1816,11 +1819,10 @@ spec:RegisterStateExpr( "should_bear_weave", function()
         or cooldown.tigers_fury.remains <= 2 )
     if urgent_refresh then return false end
 
-    -- Only weave at low energy to pool in Bear; avoid if Clearcasting is up
+    -- Only weave at low energy to pool in Bear
     return energy.current <= 35 and 
            not buff.berserk.up and 
            not buff.incarnation_king_of_the_jungle.up and
-            not buff.clearcasting.up and
            target.time_to_die > 10
 end )
 
@@ -1846,6 +1848,14 @@ spec:RegisterStateExpr( "use_trees", function() return state.settings.use_trees 
 spec:RegisterStateExpr( "use_hotw", function() return state.settings.use_hotw ~= false end )
 spec:RegisterStateExpr( "disable_shred_when_solo", function()
     return state.settings.disable_shred_when_solo ~= false
+end )
+
+
+-- Provide in_group for APL compatibility in emulated environment
+spec:RegisterStateExpr( "in_group", function()
+    if IsInGroup ~= nil then return IsInGroup() end
+    -- Emulation fallback: treat as false if API not present
+    return false
 end )
 
 

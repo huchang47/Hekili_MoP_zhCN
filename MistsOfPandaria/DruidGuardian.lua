@@ -816,6 +816,9 @@ spec:RegisterAbilities( {
 
         form = "bear_form",
 
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+
         handler = function ()
             interrupt()
         end,

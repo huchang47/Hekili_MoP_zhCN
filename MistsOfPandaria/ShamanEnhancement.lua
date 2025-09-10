@@ -2089,8 +2089,12 @@ spec:RegisterAbilities( {
         gcd = "off",
         startsCombat = false,
 
+        toggle = "interrupts",
+        debuff = "casting",
+        readyTime = state.timeToInterrupt,
+
         handler = function()
-            -- Interrupt handler; no state changes needed
+            interrupt()
         end,
     },
 } )

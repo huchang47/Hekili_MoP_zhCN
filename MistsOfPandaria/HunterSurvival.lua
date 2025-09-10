@@ -707,6 +707,13 @@ spec:RegisterAuras( {
 
             startsCombat = true,
 
+            toggle = "interrupts",
+
+            usable = function ()
+                if buff.dispellable_magic.up or buff.dispellable_enrage.up then return true end
+                return false, "requires dispellable (magic/enrage)"
+            end,
+
             handler = function ()
                 -- Dispel magic effect
             end,
@@ -1464,6 +1471,13 @@ spec:RegisterAuras( {
         max = 120,
         step = 5,
         width = 1.5
+    } )
+
+    spec:RegisterSetting( "use_opener", true, {
+        name = "Use Opener Sequence",
+        desc = "If checked, the 'opener' action list will be used at the start of combat.",
+        type = "toggle",
+        width = "full"
     } )
 
     spec:RegisterSetting( "mark_any", false, {

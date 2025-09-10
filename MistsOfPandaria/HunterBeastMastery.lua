@@ -195,14 +195,14 @@ spec:RegisterGlyphs( {
         -- https://wowhead.com/beta/spell=19574
         bestial_wrath = {
             id = 19574,
-            duration = 10,
+            duration = function() return 10 + ((state.set_bonus.tier14_4pc or 0) > 0 and 6 or 0) end,
             type = "Ranged",
             max_stack = 1
         },
         -- Alias used by some APLs/imports for Bestial Wrath
         the_beast_within = {
             id = 19574,
-            duration = 10,
+            duration = function() return 10 + ((state.set_bonus.tier14_4pc or 0) > 0 and 6 or 0) end,
             type = "Ranged",
             max_stack = 1,
             copy = "bestial_wrath"

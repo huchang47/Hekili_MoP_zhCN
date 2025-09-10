@@ -1312,12 +1312,12 @@ end)
             texture = 135856,
             
             toggle = "interrupts",
-            
-            usable = function() return state.target.casting end,
+            debuff = "casting",
+            readyTime = state.timeToInterrupt,
             
             handler = function()
-                state.interrupt()
-                state.applyDebuff( "target", "counterspell" )
+                interrupt()
+                applyDebuff( "target", "counterspell" )
             end,
         },
         
