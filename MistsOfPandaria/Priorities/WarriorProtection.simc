@@ -1,3 +1,55 @@
+# Warrior: Protection (MoP Classic)
+# Source: Wowhead Protection Warrior Tank Rotation Guide - MoP Classic (Phase 1)
+# https://www.wowhead.com/mop-classic/guide/classes/warrior/protection/tank-rotation-cooldowns-abilities-pve
+
+actions.precombat+=/stance,choose=defensive
+actions.precombat+=/battle_shout,if=buff.commanding_shout.down
+actions.precombat+=/commanding_shout,if=buff.battle_shout.down
+
+# Core
+actions+=/auto_attack
+actions+=/disrupting_shout,if=target.casting&target.cast_interruptible
+actions+=/heroic_throw,if=target.distance>8&target.distance<30
+actions+=/charge,if=target.distance>8&target.distance<25
+actions+=/call_action_list,name=mitigation
+actions+=/call_action_list,name=cooldowns
+actions+=/call_action_list,name=standard
+
+# Mitigation (Shield Block first for physical, Barrier for magic or overflow)
+actions.mitigation+=/shield_block,if=cooldown.shield_block.charges>=1&rage>=60&buff.shield_block.down
+actions.mitigation+=/shield_barrier,if=(rage>=60&buff.shield_block.down)|(incoming_damage_5s>health.max*0.30)
+actions.mitigation+=/demoralizing_shout,if=incoming_damage_5s>health.max*0.30
+actions.mitigation+=/spell_reflection,if=target.casting&target.cast_interruptible
+
+# Major defensives and utility
+actions.cooldowns+=/last_stand,if=health.pct<50
+actions.cooldowns+=/shield_wall,if=health.pct<40|incoming_damage_5s>health.max*0.50
+actions.cooldowns+=/rallying_cry,if=health.pct<35
+actions.cooldowns+=/vigilance,if=talent.vigilance.enabled
+
+# Offensive CDs (use during safe windows; align with Shield Block for extra value)
+actions.cooldowns+=/avatar,if=talent.avatar.enabled&buff.shield_block.up
+actions.cooldowns+=/bloodbath,if=talent.bloodbath.enabled&buff.shield_block.up
+actions.cooldowns+=/recklessness,if=buff.shield_block.up&target.time_to_die>12
+actions.cooldowns+=/war_banner
+
+# Standard / Priority
+# Maintain Weakened Blows and Weakened Armor; core attacks on cooldown; sensible rage dumps
+actions.standard+=/thunder_clap,if=debuff.weakened_blows.down|active_enemies>=3
+actions.standard+=/shield_slam
+actions.standard+=/revenge
+actions.standard+=/storm_bolt,if=talent.storm_bolt.enabled
+actions.standard+=/shockwave,if=talent.shockwave.enabled&active_enemies>=3
+actions.standard+=/dragon_roar,if=talent.dragon_roar.enabled&active_enemies<=3
+actions.standard+=/bladestorm,if=talent.bladestorm.enabled&active_enemies>=4
+actions.standard+=/devastate,if=debuff.weakened_armor.stack<3
+actions.standard+=/devastate
+actions.standard+=/execute,if=target.health.pct<20
+
+# Rage dumps (off-GCD where appropriate). Avoid starving mitigation.
+actions.standard+=/cleave,if=active_enemies>=3&rage>=60&buff.shield_block.up
+actions.standard+=/heroic_strike,if=rage>=80&buff.shield_block.up
+
 # Warrior: Protection
 ## Precombat
 actions.precombat+=/battle_shout,if=settings.maintain_buffs&!buff.str_agi_int.up&!buff.battle_shout.up

@@ -142,7 +142,8 @@
         "BEST",
         "callHook",
         "RED_FONT_COLOR",
-        "GREEN_FONT_COLOR"
+        "GREEN_FONT_COLOR",
+        "coroutine"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.runtime.builtin": {

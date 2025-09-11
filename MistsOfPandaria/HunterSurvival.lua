@@ -387,6 +387,13 @@ spec:RegisterAuras( {
 
 
 
+        counter_shot = {
+            id = 147362,
+            duration = 3,
+            mechanic = "interrupt",
+            max_stack = 1
+        },
+
         silencing_shot = {
             id = 34490,
             duration = 3,
@@ -716,6 +723,25 @@ spec:RegisterAuras( {
 
             handler = function ()
                 -- Dispel magic effect
+            end,
+        },
+
+        counter_shot = {
+            id = 147362,
+            cast = 0,
+            cooldown = 24,
+            gcd = "spell",
+            school = "physical",
+
+            startsCombat = true,
+            toggle = "interrupts",
+
+            debuff = "casting",
+            readyTime = state.timeToInterrupt,
+
+            handler = function ()
+                applyDebuff( "target", "counter_shot" )
+                -- interrupt() handled by the system
             end,
         },
 

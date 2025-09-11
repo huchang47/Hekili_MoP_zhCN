@@ -1808,8 +1808,6 @@ end )
 -- State expressions for advanced techniques
 spec:RegisterStateExpr( "should_bear_weave", function()
     if not opt_bear_weave then return false end
-    
-    -- Bear-weave when energy is high and we're not in immediate danger
     -- Avoid immediate flip-flop right after swapping to Cat
     if query_time <= ( action.cat_form.lastCast + gcd.max ) then return false end
     -- Don't start a weave if any core timers need attention soon
@@ -1818,12 +1816,8 @@ spec:RegisterStateExpr( "should_bear_weave", function()
         or (buff.savage_roar.up and buff.savage_roar.remains <= 4)
         or cooldown.tigers_fury.remains <= 2 )
     if urgent_refresh then return false end
-
-    -- Only weave at low energy to pool in Bear
-    return energy.current <= 35 and 
-           not buff.berserk.up and 
-           not buff.incarnation_king_of_the_jungle.up and
-           target.time_to_die > 10
+    -- Trigger bear-weave when energy is LOW to pool (e.g., <= 35)
+    return energy.current <= 35 and not buff.berserk.up and not buff.incarnation_king_of_the_jungle.up and target.time_to_die > 10
 end )
 
 spec:RegisterStateExpr( "should_wrath_weave", function()

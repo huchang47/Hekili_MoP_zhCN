@@ -252,6 +252,13 @@ spec:RegisterGlyphs( {
             duration = 4,
             max_stack = 1
         },
+        -- Interrupted.
+        counter_shot = {
+            id = 147362,
+            duration = 3,
+            mechanic = "interrupt",
+            max_stack = 1
+        },
         -- Silenced.
         silencing_shot = {
             id = 34490,
@@ -1446,6 +1453,25 @@ end )
 
             handler = function ()
                 applyDebuff( "target", "serpent_sting" )
+            end,
+        },
+
+        counter_shot = {
+            id = 147362,
+            cast = 0,
+            cooldown = 24,
+            gcd = "spell",
+            school = "physical",
+
+            startsCombat = true,
+            toggle = "interrupts",
+
+            debuff = "casting",
+            readyTime = state.timeToInterrupt,
+
+            handler = function ()
+                applyDebuff( "target", "counter_shot" )
+                -- interrupt() handled by the system
             end,
         },
 

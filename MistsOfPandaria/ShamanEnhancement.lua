@@ -47,91 +47,45 @@ local function setupEnhancementCombatTracking()
     local lastFeralSpiritSummon = 0
     local maelstromStackCount = 0
     local lastTotemSummon = {}
-    local lastWeaponEnchantApplication = 0
-    local lastUnleashElementsUsage = 0
     local lastAscendanceActivation = 0
     local spiritWolfCount = 0
     local lastShamanisticRageUsage = 0
-    local lastEarthShockUsage = 0
-    local lastFrostShockUsage = 0
-    local lastLightningBoltCast = 0
-    local lastChainLightningCast = 0
-    local lastHealingRainCast = 0
-    local lastConductivityProc = 0
-    local lastEchoOfElementsProc = 0
-    local lastElementalMasteryUsage = 0
-    local lastAncestralSwiftnessUsage = 0
     local enhancementCombatActive = false
     local totalDamageDealt = 0
     local totalHealingDone = 0
-    local manaSpentOnShocks = 0
     local lastWindfuryProc = 0
     local lastFlametongueProc = 0
 
-    -- Advanced Maelstrom Weapon tracking
+    -- Core Maelstrom Weapon tracking
     local function trackMaelstromWeapon(timestamp, spellId, stacks)
         lastMaelstromProc = timestamp
         maelstromStackCount = stacks or 0
-
-        -- Track stack generation efficiency
-        if stacks and stacks > 0 then
-            local timePerStack = (timestamp - lastMaelstromProc) / stacks
-            -- Optimize for 5-stack consumption timing
-        end
     end
 
-    -- Enhanced Lava Lash usage tracking
+    -- Lava Lash usage tracking
     local function trackLavaLashUsage(timestamp, targetGUID, critical)
         lastLavaLashUsage = timestamp
-
-        -- Track Flametongue weapon interaction
-        if GetWeaponEnchantInfo() then -- Flametongue active
-            -- Enhanced damage calculation for Lava Lash with Flametongue
-        end
-
-        -- Track critical strikes for Hot Hand proc potential
-        if critical then
-            -- Potential for Hot Hand talent reset
-        end
     end
 
-    -- Advanced Stormstrike tracking with Lightning Shield optimization
+    -- Stormstrike tracking
     local function trackStormstrikeUsage(timestamp, targetGUID, critical)
         lastStormstrikeUsage = timestamp
-
-        -- Track the nature damage vulnerability debuff (25% crit bonus)
-        -- This affects subsequent Lightning Bolt, Chain Lightning, Earth Shock damage
-
-        if critical then
-            -- Enhanced critical tracking for Elemental Devastation potential
-        end
     end
 
     -- Flame Shock DoT application and pandemic tracking
     local function trackFlameShockApplication(timestamp, targetGUID, duration)
         lastFlameShockApplication = timestamp
-
-        -- Advanced pandemic tracking for Lava Lash spreading
-        local optimalRefreshTime = timestamp + (duration * 0.7) -- 70% duration mark
-
-        -- Track multi-target potential for spreading via Lava Lash
     end
 
     -- Elemental Blast usage and buff tracking
     local function trackElementalBlastUsage(timestamp, buffType)
         lastElementalBlastUsage = timestamp
-
-        -- Track which stat buff was gained (Agility, Haste, Mastery, or Crit)
-        -- Optimize rotation based on current buff state
     end
 
     -- Feral Spirit summon tracking
     local function trackFeralSpiritSummon(timestamp, wolfCount)
         lastFeralSpiritSummon = timestamp
         spiritWolfCount = wolfCount or 2
-
-        -- Track individual wolf health and damage output
-        -- Monitor for glyph effects (additional wolf, duration changes)
     end
 
     -- Totem placement and destruction tracking
@@ -144,39 +98,22 @@ local function setupEnhancementCombatTracking()
         end
     end
 
-    -- Unleash Elements usage and buff tracking
-    local function trackUnleashElementsUsage(timestamp, weaponEnchants)
-        lastUnleashElementsUsage = timestamp
-
-        -- Track which weapon enchants triggered which Unleash effects
-        -- Unleash Flame (Flametongue): 40% spell damage bonus for 8 sec
-        -- Unleash Wind (Windfury): 50% attack speed for 12 sec
-    end
-
     -- Ascendance transformation tracking
     local function trackAscendanceActivation(timestamp)
         lastAscendanceActivation = timestamp
-
-        -- Track the 15-second transformation window
-        -- Monitor enhanced abilities during Ascendance
     end
 
     -- Shamanistic Rage usage tracking
     local function trackShamanisticRageUsage(timestamp)
         lastShamanisticRageUsage = timestamp
-
-        -- Track 30% damage reduction and mana regeneration
-        -- Monitor for glyph modifications
     end
 
     -- Weapon enchant proc tracking (Windfury/Flametongue)
     local function trackWeaponEnchantProcs(timestamp, enchantType, procCount)
         if enchantType == "WINDFURY" then
             lastWindfuryProc = timestamp
-            -- Track additional attacks and their damage
         elseif enchantType == "FLAMETONGUE" then
             lastFlametongueProc = timestamp
-            -- Track spell damage bonus applications
         end
     end
 
@@ -272,27 +209,6 @@ setupEnhancementCombatTracking()
 
 -- Enhanced Resource Systems for Enhancement Shaman
 spec:RegisterResource( 0, { -- Mana = 0 in MoP
-    -- TODO: Commented out for causing crash
-    -- Base mana regeneration with Enhancement optimizations
-    -- base_regeneration = {
-    --     resource = "mana",
-    --     last = function ()
-    --         return state.mana.actual
-    --     end,
-
-    --     interval = function ()
-    --         return 2.0 -- Mana regeneration tick every 2 seconds
-    --     end,
-
-    --     value = function ()
-    --         local base_regen = state.mana.max * 0.02 -- 2% of max mana per tick base
-    --         local spirit_bonus = (state.stat and state.stat.spirit or 0) * 0.5 -- Spirit contribution
-    --         local meditation_bonus = talent.meditation.enabled and 1.5 or 1.0 -- 50% while casting if Meditation
-
-    --         return base_regen + spirit_bonus * meditation_bonus
-    --     end,
-    -- },
-
     -- Water Shield mana restoration with Lightning Shield interaction
     water_shield = {
         resource = "mana",
@@ -355,111 +271,6 @@ spec:RegisterResource( 0, { -- Mana = 0 in MoP
             return rage_regen
         end,
     },
-
-    -- Mana Tide Totem restoration (if talented)
-    mana_tide_totem = {
-        resource = "mana",
-        aura = "mana_tide_totem",
-
-        last = function ()
-            local app = state.buff.mana_tide_totem.applied
-            local t = state.query_time
-
-            return app + floor( ( t - app ) / 3 ) * 3
-        end,
-
-        interval = 3, -- Every 3 seconds for 12 seconds
-
-        value = function ()
-            if not state.buff.mana_tide_totem.up then return 0 end
-
-            -- Mana Tide restores 6% of base mana every 3 seconds for 12 seconds
-            local tide_restoration = state.mana.max * 0.06
-
-            -- Enhanced by Spirit Link talent if active
-            if talent.spirit_link.enabled then
-                tide_restoration = tide_restoration * 1.15 -- 15% bonus
-            end
-
-            return tide_restoration
-        end,
-    },
-
-    -- Elemental Mastery mana cost reduction
-    elemental_mastery = {
-        resource = "mana",
-        aura = "elemental_mastery",
-
-        last = function ()
-            return state.buff.elemental_mastery.applied or 0
-        end,
-
-        interval = function ()
-            return 1 -- Track per spell cast during Elemental Mastery
-        end,
-
-        value = function ()
-            if not state.buff.elemental_mastery.up then return 0 end
-
-            -- During Elemental Mastery, spell costs are reduced and provide mana efficiency
-            -- 30% spell damage bonus effectively reduces mana per damage point
-            local efficiency_bonus = state.mana.max * 0.02 -- 2% efficiency per cast
-
-            return efficiency_bonus
-        end,
-    },
-
-    -- Ancestral Guidance mana efficiency during healing conversion
-    ancestral_guidance = {
-        resource = "mana",
-        aura = "ancestral_guidance",
-
-        last = function ()
-            return state.buff.ancestral_guidance.applied or 0
-        end,
-
-        interval = 1, -- Per damage/healing event
-
-        value = function ()
-            if not state.buff.ancestral_guidance.up then return 0 end
-
-            -- During Ancestral Guidance, 40% of damage becomes healing
-            -- This creates mana efficiency through effective healing without direct cost
-            local efficiency_return = state.mana.max * 0.01 -- 1% per significant heal
-
-            return efficiency_return
-        end,
-    },
-
-    -- Lava Lash mana efficiency with weapon enchant synergy
-    -- lava_lash_efficiency = {
-    --     resource = "mana",
-
-    --     last = function ()
-    --         return action.lava_lash.lastCast or 0
-    --     end,
-
-    --     interval = function ()
-    --         return action.lava_lash.cooldown -- 10 second cooldown
-    --     end,
-
-    --     value = function ()
-    --         if not action.lava_lash.lastCast or query_time - action.lava_lash.lastCast > 1 then return 0 end
-
-    --         -- Lava Lash with Flametongue provides mana efficiency through high damage per mana
-    --         local efficiency = 0
-    --         if buff.flametongue_weapon.up then
-    --             efficiency = state.mana.max * 0.015 -- 1.5% mana efficiency value
-    --         end
-
-    --         -- Enhanced with glyph effects
-    --         if glyph.lava_lash.enabled then
-    --             efficiency = efficiency * 1.2 -- 20% bonus efficiency
-    --         end
-
-    --         return efficiency
-    --     end,
-    -- },
 } )
 
 -- Comprehensive Tier Sets and Gear Registration for Enhancement Shaman
@@ -1260,22 +1071,39 @@ spec:RegisterAuras( {
         end,
     },
 
-    -- Additional Enhancement Mechanics
-    enhanced_elements = {
-        id = 77223,
-        duration = 8,
-        max_stack = 1,
-    },
-    frost_shock = {
-        id = 8056,
-        duration = 8,
-        max_stack = 1,
-    },
-    frozen = {
-        id = 94794,
-        duration = 5,
-        max_stack = 1,
-    },
+        -- Additional Enhancement Mechanics
+        enhanced_elements = {
+            id = 77223,
+            duration = 8,
+            max_stack = 1,
+        },
+        frost_shock = {
+            id = 8056,
+            duration = 8,
+            max_stack = 1,
+        },
+        frozen = {
+            id = 94794,
+            duration = 5,
+            max_stack = 1,
+        },
+
+        -- Additional missing auras for SimC compatibility
+        ancestral_swiftness = {
+            id = 16188,
+            duration = 10,
+            max_stack = 1,
+        },
+        unleash_flame = {
+            id = 73683,
+            duration = 10,
+            max_stack = 1,
+        },
+        unleash_wind = {
+            id = 118470,
+            duration = 8,
+            max_stack = 1,
+        },
     -- Alias for APL condition compatibility (SimC uses debuff.frozen_power)
     frozen_power = {
         id = 94794, -- reuse frozen root aura ID
@@ -2097,6 +1925,43 @@ spec:RegisterAbilities( {
             interrupt()
         end,
     },
+
+    -- Additional Enhancement Shaman abilities
+    primal_strike = {
+        id = 73899,
+        texture = 460956,
+        cast = 0,
+        cooldown = 8,
+        gcd = "spell",
+        startsCombat = true,
+
+        spend = 0.05,
+        spendType = "mana",
+
+        handler = function()
+            -- Simple melee strike for early levels
+        end,
+    },
+
+    fire_nova = {
+        id = 1535,
+        texture = 459026,
+        cast = 0,
+        cooldown = 2.5,
+        gcd = "spell",
+        startsCombat = true,
+
+        spend = 0.10,
+        spendType = "mana",
+
+        usable = function()
+            return state.active_flame_shock > 0, "requires flame shock on any enemy"
+        end,
+
+        handler = function()
+            -- Fire Nova deals damage to all enemies with Flame Shock
+        end,
+    },
 } )
 
 -- State Expressions for Enhancement
@@ -2176,6 +2041,6 @@ spec:RegisterOptions( {
 } )
 
 -- Default pack for MoP Enhancement Shaman
-spec:RegisterPack( "Enhancement", 20250811, [[Hekili:fR1wpUjou4FlJQuuI2USHKjzYUkjsBxvP25HUpqFgWH4KynCjY4mJgPi(TVhBtaJXgy22rv96WXCU5Z57ZxW31)7(E7rmS)3MnD2IPRCDDM5oZD(d(ESxpJ99oJIEcDe(pPOe4V)C6juAeobNY4YEnodTNRJ8Sl0iqUhj5FOOdSIWf3V63x57T7cjM91u)DMTZsFp0f2PmQV3xijyKV3jY(9y54X5r(EF)ejViK)huryP3ueMDa(5igjlTimMKZaXhYOfHFb)ejM4a(gn7ajg8Opue6DcLGs)RIqfVV4rUGMEBXJfpkvAUZzkoklzhI9BB(JxiP7pCH(AWly05S0psoS5oCAeOlMZnzoszMvWHyi5XYspEbBshkI7unXKJNyPK0Jb5Ni449CLS7YHdo6cC2N9IfDCotK0EK)Rp8H)9moftvIBye7IZY2hFjNXvpdrpIzoNWOy2jNZrS1ZwC9kdMQcyzb7j4TZNQ(YxYXbegojx9H5SmAsmk)e8oGmHE5)hhnbc3EKiImkzSquL)5C5CtxzZYPtuTRmwfMdg12Lthn(memNPKeuCWbcfhGJfvdOyh(R9m(6v(iosXqTk12quS5ADBk8UaEfH6tr0iuk)DOurTNY4X0Cm9jyUt9Pv2mibLdEYRY5Iy4zoTK5Gtr7IX7hnUCeLby1aH(JQXCm(1ZNCAgyL54k1eLLfZt4MhgfNGiP5BME96Gg42nRMozYV8OBpj)Dk8w8tj86i6U56QgXKlv3yPv42aoGxoMhHt3ZHc5VsvyMZOKNW1b2C13jMCalkU5VY4Hug9tOxBYKRxVRFBP6N0lPbYFkGN8(iN3Ato0FflcwPEdayVecoFJBVVkkZW7T19gcQNqZfHFxauQYGiTjh(dJOCSzDWp1hlb4So5nY2RyWCxsJXCGZsnKlMVkRUkLHLiu3sFxVkawzem1DzW9NJGWSIOeqzNyWk1Ze7ayAMXsCHKQ6bHnsq4yOmllPKh0jk7skBRY8qTjQz12LfZQi7mRInlmOHdyk4g5Njus97lcZfgctttDCAiryytOSNXKT5K6aFCw0tvM(2uJqgyXr3XirnW(vIE0ZOaod4WZmLr2Swrw35(7LIRbfSvznKqc6xTht6LMMSbnlNvBJYE)6h2SCseX33AU0I))MkOa4VHMx4YafWl1EHCGLIZZv6hmiDi9eRNn8iWKjmwpd4hSt1z3XTtV34AuXeANGnJjO2Uz14w5S0eBlzlv)lO4NGvofCKIasSKSNbX)4GiBDTmLlX6)7SpRcWdmdBey1PzpJu4iuAtGMRgJhCOxqawuooAtZvxW1XnMxR6AK93z9uNLpOBRe0XeuDEwJdBrjRIYO(XPHKgUfLxttVEZcRQQxRR7U62Uc4KB39zLBVQS8Uf2K8DE)yZK6h2NhHVOIYArdtgBM1TkNRRs7yPs5QG1rVgfd7(qSefynpCZ3gLUCMZaJxPc7RuVLl(Jh1TsKg5ClNdBITPvX1Qp0myLQQEtivJg8MfAfswb0EZZaU(EpdkbEL6ZzX37feLN(Z99(AY5mkdwVC49AhFItXJ(E5NXrWlUCUVN4H8d2bSm8pFtCqrL1((FY3lcCzmLGGb0Ypkc3UbSGue4kEv(TpduVMMaOqqDwX1Q1ch4CqgUiCurODnweUUiKJwY9M59fxL1pGQlcxi0SfuOArM28vT02iE1HOIs5o39d25wVPP3zaHEO(NEGv7Dnuk3)wy1)Sa7wRRkqAUEwAvpDdcl86oWpK1dU1wvtpCB)WGZXCDnByMCETj1Wa5MCLOVQuUomUQZaJ9p1CVQwQ6KRQpFhmlElv3a0N3bdQZDQQTRX61SQ7BVDFUL2Dx9(9Fkjy3otWUZBfLskd9W8n0G1aqtHQrONfQ2tLyr3GDuPBFnWTHZSWUiZnlMQ7OAdx4jp0if1Mcs3Zx1xQQvfHR5kciNixCE30k)W4yDHZ2cjZEr6yqFDD2jfHxVwwWA98tkcN0rdFNSqV)aG27b6uX8cnf48g7YQBUHUpegl9r3yj6f66HH16BVC24PAis0QGRMWHVbx3MJtRxA6GYnTpgNHnDFF9W02hBxZxDa5BjJWR7hqkrsamq6ox7DcwpjO6WTJtdsX9Q1qpCa9MPN))ltBV1O)tmQ)saGPAwT5nOQEiI64aL6mQSVqkac1(5mPJFA6SMAGFQZ9UAOCV6lLAiCVdGjDMOBwUHnoHwPjckFYNElSSZ6Pj0AXiaY))PwKXVK9dOlWpOtgVRzDP2TallZwiN8uUouHRmxzbivxwBflBfsWTBkwlh0bxOKx3Wndxh7wLoUCaQ3ESj3hARxoTrbNMk7MZKRmrsGRePz77AWKErVxfMbNDDBNvEL3veWnMgeRBrlB3GuT5Tu3fXA9TwpyE1wRKr7cqVLUy9ElVIroGlfSuHdCPZqUCQmhpWxGxQSIN9BcpPhFvll4xCwPgW99pTSyyPLowi0GYlDKuUfT95b9Tbed7XWV52AmT5k7BNWYDT3Ap01y49SSOXVLwHFAqrte)UCfG9BFvkOYVIGEw7L0q17)U52y0UOE5Xvgi)c1k3Cz3l0sx9BhS65NhQG4S6JQQf1PcLV2xoM8BAJsolLA87st)JsZV5X7y57oRIE1y4Q8ET)wZ8BUY9gFMADtiliun(TNzAnhsXv0NAmwnOrU9l))7d]] )
+spec:RegisterPack( "Enhancement", 20250911, [[Hekili:fR16UnoUv4NLGbiWgDwvl7ypjfXby22fO7a0DlGNFljAzABHOBqIobPWqp79qszrkksr6jtAXS7SjIKN7NVVJ0Ya)GVhSzhIGd(J5ZMVC2d((EZxmZF(dbBiVvId2uIIFgDa(HCug83)w(ruEmodNtOR9wAbAhvg1fNQIH13KK93Rq7jnrlV7(F5(GnBpLKs(98GTd1Z8LpSCrWg0jYXIk4OzN2xL8CWMJj72H5NaxhhS57htQBIO)lQjQ1EAIk2d)EmjPiVjknPMalVVOQj6FIFojnXdSUQI9jPGn9PMOnhrzO8)wtKK938n6c9T3MOFPj6Fv8VHF1B5NN1e9NLKKSK)dExZ3A(gxD1ELv44ISTiYFz9F91K8D7pv9w4Ryuzr(Nt2V(gCEmOfI3L184RPxa7tHalPi)WjSoziT8OIjn5WrsEs(HW6Jj40DuHS90(9EQl4TR4vdYOSG(SptZ0RFjPccs1HBtiyQVt)ZN(0FwIZXvsXc4uBtlk2LEQMqvjbvDat8oIrPKJELXKhNV88zigIdjfH7sWpTyM8HpvJdbnKvl)WAsrvwkQ(iCgynMCP)GNYcmx5wMxQDLjSL6SpVtL9nL1RMnvwVM8)W2fO2bC8Nwn72jLGxwwLKHsd3NuHdXPSIkuQhvEVGpFMUJdvyOOVY0wKmMhvngMzhslFKFkQkgLtptvfRewA)4QAC1ZqIw(PD6mmdvdwYB8Kuk8mVbR5HZrBtX7UDs7oADWUncTzD75q6BLh967yTb)oXexuKsZe63wfodLKxVE25ZoTXNwF)SPt))U3TlP(dY9w(tX9gX7Uy6YkrNjj64ukC7HDqlhRJX57OiQ0J05MSUXAcGMJfE3c5dMMShZQWPNBIl1s)eA4Mo985BSRlz7S6uEi)3cPrqo2qn0KLY8yUCdbqXSeC9AFRhfvO5Cp5Zrx)h49OtPax0x5cPjAYxtFf9g8dF9fusk166vGqjyayDmQsc7DhMb7fdLfGDcXFy)9qxltQsiVIsFgqmcpuH4jVSIxGTZrtfP1HzC4HqMfIz1VMSNKJRR7OAYq4uyTISwImOoayRH66l0hBybUMOVZSuzkvEiLADGZqjRur(LFmhD3EbQqQNYtXuYH2nYm5lWaTRH5GTxkcoFM5sKeCL)QW7kJHKv3OdatYunArupTfOIiA7wzR0vvpAyZxJkeS5BlsjwI80a)ajShZsESIGUZZCZLACtDziAZDNdQwVy(iC8aDNXqslf9ckKYP7SEydlbnefXp3DMlPE2AWXU9MDfTJvX3j48X9OnD0cmz16ZqTr45dIWJxdC34nKxNRdOFU776AzC1wQkQjcBPfXv8W(L)SiZDdQ9UUWRP43cxJFgW1A7F1SQl9Wpo3DpqNk0wKdiHKJIO7KHH3l08YyyddWagMRbhTyg2pg3snoBHYYstZBx0VdsmRzcd1s(gelNA7Rf)MmFgWZFz2Q8IxqsC(kDGqlU6PEfbr5AC86(JnsLZLPPgvE3A(CpoZB1xu1xg6qgsKCuMnzzlrR0USW)ERjkBvfpGRVVQFC9sJIYQ2vnxvD3dA3aQ4GeUC)ixmFCu(C5hFesBHDfQAYpRNpUixOkYRhyVTywIHj(T4u4TqzJXbJ9sfHDQL2KUZJp8osuATFxAgheTE)jat4gAclUoIuBTxFIaLMhBto0guUkKDz9EDW6o)gWoz1Vh0)ROyWpyZlGcGJ1(zlV3hE0ROkALqDWMFpRSOIaVWy0DkFlsVMVfSPUehdhC1IGnShs)oPG2H)ZFW(URTicb)AWMyWDWvjiydATLMONwdAHVmyoB6S)acOcfPbChGinsciKcLPXzL3eDBtKzP2e9yteLEHArlS5FTvPGOBIwYKSbyBXs6EtpXQdPieUPKqPg3DoBCpUUV1PHsZv7t1XewxpHsTVLgTptqSu1mejvOIomuQ4xzu8JZCj0IEKoEzIVqRkYHQ7V4CONkR5UPYfcvQGwtv59gvPoCcHOuPjPY6bfz11nkYjYk4MMidzmyxYmOuabq8(ZC2wLZUcgvMqmJTCnLp9dg9kG8vXBCdazHb0l)RaSW9IcFh8knvl(Mbhgxws83m5yUjEaiZfS1XvGeBptbMBJhxoYm(mbzUN0mFUgUadC68SXYzo7HkYHzIM7H5u(oiCnJmWeTAlTB1Y(6RLbYu(lxooh)pgzYimgMBiNacCSpZzt05ZTHoJFQZMOPJdlAUb(JNrXs)QjbtRjLG369HagNdweR099sn3N5E)QzSDZTQxf4K7uIghIWCBdteQF5rwMEm6qDmPxhJ4yewMBfLZMd)2SUvG6c69WkSryrnecPDQ)iXqZTNx)eqJWpA8Z8kcpJ8PELmFHeSWKAnZS4hlZyDczQym85GTxYa89ZfQxJOSWkZDhnwqVM1HEL5UEGKW8hrwLHq3hsgyiCisRobJfmeNNGzUzqcltW4I9QzEK5MXtEVZJm3cQGXQD3M4DqzbHEjRy)FDEWilB7x4RCVE41Xl5vhs3JfMPSyMqLDx)MUbv6WxUC3FKD4XhNGp4KM76JW3nU6K2niFFG0z(aUXQz9M5rrK6g74Yw53uOE2miCwqz1SlMHTRYa3QSEDg0y8pkmE(91tZ1yQB8MEzi2uHkjIvY7Q)npszNFPN86Ujsk7Ymc0G5evUulxICeR3Ch2oD4oE0kqhFhgiSoJhUD8a0QO7NXWfNQB(1w)B8rP(Fxura2)Xhww6wyzKr)CkUmsq5I3AZcS9gCJ(sA6cewM7BS7p1GVHIaJ3YqEtUM(HFAqttz)t7iR21Vmfv7ndZY4MCfj(mk9FtrLlFf)lWhYXeBFf9XNTuv8p5S4PFIFBtrA8IAjuH4UDzzEW37ihJmyO1bSxABqw6Te)YnmEWeg)AFVv6AuZV63vjL8v1E9TD)UBl7sq1OHRND38jAdfsNB4vYoO)7E172Cp(enSiS2ROTUH24lRB(JHS9dMjH09NG)7]] )
 
 -- Register pack selector for Enhancement

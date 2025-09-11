@@ -523,7 +523,7 @@ local function RegisterWindwalkerSpec()
         spinning_crane_kick = true
     } )
 
-    local prev_combo, actual_combo = "none", "none"
+    local prev_combo, actual_combo, last_combo = "none", "none", "none"
     spec:RegisterStateExpr( "last_combo", function() return actual_combo end )
     spec:RegisterStateExpr( "combo_break", function() return state.this_action == last_combo end )
     spec:RegisterStateExpr( "combo_strike", function()
