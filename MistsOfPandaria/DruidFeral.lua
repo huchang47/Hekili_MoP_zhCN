@@ -184,6 +184,18 @@ spec:RegisterAuras( {
         type = "Magic",
         max_stack = 1,
     },
+    -- Engineering: Synapse Springs (Agi tinker) for FoN alignment
+    synapse_springs = {
+        id = 96228,
+        duration = 10,
+        max_stack = 1,
+    },
+    -- Dream of Cenarius damage bonus (used by APL sequences)
+    dream_of_cenarius_damage = {
+        id = 145152,
+        duration = 30,
+        max_stack = 1,
+    },
     armor = {
         alias = { "faerie_fire" },
         aliasMode = "first",
@@ -806,6 +818,7 @@ spec:RegisterAbilities( {
             if IsSpellKnown and IsSpellKnown(127568) then return 127568 end
             return 52610
         end,
+        copy = { 52610, 127568, 127538, 127539, 127540, 127541 },
         cast = 0,
         cooldown = 0,
         gcd = "totem",
@@ -875,7 +888,7 @@ spec:RegisterAbilities( {
     healing_touch = {
         id = 5185,
         cast = function()
-            if buff.natures_swiftness.up then return 0 end
+            if buff.natures_swiftness.up or buff.predatory_swiftness.up then return 0 end
             return 2.5 * haste
         end,
         cooldown = 0,
@@ -884,9 +897,16 @@ spec:RegisterAbilities( {
         spend = function() return buff.natures_swiftness.up and 0 or 0.1 end,
         spendType = "mana",
         startsCombat = false,
+        usable = function()
+            -- Disallow hardcasting in Cat; require an instant proc (NS or PS)
+            return (talent.dream_of_cenarius and talent.dream_of_cenarius.enabled) and (buff.natures_swiftness.up or buff.predatory_swiftness.up)
+        end,
         handler = function()
             if buff.natures_swiftness.up then removeBuff("natures_swiftness") end
             -- no HoT; just consume NS on CD and return to cat
+            if talent.dream_of_cenarius and talent.dream_of_cenarius.enabled then
+                applyBuff( "dream_of_cenarius_damage" )
+            end
         end,
     },
     frenzied_regeneration = {
@@ -1805,6 +1825,39 @@ spec:RegisterStateExpr( "rip_stronger", function()
     return now_mult > ( snap.rip_mult or 0 ) + 0.001
 end )
 
+-- Percent increase if we were to reapply the bleed now (0.05 = 5%).
+spec:RegisterStateExpr( "rake_damage_increase_pct", function()
+    local snap = bleed_snapshot[ target.unit ]
+    local last = snap.rake_mult or 0
+    local now = current_bleed_multiplier()
+    if last <= 0 then return 0 end
+    return max( 0, ( now / last ) - 1 )
+end )
+
+spec:RegisterStateExpr( "rip_damage_increase_pct", function()
+    local snap = bleed_snapshot[ target.unit ]
+    local last = snap.rip_mult or 0
+    local now = current_bleed_multiplier()
+    if last <= 0 then return 0 end
+    return max( 0, ( now / last ) - 1 )
+end )
+
+-- Bear-weave trigger logic mirroring the provided APL conditions.
+spec:RegisterStateExpr( "bearweave_trigger_ok", function()
+    if not buff.cat_form.up then return false end
+    if active_enemies ~= 1 then return false end
+    if energy.current >= 15 then return false end
+    if debuff.rake.remains < 8 or debuff.rip.remains < 8 then return false end
+    if cooldown.tigers_fury.remains < 7 then return false end
+    if buff.berserk.up then return false end
+
+    -- Predatory Swiftness window OR minimal expected rake snapshot gain
+    if buff.predatory_swiftness.up and buff.predatory_swiftness.remains >= 5 then return true end
+    if buff.predatory_swiftness.down and rake_damage_increase_pct <= 0.05 then return true end
+
+    return false
+end )
+
 -- State expressions for advanced techniques
 spec:RegisterStateExpr( "should_bear_weave", function()
     if not opt_bear_weave then return false end
@@ -1847,9 +1900,13 @@ end )
 
 -- Provide in_group for APL compatibility in emulated environment
 spec:RegisterStateExpr( "in_group", function()
-    if IsInGroup ~= nil then return IsInGroup() end
-    -- Emulation fallback: treat as false if API not present
+    -- Avoid calling globals in the sandbox; treat as solo in emulation
     return false
+end )
+
+-- Expose solo_prowl toggle to SimC as a state expression
+spec:RegisterStateExpr( "solo_prowl", function()
+    return state.settings.solo_prowl ~= false
 end )
 
 
