@@ -6,6 +6,11 @@ actions.precombat+=/aspect_of_the_hawk,if=!buff.aspect_of_the_hawk.up&!talent.as
 actions.precombat+=/aspect_of_the_iron_hawk,if=!buff.aspect_of_the_hawk.up&!buff.aspect_of_the_iron_hawk.up&!moving
 actions.precombat+=/call_pet_1,if=!pet_alive
 actions.precombat+=/hunters_mark,if=(settings.mark_any|target.is_boss)&active_dot.hunters_mark=0&target.time_to_die>15
+actions.precombat+=/explosive_trap,if=!debuff.explosive_trap.up
+actions.precombat+=/potion,name=virmens_bite
+
+# Variable from WoWSims APL: decide when to dump with Arcane Shot
+actions+=/variable,name=ShouldAS,value=(focus>=50&cooldown.black_arrow.remains>=4)|focus>=70
 
 # MAIN ROTATION PRIORITY LIST
 actions+=/call_action_list,name=opener,if=settings.use_opener&time<12
@@ -32,7 +37,7 @@ actions+=/black_arrow,if=!debuff.black_arrow.up&focus>=35&target.time_to_die>=8
 
 
 # Use Arcane Shot as focus dump when we have sufficient focus and few targets
-actions+=/arcane_shot,if=focus>=50&active_enemies<=2
+actions+=/arcane_shot,if=variable.ShouldAS&active_enemies<=2
 actions+=/multi_shot,if=focus>=50&active_enemies>=2
 
 # Cast Cobra Shot (focus generation) when we don't have enough focus for dumps
@@ -45,20 +50,13 @@ actions+=/call_action_list,name=defensive
 # 14. Aspect Management - BOTTOM PRIORITY
 actions+=/call_action_list,name=aspects
 
-# OPENER ROTATION (First ~12 seconds)
-# Requested sequence:
-# Explosive Shot → Black Arrow → A Murder of Crows → Fervor → Multi-Shot → Stampede + Everything (springs, racial, pot) → Explosive Shot
-# During the opener, if Lock and Load procs, immediately fire Explosive Shot and delay sting/glaive/dumps
+# OPENER ROTATION (First ~12 seconds), aligned with WoWSims ordering
+# LnL explode immediately if up, otherwise BA → AMoC → Fervor → Explosive Shot → CDs → apply Serpent via Multi-Shot → talent dumps
 actions.opener+=/explosive_shot,if=buff.lock_and_load.up
-actions.opener+=/explosive_shot,if=cooldown.explosive_shot.ready&focus>=40
 actions.opener+=/black_arrow,if=!debuff.black_arrow.up&focus>=35
-# Try to cast AMoC now; if focus is low, Fervor will be used just after to enable it on the next GCD.
 actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus>=60
 actions.opener+=/fervor,if=talent.fervor.enabled&cooldown.fervor.ready&(focus<60|(talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus<60))
-actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus>=60
-# If LnL did NOT proc, weave in Multi-Shot/Serpent before big cooldowns
-actions.opener+=/multi_shot,if=focus>=60&!buff.lock_and_load.up
-actions.opener+=/serpent_sting,if=!debuff.serpent_sting.up&target.time_to_die>15&!buff.lock_and_load.up
+actions.opener+=/explosive_shot,if=cooldown.explosive_shot.ready&focus>=40
 # Stampede + Everything bundle (includes Rapid Fire and trinkets)
 actions.opener+=/stampede,if=cooldown.stampede.ready
 actions.opener+=/rapid_fire,if=cooldown.rapid_fire.ready&!buff.rapid_fire.up
@@ -68,11 +66,12 @@ actions.opener+=/use_item,slot=trinket2
 actions.opener+=/blood_fury,if=cooldown.blood_fury.ready
 actions.opener+=/berserking,if=cooldown.berserking.ready
 actions.opener+=/potion,name=virmens_bite_potion
-# If LnL DID proc, finish CDs first, then add Multi-Shot/Serpent
+# Apply Serpent via Multi-Shot if needed, then talent dumps
 actions.opener+=/multi_shot,if=focus>=60&!debuff.serpent_sting.up
 actions.opener+=/serpent_sting,if=!debuff.serpent_sting.up&target.time_to_die>15
 actions.opener+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_toss.ready&focus>=15&!buff.lock_and_load.up
-actions.opener+=/explosive_shot,if=cooldown.explosive_shot.ready&focus>=40
+actions.opener+=/barrage,if=talent.barrage.enabled&cooldown.barrage.ready
+actions.opener+=/powershot,if=talent.powershot.enabled&cooldown.powershot.ready
 
 # LOCK AND LOAD BURST PHASE - Based on official guide
 # Lock and Load gives 3 free Explosive Shot casts (no focus cost, no cooldown)
@@ -106,6 +105,10 @@ actions.cooldowns+=/stampede,if=cooldown.stampede.ready
 # Glaive Toss should be used on cooldown
 actions.cooldowns+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_toss.ready&focus>=15
 
+# Barrage / Powershot usage (from WoWSims APL updates)
+actions.cooldowns+=/barrage,if=talent.barrage.enabled&cooldown.barrage.ready
+actions.cooldowns+=/powershot,if=talent.powershot.enabled&cooldown.powershot.ready
+
 # Synapse Springs from Engineering gloves; use when ready
 actions.cooldowns+=/use_item,slot=hands,if=cooldown.synapse_springs.ready
 
@@ -122,7 +125,7 @@ actions.cooldowns+=/arcane_torrent,if=focus<35
 actions.cooldowns+=/berserking
 
 # Agility potion during heroism/bloodlust
-actions.cooldowns+=/potion,name=virmens_bite_potion,if=buff.bloodlust.up
+actions.cooldowns+=/potion,name=virmens_bite_potion,if=buff.bloodlust.up|target.health.pct<=20|debuff.a_murder_of_crows.up
 
 # AOE ROTATION (3+ TARGETS) - Based on official guide
 # PRIORITY: Lock and Load takes precedence over AoE abilities for maximum damage

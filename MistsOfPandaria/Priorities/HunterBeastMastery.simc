@@ -5,13 +5,14 @@
 # Pre-combat setup and pet management
 actions.precombat+=/aspect_of_the_cheetah,if=!buff.aspect_of_the_cheetah.up&!mounted&moving
 actions.precombat+=/aspect_of_the_hawk,if=!buff.aspect_of_the_hawk.up&!talent.aspect_of_the_iron_hawk.enabled
-actions.precombat+=/aspect_of_the_iron_hawk,if=!buff.aspect_of_the_hawk.up&!buff.aspect_of_the_iron_hawk.up&!moving&time>1&time<5
+actions.precombat+=/aspect_of_the_iron_hawk,if=!buff.aspect_of_the_hawk.up&!buff.aspect_of_the_iron_hawk.up&!moving
 actions.precombat+=/call_pet_1,if=!pet_alive
 actions.precombat+=/hunters_mark,if=(settings.mark_any|target.is_boss)&active_dot.hunters_mark=0&target.time_to_die>15
-actions.precombat+=/potion,name=virmens_bite_potion
+actions.precombat+=/explosive_trap,if=!debuff.explosive_trap.up
+actions.precombat+=/potion,name=virmens_bite
 
 # Main combat priority system
-actions+=/potion,name=virmens_bite_potion,if=buff.bestial_wrath.up&buff.bloodlust.up|target.time_to_die<=60&target.is_boss
+actions+=/potion,name=virmens_bite,if=buff.bestial_wrath.up&buff.bloodlust.up|target.time_to_die<=60&target.is_boss
 
 # Emergency pet management
 actions+=/call_pet_1,if=!pet.alive&settings.pet_to_call=1

@@ -28,8 +28,8 @@ actions.cooldowns+=/potion,name=virmens_bite_potion,if=buff.berserk.up|target.ti
 actions.cooldowns+=/incarnation,if=talent.incarnation.enabled&buff.tigers_fury.up
 # Berserk: high energy, TF up, not clearcasting, SR up, <=2 targets, in Cat
 actions.cooldowns+=/berserk,if=energy.current>90&buff.tigers_fury.up&buff.clearcasting.down&buff.savage_roar.up&active_enemies<=2&buff.cat_form.up
-# Force of Nature during Tiger's Fury and aligned with Synapse Springs if available
-actions.cooldowns+=/force_of_nature,if=variable.use_trees&talent.force_of_nature.enabled&buff.tigers_fury.up&(buff.synapse_springs.up|!equipped["10"]) 
+# Force of Nature during Tiger's Fury (simplified; avoid equip table indexing issues)
+actions.cooldowns+=/force_of_nature,if=variable.use_trees&talent.force_of_nature.enabled&buff.tigers_fury.up
 # Heart of the Wild toggle
 actions.cooldowns+=/heart_of_the_wild,if=variable.use_hotw&talent.heart_of_the_wild.enabled
 
@@ -60,9 +60,10 @@ actions.doc+=/thrash_cat,if=buff.dream_of_cenarius_damage.up&active_enemies>=4&b
 # Bear Weave: triggers and sequences
 # Trigger Cat -> Bear (delegate deeper logic to Lua state via bearweave_trigger_ok)
 actions.bearweave+=/bear_form,if=variable.opt_bear_weave&bearweave_trigger_ok
-actions.bearweave+=/thrash,if=buff.bear_form.up
+actions.bearweave+=/mangle_bear,if=buff.bear_form.up&rage.current<25
+actions.bearweave+=/thrash,if=buff.bear_form.up&rage.current>=25
 actions.bearweave+=/maul,if=buff.bear_form.up&rage.current>=30&buff.clearcasting.down&!prev_off_gcd.maul
-actions.bearweave+=/cat_form,if=buff.bear_form.up&buff.clearcasting.up
+actions.bearweave+=/cat_form,if=buff.bear_form.up&buff.clearcasting.up&prev.thrash
 actions.bearweave+=/mangle_bear,if=buff.bear_form.up
 actions.bearweave+=/lacerate,if=buff.bear_form.up
 # Exit: Return to Cat when about to cap energy or mono-Cat timers need attention
@@ -90,10 +91,12 @@ actions.st+=/ferocious_bite,if=target.health.pct<=25&dot.rip.ticking&dot.rip.rem
 # Ferocious Bite: other conditions (grouped)
 actions.st+=/ferocious_bite,if=((buff.berserk.up&energy.current>25&combo_points.current>=5&dot.rip.remains>=6&dot.rake.remains>=4)|(dot.rip.remains>=7&buff.savage_roar.remains>=1&dot.rake.remains>=2&energy.current>=25&combo_points.current>=5)|(target.time_to_die<2&combo_points.current>=3))&active_enemies<=3&buff.savage_roar.remains>=1&buff.cat_form.up
 # Builders
+# If SR is down and we have 0 CP, build immediately
+actions.st+=/mangle_cat,if=buff.savage_roar.down&combo_points.current=0&buff.cat_form.up
 # Shred instead of Mangle if: (a) Omen and Thrash(Cat) is active, (b) already at 5 CP (dump), or (c) during Berserk
-actions.st+=/shred,if=((buff.clearcasting.up&dot.thrash_cat.ticking)|(combo_points.current>=5)|buff.berserk.up)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up&!(variable.disable_shred_when_solo&active_enemies=1&!in_group)
+actions.st+=/shred,if=((buff.clearcasting.up&dot.thrash_cat.ticking)|(combo_points.current>=5)|buff.berserk.up)&active_enemies<=3&buff.cat_form.up&!(variable.disable_shred_when_solo&active_enemies=1&!in_group)
 # Default builder: Mangle when below 5 CP
-actions.st+=/mangle_cat,if=combo_points.current<5&buff.berserk.down&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
+actions.st+=/mangle_cat,if=combo_points.current<5&buff.berserk.down&active_enemies<=3&buff.cat_form.up
 
 # AOE core (>=4 targets)
 actions.aoe+=/tigers_fury,if=energy.current<=35&buff.berserk.down&buff.clearcasting.down&buff.cat_form.up
