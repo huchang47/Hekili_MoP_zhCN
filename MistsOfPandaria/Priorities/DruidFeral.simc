@@ -19,7 +19,7 @@ actions.precombat+=/prowl,if=variable.solo_prowl|in_combat=0
 actions.precombat+=/savage_roar,if=!buff.savage_roar.up
 
 # Cooldowns
-actions.cooldowns+=/use_item,slot=hands
+actions.cooldowns+=/use_item,slot=hands,if=cooldown.synapse_springs.ready
 actions.cooldowns+=/use_item,slot=trinket1
 actions.cooldowns+=/use_item,slot=trinket2
 actions.cooldowns+=/blood_fury
