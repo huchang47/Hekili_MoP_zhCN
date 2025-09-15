@@ -1,98 +1,66 @@
-# Death Knight: Unholy
-# Based on Wowhead's MoP Classic Guide: https://www.wowhead.com/mop-classic/guide/classes/death-knight/unholy/dps-rotation-cooldowns-abilities-pve
+# Death Knight: Unholy (MoP)
+# Source APL used for alignment:
+# WoWSims Unholy DK default APL: `https://raw.githubusercontent.com/wowsims/mop/refs/heads/master/ui/death_knight/unholy/apls/default.apl.json`
 
-actions.precombat+=/horn_of_winter,if=buff.horn_of_winter.down|buff.horn_of_winter.remains<6
 actions.precombat+=/unholy_presence
-actions.precombat+=/potion,name=mogu_power_potion
-actions.precombat+=/raise_dead
 actions.precombat+=/army_of_the_dead
+actions.precombat+=/horn_of_winter,if=buff.horn_of_winter.down|buff.horn_of_winter.remains<6
+actions.precombat+=/potion,name=mogu_power_potion
 
-# Defensives and Cooldowns
+# Utility/interrupt
 actions+=/mind_freeze
-actions+=/antimagic_shell,damage=100000,if=cooldown.antimagic_shell.remains=0&settings.dps_shell
-actions+=/use_item,name=trinket1,if=buff.dark_transformation.up
-actions+=/use_item,name=trinket2,if=buff.dark_transformation.up
-actions+=/blood_fury,if=buff.dark_transformation.up
-actions+=/berserking,if=buff.dark_transformation.up
-actions+=/arcane_torrent,if=runic_power<70&buff.dark_transformation.up
-actions+=/potion,name=mogu_power_potion,if=buff.dark_transformation.up
-# Gargoyle
-actions+=/summon_gargoyle,if=pet.ghoul.active&(buff.dark_transformation.up|cooldown.dark_transformation.remains>20)&fight_remains>30
+actions+=/antimagic_shell,damage=100000,if=settings.dps_shell
 
-# Disease Management and Plague Leech Optimization
+# Cooldowns and on-uses (mirrors APL gating around Gargoyle/DT/trinkets)
+actions+=/raise_dead,if=!pet.ghoul.active
+actions+=/dark_transformation
+actions+=/synapse_springs,if=(buff.dark_transformation.up|cooldown.dark_transformation.remains>10)
+actions+=/blood_fury,if=(buff.dark_transformation.up|cooldown.dark_transformation.remains>10)
+actions+=/berserking,if=(buff.dark_transformation.up|cooldown.dark_transformation.remains>10)
+actions+=/use_item,name=trinket1,if=buff.dark_transformation.up|cooldown.dark_transformation.remains>20
+actions+=/use_item,name=trinket2,if=buff.dark_transformation.up|cooldown.dark_transformation.remains>20
+actions+=/potion,name=mogu_power_potion,if=buff.dark_transformation.up|cooldown.dark_transformation.remains>20
+actions+=/summon_gargoyle,if=pet.ghoul.active&(buff.dark_transformation.up|cooldown.dark_transformation.remains>20)
+actions+=/use_items
+
+# Diseases and Plague Leech
 actions+=/unholy_blight,if=talent.unholy_blight.enabled&(dot.frost_fever.remains<3|dot.blood_plague.remains<3)
 actions+=/plague_leech,if=talent.plague_leech.enabled&((dot.blood_plague.remains<3&dot.frost_fever.remains<3)|(rune_deficit>=2&(dot.frost_fever.ticking|dot.blood_plague.ticking)))
 actions+=/outbreak,if=!dot.blood_plague.ticking|!dot.frost_fever.ticking
-## Plague Strike Logic
-# 1. Apply if Blood Plague not present.
 actions+=/plague_strike,if=!dot.blood_plague.ticking
-# 2. Late refresh (avoid clipping) if about to fall off AND we are not immediately consuming with Plague Leech.
-actions+=/plague_strike,if=dot.blood_plague.ticking&dot.blood_plague.remains<3&(!talent.plague_leech.enabled|cooldown.plague_leech.remains>5)
 actions+=/icy_touch,if=!dot.frost_fever.ticking
 
-# Sudden Doom Priority and Runic Power Management
-# Cast Death Coil immediately on Sudden Doom to build Shadow Infusion without RP cost.
+# Sudden Doom: spend immediately
 actions+=/death_coil,if=buff.sudden_doom.react
-# (Removed generic runic_power>90 dump; handled in spec lists with lower thresholds.)
 
-# Pet Management
-actions+=/raise_dead,if=!pet.ghoul.active
-actions+=/dark_transformation
+# Execute
+actions+=/soul_reaper,if=target.health.pct<=35
 
-# Soul Reaper Logic (simplified execute threshold)
-actions+=/soul_reaper,if=target.health.pct<=35&cooldown.dark_transformation.remains>4
-
-# AoE Setup
+# AoE setup
 actions+=/blood_boil,if=active_enemies>=2&(dot.blood_plague.ticking&dot.frost_fever.ticking)&blood>=1&(active_dot.blood_plague<active_enemies|active_dot.frost_fever<active_enemies)
-actions+=/death_and_decay,if=active_enemies>=2&unholy>=1&(settings.dnd_while_moving|!moving)
+actions+=/death_and_decay,if=active_enemies>=2&(settings.dnd_while_moving|!moving)
 
-# Action Lists
+# Branch
 actions+=/run_action_list,name=aoe,if=active_enemies>=4
 actions+=/run_action_list,name=single_target,if=active_enemies<4
 
-# Single Target Rotation
+# Single Target
 actions.single_target+=/dark_transformation,if=buff.dark_transformation.down
-
-# Festering Wound Management
-actions.single_target+=/scourge_strike,if=debuff.festering_wound.stack>=3&(unholy>=1)
-# Festering Strike for disease maintenance if either disease close to expiring and Unholy Blight not immediately available.
-actions.single_target+=/festering_strike,if=(dot.blood_plague.remains<3|dot.frost_fever.remains<3)&(!talent.unholy_blight.enabled|cooldown.unholy_blight.remains>3)
-# Standard Festering Strike builder outside execute to stack wounds (stop in execute to free runes for Soul Reaper/Scourge Strike).
-actions.single_target+=/festering_strike,if=target.health.pct>35&blood>=1&frost>=1&debuff.festering_wound.stack<6
-# Low-level / pre-wound fallback: if we have an unholy rune and zero wounds (can't pop them yet), spend it so we don't idle while waiting on a blood rune for Festering Strike.
-actions.single_target+=/scourge_strike,if=unholy>=1&debuff.festering_wound.stack=0
-
-# Blood Tap Optimization
-actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=5&unholy=0
-
-# Sudden Doom Priority (still covered globally; retained here for ordering clarity)
-actions.single_target+=/death_coil,if=buff.sudden_doom.react
-
-# Standard Rotation
-actions.single_target+=/scourge_strike,if=unholy>=1&debuff.festering_wound.stack>0
-# Build Shadow Infusion quickly when Dark Transformation not active; modest RP threshold to prevent starvation.
-## Death Coil to build Shadow Infusion: avoid starving rune spenders; be more conservative unless runes are exhausted or wounds exist.
-actions.single_target+=/death_coil,if=buff.dark_transformation.down&buff.shadow_infusion.stack<5&(runic_power>=55|(runic_power>=40&(unholy=0|debuff.festering_wound.stack>0)))
-# General RP dump (avoid capping, guide-aligned ~50 threshold).
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=10&(runes.blood.count=0|runes.frost.count=0|runes.unholy.count=0)
+actions.single_target+=/scourge_strike,if=unholy>=1
+actions.single_target+=/death_coil,if=buff.shadow_infusion.stack<5&buff.dark_transformation.down&runic_power>=40
 actions.single_target+=/death_coil,if=runic_power>=50
-actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=5
 actions.single_target+=/horn_of_winter,if=runic_power<=60&(buff.horn_of_winter.down|buff.horn_of_winter.remains<6)
 actions.single_target+=/empower_rune_weapon,if=unholy=0&blood=0&frost=0&runic_power<60
-# Emergency fallback: if starved (no rune spenders usable) but we still have some RP, prevent idle.
-actions.single_target+=/death_coil,if=runic_power>=40
-# Low-level fallback: if Dark Transformation not yet available (talent missing) allow spending at lower RP to avoid long idle gaps after an opening Death Coil.
-actions.single_target+=/death_coil,if=!talent.dark_transformation.enabled&runic_power>=20
 
-# AoE Rotation
-actions.aoe+=/pestilence,if=dot.blood_plague.ticking&talent.unholy_blight.enabled&cooldown.unholy_blight.remains<3
-actions.aoe+=/pestilence,if=dot.blood_plague.ticking&dot.blood_plague.remains<3
+# AoE
+actions.aoe+=/pestilence,if=dot.blood_plague.ticking&(active_dot.blood_plague<active_enemies)
 actions.aoe+=/blood_boil,if=dot.blood_plague.ticking&dot.frost_fever.ticking&(active_dot.blood_plague<active_enemies|active_dot.frost_fever<active_enemies)
-actions.aoe+=/blood_boil,if=active_enemies>=3&dot.blood_plague.ticking&dot.frost_fever.ticking
 actions.aoe+=/death_and_decay,if=settings.dnd_while_moving|!moving
+actions.aoe+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=10&(runes.blood.count=0|runes.frost.count=0|runes.unholy.count=0)
 actions.aoe+=/scourge_strike,if=unholy>=1
 actions.aoe+=/dark_transformation
 actions.aoe+=/death_coil,if=runic_power>=60|buff.sudden_doom.react|buff.dark_transformation.down&buff.shadow_infusion.stack<5&runic_power>=40
-actions.aoe+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=5
 actions.aoe+=/horn_of_winter,if=runic_power<=60&(buff.horn_of_winter.down|buff.horn_of_winter.remains<6)
 actions.aoe+=/empower_rune_weapon,if=unholy=0&blood=0&frost=0&runic_power<60
 actions.aoe+=/death_coil,if=runic_power>=30

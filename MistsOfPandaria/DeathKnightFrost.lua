@@ -986,6 +986,13 @@ spec:RegisterAuras( {
         copy = "blood_plague_enhanced"
     },
 
+    -- Blood Tap charges (used by Frost APLs)
+    blood_charge = {
+        id = 114851,
+        duration = 25,
+        max_stack = 12,
+    },
+
     -- Runic Corruption: Enhanced rune regeneration
     runic_corruption = {
         id = 51460,
@@ -1156,6 +1163,68 @@ spec:RegisterAuras( {
         max_stack = 1,
         type = "Magic",
         copy = "frost_slow"
+    },
+
+    -- Racials / Engineering (used in APL cooldown windows)
+    blood_fury = {
+        id = 33697,
+        duration = 15,
+        max_stack = 1,
+    },
+    berserking = {
+        id = 26297,
+        duration = 10,
+        max_stack = 1,
+    },
+    synapse_springs = {
+        id = 126734,
+        duration = 10,
+        max_stack = 1,
+    },
+} )
+
+-- Register auxiliary cooldown abilities used by APL windows (racials/engineering)
+spec:RegisterAbilities( {
+    blood_fury = {
+        id = 33697,
+        cast = 0,
+        cooldown = 120,
+        gcd = "off",
+
+        startsCombat = false,
+        toggle = "cooldowns",
+
+        handler = function ()
+            applyBuff("blood_fury")
+        end,
+    },
+
+    berserking = {
+        id = 26297,
+        cast = 0,
+        cooldown = 180,
+        gcd = "off",
+
+        startsCombat = false,
+        toggle = "cooldowns",
+
+        handler = function ()
+            applyBuff("berserking")
+        end,
+    },
+
+    synapse_springs = {
+        id = 126734,
+        cast = 0,
+        cooldown = 60,
+        gcd = "off",
+
+        startsCombat = false,
+        toggle = "cooldowns",
+
+        handler = function ()
+            applyBuff("synapse_springs")
+        end,
     },
 } )
 
@@ -1766,6 +1835,39 @@ spec:RegisterStateExpr( "rime_proc_active", function()
     return buff.rime.up
 end )
 
+-- Provide disease state like Unholy for APL compatibility (disease.min_remains)
+spec:RegisterStateExpr( "disease", function()
+    local frost_fever_remains = debuff.frost_fever.remains or 0
+    local blood_plague_remains = debuff.blood_plague.remains or 0
+
+    local min_remains = 0
+    if frost_fever_remains > 0 and blood_plague_remains > 0 then
+        min_remains = math.min( frost_fever_remains, blood_plague_remains )
+    elseif frost_fever_remains > 0 then
+        min_remains = frost_fever_remains
+    elseif blood_plague_remains > 0 then
+        min_remains = blood_plague_remains
+    end
+
+    return { min_remains = min_remains }
+end )
+
+-- Legacy alias used by some APLs
+spec:RegisterStateExpr( "disease_min_remains", function()
+    local frost_fever_remains = debuff.frost_fever.remains or 0
+    local blood_plague_remains = debuff.blood_plague.remains or 0
+
+    if frost_fever_remains > 0 and blood_plague_remains > 0 then
+        return math.min( frost_fever_remains, blood_plague_remains )
+    elseif frost_fever_remains > 0 then
+        return frost_fever_remains
+    elseif blood_plague_remains > 0 then
+        return blood_plague_remains
+    else
+        return 0
+    end
+end )
+
 -- MoP Death Rune conversion for Frost
 spec:RegisterStateFunction( "convert_to_death_rune", function( rune_type, amount )
     amount = amount or 1
@@ -1869,4 +1971,4 @@ spec:RegisterSetting( "it_macro", nil, {
     set = function() end,
 } )
 
-spec:RegisterPack( "Frost", 20250803, [[Hekili:TRvBpUnUr4FlghQp7RjkI27U3MdRxG2E4qY22db1PTFts0Y0RewjrxjQySfg63EhsQxiLeLSYUhAlqcqYQLICMHZmppZiY4GC(SZ29ygX5xxzV6A7BTxBzBV69xHC2YE(iXz7rS)t4hHhsWXW)EiLrYy8HFoII3ZxEgnp1hELZ2D5HrSpM4SRxzU(gyUhj(WWxdIpiC)EICUKmFNTFoimRWJ)xCHxPwl8OhGF3Nfstk8IcZyWRpqtl8(a5PWOqlNTIbf7cYbCEedE8xf7k5QC2ghMS39qkH8VbBKKG3fr278hDyGzWNwZi1RaNWcJXpg67MfqIIC26NgYiPHy4jknAp9uIvR5yLsIXHjG1TPWZMV9JfonKn)pCLTw1MoggfHtDPhadJYDNA21vTSRg1Vl)WbRwl2k)yJG3frPWUnp9zUGU(fiisAgj9PWKh5c6gJcknpb8bhPNiqq5Ucpydx4nVWBufGt9XjexgnnLKW4k5hneoyPHjpryOlY(LzP1lbe7Tdl2vtxSR4I99gDjZG0xcZ6XaAEKfxBFH0O1uCygXDpbGoGqq2gLcdhb(fR8KaA0ZU7IcFmGzvotHhErH3EkZsyJUhiFHK2KecbI1fENplNImP4ye(XCs75SSX00uLW6qgToq5Z6r4SqFEkJu1Z6AG1VxrT0C2Uuc(jHgBdj18QMuNcUsmUBgeOEIie46XeypMxJ8c9FgYqZ9deYYmUSmyvQ(icXpODSAX4XI5Jgrxk9SGSQjIQCFAtfjM6YoogHLj2lMPgy40hH0xGEJJoD3hcSW3bSA3CHaBsSGnWfygiUNi4JWGCnAMd5ly4hWWwStu3aCYEycnaM8ex5ZUCQEjHVRepUsUxAtCOfJ)QfoIlCM4NvLugYFfqWrSaRJ(ScV3kcw)Giq1ZRFx9OAo5Ls)86RBSpO0AKleDpss7RGvNeqz2fdFul7teYKVYpGRyRmguFTW7EqDxxLGkMGS(LmlteAvhqsqunYY2vDa1wxOZCrhOSDeGXCJX(bHjCmaM7taBqRuc30wz3OcjOObypsnYuWXkfDJicONeAExeoJnC5XoMYTdykMtSNv67BSgjihkbGZiwqNjU1O27HqXa2Q5CCzfgxscjoKKv65AKeuQHf4c59qrhF8Z9vruX3vNdSsyPnPaYFxjdqrfuOKbiaEhFdwy8LMKoycIwo4a1v7iKRgi0I06KuzFQ3W2aLTA3FKQ2cOPjCo0tHjmjaFGYvtcDmqPkny(8wOC9qS9yK6mbf83yh))n2XE1Ij88V5SKV0OZLtlyMe91IM2m160PPntK(Aqtpaf5eepYO4ntjyw8Ol36nd2BepAmR3S4Nap8G1pEnAtr2R(4fHU8psFKIqMHjtIecDj9z8Que6ykXNgVdZ6Rwef(2KmIIdU6lc4pfLtehkvuKRSOtMLM)xjpItai(aclOMN4mRsdpkL4pZbVfE)5e(xo)tfE)I8qDafv(TekF7XGfQQAyupOO95vDJxANSKmiaoKmsIF7uKr)a2jYbloVhdCTAjTkN6HUfDJ6SWPXpZ3ASG(MRisFcNMabNm(XfcnfeczePSYJe87xf89q1aY)kpmLB5z0yyk4CgngqlWaGXN8ijZQ4H)cu1dSDiu9NOjW3zlEn9ihwbwc)yita51P5K3U(hw0zWFx3UvwE3M1xd2cJEXs5DMKsT1UgS2)Esw(r(wMBVs3gObvGxZ8VY48BOqAM91tu6)OX5RHFAwW7NK5GSN20rtB6RM20NQRhz23BW7Gm7)71IUzafOYpOSeZrS2Bcb06ankIEsCyD48umGjaQxy88m(A54dgFAvcHFWjCMcw18sOcCzEI2S3VNp59ygEh0A1pv8G4ZbA1pA5O8IJWJp0dsh9nK(fH0nKTnvW(qzB9QGBNw2SzWUb81RgC3iA5YJb)VpAP8MXMgKXSdO1H)(FfFqlBWWgVUVWPT1NE6Yyzlv9JXxrXdFmUAAxP7o4Ma0guod0JZ2TX5hGKmE7T0dH8(v)UcVEB1Kl0VdE5NprF7heTzw49P0qk0Eh0e9)OSF3SIhKklZQ2X8738UQ2HFdVv1nnDQ(gr3XBgO54nO5QnfxzfFQs4fE)bP(6xX6oZ3eEyZS(B(T)LR7z7Fo1DKYLUPECNBO)27q29l1MUz7)9T7JTYX8ZsCyx3cSgLBPwD4wxZ8BK3R8g51kZ3uJDH0BSvfxhytZRAU5yUynClpAlO(gIVWfOFJV8fP85KGZ2E(fieGmXfi4JlZwlVN3l0c6DXRUWf3e1fPQTVIxn9OEtQkPE9EzUZxy4s)UB95ZMUYW7wVSoRsEmvfE)vCcKBedkcyv4KO)nI8)AgaKeYs4eZk2y19gYnVfZmD1QNppZWLKUulVs9ExfUhJxnSYQQVD16v0JE6rnIBXuXT231UoFXcZ(U5g94lpFEHXRw9o0sTDDpNhH0QA3F3DBUzGK7YW4N2QqARM3PFhLYC3vI9Fp3T5ORej929U0Uvr(fnAcGKheRYXURSD)k7DULSFre23V565ledVX(8zHdM)Ge1TXEzlDP2ixnhqVhn(CfIQ73SYULGA65CyXmI(1uYTTvYl2Zm8EqRWE92O58jN3ZPHFF7OxRdXMlgj5y1XEdkEyFNi4TAUm2TAEzO7RArOjSi0u0eAmZBWa7vt1ZB0I6iN2TtPwETJAh0i7KEyGQReSv6qSRCi21KA54O3(pdjrDPsq)gsLGEvamxgvc61IkbnTKHE1RrkK(f(SjcYrthKJgd61hk61j(nSN(IbPitOo00qDJR1o24erDIJi35)m]]  )
+spec:RegisterPack( "Frost", 20250915, [[Hekili:TRvFpUTTz8plhgMJDxIIL85BjfNdq7kkAV2MDykB5)KeTeTfHLe1KOoJBWqF23dj1luVqzBKSMvGKC5In1dFE(XNx(rsr6y68bh7aed78ERLwRx(wZ1gwwRSw7yZEof7yNI8pG2dFibfd)ExgnNHy82FoIIc4DpNwK5dpZXEBbjI9ZjoBhrNwRw9whBublKM5yBhxSlJCWXoKeeGL9aN77y)HqsEPh)FOsVkJx6r3bF3NrOjLErKCg84D0SsVFcFGerma4Kr3rIaq8Nk9(bmIfw69ljK9HSVT07h5yU0B(VrFCr5dGaFxezFcoO07iHl4hPF0MeN3i4394VM)TLpaIcY(HJ0x9tOKaU4pMrOze2ZLE)lugbTncNx(Gew5gPzyFA8we7VS51pv94xYDAByhPUHcv8YNqrf4n5P4OixgkBpMLBespgrs27UncLZ2yolgrseYByfwJIhRvoGoP9g3WIWJl0sooXhpUmziso2naJcg)5OS4NDP7CzHtjfeft4sDKKWWzVKSBZnBl2TZOB7gfPNonw7zy(Wm)(7gx7PurSUA0)d4DOIOrg7GKXKKa3Dzy8)bR2mkHrIr7j(U5HGZ(Lbi4B4nMl5)HJwFknkGEmXONK1iBZsv1LsIIqzC8l8WQpk)5euk4qZtZGOyhSTnIsbWvK9m3Ic3qpfb(NoDaNLJZoa65c7qbyycdhxLObi4aMz(P0zRlSZTzrIyFkMzSpKwezWf5jSi0broqiuoua)BOeW)hJtGOiKAx69pWsAdi3gIeWiUdYscPrpdve8kyU(zOiORgDA3aNWRXcMnpGYmKz(7WpPKCT60j(JKHH0i0(cC7ZwOAqAbBBggDGBR53mOtmIppOC60n9nv1t6OmzNCZbp6bSW7OtHQ9I4)SlJw4h20JrSZiMjcJL9PYhP2CRlAUEhXmTUVfNonpRib76xKLb6((nwdD2n(gDdYfl64DWXP0J4mxHIpIrP0eHxN31sVGnlNj0o8)YO9MLCyijlbvgJbVKBabF)M7wottI6IgMJhTvOTvtFlsCLFZLpFISeWs4hRjVnA5TpBpnLrTr76W5r(XoCianpNgbQDCHuWujzA14neJIyHgP(SxT6BMpOX)8q3YI73SADpDlJkmuQsAstBn5icFPSz)qUEnGz69p8UnRNjcoqO50PQyZPtnbNQk9Fbcc8euOs3pKKGRlZbKnseqIlzAuBDIabhKkYnwQhiBe6ZmWRdm0ImN3TXAzpfrbgbywfyjhtRMZy)og5nlRgz1dbQFhASUQQZK4nGid6A1aiqYeAaZx5wvG9U(XPa(cxCb)gWR6JetAiztDXj4ycohg61GQiPhRQy9q)9ghXKEO2VjkdZDrpHir80GRXdDB)WW5CcAX0a90FTfk29(bMDsqoixrd)tvg(aYNgMKcu0R(ibhnS(18)H1VMF5QFhw0A(5QO186Ywg1UJxSo6coKBvqAUsVVNBVZHLBUY6xZp163UA66lx)8KOmDe7Izdm1vEBEDL3N3QdW4vwE7yFeLLWx4oFRNqiHa9pRoN5fwHVO0ld)Vliz8jUZP8PcG9WsJHHf0a4)s2JZnkF4xf1mMW2n)B0eyDrIhtt5JFo4afdBD9fFA0cawy0lwlVwNwAq7kaT)ZK8Iu(qMJxPNeSGQpVv(B1kFBSUv61xP2VtR8DQoB7WBUk482ReoMlVw8yAEvaY8YD)ImZD0Oi6rbfgQidbPuqEo0oSnUaz6fJlwTs4loT0BBbRwUeQiTUiPJ0bbCHdqm0wGEJ)Ap8Ef0nf2HQM6rXx1kNHKtPnsTJ5xRDUOAhnzt)Fw5ZeLdAQF(A1GA1qG8DyDDLe69j92Z7xe3YGxkw5d)CCnsVTRr4Jjh78uSVZ7TwB6ylAK)2JTcHF)EX7HUAbkoFVJTFgpdHGCShuBkS9QsVVP0BoaWHp(1nTQu(w6TO07(nqpx7ylrM4nxxVODhgaSjaX4RLQ0Bg39n66Pk9EhyU1crMxLev6bnTS070jWllCAknixtsDllAHzJz5GCvpqwlKAvI8LPNrsLp6I2BU6WDIDqZhnkRatoiTwYr2TADF61xl(Bjf46ATwDnW4VzPgNaOM704S6qj2ZBn((9hmCu2Oc3NmY(da4bXFom(RAhnCa1U)GkVzlo7TJcUUEJMHKI)R345CVQav8OFRgCB)2lpQC7erfZLtNP06A1fX4krqzm2OVvXCX0xu3bZ33fYD3JIqr9l8MyWBn1GFIYevkIz9yiM1LGO1aJSJhhUhY28RmR)(ZS(7gD6fvK8fKg9sFtmQG6MQq(Fy5w)CqL(PwrmjBuNe(j4HVo(8VsfFgQ4Qv)3Whx3bLtVUNZsVV6CNCDFq1tm(vZiwCJoKhgEdZxT89wwFpCDRQO9o77EIQN8rZX21pnLFY5Jr)CnkQ5e1hJROwQ6do)IuT8IW00LjOnQps9RxTwttra8K9pW9wR2EY8JwJxlwNZs)s4Uh)y7hH5A0tPVEYAnh2SOQFLC2ADhvDTmlA5Cg17aw5Mr0s9rOlSXndrsZZvwFq99c4m0xtyoL6k1RfWzOX0dVw91CHbodv2e3lG6GY8Z70ND2q3cPNDUygOM7mGCPHw6c)Dck6dzlK)mWzkgnIXVEYM(Rq8mS5QdKXwSlF4C3Y2jJh5AYOc0XNs49M6wsvw3RxG6azKBxG89O4k5oSKEcDKCtOziD7Ck3muotwZT0YzK9wqbESCSYcsR1k)trfyXBas3vFt4(nfow1RaNqjvGqfBDjSM6k)Dr33VM5C7UyH6RsxVP26mHPcH7eZv2)A1DXtwwVO4b3SozA6e3UorL5DtTsQ76mXpTkLvbx1)15)(]]  )
