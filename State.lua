@@ -3036,7 +3036,7 @@ do
 				if _resolving[k] or (_resolving.depth or 0) > 8 then
 					return 0
 				end
-				_resolving[k] = true
+				_resolving[k] = 1
 				_resolving.depth = (_resolving.depth or 0) + 1
 				local res = rawget(t, k) or state[k]
 				-- If the resource is a table, return the table to support downstream dotted access (energy.current).
@@ -3156,7 +3156,7 @@ local mt_stat = {
 			return state.focus and state.focus.current or 0
 		elseif k == "maximum_focus" then
 			return state.focus and state.focus.max or 0
-		elseif k == "runic" or k == "runic_power" then
+		elseif k == "runic" or k == "runic_power" or k == "runicpower" then
 			return state.runic_power and state.runic_power.current or 0
 		elseif k == "maximum_runic" or k == "maximum_runic_power" then
 			return state.runic_power and state.runic_power.max or 0

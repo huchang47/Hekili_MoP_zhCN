@@ -43,7 +43,7 @@ actions+=/icy_touch,if=!dot.frost_fever.ticking
 actions+=/death_and_decay,if=active_enemies>=2
 actions+=/death_strike,if=(runes.frost.count>0&runes.unholy.count>0)|runes.death.count>=2
 actions+=/blood_boil,if=active_enemies>=2
-actions+=/heart_strike,if=runes.blood.count>1
+actions+=/heart_strike,if=runes.blood.count>0|runes.death.count>0
 actions+=/blood_boil
 actions+=/horn_of_winter,if=!buff.horn_of_winter.up|buff.horn_of_winter.remains<6
 actions+=/death_coil,if=runic_power>90
