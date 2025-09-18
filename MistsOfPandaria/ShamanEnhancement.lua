@@ -792,7 +792,7 @@ spec:RegisterAuras( {
     },
 
     ascendance = {
-        id = 114051,
+        id = 114050,
         duration = 15,
         max_stack = 1,
         generate = function( t )
@@ -1310,7 +1310,7 @@ spec:RegisterAbilities( {
     -- Ascendance replacement strike during Ascendance window
     stormblast = {
         id = 115356,
-        texture = 651244,
+        texture = 135990,
         cast = 0,
         cooldown = 8,
         gcd = "spell",
@@ -1892,10 +1892,9 @@ spec:RegisterAbilities( {
         end,
     },
 
-    -- Major CD: Ascendance (Enhancement)
     ascendance = {
-        id = 114051,
-        texture = 651244,
+        id = 114049,
+        texture = 135791,
         cast = 0,
         cooldown = 180,
         gcd = "off",
@@ -1907,7 +1906,6 @@ spec:RegisterAbilities( {
             applyBuff("ascendance")
         end,
     },
-
     -- Interrupt
     wind_shear = {
         id = 57994,

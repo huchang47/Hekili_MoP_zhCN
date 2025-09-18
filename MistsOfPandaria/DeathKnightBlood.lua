@@ -1222,6 +1222,30 @@ spec:RegisterAuras({
 		end,
 	},
 
+	-- Army of the Dead: short aura to represent channel/summon window
+	army_of_the_dead = {
+		id = 42650,
+		duration = 4,
+		max_stack = 1,
+		generate = function(t)
+			local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 42650)
+
+			if name then
+				t.name = name
+				t.count = count or 1
+				t.expires = expirationTime
+				t.applied = expirationTime - duration
+				t.caster = caster
+				return
+			end
+
+			t.count = 0
+			t.expires = 0
+			t.applied = 0
+			t.caster = "nobody"
+		end,
+	},
+
 	crimson_scourge = {
 		id = 81141,
 		duration = 15,
@@ -1249,6 +1273,23 @@ spec:RegisterAuras({
 		id = 57330,
 		duration = 300,
 		max_stack = 1,
+		generate = function(t)
+			local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 57330)
+
+			if name then
+				t.name = name
+				t.count = count or 1
+				t.expires = expirationTime
+				t.applied = expirationTime - duration
+				t.caster = caster
+				return
+			end
+
+			t.count = 0
+			t.expires = 0
+			t.applied = 0
+			t.caster = "nobody"
+		end,
 	},
 
 	vampiric_blood = {
@@ -1894,6 +1935,8 @@ spec:RegisterAbilities({
 
 		startsCombat = false,
 
+		toggle = "defensives",
+
 		handler = function()
 			applyBuff("bone_shield", nil, 10) -- 10 charges
 		end,
@@ -2133,6 +2176,10 @@ spec:RegisterAbilities({
 		spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
 
 		startsCombat = true,
+
+		handler = function()
+			-- Heart Strike base functionality
+		end,
 	},
 
 	horn_of_winter = {
@@ -2330,6 +2377,12 @@ spec:RegisterAbilities({
 		startsCombat = false,
 
 		spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
+
+		toggle = "defensives",
+
+		handler = function()
+			-- Rune Tap base functionality
+		end,
 	},
 
 	soul_reaper = {
@@ -2697,6 +2750,78 @@ spec:RegisterStateExpr("death_strike_heal", function()
 	return math.min(max_heal, math.max(base_heal, health.max * 0.15)) -- Estimate 15% average
 end)
 
+-- Vengeance state expressions
+spec:RegisterStateExpr("vengeance_stacks", function()
+    if not state.vengeance then
+        return 0
+    end
+    return state.vengeance:get_stacks()
+end)
+
+spec:RegisterStateExpr("vengeance_attack_power", function()
+    if not state.vengeance then
+        return 0
+    end
+    return state.vengeance:get_attack_power()
+end)
+
+spec:RegisterStateExpr("vengeance_value", function()
+    if not state.vengeance then
+        return 0
+    end
+    return state.vengeance:get_stacks()
+end)
+
+spec:RegisterStateExpr("high_vengeance", function()
+    if not state.vengeance or not state.settings or not state.settings.vengeance_stack_threshold then
+        return false
+    end
+    return state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
+end)
+
+spec:RegisterStateExpr("should_prioritize_damage", function()
+    if not state.vengeance or not state.settings or not state.settings.vengeance_optimization or not state.settings.vengeance_stack_threshold then
+        return false
+    end
+    return state.settings.vengeance_optimization and state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
+end)
+
+-- Vengeance system variables and settings (Lua-based calculations)
+spec:RegisterVariable( "vengeance_stacks", function()
+    return state.vengeance:get_stacks()
+end )
+
+spec:RegisterVariable( "vengeance_attack_power", function()
+    return state.vengeance:get_attack_power()
+end )
+
+spec:RegisterVariable( "high_vengeance", function()
+    return state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
+end )
+
+spec:RegisterVariable( "vengeance_active", function()
+    return state.vengeance:is_active()
+end )
+
+-- Vengeance-based ability conditions (using RegisterStateExpr instead of RegisterVariable)
+
+spec:RegisterSetting( "vengeance_optimization", true, {
+    name = strformat( "Optimize for %s", Hekili:GetSpellLinkWithTexture( 132365 ) ),
+    desc = "If checked, the rotation will prioritize damage abilities when Vengeance stacks are high.",
+    type = "toggle",
+    width = "full",
+} )
+
+spec:RegisterSetting( "vengeance_stack_threshold", 5, {
+    name = "Vengeance Stack Threshold",
+    desc = "Minimum Vengeance stacks before prioritizing damage abilities over pure threat abilities.",
+    type = "range",
+    min = 1,
+    max = 10,
+    step = 1,
+    width = "full",
+} )
+
 spec:RegisterOptions({
 	enabled = true,
 
@@ -2746,5 +2871,5 @@ spec:RegisterSetting("dps_shell", false, {
 
 -- Register default pack for MoP Blood Death Knight
 spec:RegisterPack(
-	"Blood", 20250917, [[Hekili:1M1)VTjUB4)wIoPOKDN4GKq31P2kTDBs36DBQAmP9BaoGj4RagzmTx(Oi(B)ZRnqW8fN2U2QPnLzBEFEE)QFiX1Y97UoHio29RRmxzBEU1BnSER15BSCD47ZXUo5OGBr7GpKHsH)9djuAOy19juuO4PlOLSayhxNTLKe(NZC3oPjnxbNnhhalBB66etcdX1Nfxe4689ysrLV4VOk)gqR8PrW)pGtOzv(jKcoSDeLv5)x4BjjedGimAejbG)xQ8)igXJR8)7mYUy(7Q8LCTYFXxO3SS6A5bIWzfK7adJsi7YsXz8k)TOcmCmbe)G(dhskaY7V5FEx11Wdbp1nmCanDlIxDDnvkmYBx6xV833kqXdwPaNfG1CgAg2RiMGtcN(aXuwMhnY7EsghZ(ns0LZ2wgfz0FDJY8dhMADgofrYkU4SPTodrkWEHyKg0ZPYiCJ)(Nugw41ekJW3dXpLWweHvWxE0kWZMsYc9Iyy8)dRUmkJtsr7ibGBJtseEejdaKKTZleb7G9SlU6YymkHhBKI(V3yAS2usbiXr2v5htezBrYoHEpKXVbYO51KIay1MTD4mYT9GouSHxHC9hfUNzF4qZc5b8lSnpL1wSGvMHlmIy0cUraTmJFL5861kZIPj7BxC5Hd1llnrZQxUA58fpiJ20NrNzUSjY8f0)kIiHTzer7sgu8McbLDO6Syh3VdLMtyqoqwJ(OIfdqETTQ9ib4TGxa5BkJt4LHpU476(2CvV4Rie5Xr5pklTAGL6XoLMmHXK9jkRzesVpRjm(PumBh0Ucv3I2G7WS9nbYaknrEq)C4taxuraNMtVhZ8KC(EmkNMjqsHrxUXE(SNFjIkO1nNdXrKyKUY7zPTC)JF7hv(LfYbN3tenhkLf(L51DtHLmHB5dw7U9IdMb(BrVExWKIHl846HgtgnlZNlxleLfiszkXKMiTsp04Z8Os3IgZfCeKQ4gW4eOoH6fsWxSXC(e8PxuReg4r4yywEZuTVHRVOQYViLs5XYyGmSfcdhHRa6fcQhQ3uwYrjWffghxZaNH2MGdBiHC5Gybnnk4WnxxDPL58MAa5U1j2lSAZ2kfgDlQwzCH1Yxq2ypFXZVKSFnzcAxj2lbJdIv4K6YhPLAvRTPO745ZL5lcPTHGAqH6JGBHC6HdIDKM2lcdn2TB0J)0s(wggDR8Iw9MAMgBnrOO7ccT2R)K09qXCzD0tpm1LUVN(PMsvqQtcMn(6jytOtnaTxyoXM3H9Wz4ucgAPwDYRZEM5IXLPBPKKhKgqrbJRqJrnlxzofEMtdxpl)sRK6yqlOXXaAbxPkVj4QZbLSqgRao4r5U2Uo3JyzqcSW15ZWvgmUqF5QbkznQU21bvYbc464KwgbXcxh5wsr54iuzch(4xLI0RFwxhf9wUon9yUFWLdWlow3kobGsjmJGCDgpOTY)QlLxb0mSTY)nv(cfyDanqbNaH1dqO9OQfv165zK86TE6s5(Pi(z2v(hoCCdyytL)fv(WlAa0EJ2aZcqDlibyylaacy0k)5T7P2k0U5YAehvKwZWvYdmxA)hTxSzAV4mbAAI2G7zRjR0x93G8YdlK8NkpOXdwBli6zVafOtB)vk1TJfPkW(TpFSxPbB7oSBfZkq8p0I4Kkt7mIYoc7CUM07eIrhKJFcQCvPxp)dceICkuiptwl)k2UiCwltTrTH0ATsCVwJS0awAcxdf1oiw9cjJ(KPzXJcXOtkBw6dVatYBhic5RXcOL1TBm7yZqwQoTzmrLCCT6LshvBp4kjl9JE1jJvHuJKYw7RwMTdwhPAq6ywQvA9kthUz)606DvC9JCt6kdhZ(s4k2TEYRBN1j8k9ZKpHMEjHg2pAB2FmXRR)0g40k2wAdDcRvJhQoOmKO)QIzpeEZ0czhETV7Hel9xsCcSgX9oTawdVTyKbpj3o(Ajs9K6Nf3xBFtIzOcLJVuI0ydNl3te2RsHIEftR0pG9b8SU35qANHcI7SZeJMQjTogdB2bJ6RhjbAJ60wfsm4na0pJAwZKOrVgunJoXRcvlbvHB9oLew9druExjPpEU5WSsqDSKl(Q8B(gPp(optCnE)VT9EEOYK229b)BW98N83i4j(deC8LUMs5w)mJ(cLxZetVQMUFeGbCZw9unkP6DI2)4())]]
+	"Blood", 20250918, [[Hekili:1M16UTTnu4NLGcyy3TQj7yN1mKyG21cSMTweuxS(pjrlrBXfjrbkQK6cd9SVdj1fQl0X52pAtQi55635ADM68nNvbio25lZSNTW(8PV1A205ZTN6SIVlf7Skf5FdAl8ljOy4VFFeLgi(6Uikkq86mAoZhoXz16Cse)tjoRhKKWntX(Whxy7SkKeeGv3eN57S6BHKScpXFqfELSSWJUb(3(CcnPWlIKXHJ3qzfE)f(gseXYzL8JsvaVbLhXHF9lsvs9kNvXKKa3nmm(NGeItqRJWboV3HdIH4AnFzLpJWXmcYzfjXNcVBRBakged3faBxEzHxigfXdTIr)OW71fE2wNA3WiucNa3M47MfIJIeC40oCO6QGblYLHrPyMs9zKu1jF8hy)CoO4PHOmXpyekiw70LooITfZTkfMuFEH3fGWD6cblNBGLbyep0nJZi3G7WZ)fNSfJs8XVHcFjM8tCqHhJYrkZ(47cXWpUT6wfEzCW9iCum4Fes2goPW7nfECCCkLHyKODfEbKmPmu5(YSkDq)YL)MUS8RKnxMfc2Ja3sDf4FPDFelpbmNP07WSLxoFXq0cScm(XqlXtVf7ItWXeC2YlNne1wlW2URPKOheTo1Sw6FF0QToAx49EYwHvva1fi9i6DaC)6)OglaVTW7dcIx4TQ0F(iGUNbMZ97RpqbJk8GqtafTWyOXyaqaOJ8eCM1ggnJB5tZtG3UeiAH3OQZYtcPr7AF4efhvxqAEQphKWzYlmss)JwlMpSwCMGBga)G6DMHGKBrXPeg4owRYX1km5ZO)t4pahmojdC)IaGeaFhdUKTi1DEe(bdAGkA(3Fgsrnm9NPL5I4Jxd(binjLXj88aPr6TpDEpZaVx0WBbyWLJsfC8CJCCD(MnwRPWvZcj4OaRa6Djner7ebDMABW)ksqbXzUsMEhK)vbo0Z)gJHKRj(qgmg2NElMTR0n7tPrcUcXHWVbAVU81nxSWPci5tKG5xW4fP2o1OzBGse12IuQ8Ncc0TqyDfnw8ox6gxEiKTcJ6gq8o44sJZh(63l8YZKLSVJiYm1evahKQsLfKZa7MeoC7oXftadA2b9ZINc2i53dGQpcuNM3tHde6q3sTpc0AvgrWFvwIfQgcGtQBablbUZTBKMUsPE6M(cQugNR3xsEg2feX4SoDLm1CUxokcNWTufPGygRYBPjuYJ8dfIVLSmTsxNAxLzvbMK3Rcmbk2uDKwlyA3dBJtvNQP61YMuv6MN95qvwuPjVSrwhqRmNuUuRsJqBZXUrySFylfRB84c72PjEz1NkdxaTYWReuaM7FJmWuqdXPs27UbdP)AouZEORGstI5AfNCF87eJSSHF0C(AOD5BK8YCvIdWREYEtZaZ6wTOhbpOSr83bPiYvgIzMZf3UNXsht3wuGKPqMwF0ojXmpGYlfqXCltZmNG9E0SMEQL0P7akn0zGutkH2Kedh2Wg9bbKmAHE2wnHOZqGMZrDszMOqklrugeQxbNit2lKOHoJHJrKKmvpOAYwRBjzR5KiAdei1XZT76v8v2soaMfnPeVg1m27aLXlJhy4mOXMUd)voiXFNaJXXHHmKt3dPj(m96jIXmkB2fQZhr2MeJfg(1WOPWDeL2)o97RiXGc)UR)N)yiJxBMdgVdp59dRrpZyYxsFNzemW1uOTHTIz9SuHfAD6IizL9rvnHvNEXAHmL(xiJtM4KQ9Oa9VDhILajGG2g(KyCBUWtmRZssSkUciEohKDNvRIZ3abfcWcDdjcKOxvp)4WU9RE1d1ZxCf8i4vxxHhlUsjqzw1q06XRRadIXIpzyqIHN349fVDqSYWVSTtSHX9Gh73FaOXfNnm1B8Ssk3fcm8Ju(8kd3Fsf7s56YT9aocn7)gclJpPMkWB12PL(N7SbkHW0V53Lx2047RfBWskcfEM28Kod02BLG49we1fxctBQi3l7sLeCOrSE07tQnzEcRsQnHE0BrAi16bVajL9)HVfjDhDxl69cJoBX(9A4aOX2dqTXJ718Ys7r9BAzP9K977v4hS3tgn(ELO5TLOZSNuAzU)94Ol7Txj0rzl6Wzrird96VRLJIMN2MMZAzFR2HYrrPzDOulP74YWQYxC8BkrNddScgbN0ZHmFXOtE6qeDMQY12Lp15QEMwKrRuXDwDYGwZ80rhCXgTIH6FNJYDlcmh3FDgxm3E0aYtlRw9gkQks9vS6)PhizDmLYdL2aPzdsmJHQgTmb1dnRkvm88(JmmR)YlNApACVjcUyAL3wdy08rDKXftN8mknlgn(PdjBJj1MHwtMgA3bJ0rTlSfrhpDzz0ytZkVFVHHEBj)vZKlB5XmPoX0(e6BkAkqyKETZKwo4D9lgKnkO77OFSeQcTahbtw1R8u9O3cYnqf(duo7j6l6dtRAD4GIr32v6fSS0Ei(zpm7Ar5N7UL71mJEplNBlN1X5)d]]
 )

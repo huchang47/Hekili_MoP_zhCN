@@ -2,15 +2,24 @@
 # Defensive alignment based on WoWSims APL:
 
 ## Precombat
-actions.precombat+=/blood_presence
-actions.precombat+=/bone_shield
+actions.precombat+=/blood_presence,if=!buff.blood_presence.up
+actions.precombat+=/bone_shield,if=buff.bone_shield.down
 actions.precombat+=/horn_of_winter,if=!buff.horn_of_winter.up|buff.horn_of_winter.remains<6
-actions.precombat+=/raise_dead
+actions.precombat+=/raise_dead,if=!pet.ghoul.active
 actions.precombat+=/potion
 
 ## Core Priority (Defensive first)
 actions+=/mind_freeze
 actions+=/antimagic_shell,if=incoming_damage_5s>=health.max*0.30
+
+# Execute phase priority
+actions+=/soul_reaper,if=target.health.pct<=35
+
+# Vengeance-optimized rotation (when vengeance stacks are high) - temporarily disabled
+# actions+=/death_strike,if=should_prioritize_damage&runic_power>=45
+# actions+=/heart_strike,if=should_prioritize_damage&active_enemies>=2
+# actions+=/blood_boil,if=should_prioritize_damage&active_enemies>=3
+# actions+=/death_coil,if=should_prioritize_damage&runic_power>=40
 
 # Big hits or low HP: prioritize Death Strike
 actions+=/death_strike,if=incoming_damage_5s>=health.max*0.65|health.pct<50

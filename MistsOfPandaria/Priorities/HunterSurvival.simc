@@ -27,7 +27,7 @@ actions+=/run_action_list,name=lock_and_load_burst,if=buff.lock_and_load.up
 actions+=/serpent_sting,if=!debuff.serpent_sting.up&target.time_to_die>15
 
 # Cast Explosive Shot on cooldown (Lock and Load procs handled separately)
-actions+=/explosive_shot,if=focus>=40&cooldown.explosive_shot.ready
+actions+=/explosive_shot,if=cooldown.explosive_shot.ready
 
 # Cast Kill Shot (when target is below 20% health)
 actions+=/kill_shot,if=target.health.pct<=20
@@ -56,7 +56,7 @@ actions.opener+=/explosive_shot,if=buff.lock_and_load.up
 actions.opener+=/black_arrow,if=!debuff.black_arrow.up&focus>=35
 actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus>=60
 actions.opener+=/fervor,if=talent.fervor.enabled&cooldown.fervor.ready&(focus<60|(talent.a_murder_of_crows.enabled&cooldown.a_murder_of_crows.ready&focus<60))
-actions.opener+=/explosive_shot,if=cooldown.explosive_shot.ready&focus>=40
+actions.opener+=/explosive_shot,if=cooldown.explosive_shot.ready
 # Stampede + Everything bundle (includes Rapid Fire and trinkets)
 actions.opener+=/stampede,if=cooldown.stampede.ready
 actions.opener+=/rapid_fire,if=cooldown.rapid_fire.ready&!buff.rapid_fire.up

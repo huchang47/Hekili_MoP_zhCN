@@ -13,27 +13,6 @@ if not Hekili or not Hekili.NewSpecialization then return end
 local strformat = string.format
 
 
--- Enhanced MoP Specialization Detection for Monks
-function Hekili:GetMoPSpecialization()
-    -- Prioritize the most defining abilities for each spec
-
-    -- Windwalker check
-    if IsPlayerSpell(113656) or IsPlayerSpell(107428) then -- Fists of Fury or Rising Sun Kick
-        return 269
-    end
-
-    -- Brewmaster check
-    if IsPlayerSpell(121253) or IsPlayerSpell(115295) then -- Keg Smash or Guard
-        return 268
-    end
-
-    -- Mistweaver check (currently not implemented, but placeholder for completeness)
-    if IsPlayerSpell(115175) or IsPlayerSpell(115151) then -- Soothing Mist or Renewing Mist
-        return 270
-    end
-
-    return nil -- Return nil if no specific spec is detected, to allow fallbacks
-end
 
 -- Define FindUnitBuffByID and FindUnitDebuffByID from the namespace
 local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID

@@ -287,12 +287,107 @@ state.target = {
 state.last_cast_time = state.last_cast_time or {}
 state.last_ability = state.last_ability == nil and false or state.last_ability
 state.rage = state.rage or { current = 0, max = 100, time_to_max = 0, per_second = 0 }
-state.damage = state.damage or { incoming_damage_3s = 0 }
+state.damage = state.damage or { 
+    incoming_damage_3s = 0,
+    incoming_damage_5s = 0,
+    incoming_damage_10s = 0,
+    total_damage_taken = 0,
+    vengeance_stacks = 0,
+    vengeance_value = 0,
+    vengeance_attack_power = 0
+}
 
 -- Windwalker (and other Monk specs) may have APL lines that reference chi/energy before
 -- the specialization file finishes registering resources (due to load order). Provide
 -- safe placeholder tables so early emulation doesn't spam Unknown key errors. These
 -- are replaced/extended once spec:RegisterResource runs.
+
+-- Vengeance System Functions for Tank Specs
+state.vengeance = state.vengeance or {
+    -- Track damage taken for vengeance calculation
+    damage_history = {},
+    max_history = 20, -- Keep 20 seconds of damage history
+    base_attack_power = 0,
+    vengeance_multiplier = 0.33, -- 33% of damage taken becomes attack power
+    max_vengeance_stacks = 10, -- Maximum vengeance stacks
+    stack_duration = 20, -- Vengeance stacks last 20 seconds
+    current_stacks = 0,
+    last_stack_time = 0,
+    
+    -- Calculate vengeance attack power bonus
+    calculate_attack_power = function(self)
+        if not self.current_stacks or self.current_stacks <= 0 then
+            return 0
+        end
+        
+        -- In MoP, vengeance provides attack power equal to 33% of damage taken
+        local total_damage = 0
+        local current_time = GetTime()
+        
+        -- Sum damage taken in the last 20 seconds
+        for _, damage_entry in ipairs(self.damage_history) do
+            if current_time - damage_entry.timestamp <= self.stack_duration then
+                total_damage = total_damage + damage_entry.amount
+            end
+        end
+        
+        return math.floor(total_damage * self.vengeance_multiplier)
+    end,
+    
+    -- Add damage to vengeance tracking
+    add_damage = function(self, amount)
+        local current_time = GetTime()
+        
+        -- Add to damage history
+        table.insert(self.damage_history, {
+            timestamp = current_time,
+            amount = amount
+        })
+        
+        -- Clean old entries
+        while #self.damage_history > 0 and 
+              current_time - self.damage_history[1].timestamp > self.stack_duration do
+            table.remove(self.damage_history, 1)
+        end
+        
+        -- Update vengeance stacks (simplified - in reality it's more complex)
+        if amount > 0 then
+            self.current_stacks = math.min(self.max_vengeance_stacks, 
+                                         math.floor(amount / (state.health.max * 0.1)) + 1)
+            self.last_stack_time = current_time
+        end
+        
+        -- Update state values
+        state.damage.vengeance_stacks = self.current_stacks
+        state.damage.vengeance_value = self.current_stacks
+        state.damage.vengeance_attack_power = self:calculate_attack_power()
+    end,
+    
+    -- Get current vengeance attack power
+    get_attack_power = function(self)
+        return self:calculate_attack_power()
+    end,
+    
+    -- Check if vengeance is active
+    is_active = function(self)
+        local current_time = GetTime()
+        return self.current_stacks > 0 and 
+               (current_time - self.last_stack_time) <= self.stack_duration
+    end,
+    
+    -- Get vengeance stacks for state expressions
+    get_stacks = function(self)
+        return self.current_stacks or 0
+    end,
+    
+    -- Check if high vengeance (configurable threshold)
+    is_high_vengeance = function(self, threshold)
+        threshold = threshold or 5
+        return self.current_stacks >= threshold
+    end
+}
+
+-- Vengeance state expressions are registered in individual spec files
 state.chi = state.chi or { current = 0, max = 4, time_to_max = 0, per_second = 0, regen = 0 }
 state.energy = state.energy or { current = 0, max = 100, time_to_max = 0, per_second = 10, regen = 10 }
 -- Some APLs may reference combo_points before the spec registers resources; seed a safe placeholder.
@@ -1741,16 +1836,18 @@ do
 
 		if models then
 			for k, v in pairs(models) do
-				if
-					(not v.resource or v.resource == resource)
-					and (not v.spec or state.spec[v.spec])
-					and (not v.equip or state.equipped[v.equip])
-					and (not v.talent or state.talent[v.talent].enabled)
-					and (not v.pvptalent or state.pvptalent[v.pvptalent].enabled)
-					and (not v.aura or state[v.debuff and "debuff" or "buff"][v.aura].remains > 0)
-					and (not v.set_bonus or state.set_bonus[v.set_bonus] > 0)
-					and (not v.setting or state.settings[v.setting])
-					and (not v.swing or state.swings[v.swing .. "_speed"] and state.swings[v.swing .. "_speed"] > 0)
+				-- Skip if v is not a table (e.g., if it's a number like base_regen = 0)
+				if type(v) == "table" then
+					if
+						(not v.resource or v.resource == resource)
+						and (not v.spec or state.spec[v.spec])
+						and (not v.equip or state.equipped[v.equip])
+						and (not v.talent or state.talent[v.talent].enabled)
+						and (not v.pvptalent or state.pvptalent[v.pvptalent].enabled)
+						and (not v.aura or state[v.debuff and "debuff" or "buff"][v.aura].remains > 0)
+						and (not v.set_bonus or state.set_bonus[v.set_bonus] > 0)
+						and (not v.setting or state.settings[v.setting])
+						and (not v.swing or state.swings[v.swing .. "_speed"] and state.swings[v.swing .. "_speed"] > 0)
 					and (
 						not v.channel
 						or state.buff.casting.up
@@ -1758,7 +1855,7 @@ do
 							and state.buff.casting.v1 == class.abilities[v.channel].id
 					)
 				then
-					local l = v.last()
+					local l = (type(v.last) == "function" and v.last()) or now
 					if not l or type(l) ~= "number" then
 						l = now -- Fallback to current time if last() returns nil or invalid value
 					end
@@ -1776,6 +1873,7 @@ do
 						table.insert(events, v)
 					end
 				end
+				end -- Close the type(v) == "table" check
 			end
 		end
 
@@ -2290,6 +2388,14 @@ do
 		-- incoming_magic = 1,
 		-- incoming_physical = 1,
 		-- time_to_pct = 1,
+		
+		-- Vengeance system expressions
+		vengeance_stacks = 1,
+		vengeance_value = 1,
+		vengeance_attack_power = 1,
+		incoming_damage_3s = 1,
+		incoming_damage_5s = 1,
+		incoming_damage_10s = 1,
 
 		-- Channels.
 		channel = 1,
@@ -3532,8 +3638,9 @@ local mt_toggle = {
 		if k == "cooldowns" and toggle.override then
 			return true
 		end
+		-- Do not auto-enable potions based on the cooldowns toggle; require the potions toggle itself.
 		if k == "potions" and toggle.override and state.toggle.cooldowns then
-			return true
+			return toggle.value
 		end
 
 		if toggle then
@@ -3547,8 +3654,8 @@ local mt_settings = {
 	__index = function(t, k)
 		local ability = state.this_action and class.abilities[state.this_action]
 
-		if rawget(t, "spec") then
-			if t.spec.settings[k] ~= nil then
+		if rawget(t, "spec") and t.spec then
+			if t.spec.settings and t.spec.settings[k] ~= nil then
 				return t.spec.settings[k]
 			end
 			if t.spec[k] ~= nil then
@@ -3556,9 +3663,9 @@ local mt_settings = {
 			end
 
 			if ability then
-				if ability.item and t.spec.items[state.this_action] ~= nil then
+				if ability.item and t.spec.items and t.spec.items[state.this_action] ~= nil then
 					return t.spec.items[state.this_action][k]
-				elseif not ability.item and t.spec.abilities[state.this_action] ~= nil then
+				elseif not ability.item and t.spec.abilities and t.spec.abilities[state.this_action] ~= nil then
 					return t.spec.abilities[state.this_action][k]
 				end
 			end
@@ -3755,14 +3862,10 @@ do
 				return tostring(UnitGUID("target") or "unknown")
 			elseif k == "npcid" then
 				if UnitExists("target") then
-					local id = UnitGUID("target")
-					id = id and id:match("(%d+)-%x-$")
-					if id then
-						local nid = tonumber(id)
-						id = nid
-					end
-
-					return id or -1
+					local guid = UnitGUID("target")
+					local matchStr = guid and guid:match("(%d+)-%x-$")
+					local nid = matchStr and tonumber(matchStr) or -1
+					return nid
 				end
 
 				return -1
@@ -4315,19 +4418,22 @@ function state:CombinedResourceRegen(t)
 	end
 
 	for _, source in pairs(model) do
-		local value = type(source.value) == "function" and source.value() or source.value
-		local interval = type(source.interval) == "function" and source.interval() or source.interval
-		value = tonumber(value) or 0
-		interval = tonumber(interval) or 0
+		-- Skip if source is not a table (e.g., if it's a number like base_regen = 0)
+		if type(source) == "table" then
+			local value = type(source.value) == "function" and source.value() or source.value
+			local interval = type(source.interval) == "function" and source.interval() or source.interval
+			value = tonumber(value) or 0
+			interval = tonumber(interval) or 0
 
-		local aura = source.aura
+			local aura = source.aura
 
-		if aura then
-			local auraRef = source.debuff and state.debuff[aura] or state.buff[aura]
+			if aura then
+				local auraRef = source.debuff and state.debuff[aura] or state.buff[aura]
 
-			if auraRef and auraRef.up then
-				if interval > 0 then
-					regen = regen + (value / interval)
+				if auraRef and auraRef.up then
+					if interval > 0 then
+						regen = regen + (value / interval)
+					end
 				end
 			end
 		end

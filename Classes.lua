@@ -4222,8 +4222,8 @@ all:RegisterAura( "synapse_springs", {
     copy = {96228, 96229, 96230, 82174, 126734, 141330}
 })
 all:RegisterAbility( "synapse_springs", {
-    -- Equipment-based, not a learned spell; use a negative ID so the engine doesn't require IsPlayerSpell().
-    id = -82174,
+    -- Equipment-based, not a learned spell; use a high positive ID to avoid conflicts.
+    id = 99982174,
     cast = 0,
     cooldown = 60,
     gcd = "off",

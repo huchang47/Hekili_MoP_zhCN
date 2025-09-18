@@ -153,6 +153,29 @@ spec:RegisterGlyphs( {
 
 -- Protection Paladin specific auras
 spec:RegisterAuras( {
+    -- Vengeance buff for Protection Paladin
+    vengeance = {
+        id = 132365,
+        duration = 20,
+        max_stack = 1,
+        generate = function(t)
+            local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID("player", 132365)
+            
+            if name then
+                t.name = name
+                t.count = count or 1
+                t.expires = expirationTime
+                t.applied = expirationTime - duration
+                t.caster = caster
+                return
+            end
+            
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
     
 blessing_of_kings = {
     id = 20217,
@@ -1381,6 +1404,42 @@ spec:RegisterAbilities({
     },
 })
 
+-- Vengeance state expressions
+spec:RegisterStateExpr("vengeance_stacks", function()
+    if not state.vengeance then
+        return 0
+    end
+    return state.vengeance:get_stacks()
+end)
+
+spec:RegisterStateExpr("vengeance_attack_power", function()
+    if not state.vengeance then
+        return 0
+    end
+    return state.vengeance:get_attack_power()
+end)
+
+spec:RegisterStateExpr("vengeance_value", function()
+    if not state.vengeance then
+        return 0
+    end
+    return state.vengeance:get_stacks()
+end)
+
+spec:RegisterStateExpr("high_vengeance", function()
+    if not state.vengeance or not state.settings then
+        return false
+    end
+    return state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
+end)
+
+spec:RegisterStateExpr("should_prioritize_damage", function()
+    if not state.vengeance or not state.settings or not state.settings.vengeance_optimization or not state.settings.vengeance_stack_threshold then
+        return false
+    end
+    return state.settings.vengeance_optimization and state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
+end)
+
 -- Options
 spec:RegisterOptions( {
     enabled = true,
@@ -1399,6 +1458,42 @@ spec:RegisterOptions( {
     
     holy_prism_heal = false,
     execution_sentence_heal = false,
+} )
+
+-- Vengeance system variables and settings (Lua-based calculations)
+spec:RegisterVariable( "vengeance_stacks", function()
+    return state.vengeance:get_stacks()
+end )
+
+spec:RegisterVariable( "vengeance_attack_power", function()
+    return state.vengeance:get_attack_power()
+end )
+
+spec:RegisterVariable( "high_vengeance", function()
+    return state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
+end )
+
+spec:RegisterVariable( "vengeance_active", function()
+    return state.vengeance:is_active()
+end )
+
+-- Vengeance-based ability conditions (using RegisterStateExpr instead of RegisterVariable)
+
+spec:RegisterSetting( "vengeance_optimization", true, {
+    name = strformat( "Optimize for %s", Hekili:GetSpellLinkWithTexture( 132365 ) ),
+    desc = "If checked, the rotation will prioritize damage abilities when Vengeance stacks are high.",
+    type = "toggle",
+    width = "full",
+} )
+
+spec:RegisterSetting( "vengeance_stack_threshold", 5, {
+    name = "Vengeance Stack Threshold",
+    desc = "Minimum Vengeance stacks before prioritizing damage abilities over pure threat abilities.",
+    type = "range",
+    min = 1,
+    max = 10,
+    step = 1,
+    width = "full",
 } )
 
 -- Register default pack for MoP Protection Paladin

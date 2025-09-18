@@ -310,8 +310,26 @@ end )
 
 spec:RegisterVariable( "vengeance_value", function()
     -- Calculate current Vengeance value for ability prioritization
-    return buff.vengeance.stack or 0
+    return state.vengeance:get_stacks()
 end )
+
+spec:RegisterVariable( "vengeance_stacks", function()
+    return state.vengeance:get_stacks()
+end )
+
+spec:RegisterVariable( "vengeance_attack_power", function()
+    return state.vengeance:get_attack_power()
+end )
+
+spec:RegisterVariable( "high_vengeance", function()
+    return state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
+end )
+
+spec:RegisterVariable( "vengeance_active", function()
+    return state.vengeance:is_active()
+end )
+
+-- Vengeance-based ability conditions (using RegisterStateExpr instead of RegisterVariable)
 
 -- Tier set bonus tracking with generate functions
 spec:RegisterGear( "tier14_2pc", function() return set_bonus.tier14_2pc end )
@@ -1266,8 +1284,39 @@ spec:RegisterStateExpr( "threat_status", function()
 end )
 
 spec:RegisterStateExpr( "vengeance_stacks", function()
-    return buff.vengeance.stack or 0
+    if not state.vengeance then
+        return 0
+    end
+    return state.vengeance:get_stacks()
 end )
+
+spec:RegisterStateExpr("vengeance_attack_power", function()
+    if not state.vengeance then
+        return 0
+    end
+    return state.vengeance:get_attack_power()
+end)
+
+spec:RegisterStateExpr("vengeance_value", function()
+    if not state.vengeance then
+        return 0
+    end
+    return state.vengeance:get_stacks()
+end)
+
+spec:RegisterStateExpr("high_vengeance", function()
+    if not state.vengeance or not state.settings then
+        return false
+    end
+    return state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
+end)
+
+spec:RegisterStateExpr("should_prioritize_damage", function()
+    if not state.vengeance or not state.settings or not state.settings.vengeance_optimization or not state.settings.vengeance_stack_threshold then
+        return false
+    end
+    return state.settings.vengeance_optimization and state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
+end)
 
 -- Protection Warrior specific state table modifications
 

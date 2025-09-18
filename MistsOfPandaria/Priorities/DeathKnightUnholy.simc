@@ -1,6 +1,4 @@
 # Death Knight: Unholy (MoP)
-# Source APL used for alignment:
-# WoWSims Unholy DK default APL: `https://raw.githubusercontent.com/wowsims/mop/refs/heads/master/ui/death_knight/unholy/apls/default.apl.json`
 
 actions.precombat+=/unholy_presence
 actions.precombat+=/army_of_the_dead
@@ -45,7 +43,7 @@ actions+=/run_action_list,name=aoe,if=active_enemies>=4
 actions+=/run_action_list,name=single_target,if=active_enemies<4
 
 # Single Target
-actions.single_target+=/dark_transformation,if=buff.dark_transformation.down
+actions.single_target+=/dark_transformation,if=buff.dark_transformation.down&pet.ghoul.active
 actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=10&(runes.blood.count=0|runes.frost.count=0|runes.unholy.count=0)
 actions.single_target+=/scourge_strike,if=unholy>=1
 actions.single_target+=/death_coil,if=buff.shadow_infusion.stack<5&buff.dark_transformation.down&runic_power>=40
@@ -59,7 +57,7 @@ actions.aoe+=/blood_boil,if=dot.blood_plague.ticking&dot.frost_fever.ticking&(ac
 actions.aoe+=/death_and_decay,if=settings.dnd_while_moving|!moving
 actions.aoe+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=10&(runes.blood.count=0|runes.frost.count=0|runes.unholy.count=0)
 actions.aoe+=/scourge_strike,if=unholy>=1
-actions.aoe+=/dark_transformation
+actions.aoe+=/dark_transformation,if=buff.dark_transformation.down&pet.ghoul.active
 actions.aoe+=/death_coil,if=runic_power>=60|buff.sudden_doom.react|buff.dark_transformation.down&buff.shadow_infusion.stack<5&runic_power>=40
 actions.aoe+=/horn_of_winter,if=runic_power<=60&(buff.horn_of_winter.down|buff.horn_of_winter.remains<6)
 actions.aoe+=/empower_rune_weapon,if=unholy=0&blood=0&frost=0&runic_power<60

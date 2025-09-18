@@ -2294,10 +2294,120 @@ local function StoreKeybindInfo( page, key, aType, id, console )
             if itemToAbility[ id ] then
                 action = itemToAbility[ id ]
             else
-                for k, v in pairs( class.potions ) do
-                    if v.item == id then
-                        action = "potion"
+                -- Check for Synapse Springs (hands slot item)
+                local synapseIDs = {96228, 96229, 96230, 82174, 126734, 141330}
+                for _, synapseID in ipairs(synapseIDs) do
+                    if id == synapseID then
+                        action = "hands"
                         break
+                    end
+                end
+                
+                -- Check for potions
+                if not action then
+                    for k, v in pairs( class.potions ) do
+                        if v.item == id then
+                            action = "potion"
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    elseif aType == "macro" then
+        local GetMacroInfo = rawget( _G, "GetMacroInfo" )
+        if GetMacroInfo then
+            local _, _, body = GetMacroInfo( id )
+            if type( body ) == "string" then
+                local text = body:lower()
+
+                -- Equipment slots
+                if text:match( "/use%s*%b[]%s*10" ) or text:match( "/use%s+10" ) or 
+                   text:match( "/use%s*%b[]%s*hands" ) or text:match( "/use%s+hands" ) or
+                   text:match( "/use%s*%b[]%s*gloves" ) or text:match( "/use%s+gloves" ) then
+                    action = "hands"
+                elseif text:match( "/use%s*%b[]%s*13" ) or text:match( "/use%s+13" ) or
+                       text:match( "/use%s*%b[]%s*trinket1" ) or text:match( "/use%s+trinket1" ) then
+                    action = "trinket1"
+                elseif text:match( "/use%s*%b[]%s*14" ) or text:match( "/use%s+14" ) or
+                       text:match( "/use%s*%b[]%s*trinket2" ) or text:match( "/use%s+trinket2" ) then
+                    action = "trinket2"
+                end
+
+                -- Explicit item by ID in the macro text
+                if not action then
+                    local itemID = tonumber( text:match( "item:(%d+)" ) )
+                    if itemID then
+                        local item, link = CGetItemInfo( itemID )
+                        ability = item and ( class.abilities[ item ] or class.abilities[ link ] )
+                        action = ability and ability.key
+                        if not action then
+                            if itemToAbility[ itemID ] then
+                                action = itemToAbility[ itemID ]
+                            else
+                                for k, v in pairs( class.potions ) do
+                                    if v.item == itemID then
+                                        action = "potion"
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
+                -- Explicit item by name (e.g., /use Virmen's Bite)
+                if not action then
+                    local useName = text:match( "/use%s+[^\n\r;]*" )
+                    if useName then
+                        useName = useName:gsub( "%b[]", "" ):gsub( "/use", "" ):gsub( "^%s+", "" ):gsub( "%s+$", "" )
+                        local item, link = CGetItemInfo( useName )
+                        if item or link then
+                            ability = item and ( class.abilities[ item ] or class.abilities[ link ] )
+                            action = ability and ability.key
+                            if not action then
+                                for k, v in pairs( class.potions ) do
+                                    if v.name == useName or v.link == link then
+                                        action = "potion"
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
+                -- Spells cast via macro (/cast ...)
+                if not action then
+                    local castName = text:match( "/castsequence[^\n\r;]*;?%s*([^\n\r;]+)" ) or text:match( "/cast%s+([^\n\r;]+)" )
+                    if castName then
+                        castName = castName:gsub( "%b[]", "" ):gsub( "^%s+", "" ):gsub( "%s+$", "" )
+                        
+                        -- Check for specific spell names that have variants
+                        if castName:lower():match("shred!?") or castName:lower():match("shred") then
+                            action = "shred"
+                        elseif castName:lower():match("thrash") then
+                            action = "thrash"
+                        elseif castName:lower():match("explosive_trap") or castName:lower():match("explosive trap") then
+                            action = "explosive_trap"
+                        elseif castName:lower():match("freezing_trap") or castName:lower():match("freezing trap") then
+                            action = "freezing_trap"
+                        elseif castName:lower():match("ice_trap") or castName:lower():match("ice trap") then
+                            action = "ice_trap"
+                        elseif castName:lower():match("snake_trap") or castName:lower():match("snake trap") then
+                            action = "snake_trap"
+                        elseif castName:lower():match("immolation_trap") or castName:lower():match("immolation trap") then
+                            action = "immolation_trap"
+                        else
+                            local GetSpellInfo = rawget( _G, "GetSpellInfo" )
+                            if GetSpellInfo then
+                                local _, _, _, _, _, _, spellID = GetSpellInfo( castName )
+                                if spellID then
+                                    ability = class.abilities[ spellID ]
+                                    action = ability and ability.key
+                                end
+                            end
+                        end
                     end
                 end
             end
@@ -2305,6 +2415,27 @@ local function StoreKeybindInfo( page, key, aType, id, console )
     else
         ability = class.abilities[ id ]
         action = ability and ability.key
+        
+        -- Check for spell IDs with variants if not found above
+        if not action then
+            local spellIDs = {
+                -- Shred variants (normal and glyph-enhanced)
+                [5221] = "shred",              -- Shred (normal)
+                [114236] = "shred",            -- Shred! (glyph-enhanced)
+                -- Thrash variants (Bear and Cat forms)
+                [77758] = "thrash",            -- Thrash (Bear Form) - used by Guardian and Feral
+                [106830] = "thrash",           -- Thrash (Cat Form) - used by Feral
+                -- Trap spells
+                [13813] = "explosive_trap",    -- Explosive Trap
+                [1499] = "freezing_trap",      -- Freezing Trap  
+                [13809] = "ice_trap",          -- Ice Trap
+                [34600] = "snake_trap",         -- Snake Trap
+                [13795] = "immolation_trap"    -- Immolation Trap
+            }
+            if spellIDs[id] then
+                action = spellIDs[id]
+            end
+        end
     end
 
     if action then

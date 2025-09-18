@@ -518,16 +518,17 @@ spec:RegisterAbilities( {
 
     -- Ascendance (major cooldown)
     ascendance = {
-    id = 114050, -- Correct Elemental Ascendance spell ID
+        id = 114049,
+        texture = 135791,
         cast = 0,
         cooldown = 180,
-        gcd = "spell",
-    toggle = "cooldowns",
-        
+        gcd = "off",
         startsCombat = false,
-        
+
+        toggle = "cooldowns",
+
         handler = function()
-            applyBuff( "ascendance" )
+            applyBuff("ascendance")
         end,
     },
 

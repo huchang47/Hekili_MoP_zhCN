@@ -13,6 +13,7 @@ actions+=/heroic_throw,if=target.distance>8&target.distance<30
 actions+=/charge,if=target.distance>8&target.distance<25
 actions+=/call_action_list,name=mitigation
 actions+=/call_action_list,name=cooldowns
+actions+=/call_action_list,name=vengeance_rotation
 actions+=/call_action_list,name=standard
 
 # Mitigation (Shield Block first for physical, Barrier for magic or overflow)
@@ -31,6 +32,12 @@ actions.cooldowns+=/vigilance,if=talent.vigilance.enabled
 actions.cooldowns+=/avatar,if=talent.avatar.enabled&buff.shield_block.up
 actions.cooldowns+=/bloodbath,if=talent.bloodbath.enabled&buff.shield_block.up
 actions.cooldowns+=/recklessness,if=buff.shield_block.up&target.time_to_die>12
+
+# Vengeance-optimized rotation (when vengeance stacks are high) - temporarily disabled
+# actions.vengeance_rotation+=/shield_slam,if=should_prioritize_damage
+# actions.vengeance_rotation+=/revenge,if=should_prioritize_damage&active_enemies>=2
+# actions.vengeance_rotation+=/thunder_clap,if=should_prioritize_damage&active_enemies>=3
+# actions.vengeance_rotation+=/devastate,if=should_prioritize_damage
 actions.cooldowns+=/war_banner
 
 # Standard / Priority

@@ -40,7 +40,7 @@ actions.maint+=/skull_bash,if=target.casting
 
 # Snek/HT weave and Dream of Cenarius support (toggled)
 # Healing Touch usage
-actions.doc+=/healing_touch,if=talent.dream_of_cenarius.enabled&(variable.opt_snek_weave|variable.opt_use_ns)&(energy.current<=40)&((buff.predatory_swiftness.up&buff.predatory_swiftness.remains<=2)|((buff.predatory_swiftness.up|buff.natures_swiftness.up)&buff.clearcasting.down&((combo_points.current>=4&(dot.rip.down|dot.rip.remains<3))|(dot.rake.down|dot.rake.remains<3))))&buff.cat_form.up
+actions.doc+=/healing_touch,if=talent.dream_of_cenarius.enabled&(variable.opt_snek_weave|variable.opt_use_ns)&(energy.current<=40)&((buff.predatory_swiftness.up&buff.predatory_swiftness.remains<=2)|((buff.predatory_swiftness.up|buff.natures_swiftness.up)&buff.clearcasting.down&((combo_points.current>=4&(dot.rip.down|dot.rip.remains<4))|(dot.rake.down|dot.rake.remains<3))))&buff.cat_form.up
 # Nature's Swiftness setup
 actions.doc+=/natures_swiftness,if=talent.dream_of_cenarius.enabled&variable.opt_use_ns&combo_points.current=5&cooldown.natures_swiftness.remains=0&!buff.natures_swiftness.up&active_enemies<=2&buff.cat_form.up
 # DoC sequences (approximate strict sequences)
@@ -61,13 +61,13 @@ actions.doc+=/thrash_cat,if=buff.dream_of_cenarius_damage.up&active_enemies>=4&b
 # Trigger Cat -> Bear (delegate deeper logic to Lua state via bearweave_trigger_ok)
 actions.bearweave+=/bear_form,if=variable.opt_bear_weave&bearweave_trigger_ok
 actions.bearweave+=/mangle_bear,if=buff.bear_form.up&rage.current<25
-actions.bearweave+=/thrash,if=buff.bear_form.up&rage.current>=25
+actions.bearweave+=/thrash_bear,if=buff.bear_form.up&rage.current>=25
 actions.bearweave+=/maul,if=buff.bear_form.up&rage.current>=30&buff.clearcasting.down&!prev_off_gcd.maul
-actions.bearweave+=/cat_form,if=buff.bear_form.up&buff.clearcasting.up&prev.thrash
+actions.bearweave+=/cat_form,if=buff.bear_form.up&buff.clearcasting.up&prev.thrash_bear
 actions.bearweave+=/mangle_bear,if=buff.bear_form.up
 actions.bearweave+=/lacerate,if=buff.bear_form.up
 # Exit: Return to Cat when about to cap energy or mono-Cat timers need attention
-actions.bearweave+=/cat_form,if=buff.bear_form.up&(energy_time_to_max<=gcd.execute|dot.rake.remains<=3|dot.rip.remains<=4|cooldown.tigers_fury.remains<=2)
+actions.bearweave+=/cat_form,if=buff.bear_form.up&(energy_time_to_max<=gcd.execute|dot.rake.remains<=3|dot.rip.remains<=5|cooldown.tigers_fury.remains<=2)
 
 # Wrath weave placeholder (off by default)
 actions.wrath+=/wrath,if=variable.opt_wrath_weave&buff.heart_of_the_wild.up&!buff.cat_form.up&!buff.bear_form.up
@@ -79,23 +79,25 @@ actions.st+=/tigers_fury,if=energy.current<=35&buff.berserk.down&buff.clearcasti
 actions.st+=/savage_roar,if=(buff.savage_roar.down|buff.savage_roar.remains<=1)&combo_points.current>=1&buff.cat_form.up
 # Faerie Fire catch while in combat (<=2 targets)
 actions.st+=/faerie_fire,if=variable.maintain_ff&debuff.faerie_fire.down&time>0&active_enemies<=2&buff.cat_form.up
-# DoTs refresh with SR >= 1s
-actions.st+=/rip,if=combo_points.current>=5&(dot.rip.down|dot.rip.remains<3|rip_damage_increase_pct>0.05)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
+# DoTs refresh with SR >= 1s - PRIORITIZE COMBO POINT BUILDERS FIRST
+# Build combo points before trying to spend them
 actions.st+=/rake,if=combo_points.current<5&(dot.rake.down|dot.rake.remains<4.5|rake_damage_increase_pct>0.05)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
 # Rake as a builder when initial-hit/snapshot is favorable, without overwriting a stronger Rake
 actions.st+=/rake,if=combo_points.current<5&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up&rake_damage_increase_pct>0
+# Only cast Rip when we have combo points to spend
+actions.st+=/rip,if=combo_points.current>=5&(dot.rip.down|dot.rip.remains<4|rip_damage_increase_pct>0.05)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
 # Thrash ST with Clearcasting (SR >=1s, Rip >=5s, Rake >=4s)
 actions.st+=/thrash_cat,if=(dot.thrash_cat.down|dot.thrash_cat.remains<3)&buff.clearcasting.up&buff.savage_roar.remains>=1&dot.rip.remains>=5&dot.rake.remains>=4&active_enemies<=3&buff.cat_form.up
 # Ferocious Bite: execute (<=25% target)
 actions.st+=/ferocious_bite,if=target.health.pct<=25&dot.rip.ticking&dot.rip.remains>=3&combo_points.current>=5&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
 # Ferocious Bite: other conditions (grouped)
 actions.st+=/ferocious_bite,if=((buff.berserk.up&energy.current>25&combo_points.current>=5&dot.rip.remains>=6&dot.rake.remains>=4)|(dot.rip.remains>=7&buff.savage_roar.remains>=1&dot.rake.remains>=2&energy.current>=25&combo_points.current>=5)|(target.time_to_die<2&combo_points.current>=3))&active_enemies<=3&buff.savage_roar.remains>=1&buff.cat_form.up
-# Builders
+# Builders - PRIORITIZE COMBO POINT GENERATION
 # If SR is down and we have 0 CP, build immediately
 actions.st+=/mangle_cat,if=buff.savage_roar.down&combo_points.current=0&buff.cat_form.up
 # Shred instead of Mangle if: (a) Omen and Thrash(Cat) is active, (b) already at 5 CP (dump), or (c) during Berserk
 actions.st+=/shred,if=((buff.clearcasting.up&dot.thrash_cat.ticking)|(combo_points.current>=5)|buff.berserk.up)&active_enemies<=3&buff.cat_form.up&!(variable.disable_shred_when_solo&active_enemies=1&!in_group)
-# Default builder: Mangle when below 5 CP
+# Default builder: Mangle when below 5 CP (ensure we always have a builder available)
 actions.st+=/mangle_cat,if=combo_points.current<5&buff.berserk.down&active_enemies<=3&buff.cat_form.up
 
 # AOE core (>=4 targets)

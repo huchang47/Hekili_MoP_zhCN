@@ -14,12 +14,17 @@ local state = Hekili.State
 local GetRuneCooldown = rawget( _G, "GetRuneCooldown" ) or function() return 0, 10, true end
 local GetRuneType = rawget( _G, "GetRuneType" ) or function() return 1 end
 
+local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+
 local function getReferences()
     -- Legacy function for compatibility
     return class, state
 end
 
-local spec = Hekili:NewSpecialization( 251 ) -- Frost spec ID for MoP
+local spec = Hekili:NewSpecialization( 251, true ) -- Frost spec ID for MoP
+spec.name = "Frost"
+spec.role = "DAMAGER"
+spec.primaryStat = 1 -- Strength
 
 -- Runes (unified model on the resource itself to avoid collision with a state table)
 do
@@ -92,7 +97,7 @@ do
         if state.runes and state.runes.reset then state.runes.reset() end
     end)
 end
-spec:RegisterResource( 6 ) -- RunicPower = 6 in MoP
+spec:RegisterResource(6) -- RunicPower = 6 in MoP
 
 local strformat = string.format
 -- Enhanced Helper Functions for MoP compatibility
@@ -104,10 +109,12 @@ local function UA_GetPlayerAuraBySpellID(spellID, filter)
         return ns.FindUnitDebuffByID("player", spellID)
     end
 end
+-- Back-compat alias used by generate() functions below
+local GetPlayerAuraBySpellID = UA_GetPlayerAuraBySpellID
 
 -- Local shim for resource changes to avoid nil global gain/spend and normalize names.
 local function _normalizeResource(res)
-    if res == "runicpower" or res == "rp" then return "runic_power" end
+    if res == "runic_power" or res == "rp" then return "runic_power" end
     return res
 end
 
@@ -596,10 +603,12 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
 
     getActiveDeathRunes = function()
         local activeRunes = {}
-        local state_array = state.death_runes.state
-        for i = 1, 6 do
-            if state_array[i].type == 4 and state_array[i].expiry < state.query_time then
-                table.insert(activeRunes, i)
+        if state.death_runes and state.death_runes.state then
+            local state_array = state.death_runes.state
+            for i = 1, 6 do
+                if state_array[i] and state_array[i].type == 4 and state_array[i].expiry < state.query_time then
+                    table.insert(activeRunes, i)
+                end
             end
         end
         return activeRunes
@@ -607,10 +616,12 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
 
     getActiveRunes = function()
         local activeRunes = {}
-        local state_array = state.death_runes.state
-        for i = 1, 6 do
-            if state_array[i].expiry < state.query_time then
-                table.insert(activeRunes, i)
+        if state.death_runes and state.death_runes.state then
+            local state_array = state.death_runes.state
+            for i = 1, 6 do
+                if state_array[i] and state_array[i].expiry < state.query_time then
+                    table.insert(activeRunes, i)
+                end
             end
         end
         return activeRunes
@@ -618,10 +629,12 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
 
     countDeathRunes = function()
         local count = 0
-        local state_array = state.death_runes.state
-        for i = 1, 6 do
-            if state_array[i].type == 4 and state_array[i].expiry < state.query_time then
-                count = count + 1
+        if state.death_runes and state.death_runes.state then
+            local state_array = state.death_runes.state
+            for i = 1, 6 do
+                if state_array[i] and state_array[i].type == 4 and state_array[i].expiry < state.query_time then
+                    count = count + 1
+                end
             end
         end
         return count
@@ -629,23 +642,23 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
 
     countRunesByType = function(type)
         local count = 0
-        local state_array = state.death_runes.state
-        local runeMapping = {
-            blood = {1, 2},
-            frost = {3, 4},
-            unholy = {5, 6}
-        }
-        local runes = runeMapping[type]
-        if runes then
-            for _, rune in ipairs(runes) do
-                if state_array[rune].type == 4 and state_array[rune].expiry < state.query_time then
-                    count = count + 1
-                elseif state_array[rune].type == (type == "blood" and 1 or type == "frost" and 2 or 3) and state_array[rune].expiry < state.query_time then
-                    count = count + 1
+        if state.death_runes and state.death_runes.state then
+            local state_array = state.death_runes.state
+            local runeMapping = {
+                blood = {1, 2},
+                frost = {3, 4},
+                unholy = {5, 6}
+            }
+            local runes = runeMapping[type]
+            if runes then
+                for _, rune in ipairs(runes) do
+                    if state_array[rune] and state_array[rune].type == 4 and state_array[rune].expiry < state.query_time then
+                        count = count + 1
+                    elseif state_array[rune] and state_array[rune].type == (type == "blood" and 1 or type == "frost" and 2 or 3) and state_array[rune].expiry < state.query_time then
+                        count = count + 1
+                    end
                 end
             end
-        else
-            print("Invalid rune type:", type)
         end
         return count
     end
@@ -820,21 +833,6 @@ spec:RegisterAuras( {
         id = 48266,
         duration = 3600,
         max_stack = 1,
-        generate = function( aura )
-            local name, _, count, _, duration, expires, caster = GetPlayerAuraBySpellID( 48266 )
-            if name then
-                aura.name = name
-                aura.count = count > 0 and count or 1
-                aura.expires = expires
-                aura.applied = expires - duration
-                aura.caster = caster
-                return
-            end
-            aura.count = 0
-            aura.expires = 0
-            aura.applied = 0
-            aura.caster = "nobody"
-        end,
         copy = "frost_presence_enhanced"
     },
 
@@ -844,7 +842,7 @@ spec:RegisterAuras( {
         duration = 20,
         max_stack = 1,
         generate = function( aura )
-            local name, _, count, _, duration, expires, caster = GetPlayerAuraBySpellID( 51271 )
+            local name, _, count, _, duration, expires, caster = UA_GetPlayerAuraBySpellID( 51271 )
             if name then
                 aura.name = name
                 aura.count = count > 0 and count or 1
@@ -874,7 +872,7 @@ spec:RegisterAuras( {
         duration = 10,
         max_stack = 1,
         generate = function( aura )
-            local name, _, count, _, duration, expires, caster = GetPlayerAuraBySpellID( 51124 )
+            local name, _, count, _, duration, expires, caster = UA_GetPlayerAuraBySpellID( 51124 )
             if name then
                 aura.name = name
                 aura.count = count > 0 and count or 1
@@ -904,7 +902,7 @@ spec:RegisterAuras( {
         duration = 15,
         max_stack = 1,
         generate = function( aura )
-            local name, _, count, _, duration, expires, caster = GetPlayerAuraBySpellID( 59052 )
+            local name, _, count, _, duration, expires, caster = UA_GetPlayerAuraBySpellID( 59052 )
             if name then
                 aura.name = name
                 aura.count = count > 0 and count or 1
@@ -932,7 +930,7 @@ spec:RegisterAuras( {
         max_stack = 1,
         type = "Disease",
         generate = function( aura, t )
-            local name, _, count, _, duration, expires, caster = GetUnitAura( t or "target", 59921, "HARMFUL" )
+            local name, _, count, _, duration, expires, caster = FindUnitDebuffByID( t or "target", 59921 )
             if name then
                 aura.name = name
                 aura.count = count > 0 and count or 1
@@ -964,7 +962,7 @@ spec:RegisterAuras( {
         max_stack = 1,
         type = "Disease",
         generate = function( aura, t )
-            local name, _, count, _, duration, expires, caster = GetUnitAura( t or "target", 59879, "HARMFUL" )
+            local name, _, count, _, duration, expires, caster = FindUnitDebuffByID( t or "target", 59879 )
             if name then
                 aura.name = name
                 aura.count = count > 0 and count or 1
@@ -999,7 +997,7 @@ spec:RegisterAuras( {
         duration = 3,
         max_stack = 1,
         generate = function( aura )
-            local name, _, count, _, duration, expires, caster = GetPlayerAuraBySpellID( 51460 )
+            local name, _, count, _, duration, expires, caster = UA_GetPlayerAuraBySpellID( 51460 )
             if name then
                 aura.name = name
                 aura.count = count > 0 and count or 1
@@ -1025,7 +1023,7 @@ spec:RegisterAuras( {
         duration = 5,
         max_stack = 1,
         generate = function( aura )
-            local name, _, count, _, duration, expires, caster = GetPlayerAuraBySpellID( 81229 )
+            local name, _, count, _, duration, expires, caster = UA_GetPlayerAuraBySpellID( 81229 )
             if name then
                 aura.name = name
                 aura.count = count > 0 and count or 1
@@ -1052,7 +1050,7 @@ spec:RegisterAuras( {
         max_stack = 1,
         generate = function( aura )
             local duration_bonus = spec.glyph.anti_magic_shell.enabled and 2 or 0
-            local name, _, count, _, duration, expires, caster = GetPlayerAuraBySpellID( 48707 )
+            local name, _, count, _, duration, expires, caster = UA_GetPlayerAuraBySpellID( 48707 )
             if name then
                 aura.name = name
                 aura.count = count > 0 and count or 1
@@ -1073,10 +1071,10 @@ spec:RegisterAuras( {
     -- Horn of Winter: Stat buff with glyph variants
     horn_of_winter = {
         id = 57330,
-        duration = function() return spec.glyph.horn_of_winter.enabled and 3600 or 120 end,
+        duration = function() return glyph.horn_of_winter.enabled and 3600 or 120 end,
         max_stack = 1,
         generate = function( aura )
-            local extended_duration = spec.glyph.horn_of_winter.enabled
+            local extended_duration = glyph.horn_of_winter.enabled
             local name, _, count, _, duration, expires, caster = GetPlayerAuraBySpellID( 57330 )
             if name then
                 aura.name = name
@@ -1239,7 +1237,7 @@ spec:RegisterAbilities( {
         spend_runes = {0, 1, 1}, -- 0 Blood, 1 Frost, 1 Unholy
         
         gain = 15,
-        gainType = "runicpower",
+        gainType = "runic_power",
         
         startsCombat = true,
         
@@ -1260,7 +1258,7 @@ spec:RegisterAbilities( {
             if talent.threat_of_thassarian.enabled then
                 -- 50% chance to strike with off-hand as well
                 if math.random() < 0.50 then
-                    gain(5, "runicpower") -- Additional RP from off-hand strike
+                    gain(5, "runic_power") -- Additional RP from off-hand strike
                 end
             end
         end,
@@ -1272,7 +1270,7 @@ spec:RegisterAbilities( {
         gcd = "spell",
         
         spend = 40,
-        spendType = "runicpower",
+        spendType = "runic_power",
         
         startsCombat = true,
         
@@ -1309,7 +1307,7 @@ spec:RegisterAbilities( {
         spend_runes = {0, 1, 0}, -- 0 Blood, 1 Frost, 0 Unholy
         
         gain = function() return 15 + (2.5 * talent.chill_of_the_grave.rank) end,
-        gainType = "runicpower",
+        gainType = "runic_power",
         
         startsCombat = true,
         
@@ -1361,7 +1359,7 @@ spec:RegisterAbilities( {
                 rp_gain = rp_gain + 5 -- Extra 5 RP per talent point
             end
             
-            gain(rp_gain, "runicpower")
+            gain(rp_gain, "runic_power")
             
             -- Glyph of Icy Touch: increased Frost Fever damage
             if glyph.icy_touch.enabled then
@@ -1385,7 +1383,7 @@ spec:RegisterAbilities( {
         
         handler = function ()
             applyDebuff("target", "chains_of_ice")
-            gain(10, "runicpower")
+            gain(10, "runic_power")
             
             -- Glyph of Chains of Ice: additional damage
             if glyph.chains_of_ice.enabled then
@@ -1416,7 +1414,7 @@ spec:RegisterAbilities( {
             local damage_multiplier = 1.0 + (disease_count * 0.125)
             
             -- Generate 10 Runic Power
-            gain(10, "runicpower")
+            gain(10, "runic_power")
         end,
     },
     
@@ -1500,7 +1498,7 @@ spec:RegisterAbilities( {
         handler = function ()
             -- Generate RP based on number of enemies hit
             local rp_gain = 10 + (active_enemies > 1 and 5 or 0)
-            gain(rp_gain, "runicpower")
+            gain(rp_gain, "runic_power")
             
             -- Glyph of Death and Decay: 15% more damage
             if glyph.death_and_decay.enabled then
@@ -1516,7 +1514,7 @@ spec:RegisterAbilities( {
         gcd = "spell",
         
         spend = 30,
-        spendType = "runicpower",
+        spendType = "runic_power",
         
         startsCombat = true,
         texture = 237518,
@@ -1541,7 +1539,7 @@ spec:RegisterAbilities( {
         handler = function ()
             applyBuff("horn_of_winter")
             if not glyph.horn_of_winter.enabled then
-                gain(10, "runicpower")
+                gain(10, "runic_power")
             end
         end,
     },
@@ -1648,7 +1646,7 @@ spec:RegisterAbilities( {
         gcd = "off",
         
         spend = function() return glyph.blood_tap.enabled and 15 or 0 end,
-        spendType = function() return glyph.blood_tap.enabled and "runicpower" or nil end,
+        spendType = function() return glyph.blood_tap.enabled and "runic_power" or nil end,
         
         startsCombat = false,
         
@@ -1673,7 +1671,7 @@ spec:RegisterAbilities( {
         
         handler = function ()
             -- Refresh all rune cooldowns and generate 25 runic power
-            gain(25, "runicpower")
+            gain(25, "runic_power")
         end,
     },
     }
@@ -1887,27 +1885,37 @@ spec:RegisterStateExpr( "rune", function()
 end )
 
 spec:RegisterStateExpr( "rune_deficit", function()
+    if not state then return 0 end
     local total = 0
-    if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
-    if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
-    if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
-    if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
+    if state.blood_runes and type(state.blood_runes) == "table" and state.blood_runes.current then 
+        total = total + state.blood_runes.current 
+    end
+    if state.frost_runes and type(state.frost_runes) == "table" and state.frost_runes.current then 
+        total = total + state.frost_runes.current 
+    end
+    if state.unholy_runes and type(state.unholy_runes) == "table" and state.unholy_runes.current then 
+        total = total + state.unholy_runes.current 
+    end
+    if state.death_runes and type(state.death_runes) == "table" and state.death_runes.count then 
+        total = total + state.death_runes.count 
+    end
     return 6 - total
 end )
 
 spec:RegisterStateExpr( "rune_current", function()
+    if not state then return 0 end
     -- Use state resources for emulation compatibility
     local total = 0
-    if state.blood_runes and state.blood_runes.current then
+    if state.blood_runes and type(state.blood_runes) == "table" and state.blood_runes.current then
         total = total + state.blood_runes.current
     end
-    if state.frost_runes and state.frost_runes.current then
+    if state.frost_runes and type(state.frost_runes) == "table" and state.frost_runes.current then
         total = total + state.frost_runes.current
     end
-    if state.unholy_runes and state.unholy_runes.current then
+    if state.unholy_runes and type(state.unholy_runes) == "table" and state.unholy_runes.current then
         total = total + state.unholy_runes.current
     end
-    if state.death_runes and state.death_runes.count then
+    if state.death_runes and type(state.death_runes) == "table" and state.death_runes.count then
         total = total + state.death_runes.count
     end
     return total
@@ -1971,4 +1979,7 @@ spec:RegisterSetting( "it_macro", nil, {
     set = function() end,
 } )
 
-spec:RegisterPack( "Frost", 20250915, [[Hekili:TRvFpUTTz8plhgMJDxIIL85BjfNdq7kkAV2MDykB5)KeTeTfHLe1KOoJBWqF23dj1luVqzBKSMvGKC5In1dFE(XNx(rsr6y68bh7aed78ERLwRx(wZ1gwwRSw7yZEof7yNI8pG2dFibfd)ExgnNHy82FoIIc4DpNwK5dpZXEBbjI9ZjoBhrNwRw9whBublKM5yBhxSlJCWXoKeeGL9aN77y)HqsEPh)FOsVkJx6r3bF3NrOjLErKCg84D0SsVFcFGerma4Kr3rIaq8Nk9(bmIfw69ljK9HSVT07h5yU0B(VrFCr5dGaFxezFcoO07iHl4hPF0MeN3i4394VM)TLpaIcY(HJ0x9tOKaU4pMrOze2ZLE)lugbTncNx(Gew5gPzyFA8we7VS51pv94xYDAByhPUHcv8YNqrf4n5P4OixgkBpMLBespgrs27UncLZ2yolgrseYByfwJIhRvoGoP9g3WIWJl0sooXhpUmziso2naJcg)5OS4NDP7CzHtjfeft4sDKKWWzVKSBZnBl2TZOB7gfPNonw7zy(Wm)(7gx7PurSUA0)d4DOIOrg7GKXKKa3Dzy8)bR2mkHrIr7j(U5HGZ(Lbi4B4nMl5)HJwFknkGEmXONK1iBZsv1LsIIqzC8l8WQpk)5euk4qZtZGOyhSTnIsbWvK9m3Ic3qpfb(NoDaNLJZoa65c7qbyycdhxLObi4aMz(P0zRlSZTzrIyFkMzSpKwezWf5jSi0broqiuoua)BOeW)hJtGOiKAx69pWsAdi3gIeWiUdYscPrpdve8kyU(zOiORgDA3aNWRXcMnpGYmKz(7WpPKCT60j(JKHH0i0(cC7ZwOAqAbBBggDGBR53mOtmIppOC60n9nv1t6OmzNCZbp6bSW7OtHQ9I4)SlJw4h20JrSZiMjcJL9PYhP2CRlAUEhXmTUVfNonpRib76xKLb6((nwdD2n(gDdYfl64DWXP0J4mxHIpIrP0eHxN31sVGnlNj0o8)YO9MLCyijlbvgJbVKBabF)M7wottI6IgMJhTvOTvtFlsCLFZLpFISeWs4hRjVnA5TpBpnLrTr76W5r(XoCianpNgbQDCHuWujzA14neJIyHgP(SxT6BMpOX)8q3YI73SADpDlJkmuQsAstBn5icFPSz)qUEnGz69p8UnRNjcoqO50PQyZPtnbNQk9Fbcc8euOs3pKKGRlZbKnseqIlzAuBDIabhKkYnwQhiBe6ZmWRdm0ImN3TXAzpfrbgbywfyjhtRMZy)og5nlRgz1dbQFhASUQQZK4nGid6A1aiqYeAaZx5wvG9U(XPa(cxCb)gWR6JetAiztDXj4ycohg61GQiPhRQy9q)9ghXKEO2VjkdZDrpHir80GRXdDB)WW5CcAX0a90FTfk29(bMDsqoixrd)tvg(aYNgMKcu0R(ibhnS(18)H1VMF5QFhw0A(5QO186Ywg1UJxSo6coKBvqAUsVVNBVZHLBUY6xZp163UA66lx)8KOmDe7Izdm1vEBEDL3N3QdW4vwE7yFeLLWx4oFRNqiHa9pRoN5fwHVO0ld)Vliz8jUZP8PcG9WsJHHf0a4)s2JZnkF4xf1mMW2n)B0eyDrIhtt5JFo4afdBD9fFA0cawy0lwlVwNwAq7kaT)ZK8Iu(qMJxPNeSGQpVv(B1kFBSUv61xP2VtR8DQoB7WBUk482ReoMlVw8yAEvaY8YD)ImZD0Oi6rbfgQidbPuqEo0oSnUaz6fJlwTs4loT0BBbRwUeQiTUiPJ0bbCHdqm0wGEJ)Ap8Ef0nf2HQM6rXx1kNHKtPnsTJ5xRDUOAhnzt)Fw5ZeLdAQF(A1GA1qG8DyDDLe69j92Z7xe3YGxkw5d)CCnsVTRr4Jjh78uSVZ7TwB6ylAK)2JTcHF)EX7HUAbkoFVJTFgpdHGCShuBkS9QsVVP0BoaWHp(1nTQu(w6TO07(nqpx7ylrM4nxxVODhgaSjaX4RLQ0Bg39n66Pk9EhyU1crMxLev6bnTS070jWllCAknixtsDllAHzJz5GCvpqwlKAvI8LPNrsLp6I2BU6WDIDqZhnkRatoiTwYr2TADF61xl(Bjf46ATwDnW4VzPgNaOM704S6qj2ZBn((9hmCu2Oc3NmY(da4bXFom(RAhnCa1U)GkVzlo7TJcUUEJMHKI)R345CVQav8OFRgCB)2lpQC7erfZLtNP06A1fX4krqzm2OVvXCX0xu3bZ33fYD3JIqr9l8MyWBn1GFIYevkIz9yiM1LGO1aJSJhhUhY28RmR)(ZS(7gD6fvK8fKg9sFtmQG6MQq(Fy5w)CqL(PwrmjBuNe(j4HVo(8VsfFgQ4Qv)3Whx3bLtVUNZsVV6CNCDFq1tm(vZiwCJoKhgEdZxT89wwFpCDRQO9o77EIQN8rZX21pnLFY5Jr)CnkQ5e1hJROwQ6do)IuT8IW00LjOnQps9RxTwttra8K9pW9wR2EY8JwJxlwNZs)s4Uh)y7hH5A0tPVEYAnh2SOQFLC2ADhvDTmlA5Cg17aw5Mr0s9rOlSXndrsZZvwFq99c4m0xtyoL6k1RfWzOX0dVw91CHbodv2e3lG6GY8Z70ND2q3cPNDUygOM7mGCPHw6c)Dck6dzlK)mWzkgnIXVEYM(Rq8mS5QdKXwSlF4C3Y2jJh5AYOc0XNs49M6wsvw3RxG6azKBxG89O4k5oSKEcDKCtOziD7Ck3muotwZT0YzK9wqbESCSYcsR1k)trfyXBas3vFt4(nfow1RaNqjvGqfBDjSM6k)Dr33VM5C7UyH6RsxVP26mHPcH7eZv2)A1DXtwwVO4b3SozA6e3UorL5DtTsQ76mXpTkLvbx1)15)(]]  )
+-- Register default pack for MoP Frost Death Knight
+spec:RegisterPack(
+	"Frost", 20250918, [[Hekili:TRvBpUTns4Fllcoh7Ejkw2R3KTW2aTxqr72MElQZD5BsIwM2IyLf1jrfdFWq)2VHKwsKsIYAXUPPaxcsw7vC4mdNxEMrdJJTZhDwTbXWo)(KXtMn(w73znXEYn2ZCwXogJDwfJ8FaTd(seAp8ZFkHMY4p9yifTHV7uAwIpSIZQ1zKq2Ve5SUblTV96BNCRZkuglGM4SA1(STjKhCwfq2Sbl3bo13z1hdiP5E8)HY9ol6Cp6w439zeAuUxijLblVLMK79Z4hiHelNvIhkok4TOSqg81FxC0K7Yz1Es0g3Tjy8)f0uCeADiEJZp6WaDKtw1tw5Nqy4ecc(gLgUHEiYcfXi7r7i(UPb4WqRe8EejcuIf5EJRKrnY4gH9clN9y(F4cBQQoftcdrjU0TGIjmQA611QKMEmcfNIDtJtir7sRr6mJhH1zB3AvtowzXvmEDiLcgMSKJCgDZtGr4KuCYdG2Xz0BF8msgEXGZ3dyMDfJlFcW239ez7KgSDcNT3AKTxbbHyM1UaAwOfFRFgxXIeebCjBWqAaWe7X14cpGoHelP99aPOuiu(dOiiMypoIbH0rBY9(dSmbk37EiEJB)uKpdfcuALffqdp6UoKSlGzDwg5EdY9gM7THYSeNx3T4pJtQIoNN7nn370jjjspDCiAxgUonJQouAIsCUSnADaHFvlmNr85XbsrFvtfSCDfXsZyRtWOhes0CkzhItjVs8C3uWf)awWWPxIHTOEv8J4F0LrZ8de86AJ86SZ6S4dXy)G6(QHx2xm4IE0rsllWRKSiSRFwsIiCAoahnXuuHMtXSlBK8VnmMItJ48BgSzyPoLk5ULpnJRyCysHEjxtMC2(AYWp9fRoVmuYoiDeGzXGhXDdblp13izHbqG6hj8(y6bCIRW6DaJIHhYpz1r)kZZZICLF3LxNr9i)ze8bqVf7a1naYNHDkkg5kXDMiTz1Hd7bNHaZlXCBoZzIplk3ziUuy1cWOqwGvSpyyFTiq67unQQl)M2n1JKw7PZukmbaJUqIBmoP7IPNtoKrDmuSwMHWXjxYpGlyRugu7p3BjiUzfH0gJS4rhgdTQwS1yR6LcbvRSqTjW8FfcXezlFa5hqI4q3jekCup2OK0dssD3lPesLrCdSmEh6uqejkpNtuALqM5wHGzg0riLeWljzDflcOhesEDikL1DxcnuL31HQupl5YL5KTQjvNCVFuOp6r61oexSY2YIOcZGPssg1H9WCpkYc9U4i8Eco9S3PItqfFwGlKpc1(9rhBRXenJYFKfPzrQHz2sK7YUafxQckkjqOrLRRRTuOuoimE)4D2QZtnbTZ4zTCRgDk1rK41DejAR1HVY5uV74oANqtCZ1Lg8Ekr8Qihirmj4whTr8OsM7OfIN7INxQOhtuI6Bvp(6w9q(EaGT6REHKwLIjSK)mkOuyvO(Mqq))RAhNRM(pva7(RyXKhhoU56b9V7MVvm45OyqCc2NUFnI1wnbAmGyJvCcfVGc)BHzWhPX4Wqxj4FQLMpsOc2c9JNLjEFglO2dNjNFFg1xZrVRsEezU3VgXNjX3N7jMbjKL)b69qK7pes2fXlfCGWP6t0pTISpTKQF4(Fl97lRUO7gGJBkoYVEqI2u6uMYJovAdOdLS)ipaHf0kTMHkl6(vpct8wR8uY2wtDCa30vm6nQAym9SVxrVe(CaDmLVsX0AFRZQdOKi5Cg)yaa)qGWLKcONxoj4Lqmg()Krs4w9ukhHgLXO7H0n4bqn4ODqay(D)MO6Mn4X(xrPzXCMWjqQraNuk))snY)h0iqReetJ5PXa98XcZ3uJgoE90VByJh(3A2bYO5lModuDgT3C5nM4sP2oX4HRSHGkIFRrIRvwqXAywa6(BLTCTXT0sEpFF531IB2(BU5)8CZ3(y4)xVyIZ3UYZvGHYLY0htDT7xPAltnULAddSpg8k8EfZ3yJKRnVCLDy(uxmQ7E5q1MLTYomFKlNwDV8(QJ3vzdZEwcxk7M4XfWy2AOx1UpbaT5nnBnQxfVApMnint5YV7x2xq211U4syzrBs(q52z28gUOBj8oOErUxNT5C3l6xNoCX)cG2pEG(6Fw0mv1lvM79Vp3XwA(Ds1k1Q0j93x8MIg6EfVHSfv9J9kr)Dl6O9Uf2duBRRqlUVG5G2jLx7cw3X2onvUY2xVUZRDQ0DxVISDXvT3)1PtD0718BAN7YMSko9Vxcx28SduQG9P(4AyCVsEfYlK3GmxBV0LsVySk7QH)PUuTRuwDPQlfMlrt3QI6gkV83EUHmqWqhW7phOD(kEFkBEsp3CvuKW3x)2DfUoWZ1)RRvtZulgW5Fx3F7GHgMrX8PNozA4eZNosvGf1s4YA4vMUwVtNUYW1bQXmTAncRJX7juzxL1Bk3rBx7ytXik5OyJA7AthmCOzdXaJMVrNonmr5QrNVystJDPTX0HC0inRtlf(ew9HnEn9fJh041ZlFM6RLVymxtB2858f3mEGHyzUsDgD5(vkq7QH463QOmnzIWw3YvkEXDAl9STU1M1A(jnCgOuahQP6faKo8(0uUPw7RX7Y(JvcLAmM4bggr8YfZg0M)70PwCGfpSMh8mIrVMQBnDxDwqLWxToc2bkZuA5IjJRXOQXD1nBUG81eY7gF(K1(iyRXkTMbkvIQj3zeSB5SbMsXxoBunPu79N4YrcBxmVvW2uO1xAWPDAch2W)VSTe4L8e4gtnvOe93qFDDV5LSLg18g8PERokYDEdX2Ps2iKZaC4tbmSeyldf(6prWHnHtS)ccNy)xB4KMyi2pxyi2pUOUwLB7yh99)paxsxU65goX(PcNOZPVuOhppXKD747n4KTj0g7hhAZLLAdD8laAJy43o)V]]
+)
