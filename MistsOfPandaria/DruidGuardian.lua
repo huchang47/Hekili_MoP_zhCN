@@ -352,6 +352,17 @@ spec:RegisterAuras( {
         max_stack = 1,
     },
 
+    -- Vengeance (tank mechanic)
+    vengeance = {
+        id = 132365,
+        duration = 20,
+        max_stack = 999,
+        meta = {
+            stack = function( t ) return t.count end,
+            stack_up = function( t ) return t.count > 0 end,
+            stack_down = function( t ) return t.count == 0 end,
+        },
+    },
 
 } )
 

@@ -169,15 +169,10 @@ spec:RegisterAuras( {
     },
 
     jungle_stalker = {
-        id = 0, -- Dummy ID for Jungle Stalker tracking
         duration = 15,
         max_stack = 1,
     },
-    bs_inc = {
-        id = 0, -- Dummy ID for Berserk/Incarnation tracking
-        duration = 15,
-        max_stack = 1,
-    },
+
 
     savage_roar = {
         id = 52610,
@@ -449,6 +444,14 @@ spec:RegisterAuras( {
         max_stack = 1,
         copy = {77758},
     },
+
+    thrash_cat = {
+        id = 106830,
+        duration = 15,
+        tick_time = 3,
+        mechanic = "bleed",
+        max_stack = 1,
+    },
     tiger_dash = {
         id = 252216,
         duration = 5,
@@ -522,7 +525,6 @@ spec:RegisterAuras( {
 
     -- Bear Form specific auras
     bear_form_weaving = {
-        id = 0, -- Dummy ID for tracking
         duration = 3600,
         max_stack = 1,
     },
@@ -688,10 +690,490 @@ spec:RegisterStateExpr( "time_to_pool", function ()
     return deficit / energy.regen
 end )
 
+-- Advanced energy pooling system based on WoWSims pooling_actions.go
+-- Calculate floating energy needed for upcoming ability refreshes
+spec:RegisterStateExpr( "floating_energy", function()
+    local floatingEnergy = 0
+    local currentTime = query_time or 0
+    local regenRate = energy.regen or 10
+    
+    -- Pooling actions that need energy in the near future
+    local poolingActions = {}
+    
+    -- Add Rake refresh (35 energy, refresh when < 4.5s remaining)
+    if debuff.rake.up and debuff.rake.remains < 8 then
+        local refreshTime = debuff.rake.remains
+        table.insert(poolingActions, {refreshTime = refreshTime, cost = 35})
+    end
+    
+    -- Add Rip refresh (20 energy, refresh when < 4s remaining) 
+    if debuff.rip.up and debuff.rip.remains < 6 then
+        local refreshTime = debuff.rip.remains
+        table.insert(poolingActions, {refreshTime = refreshTime, cost = 20})
+    end
+    
+    -- Add Savage Roar refresh (25 energy, refresh when < 1s remaining)
+    if buff.savage_roar.up and buff.savage_roar.remains < 3 then
+        local refreshTime = buff.savage_roar.remains
+        table.insert(poolingActions, {refreshTime = refreshTime, cost = 25})
+    end
+    
+    -- Sort actions by refresh time
+    table.sort(poolingActions, function(a, b) return a.refreshTime < b.refreshTime end)
+    
+    -- Calculate floating energy needed
+    local previousTime = 0
+    local tfPending = false
+    
+    for _, action in ipairs(poolingActions) do
+        local elapsedTime = action.refreshTime - previousTime
+        local energyGain = elapsedTime * regenRate
+        
+        -- Check if Tiger's Fury will be available before this refresh
+        if not tfPending and cooldown.tigers_fury.remains <= action.refreshTime then
+            tfPending = true
+            action.cost = action.cost - 60 -- Tiger's Fury gives 60 energy
+        end
+        
+        if energyGain < action.cost then
+            floatingEnergy = floatingEnergy + (action.cost - energyGain)
+            previousTime = action.refreshTime
+        else
+            previousTime = previousTime + (action.cost / regenRate)
+        end
+    end
+    
+    return floatingEnergy
+end )
+
+-- Check if we should pool energy for upcoming refreshes (based on SimC pool input)
+spec:RegisterStateExpr( "should_pool_energy", function()
+    local poolLevel = state.settings.pool or 0 -- 0=no pooling, 1=light, 2=heavy
+    
+    if poolLevel == 0 then
+        return false -- No pooling
+    end
+    
+    -- Never pool when we have combo points to spend
+    if combo_points.current >= 1 then
+        return false
+    end
+    
+    -- Simple pooling logic - let pool_resource handle the actual pooling
+    return true
+end )
+
+-- Next refresh time for energy pooling decisions
+spec:RegisterStateExpr( "next_refresh_time", function()
+    local nextTime = 999
+    
+    -- Find the earliest refresh time
+    if debuff.rake.up and debuff.rake.remains < 8 and debuff.rake.remains < nextTime then
+        nextTime = debuff.rake.remains
+    end
+    if debuff.rip.up and debuff.rip.remains < 6 and debuff.rip.remains < nextTime then
+        nextTime = debuff.rip.remains
+    end
+    if buff.savage_roar.up and buff.savage_roar.remains < 3 and buff.savage_roar.remains < nextTime then
+        nextTime = buff.savage_roar.remains
+    end
+    
+    return nextTime < 999 and nextTime or 0
+end )
+
+-- Energy efficiency calculations for pooling decisions
+spec:RegisterStateExpr( "energy_efficiency", function()
+    -- Calculate how efficiently we're using energy
+    local currentEfficiency = energy.current / energy.max
+    local poolingThreshold = floating_energy / energy.max
+    
+    -- Return efficiency score (0-1, higher is better)
+    if floating_energy == 0 then return 1 end
+    return math.min(1, currentEfficiency / poolingThreshold)
+end )
+
+-- Check if we're in a pooling phase (holding energy for upcoming refreshes)
+spec:RegisterStateExpr( "in_pooling_phase", function()
+    return should_pool_energy and next_refresh_time > 0 and next_refresh_time < 8
+end )
+
+-- Advanced Ferocious Bite conditions based on WoWSims canBite() logic
+spec:RegisterStateExpr( "can_bite", function()
+    local isExecutePhase = target.health.pct <= 25
+    local biteTime = buff.berserk.up and 6 or 11 -- BerserkBiteTime vs BiteTime
+    
+    -- Must have enough Savage Roar duration
+    if buff.savage_roar.remains < biteTime then
+        return false
+    end
+    
+    -- In execute phase: allow if we have a better snapshot or during berserk
+    if isExecutePhase then
+        return (rip_damage_increase_pct > 0.001) or buff.berserk.up
+    end
+    
+    -- Normal phase: ensure Rip has enough duration
+    return debuff.rip.remains >= biteTime
+end )
+
+-- Rip break-even threshold calculation (based on WoWSims calcRipEndThresh)
+spec:RegisterStateExpr( "rip_end_threshold", function()
+    if combo_points.current < 5 then
+        return 0 -- Can't cast Rip without 5 CPs
+    end
+    
+    -- Calculate break-even point between Rip and Ferocious Bite
+    local expectedBiteDPE = 1.0 -- Simplified - would need actual damage calculations
+    local expectedRipTickDPE = 0.3 -- Simplified - would need actual damage calculations
+    local numTicksToBreakEven = 1 + math.ceil(expectedBiteDPE / expectedRipTickDPE)
+    
+    -- Return minimum Rip duration needed to be worth casting
+    return numTicksToBreakEven * 2 -- Assuming 2s tick time
+end )
+
+-- Savage Roar clipping logic (based on WoWSims clipRoar)
+spec:RegisterStateExpr( "should_clip_roar", function()
+    local isExecutePhase = target.health.pct <= 25
+    local ripRemaining = debuff.rip.remains or 0
+    local simTimeRemaining = target.time_to_die or 300
+    
+    -- Don't clip if no Rip or fight ending soon
+    if not debuff.rip.up or (simTimeRemaining - ripRemaining < rip_end_threshold) then
+        return false
+    end
+    
+    -- Project Rip end time with Shred extensions
+    local remainingExtensions = 12 - 6 -- maxRipTicks - currentTickCount (simplified)
+    local ripDur = ripRemaining + (remainingExtensions * 2) -- Assuming 2s tick time
+    local roarDur = buff.savage_roar.remains or 0
+    
+    -- Don't clip if Roar already covers Rip duration + leeway
+    if roarDur > (ripDur + 1) then -- 1s leeway
+        return false
+    end
+    
+    -- Don't clip if roar covers rest of fight
+    if roarDur >= simTimeRemaining then
+        return false
+    end
+    
+    -- Calculate new Roar duration with current CPs
+    local newRoarDur = combo_points.current * 6 + 6 -- Simplified calculation
+    
+    -- If new roar covers rest of fight, clip now for CP efficiency
+    if newRoarDur >= simTimeRemaining then
+        return true
+    end
+    
+    -- Don't clip if waiting one more GCD would be more efficient
+    if newRoarDur + 1.5 + (combo_points.current < 5 and 5 or 0) >= simTimeRemaining then
+        return false
+    end
+    
+    -- Execute phase: optimize for minimal Roar casts
+    if isExecutePhase then
+        if combo_points.current < 5 then return false end
+        local minRoarsPossible = math.ceil((simTimeRemaining - roarDur) / newRoarDur)
+        local projectedRoarCasts = math.ceil(simTimeRemaining / newRoarDur)
+        return projectedRoarCasts == minRoarsPossible
+    end
+    
+    -- Normal phase: clip if new roar expires well after current rip
+    return newRoarDur >= (ripDur + 30) -- 30s offset
+end )
+
+-- Tiger's Fury timing prediction (based on WoWSims tfExpectedBefore)
+spec:RegisterStateExpr( "tf_expected_before", function()
+    local futureTime = next_refresh_time or 8
+    
+    if cooldown.tigers_fury.ready then
+        if buff.berserk.up then
+            return buff.berserk.remains < futureTime
+        end
+        return true
+    end
+    
+    return cooldown.tigers_fury.remains < futureTime
+end )
+
+-- Builder DPE calculation (based on WoWSims calcBuilderDpe)
+spec:RegisterStateExpr( "rake_vs_shred_dpe", function()
+    -- Simplified DPE comparison - in real implementation would need actual damage calculations
+    local rakeDPE = 1.0 -- Would calculate: (initial_damage + tick_damage * potential_ticks) / energy_cost
+    local shredDPE = 0.8 -- Would calculate: expected_damage / energy_cost
+    
+    return rakeDPE > shredDPE
+end )
+
+-- Energy threshold with latency consideration (based on WoWSims calcTfEnergyThresh)
+spec:RegisterStateExpr( "tf_energy_threshold", function()
+    local leewayTime = 1.0 -- 1 second leeway
+    local delayTime = leewayTime
+    
+    -- Add delay for clearcasting
+    if buff.clearcasting.up then
+        delayTime = delayTime + 1.0
+    end
+    
+    -- Add delay for stampede (if available)
+    if buff.stampede_cat.up then
+        delayTime = delayTime + 1.0
+    end
+    
+    -- Calculate energy threshold considering regen during delay
+    local energyThresh = 60 -- Base Tiger's Fury energy
+    energyThresh = energyThresh + (energy.regen * delayTime)
+    
+    -- Conservative correction for potential energy loss
+    if buff.berserk.up then
+        energyThresh = energyThresh - (0.5 * 40) -- 0.5 * Shred cost
+    else
+        energyThresh = energyThresh - (0.15 * 40) -- 0.15 * Shred cost
+    end
+    
+    return energyThresh
+end )
+
+-- Cat Excess Energy calculation (based on WoWSims APLValueCatExcessEnergy)
+spec:RegisterStateExpr( "cat_excess_energy", function()
+    local floatingEnergy = 0
+    local simTimeRemain = target.time_to_die or 300
+    local regenRate = energy.regen or 10
+    local currentTime = query_time or 0
+    
+    -- Create pooling actions array (enhanced version of WoWSims PoolingActions)
+    local poolingActions = {}
+    
+    -- Rip refresh (if active and will expire before fight end, and we have 5 CPs)
+    if debuff.rip.up and debuff.rip.remains < (simTimeRemain - 10) and combo_points.current == 5 then
+        local ripCost = tf_expected_before and 10 or 20 -- 50% cost during TF
+        table.insert(poolingActions, {refreshTime = debuff.rip.remains, cost = ripCost})
+    end
+    
+    -- Rake refresh (if active and will expire before fight end)
+    if debuff.rake.up and debuff.rake.remains < (simTimeRemain - 9) then -- Rake duration is ~9s
+        local rakeCost = tf_expected_before and 17.5 or 35 -- 50% cost during TF
+        table.insert(poolingActions, {refreshTime = debuff.rake.remains, cost = rakeCost})
+    end
+    
+    -- Mangle refresh (if bleed aura will expire - represented by Rake being down/expiring)
+    if not debuff.rake.up or debuff.rake.remains < (simTimeRemain - 1) then
+        local mangleCost = tf_expected_before and 20 or 40 -- 50% cost during TF
+        table.insert(poolingActions, {refreshTime = (debuff.rake.remains or 0), cost = mangleCost})
+    end
+    
+    -- Savage Roar refresh (if active)
+    if buff.savage_roar.up then
+        local roarCost = tf_expected_before and 12.5 or 25 -- 50% cost during TF
+        table.insert(poolingActions, {refreshTime = buff.savage_roar.remains, cost = roarCost})
+    end
+    
+    -- Sort actions by refresh time (earliest first)
+    table.sort(poolingActions, function(a, b) return a.refreshTime < b.refreshTime end)
+    
+    -- Calculate floating energy needed (enhanced algorithm from WoWSims)
+    local previousTime = currentTime
+    local tfPending = false
+    
+    for _, action in ipairs(poolingActions) do
+        local elapsedTime = action.refreshTime - previousTime
+        local energyGain = elapsedTime * regenRate
+        
+        -- Check if Tiger's Fury will be available before this refresh
+        if not tfPending and tf_expected_before then
+            tfPending = true
+            action.cost = action.cost - 60 -- Tiger's Fury gives 60 energy
+        end
+        
+        if energyGain < action.cost then
+            floatingEnergy = floatingEnergy + (action.cost - energyGain)
+            previousTime = action.refreshTime
+        else
+            previousTime = previousTime + (action.cost / regenRate)
+        end
+    end
+    
+    return energy.current - floatingEnergy
+end )
+
+-- New Savage Roar Duration based on combo points (based on WoWSims SavageRoarDurationTable)
+spec:RegisterStateExpr( "new_savage_roar_duration", function()
+    -- Savage Roar duration table from WoWSims: [0, 18, 24, 30, 36, 42] seconds
+    -- Glyphed: [12, 18, 24, 30, 36, 42] seconds
+    local isGlyphed = false -- Would need to check for glyph in real implementation
+    local durationTable = {0, 18, 24, 30, 36, 42}
+    if isGlyphed then
+        durationTable = {12, 18, 24, 30, 36, 42}
+    end
+    
+    local cp = math.min(combo_points.current, 5)
+    return durationTable[cp + 1] or 42
+end )
+
+-- Savage Roar pandemic effect calculation (based on WoWSims tick tracking)
+spec:RegisterStateExpr( "savage_roar_pandemic_duration", function()
+    if not buff.savage_roar.up then
+        return new_savage_roar_duration
+    end
+    
+    local currentRemaining = buff.savage_roar.remains or 0
+    local newDuration = new_savage_roar_duration
+    
+    -- Pandemic effect: can extend duration up to 130% of base duration
+    local maxExtension = newDuration * 1.3
+    local pandemicDuration = math.min(currentRemaining + newDuration, maxExtension)
+    
+    return pandemicDuration
+end )
+
+-- Check if we should clip Savage Roar for pandemic optimization
+spec:RegisterStateExpr( "should_clip_roar_pandemic", function()
+    if not buff.savage_roar.up then return true end
+    
+    local currentRemaining = buff.savage_roar.remains or 0
+    local newDuration = new_savage_roar_duration
+    
+    -- Clip if we're within 1 tick (3 seconds) of pandemic threshold
+    local pandemicThreshold = newDuration * 0.3
+    return currentRemaining <= pandemicThreshold + 3
+end )
+
+-- Expected Swipe Damage calculation (based on WoWSims calcExpectedSwipeDamage)
+spec:RegisterStateExpr( "expected_swipe_damage", function()
+    -- Simplified calculation - would need actual damage formulas
+    local baseSwipeDamage = 100 -- Base damage per target
+    local swipeDamage = baseSwipeDamage * active_enemies
+    local swipeDPE = swipeDamage / 45 -- Assuming 45 energy cost
+    
+    return swipeDamage
+end )
+
+-- Expected Swipe DPE calculation (separate for cleaner access)
+spec:RegisterStateExpr( "expected_swipe_dpe", function()
+    local baseSwipeDamage = 100 -- Base damage per target
+    local swipeDamage = baseSwipeDamage * active_enemies
+    local swipeDPE = swipeDamage / 45 -- Assuming 45 energy cost
+    
+    return swipeDPE
+end )
+
+-- Roar vs Swipe DPE comparison (based on WoWSims AoE rotation logic)
+spec:RegisterStateExpr( "roar_vs_swipe_dpe", function()
+    if combo_points.current < 1 then return false end
+    
+    -- Calculate Roar DPE
+    local baseAutoDamage = 50 -- Simplified auto attack damage
+    local buffEnd = math.min(target.time_to_die or 300, new_savage_roar_duration)
+    local numBuffedAutos = 1 + math.floor(buffEnd / 2) -- Assuming 2s auto attack speed
+    local roarMultiplier = 1.4 -- Savage Roar multiplier
+    local roarDPE = ((roarMultiplier - 1) * baseAutoDamage * numBuffedAutos) / 25 -- Assuming 25 energy cost
+    
+    -- Get Swipe DPE
+    local swipeDPE = expected_swipe_dpe
+    
+    return roarDPE >= swipeDPE
+end )
+
+-- Multi-target Rake target selection (based on WoWSims AoE rotation)
+spec:RegisterStateExpr( "best_rake_target", function()
+    -- Simplified - would need to track multiple targets
+    -- For now, just return current target if Rake is down or expiring
+    if not debuff.rake.up or debuff.rake.remains < 4.5 then
+        return true
+    end
+    
+    return false
+end )
+
+-- AoE bear weave energy threshold
+spec:RegisterStateExpr( "aoe_bear_weave_energy", function()
+    local swipeCost = 45 -- Swipe Cat cost
+    local bearShiftCost = 0 -- No energy cost to shift forms
+    local totalCost = swipeCost + bearShiftCost
+    
+    -- Pool energy for bear weave if we have excess
+    return energy.current > totalCost + 20 -- 20 energy buffer
+end )
+
+-- Thrash AoE efficiency (based on WoWSims bear AoE rotation)
+spec:RegisterStateExpr( "thrash_aoe_efficient", function()
+    -- Thrash is more efficient than other bear abilities for AoE
+    -- In bear form, Thrash is the primary AoE ability
+    return active_enemies >= 3 and buff.bear_form.up
+end )
+
+-- Sophisticated bleed refresh timing (based on WoWSims calcBleedRefreshTime)
+spec:RegisterStateExpr( "rake_refresh_time", function()
+    if not debuff.rake.up then
+        return 0 -- Refresh immediately if not up
+    end
+    
+    local currentRemaining = debuff.rake.remains or 0
+    local tickLength = 3 -- Rake ticks every 3 seconds
+    
+    -- Check for snapshot improvements (simplified)
+    local hasSnapshotImprovement = rake_damage_increase_pct > 0.001
+    
+    if hasSnapshotImprovement then
+        return 0 -- Refresh immediately for snapshot
+    end
+    
+    -- Standard refresh: 1 tick before expiration, but return as time until refresh needed
+    local standardRefresh = currentRemaining - tickLength
+    
+    -- Return time until refresh is needed (0 = refresh now)
+    return math.max(0, standardRefresh)
+end )
+
+spec:RegisterStateExpr( "rip_refresh_time", function()
+    if not debuff.rip.up then
+        return 0 -- Refresh immediately
+    end
+    
+    local currentRemaining = debuff.rip.remains or 0
+    local tickLength = 2 -- Rip ticks every 2 seconds
+    
+    -- Standard refresh: 1 tick before expiration
+    local standardRefresh = currentRemaining - tickLength
+    
+    -- Check for snapshot improvements (simplified)
+    local hasSnapshotImprovement = rip_damage_increase_pct > 0.001
+    
+    if hasSnapshotImprovement then
+        return 0 -- Refresh immediately for snapshot
+    end
+    
+    return math.max(0, standardRefresh)
+end )
+
+-- Tiger's Fury energy threshold with reaction time (based on WoWSims calcTfEnergyThresh)
+spec:RegisterStateExpr( "tf_energy_threshold_advanced", function()
+    local reactionTime = 0.1 -- 100ms reaction time
+    local clearcastingDelay = buff.clearcasting.up and 1.0 or 0.0
+    local totalDelay = reactionTime + clearcastingDelay
+    
+    -- Energy threshold: 40 - (delay_time * regen_rate)
+    local threshold = 40 - (totalDelay * energy.regen)
+    
+    return math.max(0, threshold)
+end )
+
+-- Advanced Tiger's Fury timing logic
+spec:RegisterStateExpr( "tf_timing", function()
+    if cooldown.tigers_fury.ready then
+        -- Use advanced energy threshold
+        return energy.current <= tf_energy_threshold_advanced
+    end
+    
+    -- Don't wait too long for TF if we need energy now
+    return energy.current <= 20 and cooldown.tigers_fury.remains <= 3
+end )
+
 -- State expression to check if we can make recommendations
 spec:RegisterStateExpr( "can_recommend", function ()
     return state.spec and state.spec.id == 103 and level >= 10
 end )
+        
 
 -- Essential state expressions for APL functionality
 spec:RegisterStateExpr( "current_energy", function ()
@@ -1570,7 +2052,6 @@ spec:RegisterAuras( {
 
     -- Bear Form specific auras
     bear_form_weaving = {
-        id = 0, -- Dummy ID for tracking
         duration = 3600,
         max_stack = 1,
     },
@@ -1588,7 +2069,6 @@ spec:RegisterAuras( {
 
     -- Bear Form specific auras
     bear_form_weaving = {
-        id = 0, -- Dummy ID for tracking
         duration = 3600,
         max_stack = 1,
     },
@@ -1702,6 +2182,14 @@ spec:RegisterSetting( "use_hotw", false, {
     type = "toggle",
     name = "Use Heart of the Wild",
     desc = "If checked, Heart of the Wild will be used on cooldown.",
+    width = "full",
+} )
+
+spec:RegisterSetting( "pool", 1, {
+    name = "Energy Pooling",
+    desc = "Controls how aggressively the rotation pools energy for optimal timing.\n0 = No pooling (cast immediately)\n1 = Light pooling (pool for major abilities)\n2 = Heavy pooling (optimal rotation timing)",
+    type = "select",
+    values = { [0] = "No Pooling", [1] = "Light Pooling", [2] = "Heavy Pooling" },
     width = "full",
 } )
 
@@ -1838,7 +2326,7 @@ end )
 -- Bear-weave trigger logic mirroring the provided APL conditions.
 spec:RegisterStateExpr( "bearweave_trigger_ok", function()
     if not buff.cat_form.up then return false end
-    if active_enemies ~= 1 then return false end
+    if active_enemies > 1 then return false end
     if energy.current >= 15 then return false end
     if debuff.rake.remains < 8 or debuff.rip.remains < 8 then return false end
     if cooldown.tigers_fury.remains < 7 then return false end
@@ -1906,5 +2394,5 @@ spec:RegisterStateExpr( "solo_prowl", function()
 end )
 
 
-spec:RegisterPack( "Feral", 20250918, [[Hekili:nZXAVnUnYFlbhoF2OzDTJJ3E721byFK9Aw0nzrCkkW9bBllrhtezrv9izdGH)TFZqsjrrrkjN409UIEnMpgoZW5nP4SHZUz2upNeYSlpzWjJh8MHVP)Gbdho(0zttEmKmBAOJ7Do3c)rGZg4))ZKihFS1h9zoE4SJzPrUqpZMUmL6NCrWSLga5GthnggBiXD2LdhmA201uppIySKy3ztVznnE3c8FD2TqUO7wWwb)2nHYc2TWNgNaDVIfTBXVrUJ6t7diseBf1hw()XUfCCB3IpfLs92TO7xzFR3UftPBs9Dqi8XiNvj7w8(V977(YUVaJ))4ZwItiMKKqdUfG9gNWqcm3vrSn7w87PaQeNaKcanxhafwIO09KOioYd)(raxJiaaI7T7lcen(NM8Z37erDw6togzAt24qdsG)D(QvhFVJFAPwSpnwyY8LeNO5pqCUNiNz5gRFYpe5KSUYSvAT(PhhqURYSlAS(jNgtMheRmrrd1pPneFcPYsQ0Q9PJGpjIqYwY8Fx)uwZsEqzg4pTpbpAm(J5XRJiEZFynjyEmZNjNVLETdoS35G87d(siu0Gua9Brex2MLoj5aPFywta424eD3C2Q5jRb2d137y6QjhTmD1Q(690pn0miCDsMdkuBm3Ra5aOMH49lqXTBbXxXiNmW80JDUhuINhXCIkqnLg5yfNq)iJ57XEqr(OVBwtaGWTgAczZXX(SKjRDc8IraMnK(Xpg4ecJjomc1J7hrC8ESnGkbg)DKKH7XypX8yx6ZyEZxLgzzDxsIIjr3bON5(dzyBcbJ7PrBibXZxcl(Czha5YzFs4aSUTBtCIULK0pHUbK1zZ9OK3n5KxBg(0axNOaNmyL44tcs6R0AFsaUd71HVmj0BHfItp8Djyp6dIv(T7wSME76DlibKOBF84DlU5Z7wKgc)radmV66dwNCDIrlQqBtVw2jGA7wiW4y4NuW65hvfSnWSqevSk9DtJIae(S3mWe(jAtDL7JGQJbbUo46Dpzoa3nusmGvYjlveYO2pZaNAc)px6KKgb)TxkkDb0lU2)lWBXNXD7fDJPBc9PROeVFfCwDpdD(q(RuAisValfjwpY35ZLghNsu8vuISxHRjQ2gWxXskE52Z6i360gCJBF)gWCseeeyvy3I)emla)j72B9jMrN14m0TVucHqZLz4tLrNHrsv8)ibCyNa8lq7fD0coaHbeamzo7gKHyb(q3tVbyPW2IcpIpyK)4qIOK5ROA8gfVPD8iCgGYqfIcTzBxF9IVl13F(sN41cvgU2Muatsvtb3H)8VbOSW9KG4(ey)zJGv)rGgJOPGWsCAyid3b6k45E9Y2w8fsvSuxqRkngJ7jhv8yUIDcCqGsomgf1xpCHqEURCzYLc6MZCk70E72sDiCk3Rt3YQzVBYPdGg7YzrGfDiAow0JZJFGUkjGehNRYzQVicY)qwCVTBRfgB3Y7uiahxQRE2uP72fDVa(GyWEuCUDHjN2PRhlPFenKpUTBZ(vg6CApeD4T6ChrDq4pZg1OEW)ZSfbHzauVFAgIYdDuvYrSDvHGA1wMHnMoMO1jJ7K74RkRtsitg05iRm3wPmau8NyFePW)kLaQPaX2fIooI9D6gEeXXGdr3eLbieO)43qB97wmcCuCnWA5MBaJ9F1jOKLgbRcz(5(2QWBM75Sbuhqu2eN4DtgPtkJQrTwSIB44XCyeV0RRKza8It14fxtRGwplgbi93c8rBbPHVWRxb9p(TcAoJ8rwXHeDg3g05qYVB1cMPb9E25VLB0imxa4M1rGxfWDbO)a2UYdmshlJXj1Az1Y4eAtSjUqchpoOlGmwrhij9)e94aKoyO4wmEeP7Xclk4qVr0PiAWfV6SSj31ds77wULgpcjehHp7wQlgZs5uZVN6GzM7eX9WnxUAZz3PecrE38OlH0Nr8TuqeLtSUJj4zgCsdkytkrPlxcKRfHCVmthNm2muK7eTdkNnXgy24K63M5pAGnhShb(QVh2)xn)wxV(i8mVszB6MxTQahAeHCFfc9PXpnplFhxseioyzkGG25FNMG2Hap2rbcPiUi3dCnsNLS0erRUoHzz3abXbYDBybSxXhlMQfkhhqWQe5KaHWIOYtHdjd5AEw2BBC((7MGSCY3jUPjedbNmzu1WAMmE728Wbud7xjmmPs5FIf(jps1qKJTgMiQz1f2VfvZYJSc2YtuuD41lcih()TIkJs1KeB6vZdai2J0TtiBP8MKiIAkU9)kHbryZGfjYqqpRR3nAC2Uupl5EYBtMlzb9eJH2RWPQMLjWOh3rIFISTlYM0ssM6g(NYt6eK2GSoFlksfdOcf4XBGma5X7JcwVBYqGGe7u8g7IcwXOFZEAiSwTueHvRMARiG2knNlgmSNrxzNnzOLeG5zqb)xkM7l0lMDYdRPI8zXngEHP45QL7)shRFozSHkgNnO9XQEdNvUcc2frukkQJfF4mi(dKl)QDl(21xC11xCZf)3Zbo8vF9dxbnD1fxczV9H)4IF)tNF9uGCV4AiduUpSuEgYCMgOUW5AO40kuIe8P9iFhdnyehsq)AGa)gn6plkdJrroUtJPJCAFq9gBr6eEonWf8pdjhe6MC2G(dg3RAroKtg3z1zEwctreBQJO27yv85gfeggbjZeQJ)Rwtt(5ySmBRrTkSo9RCUNfXlNPGFZnGIvh)Hikpf5fCF0rSaU)9Yr91g2ZZJY6yNVXj6R4LBqOzYdovqVpaCI1ClKA78f70AeHiYvZkxJBmTuy)Lg(YU9MfTjwAfHIXhvSIbQWc9KHyD54CcaV5)nxSacZRIED54g5KyrtkuQsJfzyBo4G6OtnMgYw1vvoRAoj2yhFMeXCPmSOmFGMGbOkD5kmMn(FMzoRI1SSjYRmRsnHW6ZKSUpSPHZphDtOUybFRI(JSyk(5kYBH8yGLPiuEoWJYjhGqVnILgYlcvdKOScof1DUJwjzpzSvQPcH)At7B51LrDK)sZceLGYj6O1e74fUGgQD(jwg)OE9SX7TGEg3x(GWUAtUI(pNF55x)(BU4Ql5Z6Ivc3yObxuVsMdvHvQby0chlnBdJBZgIhfce2)rTTwdf(qp(bZj7oWsio45CH(hItioEIYDklYdePZBXYf1dSYUHKHZcZqDHaP7jpOxotfW9UlHwC8fhBdpP4XIAh01lDtigEhgTux3EffH)dgdRJF2BksT6gz0Sjjvqr5b7IkAI)wLfkfDBr9xTCSGAqbeAocchIRvkQJ2NebIN7p(TfCxHJQLeF2dfCksqm)ukqjdh)hCEmotcr1NoSHt9r8rxXVS0rDoKlftCZ8czy9V)QZLbZVORAfpuWdhg5LoYCTLQKxmdoXSvWJwR2xE9kvnNNlOXW2YI2LBGiGxPPkRz58g0wv7MXSAn0cU8E)yg3ftmviOfg6lIqgpANmKtEgpyIqYtbbTBS6xZZ7C3cFr6P8esZPjXjifWpKnzA7xfc2UXBVX1SeNYjHJ4gt09pPFO7jRMVKfKMDnbgyBwUo((ZfDnhV4jk3KJ9BkUgoA7wmTgZ2E)axEDjQPMx7he9yUIiGQ)yn2pGcYSg1n2pOar0lKy(klGbt4T8lPZkuSmmvMnl6Bryzwure0nqXQSrmXkspgVsodA38QEBCA5eRCpCgijVBGKrWlg1sEbT6EhjeiRBrlMuxfIjHpSFY0L9iVRwDvnQmlfB1g6TsLxY7PHl7GHzevk5XIMRn3ldtOA8TwNRqcc8NWnNXbK4oObS6CNZIl)vP7(LfZafYTQEefZhTgg(kFY9eFv5Yp)5FflXL4h8cMkkENYElaKkYmkfxPQGMPjyuQEO(CAlDjv6AG2K6CqOD3riHiTQqvF9QlV6JV)g7MHLlHHj0Mlv2W2VsvjVmLUQuxoqV58l)0vx2I9LHnoNM2AQzA1AVXY808ooCSHzyMrj0WA9Wv4RZMEpyOa6o)(IoE20hCIWkIgpB6fBWRnb62hWMY3f0(7(YSPoPjRzrZMoDt6Qi6DZMY7cVyQGyl8FUKFfxLEJM9HztzHZMc7CWm5WcwEjla)lGQNnDG4oPcgxedOnAQhBwtLd95ijpBQY()SeGy3B8AOk0klzGaCKgaZGJ(oGGfjbJ6grc8pcS0eFldCkfQvJpz)k(y6(9aRDeydgOXcsvTWW7w0bdlK7jsV4W8(qeQikbXTo4eEp6rOAIDxS4LVypfeAX1)rWzIRLTO4luJTy6enEUhNHk(xofj5TVyCbJqnvjf2JE6sTMZLZFkcpqNIF2N(Hk91vIw6vRy3ITBn0LmbgbFy4Uf94eMj38YdhWkHBtHYUgWt7qtE2AcyvSaIHxmO9wX4ulujgYLg5DypKLN2jSOYSmVP(oErraQTlwYmLdyriWOx7q(eoT)yrV2o0ab7T)GXzcu2L7keQmTrmY6gX42Vr832b2ShC7dldH3y9Bgip7124z0qnw2t(4EAMfG0xzjo5X9OiWvuBBH8MuAZ8r)83GW2VyZnwEfW04FhGdrsZOUHcUvWWQEYrC(2OsCeTY72AwvLDKIDWQwhW(o9jWH)328EukfuDhiT(SPmebtXXqjT5pUe1kR2TDoWOg8u(sONJCQ3Cy4u1DmxAIED1cnsk7Ohj1z58WMykg5NVUEjQEcP9UwM9V0AUT5v4eZK0K2rtfix1tkJRjEsdWqOP2RnIdnqEMezgoWImtX5yOjVS)h)2Z5S3uL3Se8QvU3KS44ms42Y)GF(s6XH))dhrNfvpt2UnF8CQcJTrMTIMDRec1J94i(610X4zeY5sUhH8EXH6bybF7ZwYuwLBFPphWMdVPCeEvYMS98vrA0Em36YJU036IU88Z5RTX8NAtz3OnCwgirPkuuU68cPpdFghzsGDRAogzwNoqzazQhM)IzkyR18L3KNWxHAttqnxTX0NlI9qUYLb62GY5PzJQ1rh3RI)XwKfxUpNELX52vpJk0UM0N9paO9wiYOqsDoeY8y3039JI3JJQDl1IIR9YeyRyigltWE(Dd1WhnufNP18nkudBSWWufkVUOt1RpYpmCXKVI9RSb2)CKoqK1eRPkvhhwpj(FuOsPQhutoYvlUG9VZPdh1mEpPgdPG(JcvkltwtgF53qgtwu2JVJQ9Mu1PLcNwTk7JxUvZuHz4Hr5QCWnhMt565CdEoUHBWttxEh1t2k7qiRZxDTNPL4iSEYNiw2f2PEJ)2UxoTCv4ZWK5BlRGYr91Ufi)g)uVf2McxPLRgguVblMfRJrr(wcChgPUcQv7CJLQlIZJ(PPPmuVuO2Uca)ipT3Mb4aDaQk1AqwVziINuVz9wBbLu7EL4oeysETvt3v)OSf6y1KRPyaL3C3RVsU2yqOWUUPpnUsHQBOgeYCUl(m5eKM8gW80KN1T8VNxtU6Ll3Fb9MKlpas6fjPlyFsjndCpJk6gVGDQsLITntKFH8r2Mz5BvNsSpkhNEgvN78x9Yfua9mL2SHLF5akneDDrbBXW9URaqYFNPjM1SiLIsa3Uf)AkvxLiTThOARGI2bfikZKqf9PPHOA8UYXo0Y3yUd8Zl3b13IEefhwhnvIi6a72rtJUoD9kc)Td6IsYOdzzRg8p1oOQCte1bTAxg0QAg(5VpuQqUOrd6yTdM4t8Koi5TzilUMHOLQORUa2gIP0UAEblEV6uxdLwtmCKkLDo2UBa8tngL83lV6Itr)58tdfZFMan5UXWtbyUnJkoWkBBxxZ3qSokpzH8YYM)MakkePIhLmUT9mQ2phKjQzQv35jGVwGWK9zj5)q19sDpHG6v5rnZqBzMM9KcMTK5)2advBoNOnNtQ6Gp)vg0KpETWa4xMXsJYwy1zU)1kJH6zOHBUgpjySOXVUUGkQnib7VdHfHnx(XSRaRvMKj7BvckQ8XbtEbEndvPmd3LG3mWgrPu7h7xltTphJ9Ve(wVNfLFkb1J45P8siE8Uw(siA0QsXJ3ksk1)GhAvoXKdJCJc6zIPrZ19yjAfJ5pESkiS1xerH1lSQgpP7tS1pLY6e)EPVuWfRSXR1vZf9CFVeifmk1cJwJpRxQ1VOM1g8UzY3L2v50WhXzTODZxDMwC7CSEZAsuRCynIN5LKOID1w9YF9I(SFzTQmkFRJCY3WKRx2Us1y4Wr9P1sW9hRg7w(Zzv9YNTb2IBVvfz)mG3Wrv2cGpAqtgdoIhYB5ximvQn1FMH0UActQUGYo0FZWme0QHaBQz5SUZypiLAGr2ZowDbGueDDjnLxW3JSM535xff13FmHxcL3GmRx1cXPxB(6BioFqSV6ExYkUKkcJoYpeptMCmvRY9)RlSLjOLvy1NuzvQuYET06FANhLwkJI)z2)l]] )
+spec:RegisterPack( "Feral", 20250924, [[Hekili:vZt)VTTrY(3IXHtpjuhvj7O020idK4KC1fn2bwUi49(brrjTYAHPe5rsjhdyO)2Vz2pixUCwskz727Df9Q1(5mZoFVd3X9hFZ4rZ9tzJV8KENmO3VCYR72)N7)tNEY4rPpeXgpkYF2D(3c)XA)vW))NzX(byRpee6phNDs4M4zqpJhnDdpi9I1JNsVKWqJyZgFz)EWFUKpFotouwYSXJUzjpz3e8F93nrTN7MeUa(9SuE46Dtc4jPq3lcJ3n53y3Xd4Db4ioCbpa29)XUjcqB3KpgVHpF3K2Fj8RD2nzeF1MaFCfop2Fr6UjV)R)XUFF3VdJ)FfeofNqclnLV(wyTx5hfXG5UioC1Uj)XgaussbmbwTz(aimfbPTS4ybWd)(bawJzWcK0z3Vlb0KFy4pU1pM7pnGDmsZgUYNVof(xVfloERFWMcT4EAHrPEtz(XE3Z83YuZSyJvp57J9txwA2gTw90twZUR0SZBS6jVjH5ToXyIYgQEsRybmwPT0Ov3thx(0ygtVLz)U6PSmm9EJzG)09eMZtWF4LSmMn37(LS1EjHbHQ57Ox3lh2RhW)EFGAfYBqXG(1y2SWvt9tZwKUr6MGLBLF8DEHl8sxcKhEW8J5lgE00nlw01UNUBIOxIz(PEGa1k6ELahSQAaVBoi(4Ja7RCKd7rp9e)TGqSxCOFCoOz0OaQei65HHbZdV3G)O7mDtWcHhn8u2QJtccthU0F98eCb1dPBYdR9JGXKefJYXDJz(ZFOjlvkm(7yP93JXEc9yNgego3BXMyh77uwCcl(oa8O7pkeBtYySLhVIToXBkS5EQoa0vq(uRdq6E8Xu)4BzPDt5RaE9qV5C27gEYBOxF(6z(XR91RvQFaBDAxJw7YwJNWZBj2Mu(TWgjWhXPeCg9b5o)2DtwYVD5UjS1S4BF44DtU5Z7MSjc(J1HG61zbG2Pz(jOgvOTrxR6eaTDtKqCc8toO98CtgBcIfcOYDP7SnXXaaF2V0Jc(KTzUZDXLQfbdxlC)2Y8G1DfNLaqLAYkbbn2(5qWMM0(ZL(PBIH)E(gK7cWxCV)FaRfFgpTN0oHVkkGVGZM)RGXQTHOXh2)EdpcXxGKIi7C23fZLNKSHzyROaAVa3tuSDTyhli4LPpRL6OZAW1E89BaXjvIqGwHDt(gOwa(ZWBVnGrdolXzyRFPaaHQl1WtPrRHiLi(FMcgStb6fi9IgAbdGWawdezb5g4HcxhaDp6gGKchlg0iXGr6JplMZ8wWTOngwtBnNjiagdvYk0KJD79l5UnbbEt9twkfzesBkgmfwncmh(J)gaYsZtsK7JG(Nvss95aogZ3amljBIIcXtG2sA(8o6JLajxv4MzGu1Me0VNmqzE4m5jboiqihgJH47CCJqA(m12KXf0oJ4u0O9JpwOdPr5oTAxum7DdFDpOX2cseOrhCMlm(bVK75lsxZssYe5O6lMH0pKe35XhRCnE8rrNsg4KcD1XLiD72O5fWguiCgLKPxy4RB1EEyA3yEKyCp(O(xAW51DqWr0Q)DmZbH)upQt7a)pAncs1aOC)inGkCD0KZrECvcHA0rgXbtlkCD4Gwzg(kt6uiYWEToYjXTrcdag)XWZrm8FVHbIPaY2g8ooo878vcpItadIZsngGKH(8VI663n5uWqX1aPvOUbu2)f)1f00ijviXpZ2wjAJ3C)vG4acYuuI3n8uBu50keRL74kbC4bJ4LEFvedGw8AlAX18sG1tIqaC)naES2qE0l8(LJ)dEReN1OpskEobNbnbCEoP3nAd1sqVp8tVvO0ikJb4MLXGvfWCbi)a6UYCmYgktWj1yE1IWeQtSoQqQaoEw3aLVI(qq6FdT4aOoOO4w0FeL5XCnk4qVr2P0BWjV6m9KBphc77wHMM5mweoIGWB5ZqFwkgA(wUpgzUFSWcNNA38cVZWfISUfExcHpJWBbNikgyDlQ1taVV)p(27)Fhb(5cwLYpibhnWFEV40f4qysxfNkqLIbyzckk6p2KHh(kWdP4XiLpZi3jdADeykDBxJ5zqVbgnGepf9ZIJ6RLqdF9ZaCOgGFiC6VybFghGNsaNbOKWfA7v81Mqf5(Ruk7E)ljUzU3Vd36dcTQCzLOen4UjOjNxN2ZLBmIJrqkBH3TZM3fxVsWc9wRL1O3(Y7g0yzoMNLJa6LjWFglgelB6AaCmF678u0ab4kv8AP4TqxGK91FA4MuzRZ8J0HDcExdCzRcxh(kXyXyGrfmRzy678tHylqy7qOHkFH90HvVY)7VBiEkX(oB2MugHxJdpTS)Mdh84Jz(PzgpMH)XkTLFdZixwierijCjmruLxBGfrMMX5SfaxsQHonrI8a0r8FlPlZinFs2IYbObi7r2kWvTysr0H6iePFLwIEwySm0TcHddNJ)zctCEiuakvzNbYjyyvgedeQBNUWtoCGGbac77GPHep5PWz9hOChxN4J8a7DeVVTn4rI4)b(Rq)43Q1BZbQ6kiyCzskE3W(a8lpyKTGCxjld3GXiplaDDzb205F9hJaBya3lyhsRiC2dwiOvEVuXazMhcz0hLAoJ1OpeRIC79WDx0B5w80WshsVuoByFh52qeCm8F5yAnGEXapVFjxMQc8OvKZrry4zUM0XcjFkbJJIwN1R5HHCJ40zbehdcOCuybZR0zGRL4b3R2n5RxFXvxFXnx8)bwap)QV8HRGMU6IlHaZ)WFEXF8XpDnyX(ZxC9OBK2O2is(HGObcCcQgAKCbYtdUR8GG3fv5KeXqxwarMvhR36mirXKxKUODSKmWHbTSJaf)tp1kku58UH9uTk97YJVEg4sgepy0S0Z61TNwGGGXbpXTjQL9m1oAFWofOR6if3veOZsj8HkWOI(5KoTea42evYUNhjvfiJXXxEho4Lbj0HPDdbS)7h8QL80Fmbtx7smBH499SWFBySiT4skSqFpEll3hZfPAzIWxV4W1c)elg9qtO5prYL7ddbsFLiTvs1kIGCK479aLyPqHUfBMbBLWDyEkQ88(WyK3sNDjfRMlEmzWs0c9dSZesmQUOehg04lhdMTXqC3amgm9GqbyBl3EjcJYmhO9LgZaOe9p3qdpOoskZ3htFSGqd4Q4VfCDq0iL0rvm8gbuL3KrkGmAmprq0otvfLXcRXJcBxfoRCOZeeqPwAwC4mEiM7WpWtX4OuoGivmp4FQvnxsZSEIIlqWi1LyAetx2foMX5NbUP8z49sug8p1HzLNQeLd0le0YgJIlRNZfOdMnuP8)8TyMIrv2(RfyfTNfLXC941jZm)6tAzPe8KboX2seM3qDUMLErZr(t1ZWuyvoXgSg6gUWnK4kGoXX4pTthxNnoapYZTpivRxNz3)1NU8tx)(BU4QlfZ6Ifst2O(EuUtP7lxjzp05QJvwnGXTAfBohIJiW25kI83z7zfDoB65W9q0cgAEkjL5pxM1EvUkbVeFlM1ZoGs(vmnmlvt1gc7OJQEfeeva2BpfAXpqE7JIC7mqMcS2Z3SkQJYTY2Z6KFxsQlvZ2bseMmCD0wjKLolLamYp4MvXI93jVqHybYVgbh3UT1QamnhbU(DBCiSdsN3KHTK5oWBZPUs7KtzbH3RPuvDuxLX9cbhupIjGSVco6GoZjlFLet72Ap)V3NNQ88hcPIVclwesdYcNM0lfcSLDMQ5mLY0mD1NuXynPTzgc7K3Rv7O8OkhqXHPI70fOUGDDKPg(ZVf(Tr8vjL0C6hY(RpOmmymfLvGlVc11d46h)QaTxfb8DjiuVnrN6ula2kiRIh6zPMSrQgO011seG1wXfNeXY8Wv7JIiPdsWhj4QuvS1NhiUXxBIBb)qiCdXvMv3hfZQemltJkwwsa)kE)0caCbpiGfxIgAME5Ngi0Q9rLOyoIFOFhdwGSGPY5fujr97r84csAh65U2LoxggDqpFFqsOWBKeUimg)OOazGH4LvJXjlOSYBTgZNG6EDrtil(1Se2aYBY86iYKJEAQ7eFTOSbuhAxPvXCTw8nd1rytPb6hSlJiqsDA46n6cFQNRznZpiWt2LhwkDg1M2(nLzefRtdMwTPPA)wUSe6vrw83VvCE4mPZYvFrT73IcmTKSP73QaXwk5y(s46qycVvu2Hlq2YOnQK4GUzinsltLi6rq(USsoXsCpKfzyVMnVY1xydNyPklSNc9Ubcsuy2sKj423XIa06w0QdFMbYKkg2pqv(AzD1OIpR0Smmds07uBV1Y6PMY3IygXfsJrEZvgApXeiI5X1CLCqGTzH6mXcjRQwGuN5NMSCwlunRoudKZ3A6ZIC(O2WOxfW2Ycm5l)8N)vmd(YFiVukbBGXzlSiL4zmYPyzgnQjqYv33EonfVucD1GBkzoWl)7ySiexnWQVC1LxD(7VXTAy1wqmHMuMS9B(ovg90cDLXUSf9MpD5hV6YgCU0V25u3rtftRs9noMNL1X(diMbnHskH14HBqxhpAlOOa6wxa89)5XJU3pgVBHKXJUyfwiyOzFaAkwD7D397Jh5VjDzy84rJwTzrm)UXJeDHvAVeeG)6srz7Rmin(dJhfgnEeC4btwSCaeOOc4Fbi(4r9LfApOFroaNN6I56H404rghWJtbS5q218vR4rpUGNU3lyp7f0GPaxXxV3Ry)bMlPMFbxRbwRLEjSzaKNq6fqqxXP)Mdz6MSrPW)ipcOoY1lNXTRyDe7UKlPQ3syVJ5yHl4NtKmVnNDtAHo1kSJAFJoI(qak3hhzvGDIOhB)RP4LY38IfAzoIMxoMskdOe)Wef6zrNAIDRJPTB93PWYHXpbE5wf3uHsn1Io9Kk2v6kDT45EnoEJSsT3nPGZ(gFpktE8rRovFZjt6ONAXKRkzrFDpJb0wXSsxWQ5mZvu4Rzm(DKqudwvCyIbqvTMAOJo9kgaoLFFYlj916rzEPlYT1kJ1aWlgEhtWVWvwAmnJmxlM3P651PimxTGVMZReUBX95U(B3BMisMKwUOGdfzNu0DDLDRyW9ed(Okps3B1LUe(Xdblc1Ex2U1uZUMKxbOvrjcwbzuSb0yUUdke32G(FBWsgjppT0v5KaXbJ7Qb(zcTYe1Bowr4NYFxGsoPJlGRFYfLfPxuewIYm(5dBgSNydGa)8leHDFbLI8KaG9loOSz5dMsJYEugZ7nQAJl5gTOOR9790iS7XULrAYtyV0nkt)QEECc9PKU5JRjDZ1LPzxra5YwDLUCkJy5GDyvND5Qv(7kjYnCxeZGs9TJDWWt8MTbzPNUAnS15Usd3n0PEcnM57djlFdxC)qgL2Sgn3eL4ssLHWAK1v7qoik60guXPMOo4aB2LzkDEfLDlCHMa9qMmgdVwnVAtdDdK(FVpU5AKcABC9LVqvTOl64sSVLuJisiUinP7t9ZIqWUSuPB1lhE6uH5TZKl9E6fS7CGCy166toxiyb5i4Q6Da(6BR1RcxkFERn2N3cJ1Ki6WnCTVm0bzwQ2yLeUEg9sucJsYE3EffNj5JZz2OoGO9MsdV2PsaxRthibTJYy)nkaeLUhNXJCIgElvBT7zyg)LvfU7Xb8lWzq1N)uMDDhaXFf1WB9uRZgAlpuivnXw1XBrPb6659ViHbQSifBxZVft4KeV6uvGEg(CBD3fp9kf2Ysirn5KdULlpyJ0Dr6zGzQcRHyxI0LZfuojBN5oSANNrv57wXlp220zJla5XLZEFETgR0UnOa2Qkzr3uGtRXhHxc1kvfA8EsPoGAzUG(HSUAvibY51VPONs2GYOZ1r4iP5VPAUoRecBp7FQXNi07Wj0O0WMHt5ax5sIwiTEsnRXPgPTUgwMAqVgLYcnFLrYelYtT)1z9tPiRlLdLYHe4K6nu7LljI7kMpH3n2ra9Fd1ITJyKO0Vtxh2MmJnHNTKKDJycTTcFuX7gZ1Rrg1kNX5Ees7LvVTY0CFxHX6KVDVk4769jQOhKLckV5ejb24k(Xc1VTfc9KQtCteKkKGdsOkvN)QksPICafXK967mUjjBlhaP(4I1SuUyxvNO5FOXsutvkuppzvDpRxYQVa(9)g9RRAvEgQ)L8laxs(u1Fcb1JS8FiR0sZK7jp2Oq)C(JJimmAM8CZCEPXAYC)LV660GOh2uTY5cdXoQyjzHOamnf1f)xD4HfJJUWI7oBQvOvVyuMvEjqnAvS87uwchsr0dtcXSkvk5fBdF(uFMF5uFwlIg7S1VpvutZw9c32WZCXOzjrxLSEjM)MT6YYDWELvTsK0KMTQgLKQ9sB2fHuv9RF2tFO5kN3iHmwZwt81l0EjfTregy9ROdhUm3axdHk(G63W8NIvZ9WOvkVVlACSzLcUP1G9PsZYEkyRYpf7xQwBNVYwdcZneVYTz6mkzaROUDBjFcFDmEnEfUPN9C3kDoZWIIMA7(2k3pdKiYMDlOvvRE4dHlm5GW0SFyAEPQxhx7kOW8wxD5ZV(1YvVLz)MGGAnNtSMZjLnWN9a6szJ3YnaHN1fgLRC9Qn)BfERz4w4HlzsdWup8MQCQOsNeC)e7M72CX3P1CO2ysu63k5uuXmh8s8q9AIzePD6x65cPmcIX9DNA9D54kYo3xzMZ02v8vY12JNd5r(fOjn7r(LuRs(7soIkv)w(6KpHYGrMsb7iXSW5QEhGDcXI3fDda25J9Ru7fwXah0197(RE(z4tEE8)FSOa2)pu6X1v2h0ID1KKp3P3u0yPV93kTju396u9xxTjcsEVneApQaXBygCDDP8UQzUg85yFGNunaGfn2wKLLYFh7vDp0Y66Gk6IMYQw7h09tfRBqU8DEkMAwywvOHklRuLmT2O310x0h1uNjMZ47EwG(etUsV7YFHiT1kFyp5PeoDLNRpPwd)8xlZcx1ZrIGpk8Qv2afkeGEZFyuRhAPEduDIgvPYW4P2KeCD(4PwpmwYRjD6WlcJVtdIUl)XN06RObKhqeoRx3UwEXpTxDMFvSqfEJvDIcMNnBcQ2VEAqSmKO6OeFC5qtj8WVUTRoKiNbJW54N2IRFHxR0l08WUlWF)c(uVwpALv0wMpTRYalmEExD(9njVzj6Vzk595jTR6(jFnVoVKMIuFQ2ugIOUeJ9)7p388OQc2wDJleghQpnuL(OfTY33Hve4w5ss(pJ)pp]] )
 

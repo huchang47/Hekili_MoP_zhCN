@@ -60,12 +60,17 @@ actions.doc+=/thrash_cat,if=buff.dream_of_cenarius_damage.up&active_enemies>=4&b
 # Bear Weave: triggers and sequences
 # Trigger Cat -> Bear (delegate deeper logic to Lua state via bearweave_trigger_ok)
 actions.bearweave+=/bear_form,if=variable.opt_bear_weave&bearweave_trigger_ok
-actions.bearweave+=/mangle_bear,if=buff.bear_form.up&rage.current<25
-actions.bearweave+=/thrash_bear,if=buff.bear_form.up&rage.current>=25
-actions.bearweave+=/maul,if=buff.bear_form.up&rage.current>=30&buff.clearcasting.down&!prev_off_gcd.maul
+# ALWAYS cast Thrash first when entering bear form
+actions.bearweave+=/thrash_bear,if=buff.bear_form.up&rage.current>=25&!prev.thrash_bear
+# Bear AoE abilities when in bear form
+actions.bearweave+=/thrash_bear,if=buff.bear_form.up&thrash_aoe_efficient&rage.current>=25
+# Bear single target abilities
+actions.bearweave+=/mangle_bear,if=buff.bear_form.up&active_enemies<3&rage.current<25
+actions.bearweave+=/thrash_bear,if=buff.bear_form.up&active_enemies<3&rage.current>=25
+actions.bearweave+=/maul,if=buff.bear_form.up&rage.current>=30&buff.clearcasting.down&!prev_off_gcd.maul&active_enemies<3
 actions.bearweave+=/cat_form,if=buff.bear_form.up&buff.clearcasting.up&prev.thrash_bear
-actions.bearweave+=/mangle_bear,if=buff.bear_form.up
-actions.bearweave+=/lacerate,if=buff.bear_form.up
+actions.bearweave+=/mangle_bear,if=buff.bear_form.up&active_enemies<3
+actions.bearweave+=/lacerate,if=buff.bear_form.up&active_enemies<3
 # Exit: Return to Cat when about to cap energy or mono-Cat timers need attention
 actions.bearweave+=/cat_form,if=buff.bear_form.up&(energy_time_to_max<=gcd.execute|dot.rake.remains<=3|dot.rip.remains<=5|cooldown.tigers_fury.remains<=2)
 
@@ -73,39 +78,46 @@ actions.bearweave+=/cat_form,if=buff.bear_form.up&(energy_time_to_max<=gcd.execu
 actions.wrath+=/wrath,if=variable.opt_wrath_weave&buff.heart_of_the_wild.up&!buff.cat_form.up&!buff.bear_form.up
 
 # Single-target core
-# Tiger's Fury (<35 energy), not clearcasting, not berserk
-actions.st+=/tigers_fury,if=energy.current<=35&buff.berserk.down&buff.clearcasting.down&buff.cat_form.up
-# Savage Roar: cast if missing or <=1s remaining (needs CP)
-actions.st+=/savage_roar,if=(buff.savage_roar.down|buff.savage_roar.remains<=1)&combo_points.current>=1&buff.cat_form.up
+# Tiger's Fury: Use timing logic
+actions.st+=/tigers_fury,if=(tf_timing|cat_excess_energy>15)&buff.berserk.down&buff.clearcasting.down&buff.cat_form.up
+# Savage Roar: cast if missing, <=1s remaining, or should clip for CP/pandemic efficiency
+actions.st+=/savage_roar,if=((buff.savage_roar.down|buff.savage_roar.remains<=1)|should_clip_roar|should_clip_roar_pandemic)&combo_points.current>=1&buff.cat_form.up
 # Faerie Fire catch while in combat (<=2 targets)
 actions.st+=/faerie_fire,if=variable.maintain_ff&debuff.faerie_fire.down&time>0&active_enemies<=2&buff.cat_form.up
 # DoTs refresh with SR >= 1s - PRIORITIZE COMBO POINT BUILDERS FIRST
-# Build combo points before trying to spend them
-actions.st+=/rake,if=combo_points.current<5&(dot.rake.down|dot.rake.remains<4.5|rake_damage_increase_pct>0.05)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
+# Build combo points before trying to spend them, with refresh timing
+actions.st+=/rake,if=combo_points.current<5&(dot.rake.down|rake_refresh_time<=0|rake_damage_increase_pct>0.05)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up&(energy.current>=35|!should_pool_energy|combo_points.current<=2)&rake_vs_shred_dpe
 # Rake as a builder when initial-hit/snapshot is favorable, without overwriting a stronger Rake
 actions.st+=/rake,if=combo_points.current<5&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up&rake_damage_increase_pct>0
-# Only cast Rip when we have combo points to spend
-actions.st+=/rip,if=combo_points.current>=5&(dot.rip.down|dot.rip.remains<4|rip_damage_increase_pct>0.05)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
+# Only cast Rip when we have combo points to spend and it's worth casting with  timing
+actions.st+=/rip,if=combo_points.current>=5&(dot.rip.down|rip_refresh_time<=0|rip_damage_increase_pct>0.05)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up&(dot.rip.remains<rip_end_threshold|dot.rip.down)
 # Thrash ST with Clearcasting (SR >=1s, Rip >=5s, Rake >=4s)
 actions.st+=/thrash_cat,if=(dot.thrash_cat.down|dot.thrash_cat.remains<3)&buff.clearcasting.up&buff.savage_roar.remains>=1&dot.rip.remains>=5&dot.rake.remains>=4&active_enemies<=3&buff.cat_form.up
 # Ferocious Bite: execute (<=25% target)
 actions.st+=/ferocious_bite,if=target.health.pct<=25&dot.rip.ticking&dot.rip.remains>=3&combo_points.current>=5&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
-# Ferocious Bite: other conditions (grouped)
-actions.st+=/ferocious_bite,if=((buff.berserk.up&energy.current>25&combo_points.current>=5&dot.rip.remains>=6&dot.rake.remains>=4)|(dot.rip.remains>=7&buff.savage_roar.remains>=1&dot.rake.remains>=2&energy.current>=25&combo_points.current>=5)|(target.time_to_die<2&combo_points.current>=3))&active_enemies<=3&buff.savage_roar.remains>=1&buff.cat_form.up
+# Ferocious Bite: other conditions using advanced can_bite logic
+actions.st+=/ferocious_bite,if=can_bite&((buff.berserk.up&energy.current>25&combo_points.current>=5&dot.rip.remains>=6&dot.rake.remains>=4)|(dot.rip.remains>=7&buff.savage_roar.remains>=1&dot.rake.remains>=2&energy.current>=25&combo_points.current>=5)|(target.time_to_die<2&combo_points.current>=3))&active_enemies<=3&buff.savage_roar.remains>=1&buff.cat_form.up
 # Builders - PRIORITIZE COMBO POINT GENERATION
 # If SR is down and we have 0 CP, build immediately
 actions.st+=/mangle_cat,if=buff.savage_roar.down&combo_points.current=0&buff.cat_form.up
 # Shred instead of Mangle if: (a) Omen and Thrash(Cat) is active, (b) already at 5 CP (dump), or (c) during Berserk
 actions.st+=/shred,if=((buff.clearcasting.up&dot.thrash_cat.ticking)|(combo_points.current>=5)|buff.berserk.up)&active_enemies<=3&buff.cat_form.up&!(variable.disable_shred_when_solo&active_enemies=1&!in_group)
-# Default builder: Mangle when below 5 CP (ensure we always have a builder available)
+# Default builder: Mangle when below 5 CP
 actions.st+=/mangle_cat,if=combo_points.current<5&buff.berserk.down&active_enemies<=3&buff.cat_form.up
+# Pool resources when we should wait for optimal timing
+actions.st+=/pool_resource,if=should_pool_energy&combo_points.current=0&buff.cat_form.up
 
 # AOE core (>=4 targets)
-actions.aoe+=/tigers_fury,if=energy.current<=35&buff.berserk.down&buff.clearcasting.down&buff.cat_form.up
+# AOE (>=4 targets) -  AoE rotation based on WoWSims logic
+actions.aoe+=/tigers_fury,if=(tf_timing|cat_excess_energy>15)&buff.berserk.down&buff.clearcasting.down&buff.cat_form.up
+# Roar for AOE - use DPE comparison vs Swipe
+actions.aoe+=/savage_roar,if=active_enemies>=4&buff.savage_roar.down&combo_points.current>=1&buff.cat_form.up&roar_vs_swipe_dpe
+# Thrash Cat for AoE when available
 actions.aoe+=/thrash_cat,if=dot.thrash_cat.down&active_enemies>=4&buff.savage_roar.remains>=1&buff.cat_form.up
-actions.aoe+=/swipe_cat,if=active_enemies>=4&buff.savage_roar.remains>=1&buff.cat_form.up
-# Refresh SR in AoE
-actions.aoe+=/savage_roar,if=active_enemies>3&buff.savage_roar.remains<2&combo_points.current>=1&buff.cat_form.up
+# Swipe Cat - primary AoE filler
+actions.aoe+=/swipe_cat,if=active_enemies>=4&buff.savage_roar.remains>=1&buff.cat_form.up&(!roar_vs_swipe_dpe|combo_points.current<1)
+# Roar refresh for AOE when expiring
+actions.aoe+=/savage_roar,if=active_enemies>=4&buff.savage_roar.remains<2&combo_points.current>=1&buff.cat_form.up
 # Also consider applying FF in AoE only if toggled off; default leave off in AoE
 
 # Unified Cat Optimal Rotation
