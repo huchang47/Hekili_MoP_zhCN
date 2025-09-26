@@ -630,7 +630,14 @@ local combo_generators = {
     rake              = true,
     shred             = true,
     swipe_cat         = true,
-    thrash_cat        = true
+    thrash_cat        = true,
+    mangle_cat        = true,
+    lacerate          = true,
+    maul              = true,
+    thrash_bear       = true,
+    mangle_bear       = true,
+    lacerate_bear     = true,
+    maul_bear         = true
 }
 
 
@@ -883,18 +890,7 @@ spec:RegisterStateExpr( "should_clip_roar", function()
 end )
 
 -- Tiger's Fury timing prediction (based on WoWSims tfExpectedBefore)
-spec:RegisterStateExpr( "tf_expected_before", function()
-    local futureTime = next_refresh_time or 8
-    
-    if cooldown.tigers_fury.ready then
-        if buff.berserk.up then
-            return buff.berserk.remains < futureTime
-        end
-        return true
-    end
-    
-    return cooldown.tigers_fury.remains < futureTime
-end )
+-- Removed duplicate - using StateFunction version below
 
 -- Builder DPE calculation (based on WoWSims calcBuilderDpe)
 spec:RegisterStateExpr( "rake_vs_shred_dpe", function()
@@ -907,31 +903,12 @@ end )
 
 -- Energy threshold with latency consideration (based on WoWSims calcTfEnergyThresh)
 spec:RegisterStateExpr( "tf_energy_threshold", function()
-    local leewayTime = 1.0 -- 1 second leeway
-    local delayTime = leewayTime
-    
-    -- Add delay for clearcasting
+    local reaction_time = 0.1
+    local delay_time = reaction_time
     if buff.clearcasting.up then
-        delayTime = delayTime + 1.0
+        delay_time = delay_time + 1.0
     end
-    
-    -- Add delay for stampede (if available)
-    if buff.stampede_cat.up then
-        delayTime = delayTime + 1.0
-    end
-    
-    -- Calculate energy threshold considering regen during delay
-    local energyThresh = 60 -- Base Tiger's Fury energy
-    energyThresh = energyThresh + (energy.regen * delayTime)
-    
-    -- Conservative correction for potential energy loss
-    if buff.berserk.up then
-        energyThresh = energyThresh - (0.5 * 40) -- 0.5 * Shred cost
-    else
-        energyThresh = energyThresh - (0.15 * 40) -- 0.15 * Shred cost
-    end
-    
-    return energyThresh
+    return 40 - ( delay_time * energy.regen )
 end )
 
 -- Cat Excess Energy calculation (based on WoWSims APLValueCatExcessEnergy)
@@ -946,25 +923,25 @@ spec:RegisterStateExpr( "cat_excess_energy", function()
     
     -- Rip refresh (if active and will expire before fight end, and we have 5 CPs)
     if debuff.rip.up and debuff.rip.remains < (simTimeRemain - 10) and combo_points.current == 5 then
-        local ripCost = tf_expected_before and 10 or 20 -- 50% cost during TF
+        local ripCost = tf_expected_before( debuff.rip.remains ) and 10 or 20 -- 50% cost during TF
         table.insert(poolingActions, {refreshTime = debuff.rip.remains, cost = ripCost})
     end
     
     -- Rake refresh (if active and will expire before fight end)
     if debuff.rake.up and debuff.rake.remains < (simTimeRemain - 9) then -- Rake duration is ~9s
-        local rakeCost = tf_expected_before and 17.5 or 35 -- 50% cost during TF
+        local rakeCost = tf_expected_before( debuff.rake.remains ) and 17.5 or 35 -- 50% cost during TF
         table.insert(poolingActions, {refreshTime = debuff.rake.remains, cost = rakeCost})
     end
     
     -- Mangle refresh (if bleed aura will expire - represented by Rake being down/expiring)
     if not debuff.rake.up or debuff.rake.remains < (simTimeRemain - 1) then
-        local mangleCost = tf_expected_before and 20 or 40 -- 50% cost during TF
+        local mangleCost = tf_expected_before( debuff.rake.remains or 0 ) and 20 or 40 -- 50% cost during TF
         table.insert(poolingActions, {refreshTime = (debuff.rake.remains or 0), cost = mangleCost})
     end
     
     -- Savage Roar refresh (if active)
     if buff.savage_roar.up then
-        local roarCost = tf_expected_before and 12.5 or 25 -- 50% cost during TF
+        local roarCost = tf_expected_before( buff.savage_roar.remains ) and 12.5 or 25 -- 50% cost during TF
         table.insert(poolingActions, {refreshTime = buff.savage_roar.remains, cost = roarCost})
     end
     
@@ -980,7 +957,7 @@ spec:RegisterStateExpr( "cat_excess_energy", function()
         local energyGain = elapsedTime * regenRate
         
         -- Check if Tiger's Fury will be available before this refresh
-        if not tfPending and tf_expected_before then
+        if not tfPending and tf_expected_before( action.refreshTime ) then
             tfPending = true
             action.cost = action.cost - 60 -- Tiger's Fury gives 60 energy
         end
@@ -2268,6 +2245,10 @@ spec:RegisterVariable( "lazy_swipe", function()
     return state.settings.lazy_swipe ~= false
 end )
 
+spec:RegisterVariable( "solo_prowl", function()
+    return state.settings.solo_prowl ~= false
+end )
+
 -- Bleed snapshot tracking (minimal: Tiger's Fury multiplier)
 spec:RegisterStateTable( "bleed_snapshot", setmetatable( {
     cache = {},
@@ -2356,12 +2337,83 @@ end )
 
 spec:RegisterStateExpr( "should_wrath_weave", function()
     if not opt_wrath_weave then return false end
-    
-    -- Wrath-weave during Heart of the Wild when not in combat forms
-    return buff.heart_of_the_wild.up and 
-           not buff.cat_form.up and 
-           not buff.bear_form.up and
-           mana.current >= 0.06 * mana.max
+    if buff.cat_form.up or buff.bear_form.up then return false end
+    if not buff.heart_of_the_wild.up then return false end
+    if buff.clearcasting.up then return false end
+
+    local cast_time = 2 / haste
+    local remaining_gcd = gcd.max
+
+    if buff.heart_of_the_wild.remains <= ( cast_time + remaining_gcd ) then return false end
+
+    local regen_rate = energy.regen
+    local furor_cap = 100 - ( 1.5 * regen_rate )
+    local starting_energy = energy.current + ( remaining_gcd * regen_rate )
+
+    if combo_points.current < 3 and ( starting_energy + ( cast_time * regen_rate * 2 ) > furor_cap ) then
+        return false
+    end
+
+    local reaction_time = 0.1
+    local time_to_next_cat_special = remaining_gcd + cast_time + reaction_time + gcd.max
+
+    if not debuff.rip.up or debuff.rip.remains <= time_to_next_cat_special then return false end
+    if not debuff.rake.up or debuff.rake.remains <= time_to_next_cat_special then return false end
+
+    if should_delay_bleed_for_tf( debuff.rip, 2, true ) or should_delay_bleed_for_tf( debuff.rake, 3, false ) then return false end
+
+    return mana.current >= 0.06 * mana.max
+end )
+
+spec:RegisterStateFunction( "tf_expected_before", function( future_time )
+    local ft = future_time or gcd.max
+    if ft <= 0 then ft = gcd.max end
+    if cooldown.tigers_fury.ready then
+        if buff.berserk.up then
+            return buff.berserk.remains < ft
+        end
+        return true
+    end
+    return cooldown.tigers_fury.remains < ft
+end )
+
+spec:RegisterStateFunction( "should_delay_bleed_for_tf", function( dot, tick_length, is_rip )
+    if not dot or not dot.up then return false end
+    if buff.tigers_fury.up or buff.berserk.up or buff.dream_of_cenarius_damage.up then return false end
+
+    local tickTime = ( dot.tick_time and dot.tick_time > 0 ) and dot.tick_time or tick_length
+    local fight_remains = target.time_to_die or 300
+    local future_ticks = math.min( is_rip and 12 or 3, math.floor( fight_remains / tickTime ) )
+    if future_ticks <= 0 then return false end
+
+    local delay_breakpoint = tickTime + ( 0.15 * future_ticks * tickTime )
+    if not tf_expected_before( delay_breakpoint ) then return false end
+
+    if is_rip and buff.dream_of_cenarius_damage.up and buff.dream_of_cenarius_damage.remains <= delay_breakpoint then
+        return false
+    end
+
+    local reaction_time = 0.1 + ( buff.clearcasting.up and 1.0 or 0.0 )
+    local tf_threshold = 40 - ( reaction_time * energy.regen )
+    local energy_after_delay = energy.current + ( delay_breakpoint * energy.regen ) - tf_threshold
+    local casts_to_dump = math.ceil( energy_after_delay / 40 )
+
+    return casts_to_dump < delay_breakpoint
+end )
+
+spec:RegisterStateExpr( "delay_rip_for_tf", function()
+    return should_delay_bleed_for_tf( debuff.rip, 2, true )
+end )
+
+spec:RegisterStateExpr( "delay_rake_for_tf", function()
+    return should_delay_bleed_for_tf( debuff.rake, 3, false )
+end )
+
+spec:RegisterStateExpr( "berserk_clip_for_hotw", function()
+    if not buff.berserk.up then return false end
+    if buff.heart_of_the_wild.up then return false end
+    if cooldown.heart_of_the_wild.remains > 8 then return false end
+    return buff.berserk.remains <= 4
 end )
 
 -- Expose SimC-style toggles directly in state for APL expressions
@@ -2377,22 +2429,97 @@ spec:RegisterStateExpr( "use_hotw", function() return state.settings.use_hotw ~=
 spec:RegisterStateExpr( "disable_shred_when_solo", function()
     return state.settings.disable_shred_when_solo ~= false
 end )
-spec:RegisterStateExpr( "solo_prowl", function()
-    return state.settings.solo_prowl ~= false
-end )
-
-
 -- Provide in_group for APL compatibility in emulated environment
 spec:RegisterStateExpr( "in_group", function()
     -- Avoid calling globals in the sandbox; treat as solo in emulation
     return false
 end )
 
--- Expose solo_prowl toggle to SimC as a state expression
-spec:RegisterStateExpr( "solo_prowl", function()
-    return state.settings.solo_prowl ~= false
+-- Missing variables for bearweave and other APL logic
+spec:RegisterStateExpr( "bearweave_trigger_ok", function()
+    -- Check if bearweave is appropriate (low health, need survivability)
+    return health.pct <= 50 or incoming_damage_3s > (health.current * 0.3)
 end )
 
+spec:RegisterStateExpr( "thrash_aoe_efficient", function()
+    -- Thrash is efficient for AoE when there are 2+ enemies
+    return active_enemies >= 2
+end )
 
-spec:RegisterPack( "Feral", 20250924, [[Hekili:vZt)VTTrY(3IXHtpjuhvj7O020idK4KC1fn2bwUi49(brrjTYAHPe5rsjhdyO)2Vz2pixUCwskz727Df9Q1(5mZoFVd3X9hFZ4rZ9tzJV8KENmO3VCYR72)N7)tNEY4rPpeXgpkYF2D(3c)XA)vW))NzX(byRpee6phNDs4M4zqpJhnDdpi9I1JNsVKWqJyZgFz)EWFUKpFotouwYSXJUzjpz3e8F93nrTN7MeUa(9SuE46Dtc4jPq3lcJ3n53y3Xd4Db4ioCbpa29)XUjcqB3KpgVHpF3K2Fj8RD2nzeF1MaFCfop2Fr6UjV)R)XUFF3VdJ)FfeofNqclnLV(wyTx5hfXG5UioC1Uj)XgaussbmbwTz(aimfbPTS4ybWd)(bawJzWcK0z3Vlb0KFy4pU1pM7pnGDmsZgUYNVof(xVfloERFWMcT4EAHrPEtz(XE3Z83YuZSyJvp57J9txwA2gTw90twZUR0SZBS6jVjH5ToXyIYgQEsRybmwPT0Ov3thx(0ygtVLz)U6PSmm9EJzG)09eMZtWF4LSmMn37(LS1EjHbHQ57Ox3lh2RhW)EFGAfYBqXG(1y2SWvt9tZwKUr6MGLBLF8DEHl8sxcKhEW8J5lgE00nlw01UNUBIOxIz(PEGa1k6ELahSQAaVBoi(4Ja7RCKd7rp9e)TGqSxCOFCoOz0OaQei65HHbZdV3G)O7mDtWcHhn8u2QJtccthU0F98eCb1dPBYdR9JGXKefJYXDJz(ZFOjlvkm(7yP93JXEc9yNgego3BXMyh77uwCcl(oa8O7pkeBtYySLhVIToXBkS5EQoa0vq(uRdq6E8Xu)4BzPDt5RaE9qV5C27gEYBOxF(6z(XR91RvQFaBDAxJw7YwJNWZBj2Mu(TWgjWhXPeCg9b5o)2DtwYVD5UjS1S4BF44DtU5Z7MSjc(J1HG61zbG2Pz(jOgvOTrxR6eaTDtKqCc8toO98CtgBcIfcOYDP7SnXXaaF2V0Jc(KTzUZDXLQfbdxlC)2Y8G1DfNLaqLAYkbbn2(5qWMM0(ZL(PBIH)E(gK7cWxCV)FaRfFgpTN0oHVkkGVGZM)RGXQTHOXh2)EdpcXxGKIi7C23fZLNKSHzyROaAVa3tuSDTyhli4LPpRL6OZAW1E89BaXjvIqGwHDt(gOwa(ZWBVnGrdolXzyRFPaaHQl1WtPrRHiLi(FMcgStb6fi9IgAbdGWawdezb5g4HcxhaDp6gGKchlg0iXGr6JplMZ8wWTOngwtBnNjiagdvYk0KJD79l5UnbbEt9twkfzesBkgmfwncmh(J)gaYsZtsK7JG(Nvss95aogZ3amljBIIcXtG2sA(8o6JLajxv4MzGu1Me0VNmqzE4m5jboiqihgJH47CCJqA(m12KXf0oJ4u0O9JpwOdPr5oTAxum7DdFDpOX2cseOrhCMlm(bVK75lsxZssYe5O6lMH0pKe35XhRCnE8rrNsg4KcD1XLiD72O5fWguiCgLKPxy4RB1EEyA3yEKyCp(O(xAW51DqWr0Q)DmZbH)upQt7a)pAncs1aOC)inGkCD0KZrECvcHA0rgXbtlkCD4Gwzg(kt6uiYWEToYjXTrcdag)XWZrm8FVHbIPaY2g8ooo878vcpItadIZsngGKH(8VI663n5uWqX1aPvOUbu2)f)1f00ijviXpZ2wjAJ3C)vG4acYuuI3n8uBu50keRL74kbC4bJ4LEFvedGw8AlAX18sG1tIqaC)naES2qE0l8(LJ)dEReN1OpskEobNbnbCEoP3nAd1sqVp8tVvO0ikJb4MLXGvfWCbi)a6UYCmYgktWj1yE1IWeQtSoQqQaoEw3aLVI(qq6FdT4aOoOO4w0FeL5XCnk4qVr2P0BWjV6m9KBphc77wHMM5mweoIGWB5ZqFwkgA(wUpgzUFSWcNNA38cVZWfISUfExcHpJWBbNikgyDlQ1taVV)p(27)Fhb(5cwLYpibhnWFEV40f4qysxfNkqLIbyzckk6p2KHh(kWdP4XiLpZi3jdADeykDBxJ5zqVbgnGepf9ZIJ6RLqdF9ZaCOgGFiC6VybFghGNsaNbOKWfA7v81Mqf5(Ruk7E)ljUzU3Vd36dcTQCzLOen4UjOjNxN2ZLBmIJrqkBH3TZM3fxVsWc9wRL1O3(Y7g0yzoMNLJa6LjWFglgelB6AaCmF678u0ab4kv8AP4TqxGK91FA4MuzRZ8J0HDcExdCzRcxh(kXyXyGrfmRzy678tHylqy7qOHkFH90HvVY)7VBiEkX(oB2MugHxJdpTS)Mdh84Jz(PzgpMH)XkTLFdZixwierijCjmruLxBGfrMMX5SfaxsQHonrI8a0r8FlPlZinFs2IYbObi7r2kWvTysr0H6iePFLwIEwySm0TcHddNJ)zctCEiuakvzNbYjyyvgedeQBNUWtoCGGbac77GPHep5PWz9hOChxN4J8a7DeVVTn4rI4)b(Rq)43Q1BZbQ6kiyCzskE3W(a8lpyKTGCxjld3GXiplaDDzb205F9hJaBya3lyhsRiC2dwiOvEVuXazMhcz0hLAoJ1OpeRIC79WDx0B5w80WshsVuoByFh52qeCm8F5yAnGEXapVFjxMQc8OvKZrry4zUM0XcjFkbJJIwN1R5HHCJ40zbehdcOCuybZR0zGRL4b3R2n5RxFXvxFXnx8)bwap)QV8HRGMU6IlHaZ)WFEXF8XpDnyX(ZxC9OBK2O2is(HGObcCcQgAKCbYtdUR8GG3fv5KeXqxwarMvhR36mirXKxKUODSKmWHbTSJaf)tp1kku58UH9uTk97YJVEg4sgepy0S0Z61TNwGGGXbpXTjQL9m1oAFWofOR6if3veOZsj8HkWOI(5KoTea42evYUNhjvfiJXXxEho4Lbj0HPDdbS)7h8QL80Fmbtx7smBH499SWFBySiT4skSqFpEll3hZfPAzIWxV4W1c)elg9qtO5prYL7ddbsFLiTvs1kIGCK479aLyPqHUfBMbBLWDyEkQ88(WyK3sNDjfRMlEmzWs0c9dSZesmQUOehg04lhdMTXqC3amgm9GqbyBl3EjcJYmhO9LgZaOe9p3qdpOoskZ3htFSGqd4Q4VfCDq0iL0rvm8gbuL3KrkGmAmprq0otvfLXcRXJcBxfoRCOZeeqPwAwC4mEiM7WpWtX4OuoGivmp4FQvnxsZSEIIlqWi1LyAetx2foMX5NbUP8z49sug8p1HzLNQeLd0le0YgJIlRNZfOdMnuP8)8TyMIrv2(RfyfTNfLXC941jZm)6tAzPe8KboX2seM3qDUMLErZr(t1ZWuyvoXgSg6gUWnK4kGoXX4pTthxNnoapYZTpivRxNz3)1NU8tx)(BU4QlfZ6Ifst2O(EuUtP7lxjzp05QJvwnGXTAfBohIJiW25kI83z7zfDoB65W9q0cgAEkjL5pxM1EvUkbVeFlM1ZoGs(vmnmlvt1gc7OJQEfeeva2BpfAXpqE7JIC7mqMcS2Z3SkQJYTY2Z6KFxsQlvZ2bseMmCD0wjKLolLamYp4MvXI93jVqHybYVgbh3UT1QamnhbU(DBCiSdsN3KHTK5oWBZPUs7KtzbH3RPuvDuxLX9cbhupIjGSVco6GoZjlFLet72Ap)V3NNQ88hcPIVclwesdYcNM0lfcSLDMQ5mLY0mD1NuXynPTzgc7K3Rv7O8OkhqXHPI70fOUGDDKPg(ZVf(Tr8vjL0C6hY(RpOmmymfLvGlVc11d46h)QaTxfb8DjiuVnrN6ula2kiRIh6zPMSrQgO011seG1wXfNeXY8Wv7JIiPdsWhj4QuvS1NhiUXxBIBb)qiCdXvMv3hfZQemltJkwwsa)kE)0caCbpiGfxIgAME5Ngi0Q9rLOyoIFOFhdwGSGPY5fujr97r84csAh65U2LoxggDqpFFqsOWBKeUimg)OOazGH4LvJXjlOSYBTgZNG6EDrtil(1Se2aYBY86iYKJEAQ7eFTOSbuhAxPvXCTw8nd1rytPb6hSlJiqsDA46n6cFQNRznZpiWt2LhwkDg1M2(nLzefRtdMwTPPA)wUSe6vrw83VvCE4mPZYvFrT73IcmTKSP73QaXwk5y(s46qycVvu2Hlq2YOnQK4GUzinsltLi6rq(USsoXsCpKfzyVMnVY1xydNyPklSNc9Ubcsuy2sKj423XIa06w0QdFMbYKkg2pqv(AzD1OIpR0Smmds07uBV1Y6PMY3IygXfsJrEZvgApXeiI5X1CLCqGTzH6mXcjRQwGuN5NMSCwlunRoudKZ3A6ZIC(O2WOxfW2Ycm5l)8N)vmd(YFiVukbBGXzlSiL4zmYPyzgnQjqYv33EonfVucD1GBkzoWl)7ySiexnWQVC1LxD(7VXTAy1wqmHMuMS9B(ovg90cDLXUSf9MpD5hV6YgCU0V25u3rtftRs9noMNL1X(diMbnHskH14HBqxhpAlOOa6wxa89)5XJU3pgVBHKXJUyfwiyOzFaAkwD7D397Jh5VjDzy84rJwTzrm)UXJeDHvAVeeG)6srz7Rmin(dJhfgnEeC4btwSCaeOOc4Fbi(4r9LfApOFroaNN6I56H404rghWJtbS5q218vR4rpUGNU3lyp7f0GPaxXxV3Ry)bMlPMFbxRbwRLEjSzaKNq6fqqxXP)Mdz6MSrPW)ipcOoY1lNXTRyDe7UKlPQ3syVJ5yHl4NtKmVnNDtAHo1kSJAFJoI(qak3hhzvGDIOhB)RP4LY38IfAzoIMxoMskdOe)Wef6zrNAIDRJPTB93PWYHXpbE5wf3uHsn1Io9Kk2v6kDT45EnoEJSsT3nPGZ(gFpktE8rRovFZjt6ONAXKRkzrFDpJb0wXSsxWQ5mZvu4Rzm(DKqudwvCyIbqvTMAOJo9kgaoLFFYlj916rzEPlYT1kJ1aWlgEhtWVWvwAmnJmxlM3P651PimxTGVMZReUBX95U(B3BMisMKwUOGdfzNu0DDLDRyW9ed(Okps3B1LUe(Xdblc1Ex2U1uZUMKxbOvrjcwbzuSb0yUUdke32G(FBWsgjppT0v5KaXbJ7Qb(zcTYe1Bowr4NYFxGsoPJlGRFYfLfPxuewIYm(5dBgSNydGa)8leHDFbLI8KaG9loOSz5dMsJYEugZ7nQAJl5gTOOR9790iS7XULrAYtyV0nkt)QEECc9PKU5JRjDZ1LPzxra5YwDLUCkJy5GDyvND5Qv(7kjYnCxeZGs9TJDWWt8MTbzPNUAnS15Usd3n0PEcnM57djlFdxC)qgL2Sgn3eL4ssLHWAK1v7qoik60guXPMOo4aB2LzkDEfLDlCHMa9qMmgdVwnVAtdDdK(FVpU5AKcABC9LVqvTOl64sSVLuJisiUinP7t9ZIqWUSuPB1lhE6uH5TZKl9E6fS7CGCy166toxiyb5i4Q6Da(6BR1RcxkFERn2N3cJ1Ki6WnCTVm0bzwQ2yLeUEg9sucJsYE3EffNj5JZz2OoGO9MsdV2PsaxRthibTJYy)nkaeLUhNXJCIgElvBT7zyg)LvfU7Xb8lWzq1N)uMDDhaXFf1WB9uRZgAlpuivnXw1XBrPb6659ViHbQSifBxZVft4KeV6uvGEg(CBD3fp9kf2Ysirn5KdULlpyJ0Dr6zGzQcRHyxI0LZfuojBN5oSANNrv57wXlp220zJla5XLZEFETgR0UnOa2Qkzr3uGtRXhHxc1kvfA8EsPoGAzUG(HSUAvibY51VPONs2GYOZ1r4iP5VPAUoRecBp7FQXNi07Wj0O0WMHt5ax5sIwiTEsnRXPgPTUgwMAqVgLYcnFLrYelYtT)1z9tPiRlLdLYHe4K6nu7LljI7kMpH3n2ra9Fd1ITJyKO0Vtxh2MmJnHNTKKDJycTTcFuX7gZ1Rrg1kNX5Ees7LvVTY0CFxHX6KVDVk4769jQOhKLckV5ejb24k(Xc1VTfc9KQtCteKkKGdsOkvN)QksPICafXK967mUjjBlhaP(4I1SuUyxvNO5FOXsutvkuppzvDpRxYQVa(9)g9RRAvEgQ)L8laxs(u1Fcb1JS8FiR0sZK7jp2Oq)C(JJimmAM8CZCEPXAYC)LV660GOh2uTY5cdXoQyjzHOamnf1f)xD4HfJJUWI7oBQvOvVyuMvEjqnAvS87uwchsr0dtcXSkvk5fBdF(uFMF5uFwlIg7S1VpvutZw9c32WZCXOzjrxLSEjM)MT6YYDWELvTsK0KMTQgLKQ9sB2fHuv9RF2tFO5kN3iHmwZwt81l0EjfTregy9ROdhUm3axdHk(G63W8NIvZ9WOvkVVlACSzLcUP1G9PsZYEkyRYpf7xQwBNVYwdcZneVYTz6mkzaROUDBjFcFDmEnEfUPN9C3kDoZWIIMA7(2k3pdKiYMDlOvvRE4dHlm5GW0SFyAEPQxhx7kOW8wxD5ZV(1YvVLz)MGGAnNtSMZjLnWN9a6szJ3YnaHN1fgLRC9Qn)BfERz4w4HlzsdWup8MQCQOsNeC)e7M72CX3P1CO2ysu63k5uuXmh8s8q9AIzePD6x65cPmcIX9DNA9D54kYo3xzMZ02v8vY12JNd5r(fOjn7r(LuRs(7soIkv)w(6KpHYGrMsb7iXSW5QEhGDcXI3fDda25J9Ru7fwXah0197(RE(z4tEE8)FSOa2)pu6X1v2h0ID1KKp3P3u0yPV93kTju396u9xxTjcsEVneApQaXBygCDDP8UQzUg85yFGNunaGfn2wKLLYFh7vDp0Y66Gk6IMYQw7h09tfRBqU8DEkMAwywvOHklRuLmT2O310x0h1uNjMZ47EwG(etUsV7YFHiT1kFyp5PeoDLNRpPwd)8xlZcx1ZrIGpk8Qv2afkeGEZFyuRhAPEduDIgvPYW4P2KeCD(4PwpmwYRjD6WlcJVtdIUl)XN06RObKhqeoRx3UwEXpTxDMFvSqfEJvDIcMNnBcQ2VEAqSmKO6OeFC5qtj8WVUTRoKiNbJW54N2IRFHxR0l08WUlWF)c(uVwpALv0wMpTRYalmEExD(9njVzj6Vzk595jTR6(jFnVoVKMIuFQ2ugIOUeJ9)7p388OQc2wDJleghQpnuL(OfTY33Hve4w5ss(pJ)pp]] )
+spec:RegisterStateExpr( "energy_time_to_max", function()
+    -- Calculate time to reach max energy
+    if energy.current >= energy.max then return 0 end
+    local deficit = energy.max - energy.current
+    local regen_rate = energy.regen or 10
+    return deficit / regen_rate
+end )
 
+spec:RegisterStateExpr( "clip_rip_with_snapshot", function()
+    if not debuff.rip.up then return false end
+    if buff.dream_of_cenarius_damage.up and buff.dream_of_cenarius_damage.remains <= gcd.max then
+        return true
+    end
+    if not buff.dream_of_cenarius_damage.up then return false end
+    if combo_points.current <= 3 then return true end
+    return false
+end )
+
+spec:RegisterStateExpr( "clip_rake_with_snapshot", function()
+    if not debuff.rake.up then return false end
+    if buff.dream_of_cenarius_damage.up and buff.dream_of_cenarius_damage.remains <= gcd.max then
+        return true
+    end
+    if not buff.dream_of_cenarius_damage.up then return false end
+    if combo_points.current <= 3 then return true end
+    return false
+end )
+
+spec:RegisterStateExpr( "clip_roar_for_min_offset", function()
+    if buff.savage_roar.down then return false end
+    if not debuff.rip.up then return false end
+    local roar_end = buff.savage_roar.remains or 0
+    local rip_refresh = debuff.rip.remains or 0
+    local min_offset = 40
+    if player.level >= 90 and talent.dream_of_cenarius and talent.dream_of_cenarius.enabled then min_offset = 30 end
+    if roar_end >= rip_refresh + min_offset then return false end
+    if roar_end >= target.time_to_die then return false end
+    return true
+end )
+
+spec:RegisterStateExpr( "combo_points_for_rip", function()
+    return combo_points.current >= ( target.health.pct <= 25 and 1 or 5 )
+end )
+
+spec:RegisterStateExpr( "should_bite_emergency", function()
+    if target.health.pct > 25 then return false end
+    if not debuff.rip.up then return false end
+    if debuff.rip.remains >= debuff.rip.tick_time then return false end
+    return combo_points.current >= 1
+end )
+
+spec:RegisterStateExpr( "bear_weave_energy_cap", function()
+    local regen = energy.regen or 10
+    return 100 - ( 1.5 * regen )
+end )
+
+spec:RegisterStateExpr( "bear_weave_ready", function()
+    if not opt_bear_weave then return false end
+    if buff.clearcasting.up or buff.berserk.up then return false end
+    local furor_cap = bear_weave_energy_cap
+    if energy.current - floating_energy > furor_cap then return false end
+    if delay_rip_for_tf or delay_rake_for_tf then return false end
+    if not tf_expected_before( gcd.max ) then return false end
+    return true
+end )
+
+spec:RegisterStateExpr( "should_bite", function()
+    if combo_points.current < 5 then return false end
+    if not debuff.rip.up or buff.savage_roar.down then return false end
+    if target.health.pct <= 25 then return true end
+    local rip_refresh = debuff.rip.remains or 0
+    local roar_refresh = buff.savage_roar.remains or 0
+    local bite_time = buff.berserk.up and 3 or 4
+    return min( rip_refresh, roar_refresh ) >= bite_time
+end )
+
+spec:RegisterPack( "Feral", 20250927, [[Hekili:vZrApQns2Fl8flqjI1anjtKGwk7Uz1oJ025dKpJXTPOXQn2iBt3tlH43((QdBxhVQSn0zIMJmjDD8UQx9olN1tw)J1R2gwsw)Wu)PZ9)Y0pp2FI)SzFE9QY3oswV6yy0ZHpb)H0WdW)))qYdtOJ(wsw4w6UlYoLhbZSE1JNItk)901pQbYpnE605)28VaR9ijA9da8xVAF82Te(AjfrRx9J9Xfx2q)v4LncKEzt2o4NJkJZsVSjjUOeMExw(Ln)xYZXjXJxVIniLm(63)g8BpWyisA4JjKTR)NRxLDeWkPC9kouwV6LW8y6S0)uYj438zJfWzVdHXPLWVc2TBDjWa9gAtKHw2XYGhjWp(kj8fcfGZ0ayfCIctsc4)qaLL4mMamrHLbaOIpas(s4F5ujg3gLhxsakQHWglXrx24DzZwYJN2TB8UqyDKGDX5KXBZEnLnhLaEHeqsjhIjGOEXYlBMYMHThkDas)dJpDSHYLaeMeRHIkdZFIucaPOmo9Pgau88jG3FmSypN5OcmU8QBmOQqMtTvGiOmp(PNi5bzp3Gq2IP8HB6LXY1Rf4zgOZb1YXrNYZjPLx2CpvanNnXaqRnN8Y4Y95aRWOOgukpiIwqBivS9Wm4Sz3U4OygYTqnwX6D9eRgAdx2mdbRlur6HW0Nsi1iD(phK2cR(PEIvtGpZxsVpbwVqVT5YI4apiB3UGNI2cx0oLyLfKLpNO3IF4Z9KenPeXe216QUVsr3V1t01gtOCi)L3vGNegbozkzMtM43tqp8YgaS5p9wayVeU)NfCi8p5wYOhsK)KeDQeSsC(mykmRCCE4ZKX5eQvsHbVzstgFuDU585IYYsO6bJlJbJlfb7oL)M6cbRMJqpiadCBZICBARmmb0dhVnNeEauVcIGvLhFQySy1vmQIjWIuYZvMaP0OYKNkibusBKQms6smqZ35lTGHcnoq7c8LNL)wqXRX7ktjffkAKyZBij4uuhGkDzSfKgwEkNuOn9O2UtYrru2HhZcoMbo(kuVvFx1QQoD57e)8MT8rYKFTcJ22u1HyQqJK(pN(p3tctaEa0upfTVnpODqVa9C3ZMqHRt7jPsBk5R5myX(vM(CCkDLbsyaSo4P0queSn8a1wUGoWzAXTCxEBStM0d7o4n9xaLjmkdZ1bhVxh9vFf6kiVkbxl(M)fqyXh7Gd5RMUMFJ0vlEU)fqxIdYw863gHPJ5g7Z2rnyB4yTgEBXg8ZGaeXzXPGs1uZU9Spl3f8yw6Pcm3anXs4itrEIHxDEMcFafy23Sdbl5K9ked3ErMVYyHnoMfQEJbPuRLrqtcKiwB6csAZpRc2OrZHy9Ol4bvbub4qgFyMa60PzHqf9hF7H)93F460oN8RS2iTdqFDakRZHOd3oeNm329XURTkDguss3clQx6HUk8dvFWzQdqqQard7acPuKRcadYFgbXtfWd6h0ZUSzYCLitFeYIHK)CtG0oIX2HXXMSHChiBlwElcFbmthKNfM3Gw7b1pbLSydsbrWlSykb)gBP1ZS2vsdsChOjnc)gZ(2lwMdMOocA7KRfxmocZ89f)SbhYcT3qOvL0lAeRmaoYIlA7bHEnu)IQKi6RUG1tD7XIQtFlQPpzKtrqaeNgBcSmi)8yofpGw41KW3OlMTPYDvJhLadrh(1yW2vrA4XI9zLQHbUk6n4YyaVeQfuda86aNLMrL0xLTDdJNQwJ7V592Sg)oyFVPihCbGW(Af)3yuvuVfj050G0ae1ohQnZKrMSvpv8DN8YeMy1wI(feoR(sC(bsArWJa9bAACaubiXpxP9wRMqJkxf42ZOX(fO5QkEoZ)Otqzhjplko7eNB4hB8qa7E59LuKy3AGliNs2QgHzf(QcVeqZXCcLeXVGyE4Fim)zA4EL7jWDXKTAjxRojM(KP6NesmSj50Ptn7xKLaI48Sxt4wHHWV48eVCmsQf0142Jr)0YlLtiWPaSU2rfVrTErckoMdHmqRCu423AG)(W0TfaAsOM34)GdPyjaJNjLtQ2q9p7i9gXAMQTNPM3gtYY2IDNDoYDww7QuwvR9xGhovvjnfT(QQI0BJjIsI9PEEJ3(nArolXPrH5PH01RuvqgzjxTA5ZDPn5(cVEvJHaj)IVn43P4ivvfXRirhQDyLX1sxvLO(ofTQOL5ecVWOcjhaZic9goVoKDx6PTrkn4OYekeb4N)vzAypiNkvmbjtfdrdwNvYC(ibSqjOrxWbSuuzgqMFbFlzx4PKRmac58bFpttup1(33CgnknX7CgKAHP4kagdV)Dd68I6RdzXOigN6gupqsieCIwEkeJqTd)6lCYqUzqeBoDdMu1CDqYgdXoq7qCBCb9Ndk2NtGGl2tsdOEFLrGTLGDNVDe24BxghsJsbR(9YMGm6tHdkAjgO)Eu3aPoiAwJG6EhIN7ip5qrV8ebqYt9cwh(ObhHyuaVqrv887wENDiWV(8UDObwWoE8VApOApJh7brATmaZRCsH0Lu6pgKt2Ltk2hWP2f8UjwplV28bqSiquJW94Jr8am8h7RQZ1sHnWyE8oAurVgr1q3HOt)dQ1kocb5wFtWr9qww1YBpbJrRKcZCbRskk1cGonwXaOJBRAaIMVyVYkTCa9tqg6(879JNTh1T1AYG2QFAXwSRmct(RtxeRgsukIKUfcDJsXqQwQpyboFnstmFvLzYzggcQZOuOv0I0eMVfcuxdY5i0IK0qUCFDhmnFbgn1sS7hasEJuQ)Q9KHej1rF)gL7hZuryx(NRqWLXrpZ8PAJj4KJJsP0zz01WSgvNXr(tcdHSuujhadHK0O36cM7zPODrDoYSsI8Q05RgQoLH)QPw7bCzjigRQclRSKAh)QV)JjDkmkS7JAxMR1GBEhuo1whjfkMCHqg1fHVUjXbQp0nlXFJc56tSbSQM9uEgJkKIjJceMOYE4yDXzQrqW9NhB0qd0QzM2HQ94YWct5w0MyacC4WFD)SKi(FF)HV)V(6pWYKOtzLu1UIRQQagnpwlR0R7fpOLNem7lWPjDJvF8c3TE1RH5P06zUE1VF4ywEjTEm0eH4qv8Hjm(YFai9u5(S81RwD40U84NzvLDxmLl4RT4dl)hvC2hPKWsPW8)iJtLh5YFyBBQvcrStTxcVZnlvNdPDlxODNBVPogs7w6jO6CZ8sviTrXZu05MKoUL2P0O23EDLgeBSP(Fo3cTscs7GvtnRBWILjX(Tz3Yk4AkcGacs9b4pQ3246oCaaqVdfFmE3sExhqASboiQmeGplNCaO(IzZjoFUUXel9X3UKZUgstR(VsSwDVhGTsf)GDUdFKwv)LSohqbH7(o0fqv1tHES2P4RTPHcwMVUvc4ZZRXp)WhPzau2vZJ65ZMTvyXYPFch(s14Ncl7TlWJHgTs57ILOGtnf67)Ipgu8mJ4GckpefbpvxOaB5z46eLM0kgVI2A91Ep3L8V7saJQQBGpQrdV2QUV3qJ4ioFgTM(JKVHWCuq55Ms3OGFjhjEwQEuVKZv4R5d2IRjj)zDjtFBZI4YOM33UKQN1xxN3WxK79BJtLZNvMG70yK3qvLVflVZhgKlsX)od8SoNiEFqom68zNWaoGOtI9c4hztrF4qSOXUF5DEdLtM)8zTefxC3ik5OuxnXIKY7DXSrW)448JFEyqXD6mbrY7HXmlN71(xsWsFVbwLE9sLKZsuPqTbshV6xukEXYz6OCwRySjQ8)AX7nXPGEw)ry8X)(GV5xb(Ujb6vGW6NhxNWQk4PwkAd(njU)UHGguu)YQzE)fF5Dk(CutbXd7dXfhCsFaJsX6ew)X95j)jAE)YPZ9gO)HpELag7JR1aB4Ww6ZGeh2gQhYWDHnW2kj7eSUi3tjDr4oZ3MhSbgFXRg0coQRuOWrVj2Gb72XBVpcWbt13C6Tad38Oimf5pl1flL(KurCOVCMzOalNF(SRp)uAOlYxzzz0deh73nUQkLVVN5JQtgof0i)KWhfudRBzmqt6Tl((jZfbJihxRZCaqnRvGK7OiYm9YNkIjdPaUlwobIGsV)UMJu3X3rOg8VF5K2O0BjyCQQX9(9kaigoRCIHgMXCp9ahnAg7IL(IrrA8190MEnYmjnHKLks0jytVG6bPd2ya94bM1SKQCJfR00rEgnt1BGrlf9gyPzI9tIDJmRDr5TqY8iJW60PE6d693KF(I3xZ3PJxDZug9SSXsgLghvliQ7tzLCqVdL6MGuIVzishj5yYSBKq(r4oACX7A819qiF6MPV3moxerKUzcLEfjLhDt7exqdYrRnIM0ZmlgQUvL4wPx0UbAdWwiJBbPEdm6U37l2rYXt3HdEwb(TbzMfmj)y6kK4nGJwcalN1JeE(Ako4OoCe7nyyBnwtdkGqBqvR0g5uC5YWQs8aDHmBoHd0QSldZkDQsslrYTs3pOAGnKqWVOqE4ywlMhvbvDMADsLetB3JfVJYN5LoRRyQfXsRTSh799nbdlNA8TbAVHdmyplHwmz0Tl4R8WmTZsFDCs9UR8nETCIjUxa4g1)VU33ppEAFCW2qmuku0p0pO3sQQpgwrdP8TTl9gUk1NZ(TL6kT3VT1AMo9dC1z45Ooh9dIBZI4o8B5Vnx6fqb1iuL1(bLcfTbr)6n0eqB(SF32NzFN74gn64SVmPY)qa)awlmRNQtnG0yxsoaqMvyOhzMwAOhYoObvInSzG)sU(r2Gzytw3B9UTFjSrRrwE)1V)nJtjZNYGV7nGQhnrFp9IUeprf7MH4AyyBOlp5GjDhtwiq(FBm0bz3Kw3tBIphBZ5Tql7tZ()K5i7axuW1m78YLKCSNKZ6))]] )
