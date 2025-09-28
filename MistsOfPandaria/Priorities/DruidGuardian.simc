@@ -1,72 +1,76 @@
-actions.precombat+=/bear_form,if=!buff.bear_form.up
-actions.precombat+=/mark_of_the_wild,if=!buff.mark_of_the_wild.up
-actions.precombat+=/potion,name=mogu_power_potion
+### Guardian Druid Action Priority List - MoP Adaptation
+### Based on retail Guardian structure but adapted for MoP mechanics
+### 
+### Recommended Settings for `/hekili` > *Guardian*:
+###
+### - Maul Rage Threshold: 60 (dumping threshold)
+### - Emergency Health Threshold: 30%
+### - Defensive Health Threshold: 50%
+### - Moderate Damage Threshold: 70%
 
+### Tunables and Constants ###
+### Note: Variables are now handled by local functions in the Lua file
+### State expressions reference these functions directly
+
+### On Pull Actions ###
+actions.on_pull+=/bear_form,if=!buff.bear_form.up
+actions.on_pull+=/mark_of_the_wild,if=!buff.mark_of_the_wild.up
+
+### Main Action List ###
+actions+=/call_action_list,name=on_pull,strict=1,if=time=0
 actions+=/skull_bash,if=target.casting&target.cast_interruptible
+actions+=/bear_form,if=!buff.bear_form.up
 
-actions+=/call_action_list,name=defensives
+actions+=/call_action_list,name=mitigation
+actions+=/call_action_list,name=defensives,if=tanking
+actions+=/call_action_list,name=heal
+actions+=/call_action_list,name=bear
 actions+=/call_action_list,name=cooldowns
-actions+=/call_action_list,name=hotw_dps,if=should_dps_rotation
-actions+=/call_action_list,name=threat_generation
-actions+=/call_action_list,name=vengeance_rotation
-actions+=/call_action_list,name=standard
 
-actions+=/use_items
+### Mitigation (Rage-based defensives) ###
+actions.mitigation+=/savage_defense,if=rage>=rage_cost_savage_defense&!buff.savage_defense.up
+actions.mitigation+=/enrage,if=rage<40&buff.enrage.down
 
-actions.defensives+=/survival_instincts,if=auto_survival_instincts
-actions.defensives+=/savage_defense,if=auto_savage_defense
-actions.defensives+=/barkskin,if=auto_barkskin
-actions.defensives+=/frenzied_regeneration,if=needs_emergency_healing
-actions.defensives+=/ironfur,if=should_use_defensives&buff.ironfur.down&rage>=45
-actions.defensives+=/healing_touch,if=emergency_health&buff.nature_swiftness.up
-actions.defensives+=/pulverize,if=debuff.lacerate.up&debuff.lacerate.stack>=3
+### Defensives ###
+actions.defensives+=/survival_instincts,if=health.pct<survival_instincts_health_pct
+actions.defensives+=/barkskin,if=health.pct<barkskin_health_pct
+actions.defensives+=/frenzied_regeneration,if=buff.frenzied_regeneration.down&health.pct<frenzied_regeneration_health_pct
 
+### Healing ###
+actions.heal+=/healing_touch,if=health.pct<healing_touch_health_pct&(buff.nature_swiftness.up|buff.predatory_swiftness.up|buff.dream_of_cenarius_healing.stack>0)
+actions.heal+=/rejuvenation,if=health.pct<70&!buff.rejuvenation.up&(buff.predatory_swiftness.up|buff.dream_of_cenarius_healing.stack>0)
+
+### Cooldowns ###
+actions.cooldowns+=/berserk,if=buff.berserk.down&(active_enemies>=2|boss)
+actions.cooldowns+=/incarnation,if=talent.incarnation&buff.incarnation.down&(active_enemies>=2|boss)
 actions.cooldowns+=/enrage,if=rage<40&buff.enrage.down
-actions.cooldowns+=/berserk,if=buff.berserk.down
-actions.cooldowns+=/incarnation,if=talent.incarnation.enabled&buff.incarnation.down
-actions.cooldowns+=/heart_of_the_wild,if=talent.heart_of_the_wild.enabled&buff.heart_of_the_wild.down&(buff.bear_form.up|buff.cat_form.up)
-actions.cooldowns+=/symbiosis,if=talent.symbiosis.enabled&buff.symbiosis.down&use_symbiosis
-actions.cooldowns+=/nature_swiftness,if=talent.nature_swiftness.enabled&health.pct<40
+actions.cooldowns+=/heart_of_the_wild,if=talent.heart_of_the_wild&buff.heart_of_the_wild.down
 
-actions.hotw_dps+=/cat_form_hotw,if=hotw_cat_form_ready&!buff.cat_form.up
-actions.hotw_dps+=/bear_form,if=buff.heart_of_the_wild.up&buff.cat_form.up&health.pct<70
-actions.hotw_dps+=/rake_hotw,if=buff.cat_form.up&!debuff.rake.up
-actions.hotw_dps+=/rip_hotw,if=buff.cat_form.up&combo_points>=3&(!debuff.rip.up|debuff.rip.remains<=4)
-actions.hotw_dps+=/shred_hotw,if=buff.cat_form.up&combo_points<5
-actions.hotw_dps+=/ferocious_bite_hotw,if=buff.cat_form.up&combo_points>=3&debuff.rip.up&debuff.rip.remains>8
+### Bear Form Actions ###
+actions.bear+=/call_action_list,name=threat_generation
+actions.bear+=/call_action_list,name=dump_rage,if=should_spend_rage
 
-actions.threat_generation+=/call_action_list,name=multi_target,if=active_enemies>=2
+### Threat Generation ###
+actions.threat_generation+=/call_action_list,name=multi_target,if=active_enemies>=3
 actions.threat_generation+=/call_action_list,name=single_target
 
-actions.multi_target+=/pulverize,if=debuff.lacerate.stack>=3&debuff.lacerate.remains<=4&auto_pulverize
+### Multi-Target Rotation ###
+actions.multi_target+=/pulverize,if=debuff.lacerate.stack>=3&debuff.lacerate.remains<=4
 actions.multi_target+=/lacerate,cycle_targets=1,if=!buff.berserk.up&(debuff.lacerate.remains<=4|debuff.lacerate.stack<3)
-actions.multi_target+=/faerie_fire,cycle_targets=1,if=(debuff.faerie_fire.down|debuff.faerie_fire.remains<=6)&faerie_fire_auto
+actions.multi_target+=/faerie_fire,cycle_targets=1,if=(debuff.faerie_fire.down|debuff.faerie_fire.remains<=6)
 actions.multi_target+=/demoralizing_roar,if=(debuff.demoralizing_roar.down|debuff.demoralizing_roar.remains<=4)
 actions.multi_target+=/mangle
 actions.multi_target+=/thrash,if=!buff.berserk.up
 actions.multi_target+=/swipe_bear
-actions.multi_target+=/maul,if=rage>=rage_dump_threshold
 
-actions.single_target+=/pulverize,if=debuff.lacerate.stack>=3&debuff.lacerate.remains<=4&auto_pulverize
-actions.single_target+=/faerie_fire,if=(debuff.faerie_fire.down|debuff.faerie_fire.remains<=6)&faerie_fire_auto
+### Single Target Rotation ###
+actions.single_target+=/pulverize,if=debuff.lacerate.stack>=3&debuff.lacerate.remains<=4
+actions.single_target+=/faerie_fire,if=(debuff.faerie_fire.down|debuff.faerie_fire.remains<=6)
 actions.single_target+=/demoralizing_roar,if=(debuff.demoralizing_roar.down|debuff.demoralizing_roar.remains<=4)
 actions.single_target+=/mangle
 actions.single_target+=/lacerate,if=!buff.berserk.up&(debuff.lacerate.stack<3|debuff.lacerate.remains<=3)
 actions.single_target+=/thrash,if=!buff.berserk.up
-actions.single_target+=/maul,if=rage>=rage_dump_threshold
 
-actions.vengeance_rotation+=/pulverize,if=should_prioritize_damage&debuff.lacerate.stack>=3&auto_pulverize
-actions.vengeance_rotation+=/mangle,if=should_prioritize_damage
-actions.vengeance_rotation+=/thrash,if=should_prioritize_damage&active_enemies>=2
-actions.vengeance_rotation+=/lacerate,cycle_targets=1,if=should_prioritize_damage&active_enemies>=2&debuff.lacerate.stack<3
-actions.vengeance_rotation+=/swipe_bear,if=should_prioritize_damage&active_enemies>=2
-actions.vengeance_rotation+=/lacerate,if=should_prioritize_damage&debuff.lacerate.stack<3
-
-actions.standard+=/pulverize,if=debuff.lacerate.stack>=3&(buff.pulverize.down|buff.pulverize.remains<=4)&auto_pulverize
-actions.standard+=/faerie_fire,if=(debuff.faerie_fire.down|debuff.faerie_fire.remains<=6)&faerie_fire_auto
-actions.standard+=/demoralizing_roar,if=(debuff.demoralizing_roar.down|debuff.demoralizing_roar.remains<=4)
-actions.standard+=/mangle
-actions.standard+=/thrash,if=active_enemies>=2&!buff.berserk.up
-actions.standard+=/lacerate,if=debuff.lacerate.stack<3&!buff.berserk.up
-actions.standard+=/swipe_bear,if=active_enemies>=2
-actions.standard+=/maul,if=rage>=rage_dump_threshold
+### Rage Dump ###
+actions.dump_rage+=/tooth_and_claw,if=buff.tooth_and_claw.up&target.in_melee_range
+actions.dump_rage+=/maul,if=can_spend_rage_on_maul&target.in_melee_range
