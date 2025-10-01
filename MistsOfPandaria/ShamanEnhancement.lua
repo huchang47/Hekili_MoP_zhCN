@@ -117,6 +117,11 @@ local function setupEnhancementCombatTracking()
         end
     end
 
+    -- Unleash Elements usage tracking
+    local function trackUnleashElementsUsage(timestamp, effects)
+        -- Track Unleash Elements cast for rotation optimization
+    end
+
     -- Combat event handler
     frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     frame:SetScript("OnEvent", function(self, event)
