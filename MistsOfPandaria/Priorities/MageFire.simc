@@ -1,42 +1,61 @@
-# Mage: Fire
+# Mage: Fire - Optimized from WoWSims MoP
+# Updated October 1, 2025
 
 ## Precombat
-actions.precombat+=/arcane_brilliance
-actions.precombat+=/molten_armor
+actions.precombat+=/arcane_brilliance,if=!buff.arcane_brilliance.up
+actions.precombat+=/molten_armor,if=!buff.molten_armor.up
 actions.precombat+=/rune_of_power,if=talent.rune_of_power.enabled
-actions.precombat+=/flamestrike,if=active_enemies>=5
+actions.precombat+=/potion
+actions.precombat+=/pyroblast,if=time<3
 
-## Default
-actions+=/counterspell
-actions+=/time_warp,if=target.health.pct<25|time>5
-actions+=/mirror_image,if=buff.heating_up.up
-actions+=/presence_of_mind,if=talent.presence_of_mind.enabled&target.time_to_die<15
-actions+=/combustion,if=dot.ignite.tick_dmg>=(spell_power*2.5)
-actions+=/use_item,slot=trinket1,if=dot.combustion.ticking|cooldown.combustion.remains>20
-actions+=/use_item,slot=trinket2,if=dot.combustion.ticking|cooldown.combustion.remains>20
-actions+=/berserking,if=!ticking|dot.pyroblast.ticking|dot.ignite.ticking
-actions+=/blood_fury,if=!ticking|dot.pyroblast.ticking|dot.ignite.ticking
-actions+=/arcane_torrent,if=mana.pct<96
+## Main Priority List
 
-## Tier 5/6 Talents
-actions+=/living_bomb,if=talent.living_bomb.enabled&(!ticking|remains<3.6)&target.time_to_die>6
-actions+=/rune_of_power,if=talent.rune_of_power.enabled&!ticking&buff.rune_of_power.down
-actions+=/invocation,if=talent.invocation.enabled&buff.invocation.down
-actions+=/incanter_s_ward,if=talent.incanter_s_ward.enabled&!buff.incanter_s_ward.up
+# Evocation for mana when low
+actions+=/evocation,if=mana.pct<=20
+actions+=/evocation,if=buff.rune_of_power.remains<=cast_time
 
-## AoE Rotation
-actions+=/flamestrike,if=active_enemies>=5
-actions+=/blast_wave,if=active_enemies>=3&talent.blast_wave.enabled
-actions+=/dragon_s_breath,if=active_enemies>=3
+# Maintain Rune of Power
+actions+=/rune_of_power,if=talent.rune_of_power.enabled&(buff.rune_of_power.down|buff.rune_of_power.remains<=cast_time)
 
-## Core Rotation
-actions+=/pyroblast,if=buff.pyroblast.up|buff.presence_of_mind.up
-actions+=/inferno_blast,if=buff.heating_up.up&(!dot.combustion.ticking|cooldown.combustion.remains>10)
-actions+=/alter_time,if=buff.alter_time.down&buff.pyroblast.react
-actions+=/fire_blast,if=!buff.heating_up.up&!buff.pyroblast.react&target.time_to_die>4
-actions+=/scorch,if=mana.pct<15|moving
+# Alter Time sequence with Hot Streak + Heating Up (advanced play)
+actions+=/use_item,slot=trinket1,if=buff.alter_time.up&buff.hot_streak.up&buff.heating_up.up
+actions+=/use_item,slot=trinket2,if=buff.alter_time.up&buff.hot_streak.up&buff.heating_up.up
+actions+=/combustion,if=buff.alter_time.up&dot.combustion.refreshable&combustion_dot_value>=4000000
+
+# Alter Time + burst sequence
+actions+=/alter_time,if=buff.hot_streak.up&buff.heating_up.up&cooldown.alter_time_activate.ready
+
+# Alter Time active - use Hot Streak or Presence of Mind
+actions+=/pyroblast,if=buff.alter_time.up&(buff.hot_streak.up|buff.presence_of_mind.up)
+
+# Alter Time active without Hot Streak/PoM - wait for stacks before Alter Time Activate
+actions+=/alter_time_activate,if=buff.alter_time.up&!buff.hot_streak.up&!buff.presence_of_mind.up
+
+# Hot Streak Pyroblast when not in Alter Time window
+actions+=/pyroblast,if=!buff.alter_time.up&(buff.hot_streak.up|buff.presence_of_mind.up)&cooldown.combustion.remains>=5
+actions+=/pyroblast,if=(buff.hot_streak.up|buff.presence_of_mind.up)&dot.pyroblast.remains<=2
+
+# Rune of Power usage
+actions+=/rune_of_power,if=cooldown.combustion.remains>=55
+
+# Multi-dotting with Living Bomb and Nether Tempest
+actions+=/living_bomb,cycle_targets=1,max_cycle_targets=3,if=talent.living_bomb.enabled&!dot.living_bomb.ticking
+actions+=/nether_tempest,cycle_targets=1,max_cycle_targets=5,if=talent.nether_tempest.enabled&!dot.nether_tempest.ticking
+
+# Frost Bomb application
+actions+=/frost_bomb,if=talent.frost_bomb.enabled&!debuff.frost_bomb.up
+
+# Combustion usage - complex conditions
+actions+=/combustion,if=combustion_dot_value>=3900000
+actions+=/combustion,if=!buff.alter_time.up&!cooldown.alter_time.ready&cooldown.alter_time.remains>=45&cooldown.alter_time.remains<=173&combustion_dot_value>=425000
+actions+=/combustion,if=target.time_to_die<=25&combustion_dot_value>=350000
+
+# Inferno Blast to convert Heating Up to Hot Streak
+actions+=/inferno_blast,if=buff.heating_up.up&!buff.hot_streak.up&!buff.alter_time.up
+
+# Hot Streak + Heating Up - convert to double Hot Streak
+actions+=/fireball,if=buff.hot_streak.up&!buff.heating_up.up
+actions+=/pyroblast,if=buff.hot_streak.up&buff.heating_up.up
+
+# Filler
 actions+=/fireball
-
-## Movement
-actions+=/fire_blast,moving=1
-actions+=/scorch,moving=1

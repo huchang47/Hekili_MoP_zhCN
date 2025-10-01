@@ -4,6 +4,9 @@ actions.precombat+=/explosive_trap,if=!debuff.explosive_trap.up
 actions.precombat+=/potion,name=virmens_bite
 actions.precombat+=/aimed_shot
 
+# Interrupt
+actions+=/countershot
+
 actions+=/call_action_list,name=aoe,if=active_enemies>=3
 # Careful Aim phase: above 80% target health, hardcast Aimed Shot aggressively without delaying Chimera Shot
 actions+=/call_action_list,name=careful_aim,if=target.health.pct>80

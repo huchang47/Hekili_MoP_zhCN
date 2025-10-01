@@ -1,38 +1,60 @@
-# Mage: Frost
+# Mage: Frost - Optimized from WoWSims MoP
+# Updated October 1, 2025
+
 ## Precombat
 actions.precombat+=/arcane_brilliance,if=!buff.arcane_brilliance.up
-actions.precombat+=/water_elemental
+actions.precombat+=/frost_armor,if=!buff.frost_armor.up
+actions.precombat+=/summon_water_elemental,if=!pet.water_elemental.active
 actions.precombat+=/rune_of_power,if=talent.rune_of_power.enabled
+actions.precombat+=/potion
+actions.precombat+=/frostbolt,if=time<2
 
-## Default
-actions+=/counterspell
-actions+=/time_warp,if=target.health.pct<25|time>5
-actions+=/mirror_image
-actions+=/icy_veins
+## Main Priority List
+actions+=/auto_attack
+
+# Frozen Orb on cooldown
 actions+=/frozen_orb
-actions+=/presence_of_mind,if=talent.presence_of_mind.enabled
-actions+=/berserking,if=buff.icy_veins.up|buff.brain_freeze.react
-actions+=/blood_fury,if=buff.icy_veins.up|buff.brain_freeze.react
-actions+=/use_item,slot=trinket1,if=buff.icy_veins.up|cooldown.icy_veins.remains>20
-actions+=/use_item,slot=trinket2,if=buff.icy_veins.up|cooldown.icy_veins.remains>20
 
-## Tier 5/6 Talents
-actions+=/frost_bomb,if=talent.frost_bomb.enabled&!ticking
-actions+=/rune_of_power,if=talent.rune_of_power.enabled&!ticking&buff.rune_of_power.down
-actions+=/incanter_s_ward,if=talent.incanter_s_ward.enabled&!buff.incanter_s_ward.up
+# Icy Veins usage
+actions+=/icy_veins,if=buff.rune_of_power.up|target.time_to_die<20
 
-## Core Rotation
-actions+=/alter_time,if=buff.alter_time.down&(buff.brain_freeze.react|buff.fingers_of_frost.stack>1)
-actions+=/cold_snap,if=health.pct<30&talent.cold_snap.enabled
-actions+=/ice_barrier,if=!buff.ice_barrier.up&talent.ice_barrier.enabled
-actions+=/frostfire_bolt,if=buff.brain_freeze.react
+# Rune of Power maintenance
+actions+=/rune_of_power,if=talent.rune_of_power.enabled&buff.rune_of_power.remains<=cast_time
+
+# Use trinkets with Icy Veins
+actions+=/use_item,slot=trinket1,if=buff.icy_veins.up
+actions+=/use_item,slot=trinket2,if=buff.icy_veins.up
+
+# Racials with cooldowns
+actions+=/berserking,if=buff.icy_veins.up
+actions+=/blood_fury,if=buff.icy_veins.up
+
+# Potion usage
+actions+=/potion,if=buff.icy_veins.up|target.time_to_die<30
+
+# Water Elemental Freeze for Fingers of Frost
+actions+=/freeze,if=!buff.fingers_of_frost.up
+
+# Ice Lance with Fingers of Frost
 actions+=/ice_lance,if=buff.fingers_of_frost.react
-actions+=/pet.freeze,if=buff.fingers_of_frost.stack<2&pet.water_elemental.cooldown.freeze.remains<gcd
 
-## AoE Rotation
-actions+=/blizzard,if=active_enemies>=3&!moving
-actions+=/cone_of_cold,if=active_enemies>=3&moving
+# Frostfire Bolt with Brain Freeze
+actions+=/frostfire_bolt,if=buff.brain_freeze.react
 
-## Single Target
+# Multi-dotting
+actions+=/living_bomb,cycle_targets=1,max_cycle_targets=3,if=talent.living_bomb.enabled&!dot.living_bomb.ticking
+actions+=/nether_tempest,cycle_targets=1,max_cycle_targets=5,if=talent.nether_tempest.enabled&!dot.nether_tempest.ticking
+actions+=/frost_bomb,if=talent.frost_bomb.enabled&!debuff.frost_bomb.up
+
+# Filler
 actions+=/frostbolt
-actions+=/ice_lance,if=moving
+
+## AoE Priority (3+ targets)
+actions.aoe+=/frozen_orb
+actions.aoe+=/icy_veins
+actions.aoe+=/blizzard
+actions.aoe+=/cone_of_cold,if=active_enemies>=5
+actions.aoe+=/arcane_explosion,if=active_enemies>=5
+actions.aoe+=/ice_lance,if=buff.fingers_of_frost.react
+actions.aoe+=/frostfire_bolt,if=buff.brain_freeze.react
+actions.aoe+=/frostbolt

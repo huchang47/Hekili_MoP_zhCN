@@ -1,62 +1,61 @@
 -- MageFrost.lua
--- Updated Aug 11, 2025 - Corrected for Mists of Pandaria Classic with real-time event handling.
+-- Updated October 1, 2025 - Modern Structure
 -- Mists of Pandaria module for Mage: Frost spec
 
--- MoP: Use UnitClass instead of UnitClassBase
-local _, playerClass = UnitClass('player')
-if playerClass ~= 'MAGE' then return end
+-- Early return if not a Mage
+if select(2, UnitClass('player')) ~= 'MAGE' then return end
 
 local addon, ns = ...
 local Hekili = _G[ "Hekili" ]
-    
+
 -- Early return if Hekili is not available
 if not Hekili or not Hekili.NewSpecialization then return end
 
-local function RegisterFrostSpec()
-    local class = Hekili.Class
-    local state = Hekili.State
+local class = Hekili.Class
+local state = Hekili.State
 
-    local strformat = string.format
-    local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+local strformat = string.format
+local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+local PTR = ns.PTR
 
-    local spec = Hekili:NewSpecialization( 64, true )
+local spec = Hekili:NewSpecialization( 64, true )
 
-    -- Register resources
-    spec:RegisterResource( 0 ) -- Mana = 0 in MoP
+-- Register resources
+spec:RegisterResource( 0 ) -- Mana = 0 in MoP
 
-    -- ===================
-    -- ENHANCED COMBAT LOG EVENT TRACKING
-    -- ===================
+-- ===================
+-- ENHANCED COMBAT LOG EVENT TRACKING
+-- ===================
 
-    local frostCombatLogFrame = CreateFrame("Frame")
-    local frostCombatLogEvents = {}
+local frostCombatLogFrame = CreateFrame("Frame")
+local frostCombatLogEvents = {}
 
-    local function RegisterFrostCombatLogEvent(event, handler)
-        if not frostCombatLogEvents[event] then
-            frostCombatLogEvents[event] = {}
-            frostCombatLogFrame:RegisterEvent(event)
-        end
-        
-        tinsert(frostCombatLogEvents[event], handler)
+local function RegisterFrostCombatLogEvent(event, handler)
+    if not frostCombatLogEvents[event] then
+        frostCombatLogEvents[event] = {}
+        frostCombatLogFrame:RegisterEvent(event)
     end
+    
+    tinsert(frostCombatLogEvents[event], handler)
+end
 
-    frostCombatLogFrame:SetScript("OnEvent", function(self, event, ...)
-        local handlers = frostCombatLogEvents[event]
-        if handlers then
-            for _, handler in ipairs(handlers) do
-                handler(event, ...)
-            end
+frostCombatLogFrame:SetScript("OnEvent", function(self, event, ...)
+    local handlers = frostCombatLogEvents[event]
+    if handlers then
+        for _, handler in ipairs(handlers) do
+            handler(event, ...)
         end
-    end)
+    end
+end)
 
-    -- Frost-specific tracking variables
-    local frostbolt_casts = 0
-    local brain_freeze_procs = 0
-    local fingers_of_frost_procs = 0
-    local icy_veins_activations = 0
-    local water_elemental_summoned = 0
+-- Frost-specific tracking variables
+local frostbolt_casts = 0
+local brain_freeze_procs = 0
+local fingers_of_frost_procs = 0
+local icy_veins_activations = 0
+local water_elemental_summoned = 0
 
-    -- MageFrost.lua -- REPLACEMENT COMBAT LOG HANDLER
+-- MageFrost.lua -- REPLACEMENT COMBAT LOG HANDLER
 -- This new handler uses more precise logic to track events without relying on the core files.
 
 RegisterFrostCombatLogEvent("COMBAT_LOG_EVENT_UNFILTERED", function(event, ...)
@@ -1114,7 +1113,7 @@ end)
             
             usable = function()
                 -- Ensures the pet is active and able to cast.
-                return UnitExists("pet") and not UnitIsDead("pet")
+                return pet.alive
             end,
         },
         
@@ -1734,37 +1733,7 @@ end)
         package = "Frost",
     } )
 
-    -- SIMC-derived settings from MageFrost.simc
-    spec:RegisterSetting( "time_warp_health_threshold", 25, {
-        name = "Time Warp Health Threshold",
-        desc = "Target health percentage below which Time Warp should be used (default: 25%)",
-        type = "range",
-        min = 10,
-        max = 50,
-        step = 5,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "time_warp_time_threshold", 5, {
-        name = "Time Warp Time Threshold",
-        desc = "Time in seconds after which Time Warp should be used regardless of target health (default: 5s)",
-        type = "range",
-        min = 3,
-        max = 15,
-        step = 1,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "trinket_icy_veins_threshold", 20, {
-        name = "Trinket Icy Veins Threshold",
-        desc = "Seconds remaining on Icy Veins cooldown above which trinkets should be used (default: 20s)",
-        type = "range",
-        min = 10,
-        max = 30,
-        step = 5,
-        width = 1.5
-    } )
-
+    -- Essential Frost Mage settings
     spec:RegisterSetting( "aoe_enemy_threshold", 3, {
         name = "AoE Enemy Threshold",
         desc = "Number of enemies at which AoE abilities like Blizzard should be used (default: 3)",
@@ -1775,32 +1744,14 @@ end)
         width = 1.5
     } )
 
-    spec:RegisterSetting( "use_racial_abilities", true, {
-        name = "Use Racial Abilities",
-        desc = "If checked, racial abilities like Berserking and Blood Fury will be recommended during Icy Veins or Brain Freeze",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "use_trinkets", true, {
-        name = "Use Trinkets",
-        desc = "If checked, trinkets will be recommended during Icy Veins or when Icy Veins cooldown is above threshold",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "alter_time_brain_freeze", true, {
-        name = "Alter Time with Brain Freeze",
-        desc = "If checked, Alter Time will be recommended when Brain Freeze is available",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "alter_time_fingers_of_frost", true, {
-        name = "Alter Time with Fingers of Frost",
-        desc = "If checked, Alter Time will be recommended when Fingers of Frost has more than 1 stack",
-        type = "toggle",
-        width = "full"
+    spec:RegisterSetting( "evocation_mana_threshold", 45, {
+        name = "Evocation Mana Threshold",
+        desc = "Mana percentage below which Evocation should be used (default: 45%)",
+        type = "range",
+        min = 20,
+        max = 80,
+        step = 5,
+        width = 1.5
     } )
 
     spec:RegisterSetting( "water_elemental_freeze", true, {
@@ -1817,156 +1768,7 @@ end)
         width = "full"
     } )
 
-    -- Enhanced Frost-specific settings (based on Hunter Survival patterns)
-    spec:RegisterSetting( "mana_dump_threshold", 80, {
-        name = "Mana Dump Threshold",
-        desc = "Mana level at which to prioritize spending abilities like Frostbolt and Ice Lance to avoid mana capping.",
-        type = "range",
-        min = 50,
-        max = 120,
-        step = 5,
-        width = 1.5
-    } )
+-- Register default pack for MoP Frost Mage
+-- Updated October 1, 2025 - Use the MageFrost.simc file for optimized priorities
+spec:RegisterPack( "Frost", 20251001, [[Hekili:TI16UTTnu4NLGb0SHM65lXDldXfybOblb5gMAx(NKOKPIjSKOgjvsDqGE23HK6cfnLJtW(rBtipNVZHNRFv(t8)MV3sKa7FZ0XtNpz84jJMoz6jZM77j2uG99kqXRrpa)qokd(BUaZLhUjLIwkvMtlzXWf(ErLKuXf5(rBJ445Zp(eq2cCS)nF(yFVvKLlXArX8yFVVTIWRcL)bvfwBYQqAc87XccnVkmLWfW1juwv4FHxtsjJa)GrtiPG1)PQWRbv(JQWZzuUOk8tvH3wiizKNXlbTy0SQW7P37rYaqUMEx1LGkFVq6OW93glOrya5jhvfkD7QlbbajUJHJPzrir1LAhHpQO5OpU4xrSyuooiIrstjO8y8rKKfhevMKmARRgvw4gKePhhGyzuwN6ghoOI8YSmAEWtWBGfGtXz4CbkvHrbwmY68rsiEe7gkwj4R0KGc6tyLxakaAnQ35JW5OOuiE5eIcQkrn8tmIMkuqtYWNoTjcFnIKlJZekJi2ufEfKNBbrgIlf0aKqa1ekvuz4NXGo3YIGse4hIP00L0NYnvlrjuafKrR1fXa4)dMKd5)sUS8YqAs8MGhL3j9pv8V)dVS4Lxei2dquv69bGlTKapIX1G)3G06Y17KYxfMbVkbeUG8UPDEtH5p4WryyjY8txeJGYdPVu7bFNdoGGrYxJLTjpreR69MnCIsooGiWzhXtPIf16mP9L3glmR7gsTPdOMoQGIjO0wVPjn1ZzGUooMTMK)WR6arPu6YGKs2MDz070LHBNJ11Nov1zYDwtY9EzFuv4xBAKKvGy8Z46HrNd(o8i0PF90NE1Hsrn6R1slZOQMIoh)cOuj8kvftDaB3itIXbPnZCCJnddI311WfjegG(zqJyJnoJP6)QFr9BG0Yh003QSrKu(a9RQh(xxMkiFAjviaVWeOuYJWjakzrhfVjofcWQGnFXKJYq)iO)zZm6km0STN4aWc9UqqIxBzXCSyfm5dQvlWCXEy05ggTVY9TR1DomTEST6T2bz3HgWHngZRUQTq4CyJbuWzJQmn0m08pPF1CM5pp7JqZV(X8lDtGruS1KW(302cyFruk55NrSL2Nht1ZIIHgz57tVrjaNJZiy(xwm3wH6LG4FuKs51DFVQs7FH9wp09TI1HIsD89EcXYbJXLmsGofswbLjQB0peK(WQqg(FlbJaSg4uy8BOCbvMMgr8ke4O8rvxEfrUqyoWh5758Ycjksb02vcLvG5WrYuRdBUeNGGoR3MDNmSD72MEyN4ZguEJonTlErwJmZS4Mbx77P(jjTqiwb)Znk(LAX896Qe99QBe8pZxaefnLQTQ0sOzMc1uHAjZXsz6oXlg6pWmcsRyxvxv4xwaPNo8mRSLan)9cKDIvc2NheSDuDBgqQ7hKy9B7gRTl27f(n6pKG97wzNMUaZyQqsrxvdUv(0OyYvc1WlLK8zKcTAdYFZzLstMF43SnvTQWxEPzCO5g9QWtLK7DwP1Zb3IQ4UlT2jv5WpufompoWLGYNwUCDUwpPTCVDr20vTBdMnm9G)FyadoZFVh8VctYTc)MeP2JQ9EIB7BtT8TP7rjVBa74vAh9gGuAB)WB2sT0sLqCY(dXoRtNzuNQzUA9o6XZvA5jJh00huxd6G8PzpNCOHLvEZCFvEYK)Vg4z3x(6mKv23E8Z7Fi5wtUEvo0khWEIvd6gRtbVYKdQC0Q3wmt99Mz5c9Oz7ykKdoZQzqqjWamNvoS90TghUpJ390NN7WVCtR201CtUw5DdVnEqg2Ti7GNTv2wNoK2XE0v)KVIwUR9LQLKTFUJ21K7Sv01NhAlweD3Axf82(wx74dD5ABTJbh9(Au2Xp157Erna0WFsQo8C)fTE)RFhAHAZws7jS9iXm8Im13DrXMyOYbHID0kiS45LvMWiRvh6)F)]] )
 
-    spec:RegisterSetting( "frostbolt_mana_threshold", 4, {
-        name = "Frostbolt Mana Threshold",
-        desc = "Minimum mana percentage required to cast Frostbolt (default: 4%)",
-        type = "range",
-        min = 1,
-        max = 10,
-        step = 1,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "ice_lance_mana_threshold", 2, {
-        name = "Ice Lance Mana Threshold",
-        desc = "Minimum mana percentage required to cast Ice Lance (default: 2%)",
-        type = "range",
-        min = 1,
-        max = 5,
-        step = 1,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "frostfire_bolt_mana_threshold", 4, {
-        name = "Frostfire Bolt Mana Threshold",
-        desc = "Minimum mana percentage required to cast Frostfire Bolt (default: 4%)",
-        type = "range",
-        min = 1,
-        max = 10,
-        step = 1,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "blizzard_mana_threshold", 8, {
-        name = "Blizzard Mana Threshold",
-        desc = "Minimum mana percentage required to cast Blizzard (default: 8%)",
-        type = "range",
-        min = 5,
-        max = 15,
-        step = 1,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "fingers_of_frost_stacks", 2, {
-        name = "Fingers of Frost Stacks",
-        desc = "Number of Fingers of Frost stacks at which to prioritize Ice Lance (default: 2)",
-        type = "range",
-        min = 1,
-        max = 3,
-        step = 1,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "brain_freeze_priority", true, {
-        name = "Brain Freeze Priority",
-        desc = "If checked, Frostfire Bolt will be prioritized when Brain Freeze is active",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "frozen_orb_priority", true, {
-        name = "Frozen Orb Priority",
-        desc = "If checked, Frozen Orb will be used on cooldown for AoE damage",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "deep_freeze_priority", false, {
-        name = "Deep Freeze Priority",
-        desc = "If checked, Deep Freeze will be used for control and damage",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "water_elemental_priority", true, {
-        name = "Water Elemental Priority",
-        desc = "If checked, Water Elemental will be summoned when available",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "rune_of_power_priority", true, {
-        name = "Rune of Power Priority",
-        desc = "If checked, Rune of Power will be used for damage amplification",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "evocation_mana_threshold", 45, {
-        name = "Evocation Mana Threshold",
-        desc = "Mana percentage below which Evocation should be used (default: 45%)",
-        type = "range",
-        min = 20,
-        max = 80,
-        step = 5,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "icy_veins_bloodlust_threshold", 180, {
-        name = "Icy Veins Bloodlust Threshold",
-        desc = "Seconds remaining on Bloodlust/Sated above which Icy Veins should be used (default: 180s)",
-        type = "range",
-        min = 60,
-        max = 300,
-        step = 30,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "alter_time_complex_conditions", true, {
-        name = "Alter Time Complex Conditions",
-        desc = "If checked, Alter Time will use complex conditions including Bloodlust/Sated timing",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "nether_tempest_targets", 5, {
-        name = "Nether Tempest Targets",
-        desc = "Number of targets at which Nether Tempest should be maintained (default: 5)",
-        type = "range",
-        min = 1,
-        max = 10,
-        step = 1,
-        width = 1.5
-    } )
-
-    spec:RegisterSetting( "frost_bomb_priority", true, {
-        name = "Frost Bomb Priority",
-        desc = "If checked, Frost Bomb will be used when not ticking on target",
-        type = "toggle",
-        width = "full"
-    } )
-
-    spec:RegisterSetting( "cone_of_cold_moving", true, {
-        name = "Cone of Cold While Moving",
-        desc = "If checked, Cone of Cold will be used while moving in AoE situations",
-        type = "toggle",
-        width = "full"
-    } )
-
-    -- Register default pack for MoP Frost Mage
-    spec:RegisterPack( "Frost", 20250727, [[Hekili:1IvBVTTnq4FlbfWjbRq1s2ojDijaBDBynylyyk7RsIsIkMiuKAuujnbg63(os9gfTK9AXgkAH9DhFUx4X75CdCdEiWpfjXb37T0BZYRCx54Uz9M1Ub(YxlWb(fOKNqpcFGHYH)9xe8sPs6RuokvD6sELib0e4hxrOYpZcINcY1RUcSTaNeC)fRd83sstXnMIltc8FylPSos9xuDuRpRJ4zW3tKeoRoIskLG6mUOo6xXprOehioe8mcf8(7QJ(D4iFFDKocRV7DGK)qGt45Xi4RnOu6u0j67U5dircIHdJfekLGyj43tYU5K4QSmN9u5uvmniLv55Cw4lqclcXuCoMjr0PTvubyYZcl4VGfkNbwcM7msUdMHIP4067AsIFcNHQOdPaGtcVIbUdQMuQPCjjhdrIOObBXJyPZwmIk36uKiV2BZUDktUDJ5HYjcbxesYvvCd5KKxdFgtyLMcZe83WSqUi2ukKJLyOiPYHCcl1i1SvnKDdhpgsfS4jc7r1b11)ENd19D70IIficlmtGXVHDey44JWGY5PHzvIx)2XOQehsK483xs5YBKcc7jS0Dg8s4CAk)fMHybohGV8wVLhfvVVnuB6iEGGH3aB(WfWh1vz7ROszym0ZzCnmiS7cyXjssIQMBE2VQg0EewOtKX2OsIrDtm4bL6jsPQb1SdXsZa6nLhlTQNHnvHpXfWeI)Klr65dg(cA4HdO607RYdI0r2IZMPDOTpjdYkOPuLo6kNtPegjDR75JFfstdlzi9RnJNzRwUOn16TyQUEc8OigjeKMkDB6oies1oCmLobs6qmJiaJ4uzFoF4MDfM0UHEtN07DMcSQtsH38hsxPU2BHYwRHIo9D39bLU1(6ht6N29d8FE6l1yk5T3A7CusFghIz4CcU82BwT4KC(Zw9Yj8M(r1LW0hQ7mnE2h(mfREsPMBUx9vvANT(1GuG)ZqPa03Y8DP3Lb(qxld0vQO4a0j5fCHSLg700Mz7NwhjW)DfCdMwhvYZb7qvsEou(abjBrqnU0P(UFJWavUFey5(lwzvHckLfOwkYthUGoDS5FIZGytB8PFf3mqGj5WrMx9zUF5Chvj8Z5DrJNfNnOoWhYNTCrGVFEvMG8uGVwLE7JMAa8X71BJ0C2aFtsUa)22(GFmqcvxLDds8teWawbbb7Syt6vhDnerBQJ2TdYfIQ0Elm7CWn9CMkGxzgaMeJwbWAt76hvBz0gtJgioTS6IdKlhKbDaBBluWE5SWUhRttTzMrgdEzGLwH)v)3JFpdUc)pAHF)1vlR8)cpopxQUhWBjSpkqjBGj4x3Lh2XE)p4ypTJDpwJW(C41rlQJor1xR5Hh1T1AQg6d9E5alGogD9xNHPFWZJ0PD(QJ58zwaOZ9ZSgGX7VX60oD9HBpTwhq7QZMTh1ObEA6o91QBD05db1Gh0XZMzJhRrvRwQdM5wGWC8yRkn(ZpfPVcoAZctNmX2fMd36vQD0rMRCOh4JxtrJ2rMIm9gjJdonhSgm7rghdS2RUR1mwlmE2oMKtBbSHIto6lgZC7zA1es2tng8941oGoLBGl5UE7U9ggMb2SKJgZ5himpM2aAUeKguplsPMfBS5xN)nRTdmVcKAQOMFTBpD(eJs37hx38FcGGu0O38hYpvR8u)48(1c6CY0)UCRe9OZMMCW48t76(tW)m]])
-end
-
--- Immediately register the spec.
-RegisterFrostSpec()

@@ -2,8 +2,9 @@
     -- july 2025 by smufrik
 
 
-    local _, playerClass = UnitClass('player')
-    if playerClass ~= 'HUNTER' then return end
+    if select(2, UnitClass('player')) ~= 'HUNTER' then return end
+
+    if not Hekili or not Hekili.NewSpecialization then return end
 
     local addon, ns = ...
     local Hekili = _G[ addon ]
@@ -15,6 +16,10 @@
     local strformat = string.format
 
 local spec = Hekili:NewSpecialization( 253, true )
+
+spec.role = "DAMAGER"
+spec.primaryStat = "agility"
+spec.name = "Beast Mastery"
 
 
 
@@ -1045,27 +1050,45 @@ end )
             end,
         },
 
+        exhilaration = {
+            id = 109304,
+            cast = 0,
+            cooldown = 120,
+            gcd = "spell",
+            school = "nature",
+
+            startsCombat = false,
+            toggle = "defensives",
+
+            handler = function ()
+                -- Heals for 30% of max health
+                gain( health.max * 0.3, "health" )
+            end,
+        },
+
         focus_fire = {
             id = 82692,
             cast = 0,
-            cooldown = 20,
+            cooldown = 0,
             gcd = "spell",
             school = "nature",
 
             startsCombat = false,
 
             usable = function () 
-                return state.should_focus_fire and true or false, "requires pet with frenzy stacks" 
+                return pet.alive and buff.frenzy.stack > 0 and not buff.focus_fire.up, "requires pet with frenzy stacks and no active focus fire" 
             end,
 
             handler = function ()
                 local stacks = buff.frenzy.stack
                 removeBuff( "frenzy" )
                 
-                -- Focus Fire converts frenzy stacks to haste buff
-                -- Each stack provides 3% haste for 20 seconds
+                -- Focus Fire consumes frenzy stacks and grants ranged haste
+                -- Each stack provides 6% ranged haste for 20 seconds
+                -- Pet gains 6 focus per stack consumed
                 if stacks > 0 then
                     applyBuff( "focus_fire", 20, stacks )
+                    -- Pet focus gain is handled by the game
                 end
             end,
         },
@@ -1161,7 +1184,7 @@ end )
             gcd = "spell",
             school = "physical",
 
-            spend = 25,
+            spend = 40,
             spendType = "focus",
 
             startsCombat = true,
@@ -1169,7 +1192,8 @@ end )
             usable = function() return pet.alive, "requires a living pet" end,
 
             handler = function ()
-                -- Kill Command effects
+                -- Kill Command damage is done by pet
+                -- 40% chance to proc Frenzy stack (handled by pet combat log)
             end,
         },
 
@@ -1452,7 +1476,8 @@ end )
             startsCombat = true,
 
             handler = function ()
-                applyDebuff( "target", "serpent_sting" )
+                -- Apply Serpent Sting DoT (15s duration, 3s tick time, 5 ticks total)
+                applyDebuff( "target", "serpent_sting", 15 )
             end,
         },
 

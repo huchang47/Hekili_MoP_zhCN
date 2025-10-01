@@ -1,42 +1,24 @@
 -- MageFire.lua
--- Updated May 28, 2025 - Modern Structure
+-- Updated October 1, 2025 - Modern Structure
 -- Mists of Pandaria module for Mage: Fire spec
 
--- MoP: Use UnitClass instead of UnitClassBase
-local _, playerClass = UnitClass('player')
-if playerClass ~= 'MAGE' then return end
+-- Early return if not a Mage
+if select(2, UnitClass('player')) ~= 'MAGE' then return end
 
 local addon, ns = ...
 local Hekili = _G[ "Hekili" ]
+
+-- Early return if Hekili is not available
+if not Hekili or not Hekili.NewSpecialization then return end
+
 local class = Hekili.Class
 local state = Hekili.State
 
-local function getReferences()
-    -- Legacy function for compatibility
-    return class, state
-end
-
-local spec = Hekili:NewSpecialization( 63 ) -- Fire spec ID for MoP
-
--- No longer need custom spec detection - WeakAuras system handles this in Constants.lua
-
 local strformat = string.format
-local FindUnitBuffByID = ns.FindUnitBuffByID
-local FindUnitDebuffByID = ns.FindUnitDebuffByID
-local function UA_GetPlayerAuraBySpellID(spellID)
-    for i = 1, 40 do
-        local name, _, count, _, duration, expires, caster, _, _, id = UnitBuff("player", i)
-        if not name then break end
-        if id == spellID then return name, _, count, _, duration, expires, caster end
-    end
-    for i = 1, 40 do
-        local name, _, count, _, duration, expires, caster, _, _, id = UnitDebuff("player", i)
-        if not name then break end
-        if id == spellID then return name, _, count, _, duration, expires, caster end
-    end
-    return nil
-end
+local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+local PTR = ns.PTR
 
+local spec = Hekili:NewSpecialization( 63, true )
 -- Register resources
 spec:RegisterResource( 0 ) -- Mana = 0 in MoP
 
@@ -1075,7 +1057,7 @@ spec:RegisterAbilities( {
     -- Fire Core Abilities
     fireball = {
         id = 133,
-        cast = 2.25,
+        cast = function() return 2.25 * haste end,
         cooldown = 0,
         gcd = "spell",
         
@@ -1085,9 +1067,11 @@ spec:RegisterAbilities( {
         startsCombat = true,
         texture = 135812,
         
+        velocity = 24,
+        
         handler = function()
-            -- Chance to proc Heating Up or convert to Hot Streak
-            -- Use simulation rather than trying to model RNG here
+            -- Heating Up mechanic handled by combat log events
+            -- On crit: gain Heating Up or convert to Hot Streak
         end,
     },
     
@@ -1102,48 +1086,81 @@ spec:RegisterAbilities( {
         
         startsCombat = true,
         texture = 135813,
-          handler = function()
-            -- Guaranteed crit
-            -- Proc Hot Streak on Heating Up
+        
+        handler = function()
+            -- Guaranteed crit - always converts Heating Up to Hot Streak
             if buff.heating_up.up then
                 removeBuff( "heating_up" )
-                applyBuff( "hot_streak" ) -- Correct MoP mechanic
+                applyBuff( "hot_streak" )
+            else
+                -- If no Heating Up, gain Heating Up from guaranteed crit
+                applyBuff( "heating_up" )
             end
+            
+            -- Spreads Pyroblast, Combustion, and Ignite DoTs to nearby targets
+            -- (actual spread handled by game mechanics)
         end,
     },
-      pyroblast = {
+    
+    pyroblast = {
         id = 11366,
-        cast = function() return buff.hot_streak.up and 0 or 4.5 end,
+        cast = function() 
+            if buff.hot_streak.up then return 0 end
+            return 3.5 * haste 
+        end,
         cooldown = 0,
         gcd = "spell",
         
-        spend = 0.03,
+        spend = function()
+            if buff.hot_streak.up then return 0 end
+            return 0.05
+        end,
         spendType = "mana",
         
         startsCombat = true,
         texture = 135808,
         
+        velocity = 24,
+        
         handler = function()
-            if buff.hot_streak.up then
+            local had_hot_streak = buff.hot_streak.up
+            
+            if had_hot_streak then
                 removeBuff( "hot_streak" )
             end
+            
+            -- Apply Pyroblast DoT (18s, 6 ticks every 3s)
             applyDebuff( "target", "pyroblast" )
+            
+            -- Instant Pyroblast DoT gets 25% damage bonus
+            -- Heating Up mechanic handled by combat log events
         end,
     },
     
     combustion = {
         id = 11129,
         cast = 0,
-        cooldown = 45,
+        cooldown = function()
+            return glyph.glyph_of_combustion.enabled and 90 or 45
+        end,
         gcd = "spell",
         
         toggle = "cooldowns",
         
-        startsCombat = false,
+        startsCombat = true,
         texture = 135824,
         
+        usable = function()
+            return debuff.ignite.up, "requires ignite on target"
+        end,
+        
         handler = function()
-            applyBuff( "combustion" )
+            -- Direct damage based on Ignite
+            -- Apply Combustion DoT (10 ticks, 20 ticks with glyph)
+            applyDebuff( "target", "combustion" )
+            
+            -- Resets Inferno Blast cooldown
+            setCooldown( "inferno_blast", 0 )
         end,
     },
     
@@ -1679,11 +1696,90 @@ spec:RegisterAbilities( {
             applyBuff( "molten_armor" )
         end,
     },
+
+    nether_tempest = {
+        id = 114923,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        school = "arcane",
+
+        spend = 0.03,
+        spendType = "mana",
+
+        talent = "nether_tempest",
+        startsCombat = true,
+
+        handler = function ()
+            applyDebuff( "target", "nether_tempest" )
+        end,
+    },
+
+    frost_bomb = {
+        id = 112948,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        school = "frost",
+
+        spend = 0.03,
+        spendType = "mana",
+
+        talent = "frost_bomb",
+        startsCombat = true,
+
+        handler = function ()
+            applyDebuff( "target", "frost_bomb" )
+        end,
+    },
+
+    alter_time_activate = {
+        id = 108978,
+        cast = 0,
+        cooldown = 0,
+        gcd = "off",
+
+        startsCombat = false,
+        buff = "alter_time",
+
+        handler = function ()
+            -- Activates Alter Time, returning to previous state
+            removeBuff( "alter_time" )
+        end,
+    },
+
+    strictsequence = {
+        id = 0, -- Placeholder
+        cast = 0,
+        cooldown = 0,
+        gcd = "off",
+
+        startsCombat = false,
+
+        handler = function ()
+            -- Strict sequence action - handled by SimC
+        end,
+    },
 } )
 
 -- State Functions and Expressions
 spec:RegisterStateExpr( "hot_streak", function()
     return buff.pyroblast_clearcasting.up
+end )
+
+spec:RegisterStateExpr( "combustion_dot_value", function()
+    -- Calculate total DoT value for Combustion timing
+    local value = 0
+    if debuff.ignite.up then
+        value = value + (debuff.ignite.damage * debuff.ignite.ticks_remain)
+    end
+    if debuff.living_bomb.up then
+        value = value + (debuff.living_bomb.damage * debuff.living_bomb.ticks_remain)
+    end
+    if debuff.nether_tempest.up then
+        value = value + (debuff.nether_tempest.damage * debuff.nether_tempest.ticks_remain)
+    end
+    return value
 end )
 
 -- Range
@@ -1706,7 +1802,6 @@ spec:RegisterOptions( {
     package = "Fire",
 } )
 
--- Register default pack for MoP Fire Mage
-spec:RegisterPack( "Fire", 20250517, [[Hekili:TzvBVTTn04FldjH0cbvgL62TG4I3KRlvnTlSynuRiknIWGQ1W2jzlkitIhLmzImzkKSqu6Mi02Y0YbpYoWoz9ogRWEJOJTFYl(S3rmZXRwKSWNrx53Ntta5(S3)8dyNF3BhER85x(jym5nymTYnv0drHbpz5IW1vZgbo1P)MM]] )
-
--- Register pack selector for Fire
+-- Register default pack for MoP Fire Mage  
+-- Updated October 1, 2025 - Use the MageFire.simc file for optimized priorities
+spec:RegisterPack( "Fire", 20251001, [[Hekili:1I1)VTjou8)wIMuuRwxwcPSDRQzs3oDt3QU2vDSt73aCioTwfWCGPz9uf)TFVNbcyWgs76nPScy73397Z79Cx4(nxNneb19kR5w2lMpFXmRLZTpDPRJ4HeQRtcj4oYnWdXKi4)Ze0m8JpeYjBWdNXZtdGfCDwNZcfFj2DTrkMLqdCV6DWt3Y2SHwUvAwGRZ3ULLv4J)if(vSSWNVfEpqW4Xf(HSmbS8wEAH)FqVJfYM56i)OufOBj5Hc4XRKQenMSoKUX9tUoLea(098as5JiptzjLV871FVI4rKyqg2DlfzkFNRdSvbnLrCDWLMLeik8pFvHV1CxbOKDyxZUxNVD7S08yQhFRxcFhnDwknIWIZkpFajt4jyOvTVmcuEPbfrHKDuMlbYlGFf()fSRsl41L7RrWeKqASOJOvXOc)Pf(hv4Rr43W3b09Xh1UOEnRW)yuto1GMiszX3rflGiJqUO97DSIKq4njfNLNifr5NVLl8YePuYDQFMc2W4B8YtGp3Xa9RiLk8)Mu4YO)tonoaEAhtClexXbxRJKGf(VgJZKeQW)VbQFezZ9eyZGjkjK8GuXShwXSEzvefJKfY)3nCWxFUTHlMfWJwNNHck412MsZUfpVC5ML8GD6Dpjmhw4JGl905Y)1OInBffK3BWq0ibd5hEnQVPzIgpspv5qSqvQapeJuBP8EO0CpKsc0xYMhq59xmiValybcJsrFd6r69G7VLKa2xKu4nLiw8g5Qhx4F2AAAgn9oq4pJKgqG7sYlsNPCT6mnkXzjpKYxhcxXQZj3AtsZiQGFWGc26WM9hswb)9nf(5z0o3lWCKxxPvLjyUe0R)3mvOYSy(OHx7nphIEH3255cff7TxZVuQX7imrfuqMaqIGCARPWRW5ui2VUNHJQ5tmEnFIzDxQ4MaZEYXPplrOjuRFq3gEoiuE43LsAxCWXc4uIPUUEt1aVX4QimMIjFhiwQiY1c)lv0MAkeLmLv4ByYqBPg3fFUrQ(j4nMGEVjtfv1sNrffetWRdvOqNYdWl6YQ8AuIXTcLMbtyGHS7XmZRHtde7HaiyrqsVHcfSb1Ob1s9dp1V6SutrkTOIsjktknvTxwWcW0PDRicklK9gyVLi5La9)P8yf(FcohKwigO5vuXTYinAucTYW2fETw1IL71tuT1dt7S1ODQesNc2zh16ikDMWC3MYHYVkT7kMIpJlSxPtscz1fe3tWAOrpHIkdHBTHQuvMGuBvOGQ48B7xOk6tM(f2Esi9h4dXBy4QzQrLMQqz5hkRqbLLUOFhscJjARDOSKbtvwOEH4u7X3hErEX7xow1ww2duSLvx4W2UpmABMeruW92WOv5oShHJlThQ8olt4qS4T00yUNUm8FPCniGRmZUGlDQ3ttfDkTgxPfEq)I)6vL34WzkoyPoycHAllLUMegoeav3MbEtlvbL(s0Wr0cJYQAD(OSAgB5GRg2aAHvx0c1ueSWqeRONTbpRdGBHXfKb7ZUQA21PaPyez1jDAr9g6zf(FMLwEH)RW3Jy)lMHbsQev4)D(3DyrWDLl5xJwBCycWIFnqWxJzOxCc27TLT2R1DzETbD0ecrCiGj2JKgXtvSETxqxB59YDQTVAtOY1DhV3xXl)Bdd00MzlwkRl6C4(RE3T0TTJKgdHfqE0VeLWtLwtRotwzwXfO)LVLfcoSxbg)NKB6IxnKNQ4cydVs22qz8tXfLmpB2(qQxV6T9CENW2UAIr)QEI02D1C(oEx9hvXZGNDWbLOLeLUpdRv7xKKgCCNVS2WCPCKnxNY4GN9bS(eiH5fsR6iJNApRagSF6ridQNv15RSMBCtsBJ2b5C(QMH4ukighTuBQ)KmHtpsd)rKZhF8GeSJRKSxUz60wvGoF9GRzrNGJDzv9OP2B1uWxM2pR8unixJrDRxkQ3GEBGIMNd0uD1i8XvvZ)rNfV)0BAlkn8DVOmMMmD8z40MdQ9cFc2E6QUJeXGz4O(YtvSNMw0o(LyMn6mGYD90g3sB9xjVYpTsoKa(Io3e9bj7nzguMjAIGMyszglkP1mmEjyNUXLuzoF(t7WONEYpTRE6aT4)Xv2g58tKlAhPbalvzA0pjIbbvgwUTRbSEED(3MZTgVWjkTZVAXj9AXF1YwaEAMBX0jgMyrBoQ2V)bWu7wmv)4ek5R(bjuzQmnzG2swth)T4y)5eaCtZecQ4Zb3YVzWm9Wtvn)B(y6UTmXy)(6qGAIWo1EO1pFf0FVjuuzF9MLY(TVd3tSnqSYw2RSSp7MTBlmkDZ3axRGnBoJO6iv0K37z0eTsayvVOgQJyYWLe1hLCSYqQVBiBjwNGaTCLdaIq7Yor5Btz3jB3Y9)c]] )

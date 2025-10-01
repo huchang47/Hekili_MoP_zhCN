@@ -28,16 +28,16 @@ actions+=/call_action_list,name=bear
 actions+=/call_action_list,name=cooldowns
 
 ### Mitigation (Rage-based defensives) ###
-actions.mitigation+=/savage_defense,if=rage>=rage_cost_savage_defense&!buff.savage_defense.up
+actions.mitigation+=/savage_defense,if=rage>=60&!buff.savage_defense.up
 actions.mitigation+=/enrage,if=rage<40&buff.enrage.down
 
 ### Defensives ###
-actions.defensives+=/survival_instincts,if=health.pct<survival_instincts_health_pct
-actions.defensives+=/barkskin,if=health.pct<barkskin_health_pct
-actions.defensives+=/frenzied_regeneration,if=buff.frenzied_regeneration.down&health.pct<frenzied_regeneration_health_pct
+actions.defensives+=/survival_instincts,if=health.pct<30
+actions.defensives+=/barkskin,if=health.pct<50
+actions.defensives+=/frenzied_regeneration,if=buff.frenzied_regeneration.down&health.pct<50
 
 ### Healing ###
-actions.heal+=/healing_touch,if=health.pct<healing_touch_health_pct&(buff.nature_swiftness.up|buff.predatory_swiftness.up|buff.dream_of_cenarius_healing.stack>0)
+actions.heal+=/healing_touch,if=health.pct<30&(buff.nature_swiftness.up|buff.predatory_swiftness.up|buff.dream_of_cenarius_healing.stack>0)
 actions.heal+=/rejuvenation,if=health.pct<70&!buff.rejuvenation.up&(buff.predatory_swiftness.up|buff.dream_of_cenarius_healing.stack>0)
 
 ### Cooldowns ###
@@ -55,17 +55,17 @@ actions.threat_generation+=/call_action_list,name=multi_target,if=active_enemies
 actions.threat_generation+=/call_action_list,name=single_target
 
 ### Multi-Target Rotation ###
-actions.multi_target+=/pulverize,if=debuff.lacerate.stack>=3&debuff.lacerate.remains<=4
+actions.multi_target+=/pulverize,if=debuff.lacerate.stack>=3&debuff.lacerate.remains<=4&auto_pulverize
 actions.multi_target+=/lacerate,cycle_targets=1,if=!buff.berserk.up&(debuff.lacerate.remains<=4|debuff.lacerate.stack<3)
-actions.multi_target+=/faerie_fire,cycle_targets=1,if=(debuff.faerie_fire.down|debuff.faerie_fire.remains<=6)
+actions.multi_target+=/faerie_fire,cycle_targets=1,if=(debuff.faerie_fire.down|debuff.faerie_fire.remains<=6)&faerie_fire_auto
 actions.multi_target+=/demoralizing_roar,if=(debuff.demoralizing_roar.down|debuff.demoralizing_roar.remains<=4)
 actions.multi_target+=/mangle
 actions.multi_target+=/thrash,if=!buff.berserk.up
 actions.multi_target+=/swipe_bear
 
 ### Single Target Rotation ###
-actions.single_target+=/pulverize,if=debuff.lacerate.stack>=3&debuff.lacerate.remains<=4
-actions.single_target+=/faerie_fire,if=(debuff.faerie_fire.down|debuff.faerie_fire.remains<=6)
+actions.single_target+=/pulverize,if=debuff.lacerate.stack>=3&debuff.lacerate.remains<=4&auto_pulverize
+actions.single_target+=/faerie_fire,if=(debuff.faerie_fire.down|debuff.faerie_fire.remains<=6)&faerie_fire_auto
 actions.single_target+=/demoralizing_roar,if=(debuff.demoralizing_roar.down|debuff.demoralizing_roar.remains<=4)
 actions.single_target+=/mangle
 actions.single_target+=/lacerate,if=!buff.berserk.up&(debuff.lacerate.stack<3|debuff.lacerate.remains<=3)

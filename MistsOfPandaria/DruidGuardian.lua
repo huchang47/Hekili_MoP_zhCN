@@ -715,43 +715,7 @@ spec:RegisterStateExpr( "healing_touch_health_pct", function() return emergency_
 spec:RegisterStateExpr( "rage_cost_savage_defense", function() return 60 end )
 spec:RegisterStateExpr( "rage_cost_maul", function() return 30 end )
 
--- Settings for Guardian Druid
-spec:RegisterSetting( "maul_rage", 20, {
-    name = strformat( "%s Rage Threshold", Hekili:GetSpellLinkWithTexture( spec.abilities.maul.id ) ),
-    desc = strformat( "If set above zero, %s can be recommended only if you'll still have this much Rage after use.\n\n"
-        .. "This option helps to ensure that %s or %s are available if needed.",
-        Hekili:GetSpellLinkWithTexture( spec.abilities.maul.id ),
-        Hekili:GetSpellLinkWithTexture( spec.abilities.savage_defense.id ), Hekili:GetSpellLinkWithTexture( spec.abilities.frenzied_regeneration.id ) ),
-    type = "range",
-    min = 0,
-    max = 60,
-    step = 0.1,
-    width = 1.5
-} )
 
-spec:RegisterSetting( "ironfur_damage_threshold", 5, {
-    name = strformat( "%s Damage Threshold", Hekili:GetSpellLinkWithTexture( spec.abilities.ironfur.id ) ),
-    desc = strformat( "If set above zero, %s will not be recommended for mitigation purposes unless you've taken this much damage in the past 5 seconds (as a percentage "
-        .. "of your total health).\n\n"
-        .. "This value is halved when playing solo.",
-        Hekili:GetSpellLinkWithTexture( spec.abilities.ironfur.id ) ),
-    type = "range",
-    min = 0,
-    max = 200,
-    step = 0.1,
-    width = 1.5
-} )
-
-spec:RegisterSetting( "max_ironfur", 1, {
-    name = strformat( "%s Maximum Stacks", Hekili:GetSpellLinkWithTexture( spec.abilities.ironfur.id ) ),
-    desc = strformat( "When set above zero, %s will not be recommended for mitigation purposes if you already have this many stacks.",
-        Hekili:GetSpellLinkWithTexture( spec.abilities.ironfur.id ) ),
-    type = "range",
-    min = 0,
-    max = 14,
-    step = 1,
-    width = 1.5
-} )
 
 spec:RegisterSetting( "defensive_health_pct", 50, {
     name = "Defensive Health Threshold",
@@ -1958,6 +1922,44 @@ spec:RegisterAbilities( {
 
 } )
 
+-- Settings that reference abilities (must be after abilities registration)
+spec:RegisterSetting( "maul_rage", 20, {
+    name = strformat( "%s Rage Threshold", Hekili:GetSpellLinkWithTexture( spec.abilities.maul.id ) ),
+    desc = strformat( "If set above zero, %s can be recommended only if you'll still have this much Rage after use.\n\n"
+        .. "This option helps to ensure that %s or %s are available if needed.",
+        Hekili:GetSpellLinkWithTexture( spec.abilities.maul.id ),
+        Hekili:GetSpellLinkWithTexture( spec.abilities.savage_defense.id ), Hekili:GetSpellLinkWithTexture( spec.abilities.frenzied_regeneration.id ) ),
+    type = "range",
+    min = 0,
+    max = 60,
+    step = 0.1,
+    width = 1.5
+} )
+
+spec:RegisterSetting( "ironfur_damage_threshold", 5, {
+    name = strformat( "%s Damage Threshold", Hekili:GetSpellLinkWithTexture( spec.abilities.ironfur.id ) ),
+    desc = strformat( "If set above zero, %s will not be recommended for mitigation purposes unless you've taken this much damage in the past 5 seconds (as a percentage "
+        .. "of your total health).\n\n"
+        .. "This value is halved when playing solo.",
+        Hekili:GetSpellLinkWithTexture( spec.abilities.ironfur.id ) ),
+    type = "range",
+    min = 0,
+    max = 200,
+    step = 0.1,
+    width = 1.5
+} )
+
+spec:RegisterSetting( "max_ironfur", 1, {
+    name = strformat( "%s Maximum Stacks", Hekili:GetSpellLinkWithTexture( spec.abilities.ironfur.id ) ),
+    desc = strformat( "When set above zero, %s will not be recommended for mitigation purposes if you already have this many stacks.",
+        Hekili:GetSpellLinkWithTexture( spec.abilities.ironfur.id ) ),
+    type = "range",
+    min = 0,
+    max = 14,
+    step = 1,
+    width = 1.5
+} )
+
 -- State table and hooks
 spec:RegisterStateExpr( "lacerate_up", function()
     return debuff.lacerate.up
@@ -2155,14 +2157,7 @@ spec:RegisterStateExpr( "auto_savage_defense", function()
     return charges_available >= 1
 end )
 
--- Settings-based StateExpr for SimC access
-spec:RegisterStateExpr( "auto_pulverize", function()
-    return settings.auto_pulverize
-end )
-
-spec:RegisterStateExpr( "faerie_fire_auto", function()
-    return settings.faerie_fire_auto
-end )
+-- Settings-based StateExpr for SimC access (moved after settings registration)
 
 spec:RegisterStateExpr( "rage_dump_threshold", function()
     return settings.rage_dump_threshold or 90
@@ -2278,6 +2273,15 @@ spec:RegisterSetting( "defensive_health_pct", 50, {
     step = 5,
     width = 1.5,
 } )
+
+-- Settings-based StateExpr for SimC access (after settings registration)
+spec:RegisterStateExpr( "auto_pulverize", function()
+    return settings.auto_pulverize
+end )
+
+spec:RegisterStateExpr( "faerie_fire_auto", function()
+    return settings.faerie_fire_auto
+end )
 
 
 
