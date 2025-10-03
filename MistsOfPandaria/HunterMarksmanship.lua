@@ -33,7 +33,7 @@ local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDeb
             cast = function(x) return x > 0 and x or nil end,
             aura = function(x)
                 -- Only predict focus if casting Steady Shot
-                if state.buff.casting.up and state.casting and state.casting.name == "Steady Shot" then
+                if state.buff.casting.up and state.casting and state.casting.name == "steady_shot" then
                     return "casting"
                 end
                 return nil
@@ -43,7 +43,7 @@ local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDeb
             end,
             interval = function() return state.buff.casting.duration end,
             value = function()
-                -- Predict 17 focus if Steady Focus buff is up, otherwise 14
+                -- Steady Shot provides 14 focus (17 with Steady Focus active)
                 if state.buff.steady_focus and state.buff.steady_focus.up then
                     return 17
                 end
@@ -216,12 +216,18 @@ spec:RegisterAuras( {
     },
         -- Master Marksman (Aimed Shot!); expose as master_marksman for APL compatibility
         master_marksman = {
-            -- Use the same aura as Aimed Shot! and alias it
-            id = 82926,
-            duration = 10,
+            -- Ready, Set, Aim... buff for instant/free Aimed Shot
+            id = 82925,
+            duration = 8,
         max_stack = 1,
             copy = "aimed_shot_instant"
     },
+        master_marksman_counter = {
+            -- Counter for Master Marksman stacks (hidden)
+            id = 34486,
+            duration = 30,
+            max_stack = 2,
+        },
     steady_focus = {
         id = 53220,
         duration = 20,
@@ -675,27 +681,28 @@ spec:RegisterAuras( {
         gcd = "spell",
             school = "physical",
 
-            spend = -14,
+            spend = function()
+                -- Steady Shot provides 14 focus (17 with Steady Focus)
+                return buff.steady_focus.up and -17 or -14
+            end,
             spendType = "focus",
 
             startsCombat = true,
             texture = 132213,
         
         handler = function ()
-                -- Track consecutive Steady Shot casts for Steady Focus buff
-                state.last_steady_shot = state.last_steady_shot or 0
-                state.steady_shot_chain = state.steady_shot_chain or 0
-                if state.last_steady_shot > 0 and (query_time - state.last_steady_shot) < 5 then
-                    state.steady_shot_chain = state.steady_shot_chain + 1
-                else
-                    state.steady_shot_chain = 1
+                -- Master Marksman: 50% chance to gain a stack on Steady Shot cast
+                -- At 2 stacks, gain Ready, Set, Aim... buff for instant free Aimed Shot
+                if talent.master_marksman.enabled then
+                    if math.random() < 0.5 then
+                        if buff.master_marksman_counter.stack == 1 then
+                            removeBuff("master_marksman_counter")
+                            applyBuff("master_marksman", 8) -- Ready, Set, Aim...
+                        else
+                            applyBuff("master_marksman_counter")
+                        end
+                    end
                 end
-                state.last_steady_shot = query_time
-
-                if state.steady_shot_chain >= 2 then
-                    applyBuff("steady_focus", 10)
-                    state.steady_shot_chain = 0
-            end
         end,
     },
     
@@ -824,24 +831,36 @@ spec:RegisterAuras( {
     
         aimed_shot = {
             id = 19434,
-            cast = 2.5,
-            cooldown = 1,
+            cast = function()
+                -- Master Marksman makes Aimed Shot instant cast
+                if buff.master_marksman.up then
+                    return 0
+                end
+                return 2.5 / haste
+            end,
+            cooldown = 0,
             gcd = "spell",
             
-            spend = function() return buff.aimed_shot_instant and buff.aimed_shot_instant.up and 0 or 50 end,
+            spend = function()
+                -- Master Marksman makes Aimed Shot free
+                return buff.master_marksman.up and 0 or 50
+            end,
             spendType = "focus",
             
             startsCombat = true,
         
         handler = function ()
-                -- Basic Aimed Shot handling
+                -- Consume Master Marksman buff if present
+                if buff.master_marksman.up then
+                    removeBuff("master_marksman")
+                end
         end,
     },
     
         chimera_shot = {
             id = 53209,
         cast = 0,
-            cooldown = 9,
+            cooldown = 10,
         gcd = "spell",
         
             spend = 45,
@@ -1551,4 +1570,4 @@ spec:RegisterOptions( {
     width = "full"
 } )
 
-    spec:RegisterPack( "Marksmanship", 20250914, [[Hekili:DJvxVTTnx4FlfdZTflvV2oXjPBXbyVfyOnaRyyUxljAjQycljQrsLmdeOF77qs9bLeLSsMtVyx0MeXdp88fFoph6UW9BUBcrcS7xxoF5Q5FCXfolpF55lUYDJ4qg2Dtgkyp6E4xsrjW))7i2EEckLVJKjx8qmffkvcNMZcabC3SnNel(sQ7w7A(c3nOCXokZDZMK8igzV7MDKWqSEhyEG7MVTJWl8L)dv4xAbf(0i4VdeeAAHFmHlGLJOSc)pJ3tIjoUBuFuzmK07JXEce7ESa(Wxv(jofTngh6()D3eWicmJGC38Mc)T5rroCbgfEWlIgKZDYZk8F6jBRWWjiskCY3u4Vc8eL5ahOwg(oQWvaES84QwlyhjbZq6fnmcqUZnLd5LKZcXmpAKxaJ(iVJWxmMpeI12kMLHtfECbeba3WWcnxrQUvdQoLMqGrhQSzpWFfOurl11SSuxx(C8JRg8GvH4c)Bl8VEvH)Sc)aknoK(yQJzmSjhaco35sJtMfGsX1w11dEq6cdNDyuSyNtwGaYNRl8xoVrxqjvCTM(4GA64w4YHcAlMBg1mRGAfVeYlfrO84Juilv0dypCkoHGLhn4qNBufIa)r)hEY7j6BlE6B1ikUUS1q5YlJmsMwbFcXWr5Xf()kjbUuUdXX)mCFCl9b4Q51Z)XcFDuTWxhwpd(felmaXfQ9Gdl83aEhSN7VNH5CWAJpu4)ibadYfYs4y0bO4SW)t6yPw(XCHrZOYYO5TCZaTl4b5H6BFd5U)jkJaw8VryyjoalvAPPqQg(lCS8hGpdbGi0dsmO2oie(dZtaqKh3rIH9VhJZA7z00piiQq)eCo1fsM0G8Ia7rbpnRkE3RkUJtZI8KMVneKjvB0glvvpMXWb0KTOjcTI4z4aHeoqSd7Td94(2qj9w2wTyJAFxHphlKWyCNeODKhk9GgUUmGq4EBPCih8EvyQ8IriCVCxEkOeUNCBf(qSAUzGuMq8euVqcwv9SWaG3CN2QDSbgJ)7SyQSm3tajVw(C7LSLB0b)hiSeCk4pG2B2Dgv9ZkqClWlDrqKxWhnxjqXq3bN7JrkJccFoLY1gi2uaMeXsTCfW962bndHhpL(Q0e(8j2e(ct5saCwInPgUD5ZTzsRMLMHilTjNs3btunl5yRQ4yi7Wpyek4IQwjVRcz)2sK(p)hV)KL(EU0LoDmGgco08EuRa1NhOFg4ka0LkMb4dhQa)dZzAqFJ4l0vmKw4Nk3xqmjRULGnEqqv0vZNirOfhRi91)(9LtUIT80411R1H(JWDCz7JaLKHdX2QsQKPPRPTB9ws(7qPH8XB(cNCS0R0IoLW(weJbJWypKxTOkC3yiLFUoWoM(ZOpcnNKLewpHML7Cg1l4AHxELqcOkEpwSOZLHVP)mVkAulMfM3Du1Yo7zP7OCSlDYimdOAz3dlxRxfReHXahwlMUiSIx0lcY0c7qRaMA(yketLz1Vy6)IaPwrYUCQJ0TWks8uUM96JUnQtEIgBDQn(Hp8aC7vkM(jwUAoy9pIyPsQXYhrbQnjjzuMO8HsEBlU8VTWNH)RCOmeIsCAcinkxqtqc5hca0T7XCNI7u6jIgdd9OANHYzYoEaYb89CUuysAzhqTzRFEgzfROsovdViAEAlPddLchIeOTQXjVRW)dWN790dWc39fLNipTR68mqGncbkyicioS6c54j0iySRQGi3PEELFA9)R)0gNrIw)MHhuP4oBQXCEaPcExVrsE6P2JJ8(zs9yzqK1ZN1FaKBxSY(b3EYbLTp04g2vGE4HZKZxS2C8c7s3KlK5GsjGV3DKrT(GXmKwuPJw(ue3U(8I7(H20G(E(ach3Snyqln)Ee6V965kp47ZBcCC7TS1L0w73qzwpZ)M1s7)ykTf2GrY2PMTMSCOl)m7IvXmZ(QnMR91bmfpOGm5mjjH1kww2Dv7BVK4KotAJ(1m7uVSRTAksg6RhDRzdr1sghHcNkUstXFR4r9mKDPz6QvEuLlQ7G0G01HGXtpni5IBwnSQnBVnSuJuZ0ZwnzwyIT1LmI9GJMENrIQnLXzwPlot5U3SA(iEqniyDDO1Nh)ffdamtqadYgg2VfcnZgMmJ2tUD9IrszgCnKNJEhxVA2OuwUfORmSkRFCdRyN3SE5KJSJBelNunE5nUx0BAyuv10r40EfQTITFbQZHp97eGFFcEIIFzONOyilSDsSSi8Q5hPMAXqQ716QWG50YsMt4mDnhAzR6tBruJsTxazCOtV4P)MTMxV8yyflSPQxRCQHX(VhyZAUYS1QgQ(eMi1k0EsuVwZ7r3DLNdSBVEmJ4tQjlD)Nd]] )
+    spec:RegisterPack( "Marksmanship", 20251003, [[Hekili:vIv4UTTnq4NLGce0I1Qklh3TaehG0HnSM12fanG(pjrlrhrejrbsQKAad9SVJKsKuYYsz)OP2K39DhV77oEMrRI(3OWmKah99a)GnR89d8cc2SE96OqXHACuynk9j0JWhQqLWF)gI9eVevXZj1Ynpuqrzsq40gwkiqu4UgsH4lvr7Mgzq0ACkS6MRIcZjzzyTOyEAu4)Mt4TjY)HAt6mDBcDp89ubHw1Muq4cy79uwBYFHFIuq8a)Gr3tkaR)M30M46IGmnvcmi7hGnOp0MSXBJNF79sb)mIJZa0bu)b9hHKsENm39WxBt(k9rsA79T3RTm3RMHtPL7qIFz7hZvOYJlbB9EY(TVLJfcs1JCp5kXOQdhpkqShXcpcpEhLZF3LsCEghNrfEUQV1)YojfKsCSGgNrW3UAZ0ggjdEIy6(yroooh9IY8xSRz)EVt3ZRP(YleOcCLy0UegTslcUcTRaIdVcZzuArBoXEwlkfOK(meUM2O1u5AsByIQ6L4NXjH4wwmpNkKPlzM9lYWlRPwyuaelLQI6kbLGBZpPiUq5nATVRrq)GCT2KukTiJ(sLKqUxXJc4dWevueR)ASKz(EzvYwJwkZaE3TBd6bpeZQH0b8bLjtkreWRQqvPyxG5AXIvoMkCNHvb1bBaHYEC)9CWomOQjughuK6E3yGdRfBq06pXSNLLt71)jTzWrCVAxDatrK0l0ZBUuPWnB343d33GiNms1xhc1ZvCbsEMVtMP6CrhtytGsZOoMLkqufismCoOFRPqq(G(uQ847(N)WfSs5(gW6k6Wv4scMF721MKmlfvH7dxiE)jpjRPSEGZPe0aOsQB3(j)JhFB3NVA9L9HAp34RhdlZUGebDve7kO0SIgUWwKWq1KS49eggw7DgwIaJYo07D1mcLrehKP0QmYWsbjzrj9SbW4o2VhKjsFcCinzsRO6C07T3S9QzW(IZKD67HLJrfICV6uXTBV2qj(Bsrr)HHaec8pXPnIbeEOtEX4stly3SnWaMljkjhXYuLQNLoTuQPh2pJym42Mp(a9fO18ig6o9MovbDRykdUW2orF6CBVPAQ1bRdgM1SnH7QiHGbucnDAWuXB6nz6kAA8aAyjwtVpkUSHLbzrO)CkJ(c3XXozVtVLWfkGtvwJZCdp9lnVIzG3fVdd5phvTloVYfhQ(zmRHN7ORzT5v9XcKSRGaUx2rzNvNx9goCDMax(EEbvSnhvLXn1DdQNT9f4hQq1GACOwwEHgtvF)kqxaY)ewS6)HSbrHpd8kqy9Sx(xVcg16feRsA6OWVuwtzczn06rZv51EFuO6tYr6mgc(Y3vtkQfok0EiJc7IurFosaMtkLDLWuOTfMrqW0KlWSSGFIisGxVeWJjCw863rcZvlbZPKplq29KqTzjOoHlArYSLeOpTeqtWlTq5SPeSFDey9IPiPUyFkzTn5s7mdttyHGjWZ6rdm3VDgZ1ZA7vW8DqNRNxNGr6eejd3WVpypcUz3qfptaB0iDw0DN(BbMkCnrBYTBHz9CuF0GE6YKy9pkYwOmlt9cy4IPhIZHS6UJHXA8cNRWgv5TiDC4yBQKD3ep3ah1n(wROLCEQ5zgdWPk2Cj8u0slqs5TdOPJ7RTWyNMBk6MfMUJIu7p53MC8yBYBnhq5QxTEi)EQPb6Y6kbHK1jJSnyJr1oVZ5OBNyCk((8bXHdQ1MyCOZoWMobELBdpZScs7VYFog55M2wAYtgdthGU2)82AXAtxWK(DGdyMzavqD(k0xts8CmXvlEtYOj76t6tmFN1gD6OmWI3XCYyFwCmBPqAJBTVBKEqPVq((hD)A45BpcveN8of6ALHVvbWMvN6UAZXVyHIu67YqCE5ci83MaEU9MhhnNVXBpBCY3uWMgEnVMHt2)eWwSj9YoXcpVrVy6h54C(IrJ5hmz8BG4swu)FFZ)j47J4jWcOgro0BpeASUNrEsTy0)b]] )

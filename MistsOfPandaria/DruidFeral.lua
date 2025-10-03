@@ -1129,10 +1129,16 @@ spec:RegisterStateExpr( "tf_energy_threshold_advanced", function()
     local clearcastingDelay = buff.clearcasting.up and 1.0 or 0.0
     local totalDelay = reactionTime + clearcastingDelay
     
-    -- Energy threshold: 40 - (delay_time * regen_rate)
-    local threshold = 40 - (totalDelay * energy.regen)
-    
-    return math.max(0, threshold)
+    -- Base calcTfEnergyThresh equivalent: 40 - (delay_time * regen_rate)
+    local threshold = math.max( 0, 40 - (totalDelay * (energy.regen or 0)) )
+
+    -- WoWSims override: Don't over-cap Energy with TF, unless next special is a DoC Rip.
+    -- tfEnergyThresh := TernaryFloat64(rotation.UseHealingTouch && cat.DreamOfCenariusAura.IsActive() && (cat.ComboPoints() == 5), 100, calcTfEnergyThresh())
+    if settings.use_healing_touch and buff.dream_of_cenarius_damage.up and (combo_points.current == 5) then
+        return 100
+    end
+
+    return threshold
 end )
 
 -- Advanced Tiger's Fury timing logic
@@ -2167,6 +2173,14 @@ spec:RegisterSetting( "pool", 1, {
     desc = "Controls how aggressively the rotation pools energy for optimal timing.\n0 = No pooling (cast immediately)\n1 = Light pooling (pool for major abilities)\n2 = Heavy pooling (optimal rotation timing)",
     type = "select",
     values = { [0] = "No Pooling", [1] = "Light Pooling", [2] = "Heavy Pooling" },
+    width = "full",
+} )
+
+-- Use Healing Touch (WoWSims parity)
+spec:RegisterSetting( "use_healing_touch", true, {
+    name = "Use Healing Touch (DoC)",
+    desc = "Enable Healing Touch usage for Dream of Cenarius snapshotting logic.",
+    type = "toggle",
     width = "full",
 } )
 
