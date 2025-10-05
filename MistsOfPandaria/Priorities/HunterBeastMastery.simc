@@ -81,12 +81,11 @@ actions+=/glaive_toss,if=talent.glaive_toss.enabled&focus>=15
 actions+=/arcane_shot,if=buff.bestial_wrath.up&focus>=35
 actions+=/arcane_shot,if=focus>=79
 actions+=/explosive_trap,if=!debuff.explosive_trap.up
-actions+=/cobra_shot
 
 ## Bestial Wrath Setup
 actions.bestial_wrath_setup+=/fervor,if=talent.fervor.enabled&focus<=37
 actions.bestial_wrath_setup+=/serpent_sting,if=!debuff.serpent_sting.up
-actions.bestial_wrath_setup+=/cobra_shot,if=debuff.serpent_sting.up&debuff.serpent_sting.remains<12
+actions.bestial_wrath_setup+=/cobra_shot,if=debuff.serpent_sting.remains<12
 
 ## Cooldowns
 actions.cooldowns+=/bestial_wrath,if=pet.alive&focus>=50
