@@ -45,7 +45,7 @@ actions.burst_window+=/aimed_shot,if=focus>=50&cooldown.chimera_shot.remains>=1
 actions.burst_window+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_toss.ready&focus>=15
 actions.burst_window+=/aimed_shot,if=focus>=50
 actions.burst_window+=/steady_shot,if=focus<=40
-actions.burst_window+=/arcane_shot,if=focus>=30
+actions.burst_window+=/arcane_shot,if=focus>=90&cooldown.chimera_shot.remains>=3
 
 ## BURN PHASE (>80% HP) - Cast as many Aimed Shots as possible
 actions.burn_phase+=/steady_shot,if=!buff.steady_focus.up|buff.steady_focus.remains<=4
@@ -54,10 +54,10 @@ actions.burn_phase+=/serpent_sting,if=!debuff.serpent_sting.up
 actions.burn_phase+=/aimed_shot,if=buff.master_marksman.up
 actions.burn_phase+=/aimed_shot,if=focus>=50&cooldown.chimera_shot.remains>=1
 actions.burn_phase+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_toss.ready&focus>=15
-actions.burn_phase+=/arcane_shot,if=focus>=60&cooldown.chimera_shot.remains>0.6&!buff.rapid_fire.up&!buff.bloodlust.up
+actions.burn_phase+=/arcane_shot,if=focus>=90&cooldown.chimera_shot.remains>=3&!buff.rapid_fire.up&!buff.bloodlust.up
 actions.burn_phase+=/steady_shot,if=focus<=40
 actions.burn_phase+=/aimed_shot,if=focus>=50
-actions.burn_phase+=/arcane_shot,if=focus>=30
+actions.burn_phase+=/arcane_shot,if=focus>=95
 
 ## SUSTAIN PHASE (20-80% HP) - Standard rotation with Steady Focus maintenance
 actions.sustain_phase+=/steady_shot,if=!buff.steady_focus.up|buff.steady_focus.remains<=4
@@ -67,11 +67,11 @@ actions.sustain_phase+=/aimed_shot,if=buff.master_marksman.up
 actions.sustain_phase+=/multi_shot,if=active_enemies>=3
 actions.sustain_phase+=/fervor,if=talent.fervor.enabled&focus<=50
 actions.sustain_phase+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_toss.ready&focus>=15
-actions.sustain_phase+=/arcane_shot,if=focus>=60&cooldown.chimera_shot.remains>=2&!buff.rapid_fire.up&!buff.bloodlust.up
+actions.sustain_phase+=/arcane_shot,if=focus>=90&cooldown.chimera_shot.remains>=3&!buff.rapid_fire.up&!buff.bloodlust.up
 actions.sustain_phase+=/aimed_shot,if=focus>=50&cooldown.chimera_shot.remains>=2
 actions.sustain_phase+=/steady_shot,if=focus<=40
 actions.sustain_phase+=/aimed_shot,if=focus>=50
-actions.sustain_phase+=/arcane_shot,if=focus>=30
+actions.sustain_phase+=/arcane_shot,if=focus>=95
 
 ## EXECUTE PHASE (<20% HP) - Weave in Kill Shot
 actions.execute_phase+=/steady_shot,if=!buff.steady_focus.up|buff.steady_focus.remains<=4
@@ -82,11 +82,11 @@ actions.execute_phase+=/aimed_shot,if=buff.master_marksman.up
 actions.execute_phase+=/multi_shot,if=active_enemies>=3
 actions.execute_phase+=/fervor,if=talent.fervor.enabled&focus<=50
 actions.execute_phase+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_toss.ready&focus>=15
-actions.execute_phase+=/arcane_shot,if=focus>=60&cooldown.chimera_shot.remains>=2&!buff.rapid_fire.up&!buff.bloodlust.up
+actions.execute_phase+=/arcane_shot,if=focus>=90&cooldown.chimera_shot.remains>=3&!buff.rapid_fire.up&!buff.bloodlust.up
 actions.execute_phase+=/aimed_shot,if=focus>=50&cooldown.chimera_shot.remains>=2
 actions.execute_phase+=/steady_shot,if=focus<=40
 actions.execute_phase+=/aimed_shot,if=focus>=50
-actions.execute_phase+=/arcane_shot,if=focus>=30
+actions.execute_phase+=/arcane_shot,if=focus>=95
 
 ## Cooldowns (after opener)
 actions.cooldowns+=/rapid_fire,if=time>10

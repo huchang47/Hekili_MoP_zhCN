@@ -217,22 +217,21 @@ spec:RegisterAuras( {
         -- Master Marksman (Aimed Shot!); expose as master_marksman for APL compatibility
         master_marksman = {
             -- Ready, Set, Aim... buff for instant/free Aimed Shot
-            id = 82925,
+            id = 82926,
             duration = 8,
-        max_stack = 1,
-            copy = "aimed_shot_instant"
-    },
+            max_stack = 1
+        },
         master_marksman_counter = {
             -- Counter for Master Marksman stacks (hidden)
-            id = 34486,
+            id = 82925,
             duration = 30,
-            max_stack = 2,
+            max_stack = 2
         },
     steady_focus = {
         id = 53220,
         duration = 20,
         max_stack = 1,
-        haste = 0.15,
+        haste = 0.15
     
     },
 
@@ -346,23 +345,18 @@ spec:RegisterAuras( {
             debuff = true
         },
 
-            lock_and_load = {
+        lock_and_load = {
         id = 56453,
         duration = 8,
         max_stack = 3,
-    },
+        },
 
         piercing_shots = {
             id = 82924,
-        duration = 8,
+            duration = 8,
             max_stack = 1
         },
 
-        aimed_shot_instant = {
-            id = 82926,
-            duration = 10,
-            max_stack = 1
-        },
 
         blink_strikes = {
             id = 109304,
@@ -857,6 +851,26 @@ spec:RegisterAuras( {
         end,
     },
     
+        -- Master Marksman proc version (spell ID changes when buff is active)
+        master_marksman_aimed_shot = {
+            id = 82928,
+            cast = 0, -- Instant when procced
+            cooldown = 0,
+            gcd = "spell",
+            
+            spend = 0, -- Free when procced
+            spendType = "focus",
+            
+            startsCombat = true,
+            
+            copy = "aimed_shot", -- Link to main aimed_shot for keybind sharing
+        
+        handler = function ()
+                -- Consume Master Marksman buff
+                removeBuff("master_marksman")
+        end,
+    },
+    
         chimera_shot = {
             id = 53209,
         cast = 0,
@@ -1283,19 +1297,6 @@ spec:RegisterAuras( {
         handler = function ()
                 -- Passive talent, no active handling needed
         end,
-    },    
-
-        careful_aim = {
-            id = 82926,
-        cast = 0,
-            cooldown = 0,
-            gcd = "off",
-        
-        startsCombat = false,
-        
-        handler = function ()
-                -- Passive talent, no active handling needed
-        end,
     },
     
         -- Pet abilities that can be talented
@@ -1570,4 +1571,4 @@ spec:RegisterOptions( {
     width = "full"
 } )
 
-    spec:RegisterPack( "Marksmanship", 20251003, [[Hekili:vIv4UTTnq4NLGce0I1Qklh3TaehG0HnSM12fanG(pjrlrhrejrbsQKAad9SVJKsKuYYsz)OP2K39DhV77oEMrRI(3OWmKah99a)GnR89d8cc2SE96OqXHACuynk9j0JWhQqLWF)gI9eVevXZj1Ynpuqrzsq40gwkiqu4UgsH4lvr7Mgzq0ACkS6MRIcZjzzyTOyEAu4)Mt4TjY)HAt6mDBcDp89ubHw1Muq4cy79uwBYFHFIuq8a)Gr3tkaR)M30M46IGmnvcmi7hGnOp0MSXBJNF79sb)mIJZa0bu)b9hHKsENm39WxBt(k9rsA79T3RTm3RMHtPL7qIFz7hZvOYJlbB9EY(TVLJfcs1JCp5kXOQdhpkqShXcpcpEhLZF3LsCEghNrfEUQV1)YojfKsCSGgNrW3UAZ0ggjdEIy6(yroooh9IY8xSRz)EVt3ZRP(YleOcCLy0UegTslcUcTRaIdVcZzuArBoXEwlkfOK(meUM2O1u5AsByIQ6L4NXjH4wwmpNkKPlzM9lYWlRPwyuaelLQI6kbLGBZpPiUq5nATVRrq)GCT2KukTiJ(sLKqUxXJc4dWevueR)ASKz(EzvYwJwkZaE3TBd6bpeZQH0b8bLjtkreWRQqvPyxG5AXIvoMkCNHvb1bBaHYEC)9CWomOQjughuK6E3yGdRfBq06pXSNLLt71)jTzWrCVAxDatrK0l0ZBUuPWnB343d33GiNms1xhc1ZvCbsEMVtMP6CrhtytGsZOoMLkqufismCoOFRPqq(G(uQ847(N)WfSs5(gW6k6Wv4scMF721MKmlfvH7dxiE)jpjRPSEGZPe0aOsQB3(j)JhFB3NVA9L9HAp34RhdlZUGebDve7kO0SIgUWwKWq1KS49eggw7DgwIaJYo07D1mcLrehKP0QmYWsbjzrj9SbW4o2VhKjsFcCinzsRO6C07T3S9QzW(IZKD67HLJrfICV6uXTBV2qj(Bsrr)HHaec8pXPnIbeEOtEX4stly3SnWaMljkjhXYuLQNLoTuQPh2pJym42Mp(a9fO18ig6o9MovbDRykdUW2orF6CBVPAQ1bRdgM1SnH7QiHGbucnDAWuXB6nz6kAA8aAyjwtVpkUSHLbzrO)CkJ(c3XXozVtVLWfkGtvwJZCdp9lnVIzG3fVdd5phvTloVYfhQ(zmRHN7ORzT5v9XcKSRGaUx2rzNvNx9goCDMax(EEbvSnhvLXn1DdQNT9f4hQq1GACOwwEHgtvF)kqxaY)ewS6)HSbrHpd8kqy9Sx(xVcg16feRsA6OWVuwtzczn06rZv51EFuO6tYr6mgc(Y3vtkQfok0EiJc7IurFosaMtkLDLWuOTfMrqW0KlWSSGFIisGxVeWJjCw863rcZvlbZPKplq29KqTzjOoHlArYSLeOpTeqtWlTq5SPeSFDey9IPiPUyFkzTn5s7mdttyHGjWZ6rdm3VDgZ1ZA7vW8DqNRNxNGr6eejd3WVpypcUz3qfptaB0iDw0DN(BbMkCnrBYTBHz9CuF0GE6YKy9pkYwOmlt9cy4IPhIZHS6UJHXA8cNRWgv5TiDC4yBQKD3ep3ah1n(wROLCEQ5zgdWPk2Cj8u0slqs5TdOPJ7RTWyNMBk6MfMUJIu7p53MC8yBYBnhq5QxTEi)EQPb6Y6kbHK1jJSnyJr1oVZ5OBNyCk((8bXHdQ1MyCOZoWMobELBdpZScs7VYFog55M2wAYtgdthGU2)82AXAtxWK(DGdyMzavqD(k0xts8CmXvlEtYOj76t6tmFN1gD6OmWI3XCYyFwCmBPqAJBTVBKEqPVq((hD)A45BpcveN8of6ALHVvbWMvN6UAZXVyHIu67YqCE5ci83MaEU9MhhnNVXBpBCY3uWMgEnVMHt2)eWwSj9YoXcpVrVy6h54C(IrJ5hmz8BG4swu)FFZ)j47J4jWcOgro0BpeASUNrEsTy0)b]] )
+    spec:RegisterPack( "Marksmanship", 20251005, [[Hekili:TR1wVTnUs4FlbfRrkAJRTtCVSioaT94IMSyZMtvk65jjrlrxleDBjPs2aeOF77qrDHsIux8M098qFib2ICUqoFZWpowMZnV20WfXWMxUy2ILZNnB505VE2jZxyAWUpgBAeJCUb9D4dHOa4))oICdnafs35fZh8E)iKlxj0OeIdmbtJnjE(SZdn30uZWKIXoW3xcFCNNRlwmjm1X046DE0uB(FOu7CJMAhTf(UdZlkm123JYGH3grsT)m(gpFVPMgzpKB)OyCiMaF6YS1KqitdNDEbycYIUlIzAGdrB8XUMFWKbUbFEvpXWH4XWepeSYr(4q2ukdfeJDXtlMuPwlgHRMJLnhbf75AT1JGBySt6ZyiRGeIlMyfT1YHeDhTTvBnfUIxQvXhKA7I3KSD7ukMa7omlkZl87ttILwiYJWv3RLxnugg5EVQ9U3mSP9wToxMFfGarjwb5yQAEgcIBUcDck6DdZEZNnSyp)R)f2jHHTI3HO4syJUnsX2OWUBJCsOGVMA)WdQgHGdqEHas90vP2NO2TlGF97Q1XxaQ3x1K0dV2luGEq1iJBVwRI4Z)wSfK0g4HHnRZGnRJRutqIpZRunVPVSNTyYTrKIuMu7j86eqWqeewoRsXIz2n4mxPF3hXDrweLwtZorr(Ur3fwBceEWv2W8f08LvgwAYLiALwxs(3nRUbLHjv4SSTUSjwGuRkdLHtLgzJFuKRFcLvpOrCqH4YTBrAuFo3Yb7Cl0bpMRpPtk8DYmTjrZ1xeVMNQ1boEiY)UL62Qy8JV2IaWA3LqyiY3XSPEulhKilRk1pkjKNnvRUGKskNhcs9fFXIFQxn1dlQYTA(GwItRlIn0YcjkumjjSB9YJbaKqwX5N2QOYZqCxvy0YAP1rOs2Ctcb(8DEHWksvrQHy584WomYNTBASdd21sTF7SMgkm)CbfLW2tZW3exu3o1pcsrzo9MssluyRcs1k1cmAmb7efSb1dO8WuBkMXrJ0P8A5wOW7fbIk46gOCvQ9ZZY0Zlz7cP37YWS0SJasTHLMOwqUCCyduOZY1dNT)kxguwsvW92h7I4SgzCspSDyRDO7UrQOwb7PAZXJaBuztSnhQwktvQXiDcfZOYfQMwq0T1Y81ir3NNxgXIJ4AHwPoXdkZmuuWRjhOQYdDx8suDrueOSQrft3HWLwl9wbUrLfus3vFKsPoKjQ3lfCxyXyTbdfOBJBQgRB(r5QY)(W)YIKq31wtLd1n)i9Cq0sPqpljnKckp6MEFikMcNQftYWwzKzKYzrHUaqJ6ZXqIVOG)uXSzGoUbZMxiq53vW6PHmlAiZcboTEjU)FNRUo)A80W1JyhjnC9418A6dJgEVO19HgEVC7FsPHR)sa)7tdFqxr4XGfEV097JfEV047Hf(GyX3jl8AKd)zfIhXke7fwBUo70BjKN0SD91AgeoT3If9KNmOe6ruSP78HFEE5pZg(NNnmc44J5zF)qs164ePEpsSVtKaO(TW9C5Jj9dGChIeYzyBACEqCeHXdNVTXpXX00l4xHpARNpC9(N9SuB5F0Lu7pNDd6u7JGbIUcwftxoDw6f8jEfpH)OnW)a9sIyiUA)1u7pavdsTp8S3o7xa5V65Vm12qWPgE6Izhj981IMsap)0f5pn9I0leEiCRZIwl8IvVs(Q8V0B7QdB1nHhEOENeE(KC(Mn7HWQztA37GZMVuTHBFzCU5pq)f1NCWW6tWqmxPq9AZEAlWKdeneqTrf3MNBJM34xJtwIF5Hloy4C(2ljjMvkamn5UnYvERgtwi97tyrhXFwvUpG6rBZGElO10zJ2t9sEJPwvkvMzaV7Svlku(FK1(qE7N(ZeCOdhTbvk42A(m(tDIG7y(CzB0OjLcti6czH(pDfiCUb(qsM2e8bP8pW2LAVJFaqQnE7wiKmGLGmPsUvAxy7HhAvsRWfuMloiBMFWTu4PQrIqkC)6OwJfvQMtxTya6P29UlJDxT(Y1FbkGS()(11x(X1qS7tDe7MkcsCBiDYHIHlAvJWFv(dWQqQQOHIbB1bjjDRVHukCnzIgzP9A4MOCzvEU0OhTkNUe91MdZO1A94qE(Yx)IX1P2F78l)p)X3Gi6x4BRP2qGf)QpuaUl6aSuWvodPUHRQo2GAzEkJkALNU6eTQwn6PP9hFGQHgg5wENsNT2oB1Yzt6K90zRMRvHsm2KWUkyforpJWj5(H8PPdZVhACotai4Pxaj2rsw4D9UZCSea9sOM6NFVXAzImzSG(y2PuiOmFq2VGX75RgOafOjQ45XWMHhSnvZ)YRR94dBRuSwqRKT3liBL8JhWQt29eUwPUNqWQKpVViPC(y1o(o)z1p(Eiqe1i(E3zh3AAzb434Rgx)(ZLW)su2ZYaGRlg6IiYenYP8yWexk8tIBTW3myquGZ5Q0xQDm)JC6qtDRoJOLhm(KIMQyK5fnfVQX3CXfN7v0L8SYs6eu0yBj8F9EIpjh5iJfAQINQ8OwBr)WsL6o4m4cplgmMvr(5a9HrVDvMLU()T(JF961vzPvxGMNJ(nm6w4Yh8RC)BE((IZNQSwno7pYjHn1T6KWMZQ8DnRdNC85PnvXiZtBk(GZtBk4EKN2ufpv5PT2I(HLN2DWzFYt7bwRipDG(WO3UkZt)yv7momVFgI7gjDVMYMx8c5RyMfL5DYy(m1tDVUW5KovzTRf31eREdfKmA7xPb1cx(sjijBR3Hb1Io4Sa1INqXwEmCWl5)W)RYE5ckleuh429BRWq0EXBIWiMl)hnnHTlIyAyeKSL4DtwVDn)7)]] )
