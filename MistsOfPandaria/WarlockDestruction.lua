@@ -1061,7 +1061,7 @@ spec:RegisterAbilities( {
         gcd = "off",
         toggle = "cooldowns",
         startsCombat = false,
-        texture = 135808,
+        texture = 236297,
 
         
 
@@ -1084,7 +1084,7 @@ spec:RegisterAbilities( {
         spendType = "mana",
 
         startsCombat = true,
-        texture = 236253,
+        texture = 135795,
 
         
 
