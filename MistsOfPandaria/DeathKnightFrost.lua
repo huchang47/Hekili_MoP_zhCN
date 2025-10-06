@@ -985,7 +985,11 @@ spec:RegisterAuras( {
         type = "Disease",
         copy = "blood_plague_enhanced"
     },
-
+    blood_presence = {
+        id = 48263,
+        duration = 10,
+        max_stack = 1,
+    },
     blood_tap = {
         id = 45529,
         duration = 20,
@@ -1021,6 +1025,11 @@ spec:RegisterAuras( {
         max_stack = 1,
         type = "Disease",
         copy = "frost_fever_enhanced"
+    },
+    frost_presence = {
+        id = 48266,
+        duration = 10,
+        max_stack = 1,
     },
 
     horn_of_winter = {
@@ -1122,7 +1131,11 @@ spec:RegisterAuras( {
             aura.caster = "nobody"
         end,
     },
-
+    unholy_presence = {
+        id = 48265,
+        duration = 10,
+        max_stack = 1,
+    },
     unholy_blight = {
         id = 115989,
         duration = 10,

@@ -1,28 +1,28 @@
-# Death Knight: Frost (MoP)
-# Based on WoWSims MoP Frost Death Knight implementation
+# Death Knight: Frost (MoP) - Main Priority List
+# Updated with advanced WoWSims MoP implementations
+# Use DeathKnightFrost_Masterfrost.simc for dual-wield builds
+# Use DeathKnightFrost_Obliterate.simc for two-handed builds
 
-## Precombat Actions
-actions.precombat+=/frost_presence
-actions.precombat+=/raise_dead
-actions.precombat+=/army_of_the_dead
-actions.precombat+=/horn_of_winter,if=!buff.horn_of_winter.up|buff.horn_of_winter.remains<6
-actions.precombat+=/potion
+## Precombat Actions - Enhanced from WoWSims MoP
+actions.precombat+=/frost_presence,if=time<15
+actions.precombat+=/raise_dead,if=!pet.ghoul.active
+actions.precombat+=/army_of_the_dead,if=time<7
+actions.precombat+=/horn_of_winter,if=time<6
+actions.precombat+=/potion,if=time<1
 
-## Default Actions
+## Default Actions - Enhanced from WoWSims MoP
 actions+=/pillar_of_frost
-actions+=/synapse_springs
 actions+=/blood_fury,if=buff.pillar_of_frost.up
 actions+=/berserking,if=buff.pillar_of_frost.up
 actions+=/use_items
 actions+=/raise_dead,if=!pet.ghoul.active
 
-# Disease Management
+# Advanced Disease Management
 actions+=/outbreak,if=(!dot.blood_plague.ticking|!dot.frost_fever.ticking)
 actions+=/plague_strike,if=!dot.blood_plague.ticking
-actions+=/icy_touch,if=!dot.frost_fever.ticking
 actions+=/empower_rune_weapon,if=((runes.blood.count=2&runes.frost.count=2&runes.unholy.count=2)|(target.time_to_die<=60&buff.pillar_of_frost.up))
 
-## Main Rotation
+## Main Rotation - Choose based on weapon type
 actions+=/run_action_list,name=masterfrost,if=talent.masterfrost.enabled
 actions+=/run_action_list,name=obliterate,if=!talent.masterfrost.enabled
 

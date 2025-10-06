@@ -174,6 +174,19 @@ local function RegisterWindwalkerSpec()
             id = 121125,
             duration = 3600,
             max_stack = 1
+        },
+        -- Fists of Fury snapshot buffs (internal tracking)
+        fists_of_fury_snapshot_teb = {
+            duration = 4,
+            max_stack = 1
+        },
+        fists_of_fury_snapshot_tp = {
+            duration = 4,
+            max_stack = 1
+        },
+        fists_of_fury_snapshot_eb = {
+            duration = 4,
+            max_stack = 1
         }
     })
 
@@ -319,13 +332,28 @@ local function RegisterWindwalkerSpec()
         },
         fists_of_fury = {
             id = 113656,
-            cast = 0,
+            cast = 4,
+            channeled = true,
             cooldown = 25,
             gcd = "spell",
             startsCombat = true,
 
             spend = 3,
             spendType = "chi",
+
+            -- Snapshot damage buffs at the start of channel
+            start = function()
+                -- Snapshot current damage buffs when channeling begins
+                if buff.tigereye_brew_use.up then
+                    applyBuff("fists_of_fury_snapshot_teb", buff.tigereye_brew_use.remains)
+                end
+                if buff.tiger_power.up then
+                    applyBuff("fists_of_fury_snapshot_tp", buff.tiger_power.remains)
+                end
+                if buff.energizing_brew.up then
+                    applyBuff("fists_of_fury_snapshot_eb", buff.energizing_brew.remains)
+                end
+            end,
 
             handler = function() end
         },
@@ -645,7 +673,7 @@ local function RegisterWindwalkerSpec()
         width = "full"
     })
 
-    spec:RegisterPack("Windwalker", 20250806, [[Hekili:LM1EVTTnq8plbdWijT2ZpZshScqxxbAd2kgGcW(pjrlrzXAzrbjQ46Ia9zFhPSKOLiPvYAr3S5J7997UJ2zMZto2big25BZNoF107ND3K5txD3S7CSzhtXo2Pi)DOTWhsq7H)7)sscoGI3HZ4BDmMIc4KiNwK5dBBt2)PmuiR0B1Y7hFVJ9Mcsm7RjoBuZMvo2OcwefO2xi7Xih7isqaU684CFh7NIi5LE8)Hk9ojmLE0q47(mcnP0lMKZGTdPzLEFbVJetMaYwgnKeds0Vu6930KD)EPxROx(iSAhrT8r(FH1Tu)hXE)tgE8NO73GGBzJzfPMVrLeMpjnd7lU17S(1y8wK)rxAOllc7I3NIZOzVNeATPimCsodXYNeqpKms8DLNwS)qO(Hicd7YiBXTCWpJW0YaPlyGjPuHH)YMR)ehItYjpJb3ZFbEPHzTcAUfWRaeOZjUrOS9CvGHIXjG83U6eCcAtmoOsDy0c)iU2Sd2cvPNryumlAsQpBT1Dt1Xhsyyro2DpAlXxMtYR)651fnrFIMHhKzPXU34j3etPbXf5SjfPV8cdLTfZMWGSixg1nGGptBHRZvdW9UpxEXn4SCC2osYw5v9JiUBYWhKme1l1ydGfwBnF01SmsYoGZqgN)eWkftyhfs01(rCzk3A2ii4r8zxU4T2A20BE5L6DNRu2pT7TWrLfmrOPBkkEFJz40s0dqmBgEpIKKV2Abx8EWAwV7IpIB0S2RxVQlyJKsooBpEUP)oR5tFZ0uisGfthTb5DLsJXYP3mkalUwgjh8vU5fjU7i(7ad9OEwboSuRiItWzBj)KFRgx6jAVh9dxX2hFyL8v6We(v0WEj96v4Me3sdfp5cFy2ifs5mfUvsYZ0Dy3FuGtKcxLwToI9mneyx13C5LpEpV4MfII5uGV(Zyol3tW5pyT4IxKRbXGSk8C9jX6fdaiWwqJXpjOrP312pDZGWfMCgZ52(AyPamIf1y)fFZnHYW8ygHzCHEIOicOJxU3vc5LH58nSi7ydB7e9v56v4zx2pmUosy5fLwo20b0Z4oWv8LAGRuWtdkJaTRilN1fbKV2BKM)eQyLNgbz9V3)OFZoa(OetApKrUm6Qa6zhMbEjzq8ECFtmGWqlyn(ZQUbGA6uUNbbTf5UHURj4WGIOi7(C6WsBWL6Trde98U5Y94Z3rBof4nb09XxsS6PHvgR3v9)MCkNmdVfNCRpLgZdf1c)yTCAJD4I5UFeuVX0WXFome7ZtE)i9Zdm7fWCeOk5rCX47OaOjmOpvPiIE71wbUrj6DePsaNyXBn67IbAvKFaPGQUYfZX6zPucmvhJ0905PKKe(59Zqj4MBC1LmT99pdb1)uYj02LJ9ZqFvWXRN3zkmp1bugxwYDS)6(uAgdyJ3QoJXmP8rhBXNetvjZbyHVjgx7Km68hWStI7cJQDgMF1OtzK0Qn1fdQSKJUiwhB(Gd4mcIptx36jLEJk9aFqP3daDx4Wa9UJO2E9MZnVvb64w5eyHwcOTWIqm6dxcCR0BPytDfzKoIKA0iENvBJlCl1kC6c(niAs2H6RX5XQHWJZtwgote3JZL70es1MYRGZ9XjmYAXMxv6PgkbOVmGepkhKRFZS7xvHRZDFsk8zvg4e)(xdXfvZAJE0vrR0BTvTU2ieZKYrBQAYLGpyk9qaL5nwTYavf5ey2uTuO20)Uspf1(k9Ufi8fQ)vX1LthSjLXbDcrfXgXPQMGDO4tIzJhmGK84WLEV8ceo2BsQkFeGpxdqvlynZgll21Gqn6CZSYDo1GqdKhEU1S2gZCniWQhLUsBUMFdXqXGnbISex6SbRRO2mWPDt1vKp)Cd2ePtE7jc0bTaKDZqs6bw5Y0IbMv0fmsf97nxDhG9ZNPUs3N2HH1Nzaang4zBErTduVuiu7vg9blRCCaL0oRV6AyfPgup9qDAqRx1sSo1ynJBz4fc0IIOOSVbCnLVJGjdMCX9zMQqnBGXNZ6cS1ltxX7o0smPnfutFpsNaSp9ac96hPt)OvTm6w9c9qhRcIRV)PUeF9GP95nKkq9BEyyt4(kFg7oLb6)k99EIETJtP4H5hCDJ2NCVn7s)ZUBU12QgeQFHDD0R7RSRZojDUE1IQRKkxhIv58n4h6nWZqlfREc3HyJV4OwImpttYQYK))Pl1xzJO6ZJ00QV6U5hwpcYDZRPHD91Gf4xwcCmEhKgHz1xP9kEbkZ(SwkRyaBZ1uBaDR6d7TI60(B3ykCx6NjAOb69(jREfX4k(vPKky3)xlsSz7VyuVMtnfTO83L6nXTwRLmjDozOZtX(G4C3heF15)(d]])
+    spec:RegisterPack("Windwalker", 20251006, [[Hekili:LM16UTnUs4NLGfWijTXRTJD20dScqpDlqBXEkoaka7)KeTeLnRLffKOIRlm0Z(oK6gLejTs2g02iso3h(ndjDM78SJDaIHD((IzlwnF2ShMUy(Q7xTYXMDkb7yNG83J2c)sm6a8V)njo4ikApoLp1PikkGZImAEQpmTn5WNsrHScVvlF8UhDS3KtIyFn2zJAXS0XgLZ2rbU9fYbmYXEhjiaxUECMVJ9Z7izfE8)Ik8QuMcpAi8TpJqJl8Iizmy6qAAH3xW7jrKPGULsdjrGg9BfE)pA8()tHxRQx8ny0EQAX34)aJBP(pI5()P47(e9WgeqLnMLNyMIsnmBAsk2xq17S(9i8wK)jxAOlBh2fFibNstFpj0AtEy40mgILnnGEmEI4BLRwm)y4(XDeg2Lr2IBLGFkHPvaseyqijuHJ)YUR)ehIJZiVGHWZFbrPX5TcAOcKvacS5y3DO0dCtGHIWXG(3o6uCmAteoO0Cy0C)DCRzpmfQ0o3HrrSDtt8zRTEyMo5qcdZZWUhqBj(YssE8xVSUOl6t0u8OCln(9Mi5MiknikpJnnp58zgkDlMnLb7ICzu3acUJ1cKZndi8EitEWn40mC6Es8w5r93rC3KIpk5iQhQXhadS2AXKRzPK49GKHDC(tbVueHDsOrx7VJRtzwZNajpIF3LRERTMp7MZNRNDHsDVA2BHLkRyIut3eu0Hg3q1q0JqoBk(aIeNT26EU69K18b0IpHBSSwYRh1f8rsBo6mhFVP)ERfZEZ8uOsGhthVb9DLsNXYz3mjalilLKbXk3S8y39e)9GJEYaVahwQvfXX40TKFXPQjKwX7dOF6kM(0tRKjPNq4KOr8s21RimjOsdhRcHpnFIcTCUIWkj(f6ES7pZXXsPRsJwNX2XcbXv(LlV8X75f3SqumNd8XFbZf5bco7jR7ViHClic0vrKBilwF)iacSf84UNf8OW7A7NVzu4ct7iCUVVgwkaJy7A8)IVCJPmmpNr4gVxptc51u5mjmp9KH8A1PFvSxveCPEzQiRRxM1ivZEz8LPBQ0LH6ED23YAtqXM1kd)8zt7JVrVsZrspIEb3dCLpud4QcT1GBqGnNNMX6JxZh7nYZFb1xZs2b2279p53mdGMljK2fzuktUkG2zXmi(kxYzG03eb(rAoRjtOS3fOdek3rJGM4C3q33KRzWquGf1LpSKM04bt0uqzrFKNbY5hOnvPStbB)UlPwdSWsN17k)VPviiP4T44B9P0iEsSwWsRLZA8dxeP5JG5Dhn8UphgI95qnFK(5rI1aiKcmWSDC14hOaOLrORAPmIbZ12VqJrmyjsfSQeXBn77IjALSFeBbvrYf3JnWtPesRohP)QZsiXX817NIIXnuC1LCTdJpJPgv1MtOjrh7xGUaHLxE6Szpo7bh7JOuUUK5y)1dj0ugigVv9o010IVbh9lb7de(WhCSfdkooOSWGb(U4CMvQRZ)fo0NGnWzm7uSQ8mFPKKYj1LoQSwPUKxhB(jEWPee)WO9lew4nPWdchfEpb89Ehgyj9u1EKRQuGGlQAdRl3fFoeFeMTWBzRpPtrnUgDVwnQH3lAjVxohNblnBsQQxAuxvBVvGrslPNPFTmrdCHNpRA6YkQLCzoK)DJb)0kTMPU94gmsjpAnzCz8WyKrxmHXlebDCP8hA2U0ISPqYdHdnkAXKxv4PgXe4VmUlFhmOxpAorsv95UjcsgCNcGCM)HxdZffTBZd1v4UWBTvTT2OeZLWFAAoGRbZNzANMaY27o1wdu9xWH(aDTCO23)Ucpf14l8Ufy8fQZxk1LZgTpLXrudr5rgbHlVxHXc(kUXIrJ2kFjfL7XhE(2YGeuhQg9TwXAUXcz1UgqSXMBUbJERspQNMR0O1T2M0aywAUGJsR5AofIRQa8jqQLGOox3rj3MdbTBkjrE9lm4tKw5TvmOhCbO7MX90JrVUbv(YBl0J5z42o6vJOpEo32N1tG1Rrfc44Lz7(c9fD6xvXqmyzzGd4K2BGrx5FdMNEGunW1RAzwVY1MHonCVnArru0bHbKrL3UJjhMCFcZnvIA(iZpna6Q)2GAzM0KcUPVbWka7QR1PUNXw)w3(Ul7h2T8DtGoZfmxFVC9z(6rZ7UDBlq9BUUEt4(kFCHELbg(2jdE4eThBuXZLm66gTpes7Ul9pgYi6BV5Dp0XV(V9Ho)K06gulQUsQCDiwzW3qCyWb7gBPy1NKFm(4lEKsXoptNyxLl)FtBQVYor1VpstV(QBNFC9ii3oVMo21xdwGFzjWX4DqAeMvFL2R4fOmhZA5SIlsWCn1gq3Y(WEROoTVOMP0DPhVBSj6dEiXxroUI3kuQG9W3Wtmz774nO5utzlkFTW3K0A9wYS0H18JZ)m]])
 
 end
 

@@ -1,18 +1,25 @@
 # Warrior: Fury
-## Precombat
+## Precombat - Updated from WoWSims MoP
 actions.precombat+=/battle_shout,if=!buff.str_agi_int.up&!buff.battle_shout.up
 actions.precombat+=/commanding_shout,if=!buff.stamina.up&!buff.commanding_shout.up
 actions.precombat+=/stance,choose=battle
 actions.precombat+=/snapshot_stats
 actions.precombat+=/flask,type=winters_bite
 actions.precombat+=/food,type=black_pepper_ribs_and_shrimp
+actions.precombat+=/potion,if=time<0.5
+actions.precombat+=/recklessness,if=time<0.5
+actions.precombat+=/blood_fury,if=time<0.5
 
-## Default actions
+## Default actions - Enhanced from WoWSims MoP
+actions+=/autocast_other_cooldowns
 actions+=/run_action_list,name=opener,if=time<8
 actions+=/charge,if=time=0|movement.distance>8
 actions+=/pummel,if=target.debuff.casting.react
 actions+=/run_action_list,name=movement,if=movement.distance>5
 actions+=/berserker_rage,if=!buff.enrage.up
+
+# Advanced rage management from WoWSims
+actions+=/battle_shout,if=rage<=rage.max-35
 actions+=/use_item,slot=hands,if=(debuff.colossus_smash.up|cooldown.colossus_smash.remains<2)&(buff.recklessness.up|cooldown.recklessness.remains>20)
 actions+=/use_item,name=trinket1,if=(debuff.colossus_smash.up|cooldown.colossus_smash.remains<2)&(buff.recklessness.up|cooldown.recklessness.remains>20)
 actions+=/use_item,name=trinket2,if=(debuff.colossus_smash.up|cooldown.colossus_smash.remains<2)&(buff.recklessness.up|cooldown.recklessness.remains>20)
@@ -38,7 +45,7 @@ actions.opener+=/bloodthirst
 actions.opener+=/raging_blow,if=buff.raging_blow.stack=2
 actions.opener+=/wild_strike,if=buff.bloodsurge.up
 
-## Single-target rotation
+## Single-target rotation - Enhanced from WoWSims MoP
 actions.single_target+=/recklessness,if=debuff.colossus_smash.remains>4|(target.time_to_die<20&debuff.colossus_smash.up)
 actions.single_target+=/avatar,if=debuff.colossus_smash.remains>4|(target.time_to_die<20&debuff.colossus_smash.up)
 actions.single_target+=/bloodbath,if=debuff.colossus_smash.remains>4|(target.time_to_die<20&debuff.colossus_smash.up)
@@ -52,12 +59,16 @@ actions.single_target+=/bloodthirst
 actions.single_target+=/wild_strike,if=buff.bloodsurge.up
 actions.single_target+=/raging_blow,if=buff.raging_blow.stack=2
 actions.single_target+=/raging_blow,if=cooldown.colossus_smash.remains>=1
-actions.single_target+=/heroic_strike,if=rage>=80
-actions.single_target+=/wild_strike,if=rage>=70
+
+# Advanced rage management from WoWSims
+actions.single_target+=/heroic_strike,if=rage>=80&debuff.colossus_smash.up
+actions.single_target+=/wild_strike,if=rage>=70&debuff.colossus_smash.up
+actions.single_target+=/heroic_strike,if=rage>=90
+actions.single_target+=/wild_strike,if=rage>=80
 actions.single_target+=/battle_shout,if=rage<rage.max-20
 actions.single_target+=/heroic_throw
 
-## AoE rotation
+## AoE rotation - Enhanced from WoWSims MoP
 actions.aoe+=/recklessness,if=debuff.colossus_smash.up
 actions.aoe+=/avatar,if=debuff.colossus_smash.up
 actions.aoe+=/bloodbath,if=debuff.colossus_smash.up
@@ -66,7 +77,10 @@ actions.aoe+=/use_item,name=trinket1,if=debuff.colossus_smash.up
 actions.aoe+=/use_item,name=trinket2,if=debuff.colossus_smash.up
 actions.aoe+=/berserker_rage,if=!buff.enrage.up
 actions.aoe+=/colossus_smash,if=debuff.colossus_smash.remains<1
-actions.aoe+=/bladestorm
+
+# Advanced Bladestorm mechanics - Fixed for Hekili compatibility
+actions.aoe+=/bladestorm,if=cooldown.bladestorm.remains<=0&!player.moving&time>=1.5&(!debuff.colossus_smash.up|cooldown.colossus_smash.remains<=0|target.health.pct<=20)
+
 actions.aoe+=/dragon_roar
 actions.aoe+=/whirlwind,if=!buff.meat_cleaver.up
 actions.aoe+=/bloodthirst,if=!buff.enrage.up|rage<40
