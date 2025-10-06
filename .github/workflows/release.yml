@@ -1,82 +1,47 @@
-name: Create Release
+# description of this workflow, can be anything you want
+name: Package and Release
 
+# we need to let GitHub know _when_ we want to release, typically only when we create a new tag.
+# this will target only tags, and not all pushes to the master branch.
+# this part can be heavily customized to your liking, like targeting only tags that match a certain word,
+# other branches or even pullrequests.
 on:
   push:
     tags:
-      - 'v*'
-  release:
-    types: [published]
+      - "v*"
   workflow_dispatch:
     inputs:
       tag_name:
         description: 'Tag name for the release (e.g., v1.0.0)'
         required: true
         default: 'v1.0.0'
-      release_title:
-        description: 'Release title'
-        required: false
-        default: 'Release'
-      prerelease:
-        description: 'Mark as prerelease'
-        type: boolean
-        default: false
 
+# a workflow is built up as jobs, and within these jobs are steps
 jobs:
-  create-release:
+  # "release" is a job, you can name it anything you want
+  release:
+    # we can run our steps on pretty much anything, but the "ubuntu-latest" image is a safe bet
     runs-on: ubuntu-latest
-    
+
+    # specify the environment variables used by the packager, matching the secrets from the project on GitHub
+    env:
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+      # "GITHUB_TOKEN" is a secret always provided to the workflow
+
+    # "steps" holds a list of all the steps needed to package and release our AddOn
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Extract version from tag
-      id: version
-      run: |
-        if [ "${{ github.event_name }}" = "push" ]; then
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          TAG_NAME="${{ github.event.inputs.tag_name }}"
-        else
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-        fi
-        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-        echo "version=${TAG_NAME#v}" >> $GITHUB_OUTPUT
-    
-    - name: Generate release notes
-      id: release_notes
-      run: |
-        # Get the previous tag
-        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-        
-        if [ -n "$PREV_TAG" ]; then
-          echo "## Changes since $PREV_TAG" > release_notes.md
-          echo "" >> release_notes.md
-          git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD >> release_notes.md
-        else
-          echo "## Initial Release" > release_notes.md
-          echo "" >> release_notes.md
-          echo "First release of the addon." >> release_notes.md
-        fi
-        
-        # Read the file content and set as output
-        NOTES=$(cat release_notes.md)
-        echo "notes=$NOTES" >> $GITHUB_OUTPUT
-    
-    - name: Create ZIP archive
-      run: |
-        zip -r Hekili-${{ steps.version.outputs.version }}.zip . -x "*.git*" "*.github*" "*.DS_Store*" "*.vscode*" "node_modules/*" "*.zip" "Documentation/*" "scripts/*" "package*.json" "release.json"
-    
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ steps.version.outputs.tag_name }}
-        name: ${{ github.event.inputs.release_title || steps.version.outputs.tag_name }}
-        body: ${{ steps.release_notes.outputs.notes }}
-        files: |
-          Hekili-${{ steps.version.outputs.version }}.zip
-        draft: false
-        prerelease: ${{ github.event.inputs.prerelease || false }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # we first have to clone the AddOn project, this is a required step
+      - name: Clone Project
+        uses: actions/checkout@v1
+        # note: checkout@v2 breaks git history, so generating a changelog and
+        # file naming for non-tagged builds will not work properly
+
+      # once cloned, we just run the GitHub Action for the packager project
+      - name: Package and Release
+        uses: BigWigsMods/packager@v2
+        # another example where we supply additional arguments, this example is specifically to release
+        # for the Classic version of the game
+        # - name: Package and release for Classic
+        # uses: BigWigsMods/packager@v1
+        # with:
+        # args: -g classic -w 0
