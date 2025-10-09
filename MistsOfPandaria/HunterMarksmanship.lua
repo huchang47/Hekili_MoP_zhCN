@@ -1455,6 +1455,17 @@ spec:RegisterCombatLogEvent( function( _, subtype, _, sourceGUID, sourceName, so
 end )
 
     -- State Expressions
+    -- In-flight tracking for Steady Shot (prevents focus waste)
+    spec:RegisterStateExpr( "in_flight", function()
+        -- Check if Steady Shot is currently being cast
+        if buff.casting.up and action.steady_shot.lastCast and query_time - action.steady_shot.lastCast < 0.5 then
+            return true
+        end
+        -- For now, simplified check - always return false as projectiles travel fast
+        -- Can be enhanced later with actual projectile tracking if needed
+        return false
+    end )
+    
     spec:RegisterStateExpr( "focus_time_to_max", function()
         local regen_rate = 6 * haste
         if buff.aspect_of_the_iron_hawk.up then regen_rate = regen_rate * 1.3 end

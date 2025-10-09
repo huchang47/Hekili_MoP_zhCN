@@ -399,6 +399,19 @@ spec:RegisterAuras( {
         mechanic = "bleed",
         max_stack = 1,
         copy = "rake_debuff",
+        meta = {
+            tick_dmg = function( t )
+                -- Return the snapshotted tick damage for the current Rake DoT
+                if not t.up then return 0 end
+                local snap = bleed_snapshot[ target.unit ]
+                local base_tick = 1000 -- Base Rake tick damage (placeholder)
+                return base_tick * ( snap and snap.rake_mult or 1 )
+            end,
+            tick_damage = function( t )
+                -- Alias for consistency with SimC
+                return t.tick_dmg
+            end,
+        },
     },
     regrowth = {
         id = 8936,
@@ -419,6 +432,19 @@ spec:RegisterAuras( {
         tick_time = 2,
         mechanic = "bleed",
         max_stack = 1,
+        meta = {
+            tick_dmg = function( t )
+                -- Return the snapshotted tick damage for the current Rip DoT
+                if not t.up then return 0 end
+                local snap = bleed_snapshot[ target.unit ]
+                local base_tick = 2000 -- Base Rip tick damage (placeholder)
+                return base_tick * ( snap and snap.rip_mult or 1 )
+            end,
+            tick_damage = function( t )
+                -- Alias for consistency with SimC
+                return t.tick_dmg
+            end,
+        },
     },
     shadowmeld = {
         id = 58984,
@@ -1079,61 +1105,101 @@ spec:RegisterStateExpr( "thrash_aoe_efficient", function()
     return active_enemies >= 3 and buff.bear_form.up
 end )
 
--- Sophisticated bleed refresh timing (based on WoWSims calcBleedRefreshTime)
+-- WoWSims calcBleedRefreshTime with DPE clipping logic
 spec:RegisterStateExpr( "rake_refresh_time", function()
-    if not debuff.rake.up then
-        return 0 -- Refresh immediately if not up
-    end
+    if not debuff.rake.up then return 0 end
     
     local currentRemaining = debuff.rake.remains or 0
-    local tickLength = 3 -- Rake ticks every 3 seconds
+    local tickLength = 3
+    local standardRefreshTime = currentRemaining - tickLength
     
-    -- Check for snapshot improvements (simplified)
-    local hasSnapshotImprovement = rake_damage_increase_pct > 0.001
-    
-    if hasSnapshotImprovement then
-        return 0 -- Refresh immediately for snapshot
+    if buff.dream_of_cenarius_damage.up and (rake_damage_increase_pct > 0.001) then
+        return 0
     end
     
-    -- Standard refresh: 1 tick before expiration, but return as time until refresh needed
-    local standardRefresh = currentRemaining - tickLength
+    if not buff.tigers_fury.up and not buff.synapse_springs.up then
+        return math.max(0, standardRefreshTime)
+    end
     
-    -- Return time until refresh is needed (0 = refresh now)
-    return math.max(0, standardRefresh)
+    local tempBuffRemains = buff.tigers_fury.up and buff.tigers_fury.remains or buff.synapse_springs.remains
+    
+    if tempBuffRemains > standardRefreshTime + 0.5 then
+        return math.max(0, standardRefreshTime)
+    end
+    
+    local latestPossibleSnapshot = tempBuffRemains - 0.2
+    if latestPossibleSnapshot <= 0 then return 0 end
+    
+    local numClippedTicks = math.floor((currentRemaining - latestPossibleSnapshot) / tickLength)
+    local targetClipTime = math.max(0, standardRefreshTime - (numClippedTicks * tickLength))
+    local fightRemaining = target.time_to_die or 300
+    local buffedTickCount = math.min(5, math.floor((fightRemaining - targetClipTime) / tickLength))
+    
+    local expectedDamageGain = rake_damage_increase_pct * (buffedTickCount + 1)
+    local shredDamagePerEnergy = 0.025
+    local energyEquivalent = expectedDamageGain / shredDamagePerEnergy
+    local discountedRefreshCost = 35 * (1.0 - (numClippedTicks / 5.0))
+    
+    if buff.berserk.up and buff.berserk.remains > targetClipTime + 0.5 then
+        return (expectedDamageGain > 0) and targetClipTime or math.max(0, standardRefreshTime)
+    else
+        return (energyEquivalent > discountedRefreshCost) and targetClipTime or math.max(0, standardRefreshTime)
+    end
 end )
 
 spec:RegisterStateExpr( "rip_refresh_time", function()
-    if not debuff.rip.up then
-        return 0 -- Refresh immediately
-    end
+    if not debuff.rip.up then return 0 end
     
     local currentRemaining = debuff.rip.remains or 0
-    local tickLength = 2 -- Rip ticks every 2 seconds
+    local tickLength = 2
+    local standardRefreshTime = currentRemaining - tickLength
     
-    -- Standard refresh: 1 tick before expiration
-    local standardRefresh = currentRemaining - tickLength
-    
-    -- Check for snapshot improvements (simplified)
-    local hasSnapshotImprovement = rip_damage_increase_pct > 0.001
-    
-    if hasSnapshotImprovement then
-        return 0 -- Refresh immediately for snapshot
+    if buff.dream_of_cenarius_damage.up and (rip_damage_increase_pct > 0.001) then
+        return 0
     end
     
-    return math.max(0, standardRefresh)
+    if not buff.tigers_fury.up and not buff.synapse_springs.up then
+        return math.max(0, standardRefreshTime)
+    end
+    
+    if combo_points.current < 5 then
+        return math.max(0, standardRefreshTime)
+    end
+    
+    local tempBuffRemains = buff.tigers_fury.up and buff.tigers_fury.remains or buff.synapse_springs.remains
+    
+    if tempBuffRemains > standardRefreshTime + 0.5 then
+        return math.max(0, standardRefreshTime)
+    end
+    
+    local latestPossibleSnapshot = tempBuffRemains - 0.2
+    if latestPossibleSnapshot <= 0 then return 0 end
+    
+    local numClippedTicks = math.floor((currentRemaining - latestPossibleSnapshot) / tickLength)
+    local targetClipTime = math.max(0, standardRefreshTime - (numClippedTicks * tickLength))
+    local fightRemaining = target.time_to_die or 300
+    local maxRipTicks = 12
+    local buffedTickCount = math.min(maxRipTicks, math.floor((fightRemaining - targetClipTime) / tickLength))
+    
+    local expectedDamageGain = rip_damage_increase_pct * buffedTickCount
+    local shredDamagePerEnergy = 0.025
+    local energyEquivalent = expectedDamageGain / shredDamagePerEnergy
+    local discountedRefreshCost = 20 * (numClippedTicks / maxRipTicks)
+    
+    if buff.berserk.up and buff.berserk.remains > targetClipTime + 0.5 then
+        return (expectedDamageGain > 0) and targetClipTime or math.max(0, standardRefreshTime)
+    else
+        return (energyEquivalent > discountedRefreshCost) and targetClipTime or math.max(0, standardRefreshTime)
+    end
 end )
 
--- Tiger's Fury energy threshold with reaction time (based on WoWSims calcTfEnergyThresh)
+-- WoWSims calcTfEnergyThresh
 spec:RegisterStateExpr( "tf_energy_threshold_advanced", function()
-    local reactionTime = 0.1 -- 100ms reaction time
+    local reactionTime = 0.1
     local clearcastingDelay = buff.clearcasting.up and 1.0 or 0.0
     local totalDelay = reactionTime + clearcastingDelay
-    
-    -- Base calcTfEnergyThresh equivalent: 40 - (delay_time * regen_rate)
     local threshold = math.max( 0, 40 - (totalDelay * (energy.regen or 0)) )
 
-    -- WoWSims override: Don't over-cap Energy with TF, unless next special is a DoC Rip.
-    -- tfEnergyThresh := TernaryFloat64(rotation.UseHealingTouch && cat.DreamOfCenariusAura.IsActive() && (cat.ComboPoints() == 5), 100, calcTfEnergyThresh())
     if settings.use_healing_touch and buff.dream_of_cenarius_damage.up and (combo_points.current == 5) then
         return 100
     end
@@ -1141,14 +1207,10 @@ spec:RegisterStateExpr( "tf_energy_threshold_advanced", function()
     return threshold
 end )
 
--- Advanced Tiger's Fury timing logic
 spec:RegisterStateExpr( "tf_timing", function()
     if cooldown.tigers_fury.ready then
-        -- Use advanced energy threshold
         return energy.current <= tf_energy_threshold_advanced
     end
-    
-    -- Don't wait too long for TF if we need energy now
     return energy.current <= 20 and cooldown.tigers_fury.remains <= 3
 end )
 
@@ -2284,9 +2346,25 @@ spec:RegisterStateTable( "bleed_snapshot", setmetatable( {
 } ) )
 
 spec:RegisterStateFunction( "current_bleed_multiplier", function()
-    -- Primary MoP snapshot driver is Tiger's Fury (1.15)
-    local tf = ( buff.tigers_fury and buff.tigers_fury.up ) and 1.15 or 1
-    return tf
+    local mult = 1.0
+    
+    if buff.tigers_fury and buff.tigers_fury.up then
+        mult = mult * 1.15
+    end
+    
+    if buff.savage_roar and buff.savage_roar.up then
+        mult = mult * 1.45
+    end
+    
+    if buff.dream_of_cenarius_damage and buff.dream_of_cenarius_damage.up then
+        mult = mult * 1.30
+    end
+    
+    if buff.synapse_springs and buff.synapse_springs.up then
+        mult = mult * 1.065
+    end
+    
+    return mult
 end )
 
 spec:RegisterStateExpr( "rake_stronger", function()
@@ -2301,7 +2379,6 @@ spec:RegisterStateExpr( "rip_stronger", function()
     return now_mult > ( snap.rip_mult or 0 ) + 0.001
 end )
 
--- Percent increase if we were to reapply the bleed now (0.05 = 5%).
 spec:RegisterStateExpr( "rake_damage_increase_pct", function()
     local snap = bleed_snapshot[ target.unit ]
     local last = snap.rake_mult or 0
@@ -2318,7 +2395,43 @@ spec:RegisterStateExpr( "rip_damage_increase_pct", function()
     return max( 0, ( now / last ) - 1 )
 end )
 
--- Bear-weave trigger logic mirroring the provided APL conditions.
+-- T16H SimC Compatibility: Predicted tick damage for action vs current DoT
+-- These calculate what the tick damage WOULD BE if we cast Rake/Rip now with current buffs
+-- vs the snapshotted tick damage of the existing DoT
+spec:RegisterStateTable( "action", setmetatable( {}, {
+    __index = function( t, k )
+        if k == "rake" then
+            return setmetatable( {}, {
+                __index = function( rt, rk )
+                    if rk == "tick_damage" then
+                        -- Calculate potential Rake tick damage with current buffs
+                        local base_tick = 1000 -- Placeholder
+                        local mult = current_bleed_multiplier()
+                        return base_tick * mult
+                    end
+                    -- Fall back to ability data
+                    return class.abilities.rake and class.abilities.rake[rk] or nil
+                end
+            } )
+        elseif k == "rip" then
+            return setmetatable( {}, {
+                __index = function( rt, rk )
+                    if rk == "tick_damage" then
+                        -- Calculate potential Rip tick damage with current buffs
+                        local base_tick = 2000 -- Placeholder
+                        local mult = current_bleed_multiplier()
+                        return base_tick * mult
+                    end
+                    -- Fall back to ability data
+                    return class.abilities.rip and class.abilities.rip[rk] or nil
+                end
+            } )
+        end
+        -- Fall back to default action table
+        return class.abilities[k]
+    end
+} ) )
+
 spec:RegisterStateExpr( "bearweave_trigger_ok", function()
     if not buff.cat_form.up then return false end
     if active_enemies > 1 then return false end
@@ -2327,25 +2440,22 @@ spec:RegisterStateExpr( "bearweave_trigger_ok", function()
     if cooldown.tigers_fury.remains < 7 then return false end
     if buff.berserk.up then return false end
 
-    -- Predatory Swiftness window OR minimal expected rake snapshot gain
     if buff.predatory_swiftness.up and buff.predatory_swiftness.remains >= 5 then return true end
     if buff.predatory_swiftness.down and rake_damage_increase_pct <= 0.05 then return true end
 
     return false
 end )
 
--- State expressions for advanced techniques
 spec:RegisterStateExpr( "should_bear_weave", function()
     if not opt_bear_weave then return false end
-    -- Avoid immediate flip-flop right after swapping to Cat
     if query_time <= ( action.cat_form.lastCast + gcd.max ) then return false end
-    -- Don't start a weave if any core timers need attention soon
+    
     local urgent_refresh = ( (debuff.rip.remains > 0 and debuff.rip.remains <= 3)
         or (debuff.rake.remains > 0 and debuff.rake.remains <= 3)
         or (buff.savage_roar.up and buff.savage_roar.remains <= 4)
         or cooldown.tigers_fury.remains <= 2 )
     if urgent_refresh then return false end
-    -- Trigger bear-weave when energy is LOW to pool (e.g., <= 35)
+    
     return energy.current <= 35 and not buff.berserk.up and not buff.incarnation_king_of_the_jungle.up and target.time_to_die > 10
 end )
 
@@ -2536,4 +2646,4 @@ spec:RegisterStateExpr( "should_bite", function()
     return min( rip_refresh, roar_refresh ) >= bite_time
 end )
 
-spec:RegisterPack( "Feral", 20250927, [[Hekili:vZrApQns2Fl8flqjI1anjtKGwk7Uz1oJ025dKpJXTPOXQn2iBt3tlH43((QdBxhVQSn0zIMJmjDD8UQx9olN1tw)J1R2gwsw)Wu)PZ9)Y0pp2FI)SzFE9QY3oswV6yy0ZHpb)H0WdW)))qYdtOJ(wsw4w6UlYoLhbZSE1JNItk)901pQbYpnE605)28VaR9ijA9da8xVAF82Te(AjfrRx9J9Xfx2q)v4LncKEzt2o4NJkJZsVSjjUOeMExw(Ln)xYZXjXJxVIniLm(63)g8BpWyisA4JjKTR)NRxLDeWkPC9kouwV6LW8y6S0)uYj438zJfWzVdHXPLWVc2TBDjWa9gAtKHw2XYGhjWp(kj8fcfGZ0ayfCIctsc4)qaLL4mMamrHLbaOIpas(s4F5ujg3gLhxsakQHWglXrx24DzZwYJN2TB8UqyDKGDX5KXBZEnLnhLaEHeqsjhIjGOEXYlBMYMHThkDas)dJpDSHYLaeMeRHIkdZFIucaPOmo9Pgau88jG3FmSypN5OcmU8QBmOQqMtTvGiOmp(PNi5bzp3Gq2IP8HB6LXY1Rf4zgOZb1YXrNYZjPLx2CpvanNnXaqRnN8Y4Y95aRWOOgukpiIwqBivS9Wm4Sz3U4OygYTqnwX6D9eRgAdx2mdbRlur6HW0Nsi1iD(phK2cR(PEIvtGpZxsVpbwVqVT5YI4apiB3UGNI2cx0oLyLfKLpNO3IF4Z9KenPeXe216QUVsr3V1t01gtOCi)L3vGNegbozkzMtM43tqp8YgaS5p9wayVeU)NfCi8p5wYOhsK)KeDQeSsC(mykmRCCE4ZKX5eQvsHbVzstgFuDU585IYYsO6bJlJbJlfb7oL)M6cbRMJqpiadCBZICBARmmb0dhVnNeEauVcIGvLhFQySy1vmQIjWIuYZvMaP0OYKNkibusBKQms6smqZ35lTGHcnoq7c8LNL)wqXRX7ktjffkAKyZBij4uuhGkDzSfKgwEkNuOn9O2UtYrru2HhZcoMbo(kuVvFx1QQoD57e)8MT8rYKFTcJ22u1HyQqJK(pN(p3tctaEa0upfTVnpODqVa9C3ZMqHRt7jPsBk5R5myX(vM(CCkDLbsyaSo4P0queSn8a1wUGoWzAXTCxEBStM0d7o4n9xaLjmkdZ1bhVxh9vFf6kiVkbxl(M)fqyXh7Gd5RMUMFJ0vlEU)fqxIdYw863gHPJ5g7Z2rnyB4yTgEBXg8ZGaeXzXPGs1uZU9Spl3f8yw6Pcm3anXs4itrEIHxDEMcFafy23Sdbl5K9ked3ErMVYyHnoMfQEJbPuRLrqtcKiwB6csAZpRc2OrZHy9Ol4bvbub4qgFyMa60PzHqf9hF7H)93F460oN8RS2iTdqFDakRZHOd3oeNm329XURTkDguss3clQx6HUk8dvFWzQdqqQard7acPuKRcadYFgbXtfWd6h0ZUSzYCLitFeYIHK)CtG0oIX2HXXMSHChiBlwElcFbmthKNfM3Gw7b1pbLSydsbrWlSykb)gBP1ZS2vsdsChOjnc)gZ(2lwMdMOocA7KRfxmocZ89f)SbhYcT3qOvL0lAeRmaoYIlA7bHEnu)IQKi6RUG1tD7XIQtFlQPpzKtrqaeNgBcSmi)8yofpGw41KW3OlMTPYDvJhLadrh(1yW2vrA4XI9zLQHbUk6n4YyaVeQfuda86aNLMrL0xLTDdJNQwJ7V592Sg)oyFVPihCbGW(Af)3yuvuVfj050G0ae1ohQnZKrMSvpv8DN8YeMy1wI(feoR(sC(bsArWJa9bAACaubiXpxP9wRMqJkxf42ZOX(fO5QkEoZ)Otqzhjplko7eNB4hB8qa7E59LuKy3AGliNs2QgHzf(QcVeqZXCcLeXVGyE4Fim)zA4EL7jWDXKTAjxRojM(KP6NesmSj50Ptn7xKLaI48Sxt4wHHWV48eVCmsQf0142Jr)0YlLtiWPaSU2rfVrTErckoMdHmqRCu423AG)(W0TfaAsOM34)GdPyjaJNjLtQ2q9p7i9gXAMQTNPM3gtYY2IDNDoYDww7QuwvR9xGhovvjnfT(QQI0BJjIsI9PEEJ3(nArolXPrH5PH01RuvqgzjxTA5ZDPn5(cVEvJHaj)IVn43P4ivvfXRirhQDyLX1sxvLO(ofTQOL5ecVWOcjhaZic9goVoKDx6PTrkn4OYekeb4N)vzAypiNkvmbjtfdrdwNvYC(ibSqjOrxWbSuuzgqMFbFlzx4PKRmac58bFpttup1(33CgnknX7CgKAHP4kagdV)Dd68I6RdzXOigN6gupqsieCIwEkeJqTd)6lCYqUzqeBoDdMu1CDqYgdXoq7qCBCb9Ndk2NtGGl2tsdOEFLrGTLGDNVDe24BxghsJsbR(9YMGm6tHdkAjgO)Eu3aPoiAwJG6EhIN7ip5qrV8ebqYt9cwh(ObhHyuaVqrv887wENDiWV(8UDObwWoE8VApOApJh7brATmaZRCsH0Lu6pgKt2Ltk2hWP2f8UjwplV28bqSiquJW94Jr8am8h7RQZ1sHnWyE8oAurVgr1q3HOt)dQ1kocb5wFtWr9qww1YBpbJrRKcZCbRskk1cGonwXaOJBRAaIMVyVYkTCa9tqg6(879JNTh1T1AYG2QFAXwSRmct(RtxeRgsukIKUfcDJsXqQwQpyboFnstmFvLzYzggcQZOuOv0I0eMVfcuxdY5i0IK0qUCFDhmnFbgn1sS7hasEJuQ)Q9KHej1rF)gL7hZuryx(NRqWLXrpZ8PAJj4KJJsP0zz01WSgvNXr(tcdHSuujhadHK0O36cM7zPODrDoYSsI8Q05RgQoLH)QPw7bCzjigRQclRSKAh)QV)JjDkmkS7JAxMR1GBEhuo1whjfkMCHqg1fHVUjXbQp0nlXFJc56tSbSQM9uEgJkKIjJceMOYE4yDXzQrqW9NhB0qd0QzM2HQ94YWct5w0MyacC4WFD)SKi(FF)HV)V(6pWYKOtzLu1UIRQQagnpwlR0R7fpOLNem7lWPjDJvF8c3TE1RH5P06zUE1VF4ywEjTEm0eH4qv8Hjm(YFai9u5(S81RwD40U84NzvLDxmLl4RT4dl)hvC2hPKWsPW8)iJtLh5YFyBBQvcrStTxcVZnlvNdPDlxODNBVPogs7w6jO6CZ8sviTrXZu05MKoUL2P0O23EDLgeBSP(Fo3cTscs7GvtnRBWILjX(Tz3Yk4AkcGacs9b4pQ3246oCaaqVdfFmE3sExhqASboiQmeGplNCaO(IzZjoFUUXel9X3UKZUgstR(VsSwDVhGTsf)GDUdFKwv)LSohqbH7(o0fqv1tHES2P4RTPHcwMVUvc4ZZRXp)WhPzau2vZJ65ZMTvyXYPFch(s14Ncl7TlWJHgTs57ILOGtnf67)Ipgu8mJ4GckpefbpvxOaB5z46eLM0kgVI2A91Ep3L8V7saJQQBGpQrdV2QUV3qJ4ioFgTM(JKVHWCuq55Ms3OGFjhjEwQEuVKZv4R5d2IRjj)zDjtFBZI4YOM33UKQN1xxN3WxK79BJtLZNvMG70yK3qvLVflVZhgKlsX)od8SoNiEFqom68zNWaoGOtI9c4hztrF4qSOXUF5DEdLtM)8zTefxC3ik5OuxnXIKY7DXSrW)448JFEyqXD6mbrY7HXmlN71(xsWsFVbwLE9sLKZsuPqTbshV6xukEXYz6OCwRySjQ8)AX7nXPGEw)ry8X)(GV5xb(Ujb6vGW6NhxNWQk4PwkAd(njU)UHGguu)YQzE)fF5Dk(CutbXd7dXfhCsFaJsX6ew)X95j)jAE)YPZ9gO)HpELag7JR1aB4Ww6ZGeh2gQhYWDHnW2kj7eSUi3tjDr4oZ3MhSbgFXRg0coQRuOWrVj2Gb72XBVpcWbt13C6Tad38Oimf5pl1flL(KurCOVCMzOalNF(SRp)uAOlYxzzz0deh73nUQkLVVN5JQtgof0i)KWhfudRBzmqt6Tl((jZfbJihxRZCaqnRvGK7OiYm9YNkIjdPaUlwobIGsV)UMJu3X3rOg8VF5K2O0BjyCQQX9(9kaigoRCIHgMXCp9ahnAg7IL(IrrA8190MEnYmjnHKLks0jytVG6bPd2ya94bM1SKQCJfR00rEgnt1BGrlf9gyPzI9tIDJmRDr5TqY8iJW60PE6d693KF(I3xZ3PJxDZug9SSXsgLghvliQ7tzLCqVdL6MGuIVzishj5yYSBKq(r4oACX7A819qiF6MPV3moxerKUzcLEfjLhDt7exqdYrRnIM0ZmlgQUvL4wPx0UbAdWwiJBbPEdm6U37l2rYXt3HdEwb(TbzMfmj)y6kK4nGJwcalN1JeE(Ako4OoCe7nyyBnwtdkGqBqvR0g5uC5YWQs8aDHmBoHd0QSldZkDQsslrYTs3pOAGnKqWVOqE4ywlMhvbvDMADsLetB3JfVJYN5LoRRyQfXsRTSh799nbdlNA8TbAVHdmyplHwmz0Tl4R8WmTZsFDCs9UR8nETCIjUxa4g1)VU33ppEAFCW2qmuku0p0pO3sQQpgwrdP8TTl9gUk1NZ(TL6kT3VT1AMo9dC1z45Ooh9dIBZI4o8B5Vnx6fqb1iuL1(bLcfTbr)6n0eqB(SF32NzFN74gn64SVmPY)qa)awlmRNQtnG0yxsoaqMvyOhzMwAOhYoObvInSzG)sU(r2Gzytw3B9UTFjSrRrwE)1V)nJtjZNYGV7nGQhnrFp9IUeprf7MH4AyyBOlp5GjDhtwiq(FBm0bz3Kw3tBIphBZ5Tql7tZ()K5i7axuW1m78YLKCSNKZ6))]] )
+spec:RegisterPack( "Feral", 20251008, [[Hekili:vZtwVnUrs)BrViiHmqRoSYbGKbYUFzXMaSZ8GNNffnvllctrkqszhdiOF7FvFW(S6MKwk7Ifjt8yYUU6UURMzZSnFFZt7IRjB(68PZxoB60FEYSFE(p9WdBEQ(JtKnpDko514xG)sE8r4)(pjLXz0N(rwr8ok0vfNltG3S5PNpNMv)75BEghLlG1EIKS5RZMc)1dP72r4RLuLS5PVFiT66w6FIVUvq0RBl2d)EsDAr(1TzPv1WR3xuED7)I8AAw6KnpXEiLn(1V9BWp(ktGi5XpNr2T5VV5PItavj1BEIJLnp9wCzk9T0)w2z4htzplIlEhJtZRH)eTF)MAqa6n2MPJTIt1rptGF9Ds8BekcxyHWg8KeNLfX)LiQiXfmbAsIRJauLEe25RH)HZLysBszAnb4ifJnrtIUUD41T7ipFE)(j7JH1rI2NwsMSR49C27OmWBKiso5ykb2QxT(625S3WGHYhWU)XjNpP4CneHTJP4O64Yxi1asQQtZFrHGQxpdY(ZXvh4c3PsssXXNJBrahiyQJXLVgvSpQ(aj690SDgmN9ldZHdcjNnpe7uuHIrx3k35RkYkIovw8E21TxUa625rCb76wyFD61TJzBTnuLTsdsYEcLEp0klxf)gyVevwexAGcTNtr0spQFhIZ3vbRoROU5xGv)JEwDDzA(RK6znai)DaMFkmmZTGzofMF2cgUw)BPLhj5vrpdYA0PcoAKBn8FNPWSRijSQsDCgjVEYUss8rQ2qcSQY0ZvteRMDmOFYrTBRYjVYTB5NEgV8CfjkVQ5ee5eObLGPu5lFmj5CzjWcClQhKh9Jy)R40Na(mlk)iQ690915KQQg0499LeQXTYoDmNt7awPlJTG846ZLKkRxRjwjzG)lHnRYrbNeuTzqdVaCWuPeXhbMzjBvLPNIkj7b8Fic8Er4m6ujJwg)kX7cgBYgyMKhiXzaBfvxCo5qBoF6Gka6r8qFYPumtkkYO7miBMYtiUyPzTJVXhqz6Z4B2HiHDEXqKZwu0U4JaZ0WhTSz0z2)62fOCFinhLKbliSJXBqwwDNLfpA5AcdScmVZ9uASzlQH4d(5lWaExr9K6dLqO3i4TcZBQLP1lmC08Wey3zSMND56WIz8xMmOfJ790teb9RnZw62tiSEF0Zf5NRWCV0PK345Q9Pt9t4BPkS2UHNR3lJRpis5SBuHbrynqdkOLtB3iafazoW(vrAZlDhPgnHaKuru0bvlRJipUGGLZsNGTsOIw1sUTGPjO3bQWq0nUbjvPM8NjGl8iEkfatFD7SLgbjFMuwrkFvfMoqeC)Mt1PVa4jA)5Ypcht1X9Oe5(tmyAB2YM5R6pw1No3J(4xFDqh7dOftLf)reLwWlIQ334yLTETnszsxYCf0FP096JmUFCpcZncrAm8wpJt3QdfNZ2fLKr3wGfH)0OtqQ)GWN0Ow5FxEM)9fAWdGXneRh6CjjofmsZYR(WKtjI0NNV0GkMrZmOR48tMSR(EUPHa6PXkeu2JTLBsbtR(AszrsAXzEHqH9F(Pk6NBD8yJXbgp2wEMw9aWVJ3ws4YFbbyBQk9l5gF33Gzp0U6mkIwS0Y4MYtCRB3m2SJcyyy2)SRymRVIV8vFaY2GRfO0Vi7va3B(Uh65UNVS)(LB0yUon5vwmpFcXIwS)8K4(nPQeYwC2uVsSW5kR9fKJGIgjp5JUq6wy8EXE(ZXqJ9Au4BEKm7U)tZT3VCn6qQghJZFjRPUHVolyp9gfWG0YAwQcR6gtq11XAbOAsGt1dMURL2CiQ3hRDPv0FgvDOKSl69dK8iAtjrXS8eBaRtLVuwW4cT42uKW2Q8NosxkO2jl1(lJknuiAr8Up8EO6p5cNgZb840akusz4oeFCM)i4ctWtqAIYe9VfLCgIGWP8z0WRpwwszWAqqtHfZO)g6pLqvOdLzOSmCGMomHaLxlATTx8zLxEZl0tEDXuNwJBBcidhkBn(9HG6Tw3xZ7vTw)UsZ5HZ18Zrb5zxwrXoznM(gAqtx)BHQIClOjmgvxeTlvK348Fm0SecM(MOteP5jXL5X01B0PyeJdfxRbu4CIK(PP9AUUKqnBgsfhgTbRLecTli8U42D6BbylPPyWehkQFxNhG01kRnMUMoxmc1JolAg)j8klPjpZrSw0ehmZDoDSiVibF0F9SXDUZET)dZ1bH6TwdXNZNaJQXmX3aQj57aiBK)ge14(uNCb9A2ZbdUqNy6DaYKEpOVSgV3MlX2lvFgMh3DtZJzfzzI8(wzjlhlnmYBNIFZ(oHfNexPZGKSp(C2NuVv)shCpVlc2TQTpxmHUHDJwnh0uXoGz3WVM1ri7ghLUUHD(i(SXS4Pib)6gwpsYieCMw)viAZTJFzGcDmREiIUD3Wj19Snkzpdj(v7y0tzh6eW3sWIv1obv30cDAO90AKsHvUw7ZvVrnjJUD9BmT04bVBqbCQL(c4QnQ4vDVQWIBUOjTMvSyTtKZA8fIPFR5Y2zDQK8wtHQua183R9qexbTruSkJrICH4eOnm7kolM6HKYQjfskKAX(Oxs2n5i4xgVafaBk2KUmmpjTXITHvw5On7STMnDVqEwCcPmUULwUIJz5vtjQjR5JX)jpRz6Mg5pjjNRjQ2vA2YqTgRJ209LDzyhnxAfuvfQ1Erl2y)VXuYSpdTMODp6PvlJDHnaN3yx2JtKOD07UzOK9qzw0wwJOigqi6vpan7ESF3d3x63ybmaztRrZ1tpGMz2smTBEqaphFgUFvt3t6RUG3tDF3MpAsXby2vsMTTUUhAKRiZkfi6hGvxeV69kQLoZUNFze6E0vTenzKs0cn0BbrZfDaiZ3)TV()9TV(5syF2Dnn9EELHBhHTv2A)ZfF2sDuQFNy81uQGzvjkYnGsz)sk7F)TV(T)XV(DSdZoHWMUoCFo(SYY)ZDVFSer4TVbXBOaYUv9t)L5)eOohxMdXRGQb(9JNkkRP9LHgTJJvXnMFY1)GDvI3NMjTeQ(H1)Tgb5lukUwtl(lmbt)jx)dFGzQUkG0kN3GaRPAQbTUnDqWvLbQbT2v3niW8k90auCNpdcK2PRgKAp1p4Yc1eaQA7xqqOfIPbbRvAEbWtHvc49nqiVOtvdLadAxQ9)qc2e5D2hqG9DU)lP7xpGfLc5Q6JJIMWzkq1JEJccNhH1psgCqXQxUiV79RNoEihLn33EC8Pf8uXfwJ9afq6reeN64xOntFnBGbDzHnn6VhRDUNDcw304hFiTDt)ytokiamrAXuHfP7YdrK)Hu0Osvy165d9FwHqkWZLKAAT0hfeKDveyVCX3aiEekCSdiU5u4VqCp)(GB1auUp4RfTguI4o3fqh4hXXV2qrO4Y)8vgIO9HJsR5Cqr7B6dZG5ADy4PP0DQ5mWch6rDmpSTbNmCKtrOxUGoUKX6wQSGXuzwnjzd6RfSEONl7vVmxBON6JZIFQP)jCPZF7ks47rQpidTJzVxO3HJmsLxf4(YfJxWdmpg1l0iZr5VA9dGl(rJe(4X((xg69DcReyVz8LlbXbCOrFj2NXHGnD6OaWuyLq946LdTlDAfeM6YfNRdh9XJhh4yJFm4WuD6OazdFig)cSB7FXlRNkIYITbDZbt4IjSPjDlf47kWNq0bMyHdpGDs5WxWX2NMXw9PzmeLfBot1ULoXFMe9X1p4s1riDm6Yf8l4iyzoz5yBEs2dL7elP7vs2PDwshIwGA430SuLHyTMhhDA9mxl2OQlRd17D9JRNVC4a7gWJJy9CFDXQRNfD7cD8qBODx4Sft95UAGtF0Dud9rAzxVX5GUHMM(BFl4i8U5i3EGVATw)V5AY69(E16fIhQ659Q1l1s4cPx30Wj6QLSQBbMJ9th1rTAFh62llD8urJqRrpw5pYwId8KD7WFC2sr0d98p8D(73)BfsfsoETy4apG302WTW1Epcx2fVMRrCBoWUTKIe0mtjm857J6E1W2Bg5WCsnJzxUy)vy4(e53LXypBOZCfmlL0hFWIfnVfdAz3PUI2ROUTuFNfCN9gk(lePbz)Lv4MwDdiwOOfbQ3NN2c5nKUmvX6XP9kVeUURi8VNO7yXPDf2MtnyJODHEOzgWGp9Ls9A1xVGTFdJCb6vC8fyz4ILwNMuyRoUwOzP5BLgnVDH9gvJfxpBx(zHhnrK8X61HtR8l63jGpe7HnUfIoCGZ9()(sD1DYUFXjApmbRnMm13rOkK4xnFAPDEoRhl8NP6YX4oCepCGQmwpDy1clWM2GMlzVDSdZTRq1iyeeVlSP6eMFV5d7T0QU6Lt9vWsVDrACR01uh1U27DxJqH74cY)LsiItzRO(MBlYAv6KUpAiD3HvBl6g(0rCP7R(PEByley9A3UnupC0ahXJM1fIc3SX3(gFtOS5DE33MM0uungG96zU0gk51ByfSKyDYg1OB9XYzc(d2ZPPzKSIP0m1hu2dDuB4F9dezRr7hyTwYt)qNSuVaf13pmURiHNerl))lMEHuqJbvVSFyPQ2OJW8zw7OjGor2PDdo3HX2raDgd7uDwLpU)FqvnoYR6182KqP5Rh5TcF6iVP1zK5abnrvShhSqveaCtfZlSsO9BeQ0A03V)1V9BoNsAv84E0IbaQE0mBy6fFjUMg(DdX1WWaOlZHFw3PKhgKFNG6WE3SwHPTTVaGf0k0dCw()NTebc8TcUMzNxU2o3MNIpxFOOCZtpD88(Y0xz3tLn))p]] )

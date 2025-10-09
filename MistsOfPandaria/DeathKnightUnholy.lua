@@ -207,18 +207,30 @@ spec:RegisterResource(
 		values = {},
 		resource = "blood_runes",
 
-		reset = function()
-			local t = state.blood_runes
-			for i = 1, 2 do
-				local start, duration, ready = GetRuneCooldown(i)
-				start = start or 0
-				duration = duration or (10 * state.haste)
-				t.expiry[i] = ready and 0 or (start + duration)
+	reset = function()
+		local t = state.blood_runes
+		local count = 0
+		-- Blood runes are in slots 1 and 2
+		-- Death runes in these slots can also be used as blood runes
+		for i = 1, 2 do
+			local start, duration, ready = GetRuneCooldown(i)
+			local runeType = GetRuneType(i)
+			start = start or 0
+			duration = duration or (10 * state.haste)
+			
+			-- Count blood runes (type 1) AND death runes (type 4) in blood slots
+			if runeType == 1 or runeType == 4 then
+				count = count + 1
+				t.expiry[count] = ready and 0 or (start + duration)
 				t.cooldown = duration
 			end
-			table.sort(t.expiry)
-			t.actual = nil
-		end,
+		end
+		for i = count + 1, 2 do
+			t.expiry[i] = 999
+		end
+		table.sort(t.expiry)
+		t.actual = nil
+	end,
 
 		gain = function(amount)
 			local t = state.blood_runes
@@ -253,7 +265,7 @@ spec:RegisterResource(
 					end
 				end
 				return amount
-			elseif k == "current" then
+			elseif k == "current" or k == "count" then
 				return t.actual
 			end
 			return rawget(t, k)
@@ -292,18 +304,30 @@ spec:RegisterResource(
 		values = {},
 		resource = "frost_runes",
 
-		reset = function()
-			local t = state.frost_runes
-			for i = 5, 6 do -- Frost runes are at positions 5-6
-				local start, duration, ready = GetRuneCooldown(i)
-				start = start or 0
-				duration = duration or (10 * state.haste)
-				t.expiry[i - 4] = ready and 0 or (start + duration)
+	reset = function()
+		local t = state.frost_runes
+		local count = 0
+		-- Frost runes are in slots 5 and 6
+		-- Death runes in these slots can also be used as frost runes
+		for i = 5, 6 do
+			local start, duration, ready = GetRuneCooldown(i)
+			local runeType = GetRuneType(i)
+			start = start or 0
+			duration = duration or (10 * state.haste)
+			
+			-- Count frost runes (type 3) AND death runes (type 4) in frost slots
+			if runeType == 3 or runeType == 4 then
+				count = count + 1
+				t.expiry[count] = ready and 0 or (start + duration)
 				t.cooldown = duration
 			end
-			table.sort(t.expiry)
-			t.actual = nil
-		end,
+		end
+		for i = count + 1, 2 do
+			t.expiry[i] = 999
+		end
+		table.sort(t.expiry)
+		t.actual = nil
+	end,
 
 		gain = function(amount)
 			local t = state.frost_runes
@@ -338,7 +362,7 @@ spec:RegisterResource(
 					end
 				end
 				return amount
-			elseif k == "current" then
+			elseif k == "current" or k == "count" then
 				return t.actual
 			end
 			return rawget(t, k)
@@ -377,18 +401,30 @@ spec:RegisterResource(
 		values = {},
 		resource = "unholy_runes",
 
-		reset = function()
-			local t = state.unholy_runes
-			for i = 3, 4 do -- Unholy runes are at positions 3-4
-				local start, duration, ready = GetRuneCooldown(i)
-				start = start or 0
-				duration = duration or (10 * state.haste)
-				t.expiry[i - 2] = ready and 0 or (start + duration)
+	reset = function()
+		local t = state.unholy_runes
+		local count = 0
+		-- Unholy runes are in slots 3 and 4
+		-- Death runes in these slots can also be used as unholy runes
+		for i = 3, 4 do
+			local start, duration, ready = GetRuneCooldown(i)
+			local runeType = GetRuneType(i)
+			start = start or 0
+			duration = duration or (10 * state.haste)
+			
+			-- Count unholy runes (type 2) AND death runes (type 4) in unholy slots
+			if runeType == 2 or runeType == 4 then
+				count = count + 1
+				t.expiry[count] = ready and 0 or (start + duration)
 				t.cooldown = duration
 			end
-			table.sort(t.expiry)
-			t.actual = nil
-		end,
+		end
+		for i = count + 1, 2 do
+			t.expiry[i] = 999
+		end
+		table.sort(t.expiry)
+		t.actual = nil
+	end,
 
 		gain = function(amount)
 			local t = state.unholy_runes
@@ -423,7 +459,7 @@ spec:RegisterResource(
 					end
 				end
 				return amount
-			elseif k == "current" then
+			elseif k == "current" or k == "count" then
 				return t.actual
 			end
 			return rawget(t, k)

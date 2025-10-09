@@ -1,16 +1,14 @@
 # Mage: Frost - Optimized from WoWSims MoP
-# Updated October 1, 2025
 
 ## Precombat
 actions.precombat+=/arcane_brilliance,if=!buff.arcane_brilliance.up
 actions.precombat+=/frost_armor,if=!buff.frost_armor.up
 actions.precombat+=/summon_water_elemental,if=!pet.water_elemental.active
 actions.precombat+=/rune_of_power,if=talent.rune_of_power.enabled
+actions.precombat+=/use_item,slot=hands
 actions.precombat+=/potion
 actions.precombat+=/frostbolt,if=time<2
 
-## Main Priority List
-actions+=/auto_attack
 
 # Frozen Orb on cooldown
 actions+=/frozen_orb
@@ -21,7 +19,8 @@ actions+=/icy_veins,if=buff.rune_of_power.up|target.time_to_die<20
 # Rune of Power maintenance
 actions+=/rune_of_power,if=talent.rune_of_power.enabled&buff.rune_of_power.remains<=cast_time
 
-# Use trinkets with Icy Veins
+# Use gloves and trinkets with Icy Veins
+actions+=/use_item,slot=hands,if=buff.icy_veins.up
 actions+=/use_item,slot=trinket1,if=buff.icy_veins.up
 actions+=/use_item,slot=trinket2,if=buff.icy_veins.up
 

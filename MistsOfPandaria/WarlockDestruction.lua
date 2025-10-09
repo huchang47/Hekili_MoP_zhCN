@@ -1504,6 +1504,11 @@ end )
 spec:RegisterStateExpr( "should_toggle_fnb", function()
     local targets = active_enemies or 1
     local be = state.burning_embers and state.burning_embers.current or 0
+    -- Only toggle Fire and Brimstone if it's not already active and we have 3+ targets
+    -- Or if we have 6+ targets and low embers
+    if buff.fire_and_brimstone.up then
+        return false -- Don't toggle if already active
+    end
     return targets >= 3 or (targets >= 6 and be < 1)
 end )
 

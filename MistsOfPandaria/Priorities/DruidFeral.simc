@@ -11,42 +11,42 @@ actions+=/variable,name=disable_shred_when_solo,value=disable_shred_when_solo
 actions+=/variable,name=solo_prowl,value=solo_prowl
 
 actions.precombat+=/mark_of_the_wild,if=!buff.mark_of_the_wild.up
-actions.precombat+=/cat_form
-actions.precombat+=/prowl,if=variable.solo_prowl|in_combat=0
+# Proc Dream of Cenarius before combat (T16H)
+actions.precombat+=/healing_touch,if=!buff.dream_of_cenarius.up&talent.dream_of_cenarius.enabled
+actions.precombat+=/cat_form,if=!buff.cat_form.up
 actions.precombat+=/savage_roar,if=!buff.savage_roar.up
+actions.precombat+=/prowl,if=(variable.solo_prowl|in_combat=0)&!buff.prowl.up
+actions.precombat+=/use_item,slot=hands
+actions.precombat+=/use_item,slot=trinket1
+actions.precombat+=/use_item,slot=trinket2
+actions.precombat+=/potion,name=virmens_bite_potion
 
-actions.cooldowns+=/use_item,slot=hands,if=cooldown.synapse_springs.ready
+actions.cooldowns+=/berserk,if=buff.tigers_fury.up&buff.savage_roar.up&active_enemies<=2&buff.cat_form.up
+actions.cooldowns+=/berserking,if=buff.tigers_fury.up
+actions.cooldowns+=/use_item,slot=hands,if=buff.tigers_fury.up
+actions.cooldowns+=/blood_fury,if=buff.tigers_fury.up
+actions.cooldowns+=/potion,name=virmens_bite_potion,if=(target.health.pct<30&buff.berserk.up)|target.time_to_die<=40
 actions.cooldowns+=/use_item,slot=trinket1
 actions.cooldowns+=/use_item,slot=trinket2
-actions.cooldowns+=/blood_fury
-actions.cooldowns+=/berserking
-actions.cooldowns+=/potion,name=virmens_bite_potion,if=buff.berserk.up|target.time_to_die<=26
 actions.cooldowns+=/incarnation,if=talent.incarnation.enabled&buff.tigers_fury.up
-actions.cooldowns+=/berserk,if=energy.current>90&buff.tigers_fury.up&buff.clearcasting.down&buff.savage_roar.up&active_enemies<=2&buff.cat_form.up
-actions.cooldowns+=/force_of_nature,if=variable.use_trees&talent.force_of_nature.enabled&buff.tigers_fury.up
+# Use Force of Nature at 3 charges or with trinket procs (T16H optimization)
+actions.cooldowns+=/force_of_nature,if=variable.use_trees&talent.force_of_nature.enabled&(charges=3|buff.tigers_fury.up|target.time_to_die<20)
 actions.cooldowns+=/heart_of_the_wild,if=variable.use_hotw&talent.heart_of_the_wild.enabled&(buff.berserk.down|berserk_clip_for_hotw)
 
-actions.maint+=/faerie_fire,if=variable.maintain_ff&debuff.faerie_fire.down&active_enemies<=2&buff.cat_form.up
-actions.maint+=/skull_bash,if=target.casting
+actions.maint+=/faerie_fire,if=variable.maintain_ff&debuff.weakened_armor.stack<3&active_enemies<=2&buff.cat_form.up
+actions.maint+=/skull_bash_cat,if=target.casting&buff.cat_form.up
 
-actions.doc+=/healing_touch,if=talent.dream_of_cenarius.enabled&(variable.opt_snek_weave|variable.opt_use_ns)&(energy.current<=40)&((buff.predatory_swiftness.up&buff.predatory_swiftness.remains<=2)|((buff.predatory_swiftness.up|buff.natures_swiftness.up)&buff.clearcasting.down&((combo_points.current>=4&(dot.rip.down|dot.rip.remains<4))|(dot.rake.down|dot.rake.remains<3))))&buff.cat_form.up
-actions.doc+=/natures_swiftness,if=talent.dream_of_cenarius.enabled&variable.opt_use_ns&combo_points.current=5&cooldown.natures_swiftness.remains=0&!buff.natures_swiftness.up&active_enemies<=2&buff.cat_form.up
-actions.doc+=/rake,if=buff.dream_of_cenarius_damage.up&combo_points.current<=3&active_enemies<3&buff.cat_form.up
-actions.doc+=/mangle_cat,if=buff.dream_of_cenarius_damage.up&combo_points.current<=3&active_enemies<3&buff.cat_form.up
-actions.doc+=/rake,if=buff.dream_of_cenarius_damage.up&combo_points.current=4&active_enemies<3&buff.cat_form.up
-actions.doc+=/rip,if=buff.dream_of_cenarius_damage.up&combo_points.current=4&active_enemies<3&buff.cat_form.up
-actions.doc+=/rip,if=buff.dream_of_cenarius_damage.up&combo_points.current=5&active_enemies<3&buff.cat_form.up
-actions.doc+=/rake,if=buff.dream_of_cenarius_damage.up&combo_points.current=5&active_enemies<3&buff.cat_form.up
+actions.doc+=/healing_touch,if=talent.dream_of_cenarius.enabled&(variable.opt_snek_weave|variable.opt_use_ns)&buff.savage_roar.up&(energy.current<=40)&((buff.predatory_swiftness.up&buff.predatory_swiftness.remains<=2)|((buff.predatory_swiftness.up|buff.natures_swiftness.up)&buff.clearcasting.down&((combo_points.current>=5&rip_refresh_time<=0)|rake_refresh_time<=0)))&buff.cat_form.up
+actions.doc+=/natures_swiftness,if=talent.dream_of_cenarius.enabled&variable.opt_use_ns&combo_points.current=5&cooldown.natures_swiftness.remains=0&!buff.natures_swiftness.up&buff.savage_roar.up&active_enemies<=2&buff.cat_form.up
+actions.doc+=/rip,if=buff.dream_of_cenarius_damage.up&combo_points.current=5&buff.savage_roar.up&active_enemies<3&buff.cat_form.up&rip_refresh_time<=0
+actions.doc+=/rake,if=buff.dream_of_cenarius_damage.up&combo_points.current<5&buff.savage_roar.up&active_enemies<3&buff.cat_form.up&rake_refresh_time<=0
+actions.doc+=/thrash_cat,if=buff.dream_of_cenarius_damage.up&active_enemies>=4&buff.cat_form.up&(dot.thrash_cat.down|dot.thrash_cat.remains<=4.5)
 actions.doc+=/swipe_cat,if=buff.dream_of_cenarius_damage.up&active_enemies>=4&buff.cat_form.up
-actions.doc+=/thrash_cat,if=buff.dream_of_cenarius_damage.up&active_enemies>=4&buff.cat_form.up
 
 actions.bearweave+=/bear_form,if=variable.opt_bear_weave&bearweave_trigger_ok
 actions.bearweave+=/thrash_bear,if=buff.bear_form.up&rage.current>=25&!prev.thrash_bear
-actions.bearweave+=/thrash_bear,if=buff.bear_form.up&thrash_aoe_efficient&rage.current>=25
-actions.bearweave+=/mangle_bear,if=buff.bear_form.up&active_enemies<3&rage.current<25
-actions.bearweave+=/thrash_bear,if=buff.bear_form.up&active_enemies<3&rage.current>=25
+actions.bearweave+=/cat_form,if=buff.bear_form.up&buff.clearcasting.up
 actions.bearweave+=/maul,if=buff.bear_form.up&rage.current>=30&buff.clearcasting.down&!prev_off_gcd.maul&active_enemies<3
-actions.bearweave+=/cat_form,if=buff.bear_form.up&buff.clearcasting.up&prev.thrash_bear
 actions.bearweave+=/mangle_bear,if=buff.bear_form.up&active_enemies<3
 actions.bearweave+=/lacerate,if=buff.bear_form.up&active_enemies<3
 actions.bearweave+=/cat_form,if=buff.bear_form.up&(energy_time_to_max<=gcd.execute|dot.rake.remains<=3|dot.rip.remains<=5|cooldown.tigers_fury.remains<=2)
@@ -54,28 +54,49 @@ actions.bearweave+=/cat_form,if=buff.bear_form.up&(energy_time_to_max<=gcd.execu
 actions.wrath+=/wrath,if=variable.opt_wrath_weave&should_wrath_weave
 
 actions.st+=/tigers_fury,if=(tf_timing|cat_excess_energy>15)&buff.berserk.down&buff.clearcasting.down&buff.cat_form.up
-actions.st+=/savage_roar,if=((buff.savage_roar.down|buff.savage_roar.remains<=1)|should_clip_roar|should_clip_roar_pandemic)&combo_points.current>=1&buff.cat_form.up
-actions.st+=/faerie_fire,if=variable.maintain_ff&debuff.faerie_fire.down&time>0&active_enemies<=2&buff.cat_form.up
-actions.st+=/rake,if=combo_points.current<5&(dot.rake.down|rake_refresh_time<=0|rake_damage_increase_pct>0.05)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up&(energy.current>=35|!should_pool_energy|combo_points.current<=2)&rake_vs_shred_dpe&!delay_rake_for_tf&!clip_rake_with_snapshot
-actions.st+=/rake,if=combo_points.current<5&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up&rake_damage_increase_pct>0&!delay_rake_for_tf&!clip_rake_with_snapshot
-actions.st+=/rip,if=combo_points_for_rip&(dot.rip.down|rip_refresh_time<=0|rip_damage_increase_pct>0.05)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up&(dot.rip.remains<rip_end_threshold|dot.rip.down)&!delay_rip_for_tf&!clip_rip_with_snapshot
-actions.st+=/thrash_cat,if=(dot.thrash_cat.down|dot.thrash_cat.remains<3)&buff.clearcasting.up&buff.savage_roar.remains>=1&dot.rip.remains>=5&dot.rake.remains>=4&active_enemies<=3&buff.cat_form.up
+actions.st+=/savage_roar,if=buff.savage_roar.down&combo_points.current>=0&buff.cat_form.up
+# Keep Rip from falling off during execute range
+actions.st+=/ferocious_bite,if=dot.rip.ticking&dot.rip.remains<=3&target.health.pct<=25&combo_points.current>=1&buff.savage_roar.up&active_enemies<=3&buff.cat_form.up
+# Overwrite Rip during execute if new one is 15%+ stronger
+actions.st+=/rip,if=combo_points.current>=5&target.health.pct<=25&action.rip.tick_damage%dot.rip.tick_dmg>=1.15&buff.savage_roar.up&active_enemies<=3&buff.cat_form.up
+actions.st+=/rip,if=combo_points.current>=5&rip_refresh_time<=0&buff.savage_roar.up&active_enemies<=3&buff.cat_form.up&!delay_rip_for_tf&(buff.tigers_fury.up|cooldown.tigers_fury.remains>5)
+actions.st+=/savage_roar,if=(buff.savage_roar.remains<=1|should_clip_roar|should_clip_roar_pandemic)&combo_points.current>=1&buff.cat_form.up&dot.rip.remains>4
+actions.st+=/faerie_fire,if=variable.maintain_ff&debuff.weakened_armor.stack<3&time>0&active_enemies<=2&buff.cat_form.up
+# Rake if it's about to fall off or we can apply a stronger Rake (T16H)
+actions.st+=/rake,cycle_targets=1,if=combo_points.current<5&(rake_refresh_time<=0|action.rake.tick_damage>dot.rake.tick_dmg)&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up&energy.current>=35&!delay_rake_for_tf
+# Pool for Thrash when OoC is up
+actions.st+=/pool_resource,for_next=1
+actions.st+=/thrash_cat,if=(dot.thrash_cat.down|dot.thrash_cat.remains<3)&buff.clearcasting.react&buff.savage_roar.remains>=1&dot.rip.remains>=8&active_enemies<=3&buff.cat_form.up
 actions.st+=/ferocious_bite,if=target.health.pct<=25&dot.rip.ticking&dot.rip.remains>=3&combo_points.current>=5&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
+# Pool to near-full energy before casting Ferocious Bite (T16H)
+actions.st+=/pool_resource,if=combo_points.current>=5&!(energy.time_to_max<=1|(buff.berserk.up&energy.current>=25))&dot.rip.ticking&buff.savage_roar.remains>=1&!should_bite_emergency&active_enemies<=3
 actions.st+=/ferocious_bite,if=should_bite_emergency&active_enemies<=3&buff.savage_roar.remains>=1&buff.cat_form.up
+actions.st+=/ferocious_bite,if=combo_points.current>=5&dot.rip.ticking&buff.savage_roar.remains>=1&active_enemies<=3&buff.cat_form.up
 actions.st+=/ferocious_bite,if=should_bite&!should_bear_weave&active_enemies<=3&buff.savage_roar.remains>=1&buff.cat_form.up
 actions.st+=/mangle_cat,if=buff.savage_roar.down&combo_points.current=0&buff.cat_form.up
 actions.st+=/shred,if=((buff.clearcasting.up&dot.thrash_cat.ticking)|(combo_points.current>=5)|buff.berserk.up)&active_enemies<=3&buff.cat_form.up&!(variable.disable_shred_when_solo&active_enemies=1&!in_group)
 actions.st+=/mangle_cat,if=combo_points.current<5&buff.berserk.down&active_enemies<=3&buff.cat_form.up&!bear_weave_ready
+actions.st+=/faerie_fire,if=energy.current<50&combo_points.current<5&active_enemies<=2&buff.cat_form.up
 actions.st+=/pool_resource,if=should_pool_energy&combo_points.current=0&buff.cat_form.up
 
+actions.aoe+=/faerie_fire,cycle_targets=1,if=variable.maintain_ff&debuff.weakened_armor.stack<3&buff.cat_form.up
 actions.aoe+=/tigers_fury,if=(tf_timing|cat_excess_energy>15)&buff.berserk.down&buff.clearcasting.down&buff.cat_form.up
-actions.aoe+=/savage_roar,if=active_enemies>=4&buff.savage_roar.down&combo_points.current>=1&buff.cat_form.up&roar_vs_swipe_dpe
-actions.aoe+=/thrash_cat,if=dot.thrash_cat.down&active_enemies>=4&buff.savage_roar.remains>=1&buff.cat_form.up
-actions.aoe+=/swipe_cat,if=active_enemies>=4&buff.savage_roar.remains>=1&buff.cat_form.up&(!roar_vs_swipe_dpe|combo_points.current<1)
-actions.aoe+=/savage_roar,if=active_enemies>=4&buff.savage_roar.remains<2&combo_points.current>=1&buff.cat_form.up
-actions.aoe+=/rip,cycle_targets=1,if=active_enemies<=4&combo_points_for_rip&dot.rip.remains<7.2&!delay_rip_for_tf&!clip_rip_with_snapshot
+actions.aoe+=/savage_roar,if=active_enemies>=4&(buff.savage_roar.down|(buff.savage_roar.remains<3&combo_points.current>0))&buff.cat_form.up
+# Pool for Thrash in AoE (T16H)
+actions.aoe+=/pool_resource,for_next=1
+actions.aoe+=/thrash_cat,if=(dot.thrash_cat.down|dot.thrash_cat.remains<3|(buff.tigers_fury.up&dot.thrash_cat.remains<9))&active_enemies>=4&buff.savage_roar.remains>=1&buff.cat_form.up
+actions.aoe+=/savage_roar,if=active_enemies>=4&buff.savage_roar.remains<9&combo_points.current>=5&buff.cat_form.up
+actions.aoe+=/rip,cycle_targets=1,if=active_enemies<=5&combo_points.current>=5&rip_refresh_time<=0&!delay_rip_for_tf&target.time_to_die>=15
+actions.aoe+=/rake,cycle_targets=1,if=active_enemies<8&rake_refresh_time<=0&target.time_to_die>=15&buff.savage_roar.remains>=1&buff.cat_form.up
+actions.aoe+=/swipe_cat,if=active_enemies>=4&buff.savage_roar.remains<=5&buff.cat_form.up
+actions.aoe+=/swipe_cat,if=active_enemies>=4&(buff.tigers_fury.up|buff.berserk.up)&buff.cat_form.up
+actions.aoe+=/swipe_cat,if=active_enemies>=4&cooldown.tigers_fury.remains<3&buff.cat_form.up
+actions.aoe+=/swipe_cat,if=active_enemies>=4&buff.clearcasting.react&buff.cat_form.up
+actions.aoe+=/swipe_cat,if=active_enemies>=4&energy.time_to_max<=1&buff.cat_form.up
 
 actions.cat_optimal+=/variable,name=tf_bonus,value=0
+# Use Ravage when stealthed (T16H opener)
+actions.cat_optimal+=/ravage,if=buff.stealthed.up
 actions.cat_optimal+=/call_action_list,name=maint
 actions.cat_optimal+=/call_action_list,name=cooldowns
 actions.cat_optimal+=/call_action_list,name=wrath,if=variable.opt_wrath_weave

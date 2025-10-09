@@ -1,64 +1,84 @@
-# Death Knight: Unholy (MoP)
-# Based on MoP simulation files and APL structure
+# Death Knight: Unholy (MoP 5.5.0) - T16H Optimized
+# Based on SimC Tier 16 Heroic profile
 
-### Precombat Actions ###
+## Precombat Actions
+actions.precombat+=/flask,type=winters_bite
+actions.precombat+=/food,type=black_pepper_ribs_and_shrimp
+actions.precombat+=/horn_of_winter
 actions.precombat+=/unholy_presence
 actions.precombat+=/army_of_the_dead
-actions.precombat+=/horn_of_winter,if=!buff.horn_of_winter.up|buff.horn_of_winter.remains<6
 actions.precombat+=/potion
+actions.precombat+=/raise_dead
 
-### Utility and Interrupts ###
+## Main Actions
 actions+=/mind_freeze
-actions+=/antimagic_shell,damage=100000,if=settings.dps_shell
+actions+=/antimagic_shell,damage=100000
+actions+=/blood_fury
+actions+=/berserking
+actions+=/arcane_torrent
+actions+=/use_item,slot=hands
+actions+=/potion,if=buff.dark_transformation.up&target.time_to_die<=60
+actions+=/use_item,slot=trinket1,if=buff.dark_transformation.up|target.time_to_die<=20
+actions+=/use_item,slot=trinket2,if=buff.dark_transformation.up|target.time_to_die<=20
+actions+=/unholy_frenzy,if=time>=4
+actions+=/run_action_list,name=aoe,if=active_enemies>=3
+actions+=/run_action_list,name=single_target,if=active_enemies<3
 
-### Cooldowns and Major Abilities ###
-actions+=/raise_dead,if=!pet.ghoul.active
-actions+=/summon_gargoyle,if=pet.ghoul.active&(buff.dark_transformation.up|cooldown.dark_transformation.remains>20)
-actions+=/dark_transformation,if=buff.dark_transformation.down&pet.ghoul.active
-actions+=/synapse_springs,if=(buff.dark_transformation.up|cooldown.dark_transformation.remains>10)
-actions+=/blood_fury,if=(buff.dark_transformation.up|cooldown.dark_transformation.remains>10)
-actions+=/berserking,if=(buff.dark_transformation.up|cooldown.dark_transformation.remains>10)
-actions+=/use_item,name=trinket1,if=buff.dark_transformation.up|cooldown.dark_transformation.remains>20
-actions+=/use_item,name=trinket2,if=buff.dark_transformation.up|cooldown.dark_transformation.remains>20
-actions+=/potion,if=buff.dark_transformation.up|cooldown.dark_transformation.remains>20
-actions+=/use_items
+## AoE Actions (3+ targets)
+actions.aoe+=/unholy_blight,if=talent.unholy_blight.enabled
+actions.aoe+=/plague_strike,if=!dot.blood_plague.ticking|!dot.frost_fever.ticking
+actions.aoe+=/pestilence,if=dot.blood_plague.ticking&talent.plague_leech.enabled,line_cd=28
+actions.aoe+=/pestilence,if=dot.blood_plague.ticking&talent.unholy_blight.enabled&cooldown.unholy_blight.remains<49,line_cd=28
+actions.aoe+=/summon_gargoyle
+actions.aoe+=/dark_transformation
+actions.aoe+=/blood_tap,if=talent.blood_tap.enabled&buff.shadow_infusion.stack=5
+actions.aoe+=/blood_boil,if=blood=2|death=2
+actions.aoe+=/death_and_decay,if=unholy=1
+actions.aoe+=/soul_reaper,if=unholy=2&target.health.pct-3*(target.health.pct/target.time_to_die)<=35
+actions.aoe+=/scourge_strike,if=unholy=2
+actions.aoe+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>10
+actions.aoe+=/death_coil,if=runic_power>90|buff.sudden_doom.react|(buff.dark_transformation.down&unholy<=1)
+actions.aoe+=/blood_boil
+actions.aoe+=/icy_touch
+actions.aoe+=/soul_reaper,if=unholy=1&target.health.pct-3*(target.health.pct/target.time_to_die)<=35
+actions.aoe+=/scourge_strike,if=unholy=1
+actions.aoe+=/death_coil
+actions.aoe+=/blood_tap,if=talent.blood_tap.enabled
+actions.aoe+=/plague_leech,if=talent.plague_leech.enabled&unholy=1
+actions.aoe+=/horn_of_winter
+actions.aoe+=/empower_rune_weapon
 
-### Disease Management ###
-actions+=/unholy_blight,if=talent.unholy_blight.enabled&(dot.frost_fever.remains<3|dot.blood_plague.remains<3)
-actions+=/plague_leech,if=talent.plague_leech.enabled&((dot.blood_plague.remains<3&dot.frost_fever.remains<3)|(rune_deficit>=2&(dot.frost_fever.ticking|dot.blood_plague.ticking)))
-actions+=/outbreak,if=!dot.blood_plague.ticking|!dot.frost_fever.ticking
-actions+=/festering_strike,if=!dot.blood_plague.ticking|!dot.frost_fever.ticking
-
-### Proc Management ###
-actions+=/death_coil,if=buff.sudden_doom.react
-actions+=/death_coil,if=buff.shadow_infusion.stack<5&buff.dark_transformation.down&runic_power>=40
-
-### Execute Phase ###
-actions+=/soul_reaper,if=target.health.pct<=35
-
-### AoE Setup ###
-actions+=/blood_boil,if=active_enemies>=2&(dot.blood_plague.ticking&dot.frost_fever.ticking)&blood>=1&(active_dot.blood_plague<active_enemies|active_dot.frost_fever<active_enemies)
-actions+=/death_and_decay,if=active_enemies>=2&(settings.dnd_while_moving|!moving)
-
-### Rotation Branching ###
-actions+=/run_action_list,name=aoe,if=active_enemies>=4
-actions+=/run_action_list,name=single_target,if=active_enemies<4
-
-### Single Target Rotation ###
-actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=5&(runes.blood.count=0|runes.frost.count=0|runes.unholy.count=0)
-actions.single_target+=/scourge_strike,if=unholy>=1
-actions.single_target+=/death_coil,if=runic_power>=50
-actions.single_target+=/horn_of_winter,if=runic_power<=60&(buff.horn_of_winter.down|buff.horn_of_winter.remains<6)
-actions.single_target+=/empower_rune_weapon,if=unholy=0&blood=0&frost=0&runic_power<60
-actions.single_target+=/blood_strike,if=blood>=1&frost>=1&unholy=0
-
-### AoE Rotation ###
-actions.aoe+=/pestilence,if=dot.blood_plague.ticking&(active_dot.blood_plague<active_enemies)
-actions.aoe+=/blood_boil,if=dot.blood_plague.ticking&dot.frost_fever.ticking&(active_dot.blood_plague<active_enemies|active_dot.frost_fever<active_enemies)
-actions.aoe+=/death_and_decay,if=settings.dnd_while_moving|!moving
-actions.aoe+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=5&(runes.blood.count=0|runes.frost.count=0|runes.unholy.count=0)
-actions.aoe+=/scourge_strike,if=unholy>=1
-actions.aoe+=/death_coil,if=runic_power>=60|buff.sudden_doom.react|buff.dark_transformation.down&buff.shadow_infusion.stack<5&runic_power>=40
-actions.aoe+=/horn_of_winter,if=runic_power<=60&(buff.horn_of_winter.down|buff.horn_of_winter.remains<6)
-actions.aoe+=/empower_rune_weapon,if=unholy=0&blood=0&frost=0&runic_power<60
-actions.aoe+=/death_coil,if=runic_power>=30
+## Single Target 
+# Blood Tap with RP check (T16H: stack>10 with RP>=32)
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&(buff.blood_charge.stack>10&runic_power>=32)
+# Disease management
+actions.single_target+=/unholy_blight,if=talent.unholy_blight.enabled&((dot.frost_fever.remains<3|dot.blood_plague.remains<3))
+actions.single_target+=/outbreak,if=dot.frost_fever.remains<3|dot.blood_plague.remains<3
+# T16H Soul Reaper: predictive formula (target health in 3 seconds)
+actions.single_target+=/soul_reaper,if=target.health.pct-3*(target.health.pct/target.time_to_die)<=35
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&((target.health.pct-3*(target.health.pct/target.time_to_die)<=35&cooldown.soul_reaper.remains=0))
+# Disease application
+actions.single_target+=/plague_strike,if=!dot.blood_plague.ticking|!dot.frost_fever.ticking
+# Pet management
+actions.single_target+=/summon_gargoyle
+actions.single_target+=/dark_transformation
+# Runic Power management
+actions.single_target+=/death_coil,if=runic_power>90
+# Death and Decay with rune checks
+actions.single_target+=/death_and_decay,if=unholy=2
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&(unholy=2&cooldown.death_and_decay.remains=0)
+# Scourge Strike priority
+actions.single_target+=/scourge_strike,if=unholy=2
+actions.single_target+=/festering_strike,if=blood=2&frost=2
+actions.single_target+=/death_and_decay
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&cooldown.death_and_decay.remains=0
+# Proc management
+actions.single_target+=/death_coil,if=buff.sudden_doom.react|(buff.dark_transformation.down&unholy<=1)
+actions.single_target+=/scourge_strike
+# Resource management
+actions.single_target+=/plague_leech,if=talent.plague_leech.enabled&cooldown.outbreak.remains<1
+actions.single_target+=/festering_strike
+actions.single_target+=/horn_of_winter
+actions.single_target+=/death_coil
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>=8
+actions.single_target+=/empower_rune_weapon

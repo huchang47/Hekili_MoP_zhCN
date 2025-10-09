@@ -1056,7 +1056,7 @@ end)
             talent = "frost_bomb",
             
             handler = function()
-                state.applyDebuff( "target", "frost_bomb" )
+                applyDebuff( "target", "frost_bomb" )
             end,
         },
         
@@ -1075,7 +1075,7 @@ end)
             toggle = "cooldowns",
             
             handler = function()
-                state.applyBuff( "frozen_orb" )
+                applyBuff( "frozen_orb" )
             end,
         },
         
@@ -1132,13 +1132,13 @@ end)
             toggle = "cooldowns",
             
             handler = function()
-                state.applyDebuff( "target", "deep_freeze" )
+                applyDebuff( "target", "deep_freeze" )
             end,
         },
         
         frostfire_bolt = {
             id = 44614,
-            cast = function() return state.buff.brain_freeze.up and 0 or 2 end, -- Instant when Brain Freeze active
+            cast = function() return state.buff.brain_freeze.up and 0 or 2 end,
             cooldown = 0,
             gcd = "spell",
             
@@ -1148,10 +1148,10 @@ end)
             startsCombat = true,
             texture = 237520,
             
-            usable = function() return state.buff.brain_freeze.up, "requires brain freeze proc" end,
-            
             handler = function()
-                state.removeBuff( "brain_freeze" )
+                if buff.brain_freeze.up then
+                    removeBuff( "brain_freeze" )
+                end
             end,
         },
         
@@ -1167,7 +1167,7 @@ end)
             texture = 135838,
             
             handler = function()
-                state.applyBuff( "icy_veins" )
+                applyBuff( "icy_veins" )
             end,
         },
         
@@ -1209,6 +1209,8 @@ end)
             
             essential = true,
             
+            usable = function() return not state.pet.water_elemental.up, "water elemental already summoned" end,
+            
             handler = function()
                 state.summonPet( "water_elemental" )
             end,
@@ -1228,7 +1230,7 @@ end)
             -- CRITICAL FIX: The handler tells Hekili the buff is now active.
             handler = function()
                 -- Apply a virtual buff with a 3600-second (1 hour) duration.
-                state.applyBuff("arcane_brilliance", 3600)
+                applyBuff("arcane_brilliance", 3600)
             end,
         },
         
@@ -1244,7 +1246,7 @@ end)
             texture = 607849,
             
             handler = function()
-                state.applyBuff( "alter_time" )
+                applyBuff( "alter_time" )
             end,
         },
         
@@ -1261,7 +1263,7 @@ end)
             texture = 135736,
             
             handler = function()
-                state.applyBuff( "blink" )
+                applyBuff( "blink" )
             end,
         },
         
@@ -1278,7 +1280,24 @@ end)
             texture = 135852,
             
             handler = function()
-                state.applyDebuff( "target", "cone_of_cold" )
+                applyDebuff( "target", "cone_of_cold" )
+            end,
+        },
+        
+        arcane_explosion = {
+            id = 1449,
+            cast = 0,
+            cooldown = 0,
+            gcd = "spell",
+            
+            spend = 0.22,
+            spendType = "mana",
+            
+            startsCombat = true,
+            texture = 136116,
+            
+            handler = function()
+                -- AoE damage around the caster
             end,
         },
         
@@ -1338,7 +1357,7 @@ end)
                 state.gain( 0.6 * state.mana.max, "mana" )
                 
                 if state.talent.invocation.enabled then
-                    state.applyBuff( "invocation" )
+                    applyBuff( "invocation" )
                 end
             end,
         },
@@ -1358,7 +1377,7 @@ end)
             texture = 135848,
             
             handler = function()
-                state.applyDebuff( "target", "frost_nova" )
+                applyDebuff( "target", "frost_nova" )
             end,
         },
         
@@ -1377,7 +1396,7 @@ end)
             talent = "frostjaw",
             
             handler = function()
-                state.applyDebuff( "target", "frostjaw" )
+                applyDebuff( "target", "frostjaw" )
             end,
         },
         
@@ -1396,7 +1415,7 @@ end)
             talent = "ice_barrier",
             
             handler = function()
-                state.applyBuff( "ice_barrier" )
+                applyBuff( "ice_barrier" )
             end,
         },
         
@@ -1412,7 +1431,7 @@ end)
             texture = 135841,
             
             handler = function()
-                state.applyBuff( "ice_block" )
+                applyBuff( "ice_block" )
                 state.setCooldown( "hypothermia", 30 )
             end,
         },
@@ -1431,7 +1450,7 @@ end)
             talent = "ice_floes",
             
             handler = function()
-                state.applyBuff( "ice_floes" )
+                applyBuff( "ice_floes" )
             end,
         },
         
@@ -1447,7 +1466,7 @@ end)
             talent = "incanter_s_ward",
             
             handler = function()
-                state.applyBuff( "incanter_s_ward" )
+                applyBuff( "incanter_s_ward" )
             end,
         },
         
@@ -1463,7 +1482,7 @@ end)
             texture = 132220,
             
             handler = function()
-                state.applyBuff( "invisibility" )
+                applyBuff( "invisibility" )
             end,
         },
         
@@ -1481,7 +1500,7 @@ end)
             talent = "greater_invisibility",
             
             handler = function()
-                state.applyBuff( "greater_invisibility" )
+                applyBuff( "greater_invisibility" )
             end,
         },
         
@@ -1499,7 +1518,7 @@ end)
             talent = "presence_of_mind",
             
             handler = function()
-                state.applyBuff( "presence_of_mind" )
+                applyBuff( "presence_of_mind" )
             end,
         },
         
@@ -1537,7 +1556,7 @@ end)
             talent = "rune_of_power",
             
             handler = function()
-                -- Places Rune of Power on the ground
+                applyBuff( "rune_of_power" )
             end,
         },
         
@@ -1554,7 +1573,7 @@ end)
             texture = 136091,
             
             handler = function()
-                state.applyDebuff( "target", "slow" )
+                applyDebuff( "target", "slow" )
             end,
         },
         
@@ -1571,7 +1590,7 @@ end)
             texture = 135992,
             
             handler = function()
-                state.applyBuff( "slow_fall" )
+                applyBuff( "slow_fall" )
             end,
         },
         
@@ -1604,8 +1623,8 @@ end)
             texture = 458224,
             
             handler = function()
-                state.applyBuff( "time_warp" )
-                state.applyDebuff( "player", "temporal_displacement" )
+                applyBuff( "time_warp" )
+                applyDebuff( "player", "temporal_displacement" )
             end,
         },
         
@@ -1620,9 +1639,9 @@ end)
             texture = 135843,
             
             handler = function()
-                state.removeBuff( "mage_armor" )
-                state.removeBuff( "molten_armor" )
-                state.applyBuff( "frost_armor" )
+                removeBuff( "mage_armor" )
+                removeBuff( "molten_armor" )
+                applyBuff( "frost_armor" )
             end,
         },
         
@@ -1636,9 +1655,9 @@ end)
             texture = 135991,
             
             handler = function()
-                state.removeBuff( "frost_armor" )
-                state.removeBuff( "molten_armor" )
-                state.applyBuff( "mage_armor" )
+                removeBuff( "frost_armor" )
+                removeBuff( "molten_armor" )
+                applyBuff( "mage_armor" )
             end,
         },
         
@@ -1652,9 +1671,9 @@ end)
             texture = 132221,
             
             handler = function()
-                state.removeBuff( "frost_armor" )
-                state.removeBuff( "mage_armor" )
-                state.applyBuff( "molten_armor" )
+                removeBuff( "frost_armor" )
+                removeBuff( "mage_armor" )
+                applyBuff( "molten_armor" )
             end,
         },
         
@@ -1672,7 +1691,7 @@ end)
             texture = 135857,
             
             handler = function()
-                state.applyDebuff( "target", "blizzard" )
+                applyDebuff( "target", "blizzard" )
             end,
         },
         
@@ -1691,7 +1710,26 @@ end)
             talent = "nether_tempest",
             
             handler = function()
-                state.applyDebuff( "target", "nether_tempest" )
+                applyDebuff( "target", "nether_tempest" )
+            end,
+        },
+        
+        living_bomb = {
+            id = 44457,
+            cast = 0,
+            cooldown = 0,
+            gcd = "spell",
+            
+            spend = 0.04,
+            spendType = "mana",
+            
+            startsCombat = true,
+            texture = 236220,
+            
+            talent = "living_bomb",
+            
+            handler = function()
+                applyDebuff( "target", "living_bomb" )
             end,
         },
     } )
@@ -1770,5 +1808,5 @@ end)
 
 -- Register default pack for MoP Frost Mage
 -- Updated October 1, 2025 - Use the MageFrost.simc file for optimized priorities
-spec:RegisterPack( "Frost", 20251001, [[Hekili:TI16UTTnu4NLGb0SHM65lXDldXfybOblb5gMAx(NKOKPIjSKOgjvsDqGE23HK6cfnLJtW(rBtipNVZHNRFv(t8)MV3sKa7FZ0XtNpz84jJMoz6jZM77j2uG99kqXRrpa)qokd(BUaZLhUjLIwkvMtlzXWf(ErLKuXf5(rBJ445Zp(eq2cCS)nF(yFVvKLlXArX8yFVVTIWRcL)bvfwBYQqAc87XccnVkmLWfW1juwv4FHxtsjJa)GrtiPG1)PQWRbv(JQWZzuUOk8tvH3wiizKNXlbTy0SQW7P37rYaqUMEx1LGkFVq6OW93glOrya5jhvfkD7QlbbajUJHJPzrir1LAhHpQO5OpU4xrSyuooiIrstjO8y8rKKfhevMKmARRgvw4gKePhhGyzuwN6ghoOI8YSmAEWtWBGfGtXz4CbkvHrbwmY68rsiEe7gkwj4R0KGc6tyLxakaAnQ35JW5OOuiE5eIcQkrn8tmIMkuqtYWNoTjcFnIKlJZekJi2ufEfKNBbrgIlf0aKqa1ekvuz4NXGo3YIGse4hIP00L0NYnvlrjuafKrR1fXa4)dMKd5)sUS8YqAs8MGhL3j9pv8V)dVS4Lxei2dquv69bGlTKapIX1G)3G06Y17KYxfMbVkbeUG8UPDEtH5p4WryyjY8txeJGYdPVu7bFNdoGGrYxJLTjpreR69MnCIsooGiWzhXtPIf16mP9L3glmR7gsTPdOMoQGIjO0wVPjn1ZzGUooMTMK)WR6arPu6YGKs2MDz070LHBNJ11Nov1zYDwtY9EzFuv4xBAKKvGy8Z46HrNd(o8i0PF90NE1Hsrn6R1slZOQMIoh)cOuj8kvftDaB3itIXbPnZCCJnddI311WfjegG(zqJyJnoJP6)QFr9BG0Yh003QSrKu(a9RQh(xxMkiFAjviaVWeOuYJWjakzrhfVjofcWQGnFXKJYq)iO)zZm6km0STN4aWc9UqqIxBzXCSyfm5dQvlWCXEy05ggTVY9TR1DomTEST6T2bz3HgWHngZRUQTq4CyJbuWzJQmn0m08pPF1CM5pp7JqZV(X8lDtGruS1KW(302cyFruk55NrSL2Nht1ZIIHgz57tVrjaNJZiy(xwm3wH6LG4FuKs51DFVQs7FH9wp09TI1HIsD89EcXYbJXLmsGofswbLjQB0peK(WQqg(FlbJaSg4uy8BOCbvMMgr8ke4O8rvxEfrUqyoWh5758Ycjksb02vcLvG5WrYuRdBUeNGGoR3MDNmSD72MEyN4ZguEJonTlErwJmZS4Mbx77P(jjTqiwb)Znk(LAX896Qe99QBe8pZxaefnLQTQ0sOzMc1uHAjZXsz6oXlg6pWmcsRyxvxv4xwaPNo8mRSLan)9cKDIvc2NheSDuDBgqQ7hKy9B7gRTl27f(n6pKG97wzNMUaZyQqsrxvdUv(0OyYvc1WlLK8zKcTAdYFZzLstMF43SnvTQWxEPzCO5g9QWtLK7DwP1Zb3IQ4UlT2jv5WpufompoWLGYNwUCDUwpPTCVDr20vTBdMnm9G)FyadoZFVh8VctYTc)MeP2JQ9EIB7BtT8TP7rjVBa74vAh9gGuAB)WB2sT0sLqCY(dXoRtNzuNQzUA9o6XZvA5jJh00huxd6G8PzpNCOHLvEZCFvEYK)Vg4z3x(6mKv23E8Z7Fi5wtUEvo0khWEIvd6gRtbVYKdQC0Q3wmt99Mz5c9Oz7ykKdoZQzqqjWamNvoS90TghUpJ390NN7WVCtR201CtUw5DdVnEqg2Ti7GNTv2wNoK2XE0v)KVIwUR9LQLKTFUJ21K7Sv01NhAlweD3Axf82(wx74dD5ABTJbh9(Au2Xp157Erna0WFsQo8C)fTE)RFhAHAZws7jS9iXm8Im13DrXMyOYbHID0kiS45LvMWiRvh6)F)]] )
+spec:RegisterPack( "Frost", 20251008, [[Hekili:DIvBVTTnq4Flbfizdn1ZVe32nexGfGgSe02fm1U8njrltftejrnkQK6Ga(BF3jQxPOuSZhAtc5XN7iVN7UhB3zUF31zdrsD)28PZxoB60poz(SZ(WzlCDK7sPUoPKG7j3b)scjg()lf8mjU6UiozdE6mEUia2X1zDolsEvI7ARqohGmlLg4(T3FMRZw2MnuTP0SaxNVVLLP8X)ru(L(u5ZdH)oqY4jk)iwMe2oKlu()f9EweBIRtXIyuq4u4hFR4(OpHRtOG)enXJlaVqtiRJOBCVWvcXvBRyb78EGYsYmmArBJwhXE6jIyJHnNH20SItGGjPcgrFWhOE0eAmJcH9NwP8x2GxapH6Xd9c4rBqGw(AbIiciau0FMgXZWvaWE)GGTopmCsil5oQidDFiMnNiOaATFqOErKeiNcy9HXXATGWsayO0NOM4uaEitq9wZJKiyF0i7Kjl2PZBQezeHKCy9Q8zl3JKfblvJWLf5xL)Flwduf4xc4WZj)XeRuGQ8(WxgrUoPKYFKkMKNQ8F(zLVKiUJkNizXupj3Bdd4LNR8Np1kfQtaEvWoL))IBO8ZZWQOkEL1GqsIOjsJWO0sL)XkFlrPGgtkW)CGxeqYKEyG2eADS2i8(hypDn2n4UkFekj4WYCVj7UcZTKKnWvnlIlR)Joa)Jma37I4pGewyF4ruWsUNI1VpYKBv(nVm9Yc1pMqgy8sJ(MxhIL(Bwvuw)3VC5XOao3aW57rnIDaxdLGuX9qTOzwHeWir1VuvC6S6cOd2trC(gVWCXoeIFF)Hyu()Iw8)uU(NDUh3W19TRj(ZMoORpQKB3R1u77HUlJHxUfg0am3phrJHAhsKY)YcZkhuCPgqnlxp7cJeZ2kV6oKM17GF)cUrv2Ba))cnIoGUQ96iQ3u5FbSBvuCbIx1ltray2eQc9i2dqedqhdZmd2feb58I8Fg2l2jM8tVUR6SWie(k05M9UnCPSGA3R7wlp0P3gqbGd1zBjlOO(ad4H6fLqLBPcpjnoLIct2RyEPL4Qlq2cndlAhDd3JQe9ISM9lnvt5AmOlNVA5c)y26QBYNffH947pGTyQAQGga4qSoxTFPyPWI1cavgsP7ex921Kfa18)rjJx5)oygnSrm7j8EdXvSY)w(ToSyOY4R8BgF2CDZHI3cIiMlS8gvS(4ZxbGsHozpITm8OvDmMOvy1GxwECmpXZWSXL7n2O7HggBz22ityRgCz2ZTT2PrMeHTV16wgIGaE6bOvfUtLWDO65rIiby5zOcDaawCkxilBUEci6(eLVG(F5qlhiZMXrNqYL8y4XdwiaI97Oztux)fgQ1yjWj(rswEkIcAGouqOm0XEcCg11xfxz4cJpiaSnsP5HSii19gGgDqmoe83aN6MQIc11A4ZMuxN82v)wpA(PSWvhny9HDqAXpBoExYS9dANiwGXW8y7q1H5HimQwtRqKNr9a2u8PiRCvbP0UHAM5iVfiLRigao55ZXubKmksD2LZxdLgGsb9LNQNg72wxRMbDNvn(p)CF9nNpFAj4JPqUTFoON3Jhwg)5RQLWxgbhIu62rKLSv9BqhnEdEMkjZVUJnFGJPFwhqIBBuB0h)IbqJa3XCAh9OTpUMVA9OwzhlQyhhS2ZUez00wne6l9TMH)YQk7s6lvNwFLSRNTPS7f1mAub2saATp6RzTe)occBdulPEN2rG2QzN2t02QfTkRSOH84Jgq9yBp2vb3E40LTCQDbIA)AxAyVxn9DTbY(Qcb4SOhSktviWRhQyAOAE2FY)mouJXHb)qBHFzXBR(aCz)AthzyUTrR0U7uxcyUr1xdM56T)6SW7NEuu1xA1NwT08aMJ73RdT)e7Ex09LXA5G6pMfiQzlOV0XjopuWUVqVK7)p]] )
 

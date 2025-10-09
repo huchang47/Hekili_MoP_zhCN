@@ -1,73 +1,76 @@
-# Death Knight: Frost (MoP) - Main Priority List
-# Updated with advanced WoWSims MoP implementations
-# Use DeathKnightFrost_Masterfrost.simc for dual-wield builds
-# Use DeathKnightFrost_Obliterate.simc for two-handed builds
+# Death Knight: Frost (MoP 5.5.0) - T16H Optimized
+# Based on SimC Tier 16 Heroic profiles with dual-wield and two-handed support
 
-## Precombat Actions - Enhanced from WoWSims MoP
-actions.precombat+=/frost_presence,if=time<15
-actions.precombat+=/raise_dead,if=!pet.ghoul.active
-actions.precombat+=/army_of_the_dead,if=time<7
-actions.precombat+=/horn_of_winter,if=time<6
-actions.precombat+=/potion,if=time<1
+## Precombat Actions
+actions.precombat+=/flask,type=winters_bite
+actions.precombat+=/food,type=black_pepper_ribs_and_shrimp
+actions.precombat+=/horn_of_winter
+actions.precombat+=/frost_presence
+actions.precombat+=/army_of_the_dead
+actions.precombat+=/potion
+actions.precombat+=/pillar_of_frost
+actions.precombat+=/raise_dead
 
-## Default Actions - Enhanced from WoWSims MoP
+## Main Actions
+actions+=/antimagic_shell,damage=100000
 actions+=/pillar_of_frost
-actions+=/blood_fury,if=buff.pillar_of_frost.up
-actions+=/berserking,if=buff.pillar_of_frost.up
-actions+=/use_items
-actions+=/raise_dead,if=!pet.ghoul.active
+actions+=/potion,if=target.time_to_die<=30|(target.time_to_die<=60&buff.pillar_of_frost.up)
+actions+=/empower_rune_weapon,if=target.time_to_die<=60&buff.pillar_of_frost.up
+actions+=/blood_fury
+actions+=/berserking
+actions+=/arcane_torrent
+actions+=/use_item,slot=hands
+actions+=/use_item,slot=trinket1,if=buff.pillar_of_frost.up|target.time_to_die<=20
+actions+=/use_item,slot=trinket2,if=buff.pillar_of_frost.up|target.time_to_die<=20
+actions+=/raise_dead
+actions+=/run_action_list,name=aoe,if=active_enemies>=3
+actions+=/run_action_list,name=single_target,if=active_enemies<3
 
-# Advanced Disease Management
-actions+=/outbreak,if=(!dot.blood_plague.ticking|!dot.frost_fever.ticking)
-actions+=/plague_strike,if=!dot.blood_plague.ticking
-actions+=/empower_rune_weapon,if=((runes.blood.count=2&runes.frost.count=2&runes.unholy.count=2)|(target.time_to_die<=60&buff.pillar_of_frost.up))
+## AoE Actions (3+ targets) - T16H
+actions.aoe+=/unholy_blight,if=talent.unholy_blight.enabled
+actions.aoe+=/pestilence,if=dot.blood_plague.ticking&talent.plague_leech.enabled,line_cd=28
+actions.aoe+=/pestilence,if=dot.blood_plague.ticking&talent.unholy_blight.enabled&cooldown.unholy_blight.remains<49,line_cd=28
+actions.aoe+=/howling_blast
+actions.aoe+=/blood_tap,if=talent.blood_tap.enabled&buff.blood_charge.stack>10
+actions.aoe+=/frost_strike,if=runic_power>76
+actions.aoe+=/death_and_decay,if=unholy=1
+actions.aoe+=/plague_strike,if=unholy=2
+actions.aoe+=/blood_tap,if=talent.blood_tap.enabled
+actions.aoe+=/frost_strike
+actions.aoe+=/horn_of_winter
+actions.aoe+=/plague_leech,if=talent.plague_leech.enabled&unholy=1
+actions.aoe+=/plague_strike,if=unholy=1
+actions.aoe+=/empower_rune_weapon
 
-## Main Rotation - Choose based on weapon type
-actions+=/run_action_list,name=masterfrost,if=talent.masterfrost.enabled
-actions+=/run_action_list,name=obliterate,if=!talent.masterfrost.enabled
-
-## Masterfrost Rotation (Dual-Wield)
-actions.masterfrost+=/soul_reaper,if=target.health.pct<=35&target.time_to_die>5
-actions.masterfrost+=/blood_tap,if=buff.blood_charge.stack>=5&(runes.blood.count=2|runes.frost.count=2|runes.unholy.count=2)
-
-# Killing Machine Priority
-actions.masterfrost+=/frost_strike,if=buff.killing_machine.react&runic_power>=20
-actions.masterfrost+=/obliterate,if=buff.killing_machine.react&runic_power<76&dot.frost_fever.ticking&dot.blood_plague.ticking&active_enemies=1&buff.pillar_of_frost.up
-actions.masterfrost+=/obliterate,if=buff.killing_machine.react&runic_power<76&dot.frost_fever.ticking&dot.blood_plague.ticking&runes.unholy.count>0
-actions.masterfrost+=/obliterate,if=buff.killing_machine.react&runic_power<76&dot.frost_fever.ticking&dot.blood_plague.ticking&(runes.blood.count=0&runes.frost.count=0&runes.unholy.count=1)
-actions.masterfrost+=/blood_tap,if=buff.killing_machine.react&runic_power<76&dot.frost_fever.ticking&dot.blood_plague.ticking&(runes.blood.count=0&runes.frost.count=0&runes.unholy.count=1)&active_enemies=1
-
-# Rime Proc Management
-actions.masterfrost+=/howling_blast,if=buff.rime.react&(dot.frost_fever.remains>5&dot.blood_plague.remains>5)
-actions.masterfrost+=/death_and_decay,if=active_enemies>=2
-
-# Rune Management
-actions.masterfrost+=/obliterate,if=(runes.frost.count>0&runes.unholy.count>0)|runes.death.count>=2
-actions.masterfrost+=/blood_tap,if=buff.blood_charge.stack>=5&runic_power>=20
-actions.masterfrost+=/frost_strike,if=runic_power>=40
-actions.masterfrost+=/obliterate
-actions.masterfrost+=/horn_of_winter,if=runic_power<40
-actions.masterfrost+=/frost_strike,if=runic_power>=20
-actions.masterfrost+=/empower_rune_weapon,if=runes.blood.count=2&runes.frost.count=2&runes.unholy.count=2
-
-## Obliterate Rotation (Two-Handed)
-actions.obliterate+=/soul_reaper,if=target.health.pct<=35&target.time_to_die>5
-actions.obliterate+=/blood_tap,if=buff.blood_charge.stack>=5&(runes.blood.count=2|runes.frost.count=2|runes.unholy.count=2)
-
-# Killing Machine Priority
-actions.obliterate+=/frost_strike,if=buff.killing_machine.react&runic_power>=20
-actions.obliterate+=/obliterate,if=buff.killing_machine.react
-actions.obliterate+=/frost_strike,if=runic_power>=80
-
-# Rime Proc Management
-actions.obliterate+=/howling_blast,if=buff.rime.react&(dot.frost_fever.remains>5&dot.blood_plague.remains>5)
-actions.obliterate+=/death_and_decay,if=active_enemies>=2
-
-# Rune Management for Obliterate
-actions.obliterate+=/obliterate,if=(runes.frost.count>0&runes.unholy.count>0)|runes.death.count>=2
-actions.obliterate+=/frost_strike,if=runic_power>=40
-actions.obliterate+=/howling_blast,if=buff.rime.react
-actions.obliterate+=/obliterate
-actions.obliterate+=/horn_of_winter,if=runic_power<40
-actions.obliterate+=/frost_strike,if=runic_power>=20
-actions.obliterate+=/empower_rune_weapon,if=runes.blood.count=2&runes.frost.count=2&runes.unholy.count=2
+## Single Target - T16H Formula
+# T16H Blood Tap: stack>10 with KM/RP conditions
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&(buff.blood_charge.stack>10&(runic_power>76|(runic_power>=20&buff.killing_machine.react)))
+# T16H Frost Strike: KM proc or very high RP
+actions.single_target+=/frost_strike,if=buff.killing_machine.react|runic_power>88
+# T16H Howling Blast: multiple death/frost runes
+actions.single_target+=/howling_blast,if=death>1|frost>1
+# Disease management
+actions.single_target+=/unholy_blight,if=talent.unholy_blight.enabled&((dot.frost_fever.remains<3|dot.blood_plague.remains<3))
+# T16H Soul Reaper: predictive formula (target health in 3 seconds)
+actions.single_target+=/soul_reaper,if=target.health.pct-3*(target.health.pct%target.time_to_die)<=35
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&((target.health.pct-3*(target.health.pct%target.time_to_die)<=35&cooldown.soul_reaper.remains=0))
+# Disease application
+actions.single_target+=/howling_blast,if=!dot.frost_fever.ticking
+actions.single_target+=/plague_strike,if=!dot.blood_plague.ticking&unholy>0
+# Rime proc
+actions.single_target+=/howling_blast,if=buff.rime.react
+# Runic Power dump
+actions.single_target+=/frost_strike,if=runic_power>76
+# Obliterate without KM
+actions.single_target+=/obliterate,if=unholy>0&!buff.killing_machine.react
+actions.single_target+=/howling_blast
+# Runic Empowerment support
+actions.single_target+=/frost_strike,if=talent.runic_empowerment.enabled&unholy=1
+# Blood Tap fallback
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled&(target.health.pct-3*(target.health.pct%target.time_to_die)>35|buff.blood_charge.stack>=8)
+# Resource management
+actions.single_target+=/frost_strike,if=runic_power>=40
+actions.single_target+=/horn_of_winter
+actions.single_target+=/blood_tap,if=talent.blood_tap.enabled
+actions.single_target+=/plague_leech,if=talent.plague_leech.enabled
+actions.single_target+=/empower_rune_weapon

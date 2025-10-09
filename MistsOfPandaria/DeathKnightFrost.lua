@@ -507,14 +507,14 @@ spec:RegisterResource( 20, { -- Blood Runes = 20 in MoP
 }, {
     __index = function( t, k )
         if k == "actual" then
-            local amount = 0
-            for i = 1, 2 do
-                if t.expiry[ i ] <= state.query_time then
-                    amount = amount + 1
-                end
+            -- Compute live rune readiness from the game API to avoid stale expiry data.
+            local readyCount = 0
+            for slot = 1, 2 do
+                local _, _, ready = GetRuneCooldown( slot )
+                if ready then readyCount = readyCount + 1 end
             end
-            return amount
-        elseif k == "current" then
+            return readyCount
+        elseif k == "current" or k == "count" then
             return t.actual
         end
         return rawget( t, k )
@@ -582,14 +582,14 @@ spec:RegisterResource( 21, { -- Frost Runes = 21 in MoP
 }, {
     __index = function( t, k )
         if k == "actual" then
-            local amount = 0
-            for i = 1, 2 do
-                if t.expiry[ i ] <= state.query_time then
-                    amount = amount + 1
-                end
+            -- Frost runes live readiness from slots 3-4.
+            local readyCount = 0
+            for slot = 3, 4 do
+                local _, _, ready = GetRuneCooldown( slot )
+                if ready then readyCount = readyCount + 1 end
             end
-            return amount
-        elseif k == "current" then
+            return readyCount
+        elseif k == "current" or k == "count" then
             return t.actual
         end
         return rawget( t, k )
@@ -657,14 +657,14 @@ spec:RegisterResource( 22, { -- Unholy Runes = 22 in MoP
 }, {
     __index = function( t, k )
         if k == "actual" then
-            local amount = 0
-            for i = 1, 2 do
-                if t.expiry[ i ] <= state.query_time then
-                    amount = amount + 1
-                end
+            -- Unholy runes live readiness from slots 5-6.
+            local readyCount = 0
+            for slot = 5, 6 do
+                local _, _, ready = GetRuneCooldown( slot )
+                if ready then readyCount = readyCount + 1 end
             end
-            return amount
-        elseif k == "current" then
+            return readyCount
+        elseif k == "current" or k == "count" then
             return t.actual
         end
         return rawget( t, k )
@@ -931,6 +931,31 @@ spec:RegisterAbilities( {
         end,
     },
     
+    pestilence = {
+        id = 50842,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        
+        spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
+        
+        startsCombat = true,
+        
+        usable = function()
+            return debuff.frost_fever.up or debuff.blood_plague.up
+        end,
+        
+        handler = function()
+            gain(10, "runic_power")
+            if debuff.frost_fever.up then
+                active_dot.frost_fever = min(active_enemies, active_dot.frost_fever + active_enemies - 1)
+            end
+            if debuff.blood_plague.up then
+                active_dot.blood_plague = min(active_enemies, active_dot.blood_plague + active_enemies - 1)
+            end
+        end,
+    },
+    
     soul_reaper = {
         id = 114867,
         cast = 0,
@@ -1019,7 +1044,7 @@ spec:RegisterAuras( {
     },
 
     frost_fever = {
-        id = 59921,
+        id = 55095,
         duration = 30,
         tick_time = 3,
         max_stack = 1,
@@ -1252,6 +1277,8 @@ spec:RegisterAbilities( {
         usable = function() return runes.frost.count > 0 or runes.death.count > 0 end,
         
         handler = function ()
+            -- Spend Frost rune explicitly (engine doesn't process spend_runes here).
+            spend( 1, "frost_runes" )
             applyDebuff("target", "frost_fever")
             
             -- Base RP generation
@@ -2174,5 +2201,5 @@ spec:RegisterSetting( "frost_execute_threshold", 35, {
 
 -- Register default pack for MoP Frost Death Knight
 spec:RegisterPack(
-	"Frost", 20250928, [[Hekili:TRvApUTnq0FlgfWWgnr1Y7rtcwBGeeeKSPjDrvqZ3KeTm9AcllAqjTUUWq)27qsDqjrk59iibOb5a7YJzECMhFdLOCTD)IRZsuc29ZtNm9IjVC6lSMoDYztp31j5WoSRZouWg0TWpeH2c))7y04eERhcPOL8zhttzbqpUolsjHjFiYDrBtApXEYlDDqPjRPmxhNTPRyKnUoRjlxILZahh468L1K4mF()qz(5UoZNUc(9GecnkZpKeNaDVIYY8FpEdjKybWHrxrcbq8lz(VfJswN5)XiYTRtEvMVaXz(J(e9MXzxdd41HKBJWlZ83t4d8R0V6q2gxoWxFZFe)QSRHHcJ9l7Pp)9OOL8HFdJqzKKdz()nIrqlcXXzxlHvS1ogoGUDbk5xN9B3L39Z4HSzj7PERfM4z3HctXZI3Hdd9sqSBXjXwRP7djr36TiefNmZE4wejsmERPRlqXnfghqN0F6D8k(kWdAjghfG1pggIeJ9wIrlFgz1SaknCjDFKvvZwmmhdXZT1BaeB7bp6kVK1YXRFuqAoIpQ9KOemJ7QblsxTYQE7wP7oEux75y4Ql1B9Dubzip88w8kuAOMGdmYTKOLERyy8)IvBEhjmeX4oueZu7k(qeAhelI3XG8snJTiKsbRLYoWxqcC3WqWcQ2eWSymBdyNtCcPGJjj4T5uhabBWj2pMjp9eNCDEXGEigInsVf6bfd7p)ekc2NUfhb5aG5M5)xyPQaqDb7al)AWmAnn8aq45Bq5olbfct1Qw7w4i(wOLdhTKMyjj2RW3Pqno74rExYCYUq0TP4Q(gR6qAAYcggTH7RrdAnPesapdD84GMUkVNAgtojVyi8UblcvMmO6Sibh8sOPbRlNHg)OXnHySCo5Xi1MRcrJmhigAm8n(4XrS0iSxqkJb2(QztBhSlJnMwKJhxl6G3UJUhZ8egEpgTJgjI6cpflTGvannkz2KHY2KKX6TjPcfnYrQuUe86wmei9wsWxn7YjdnqShpEyfdwdMAqL5C5BCuu4v3xKg5j)npEPh5ERPICsHoVvLeFVZ0wYa0o12LCExnXjOIaxFIMg6b05Dsz1yMh(FWbCHty16DwCJHltAjODkSOY2kPqI4OS5G18qTvCcu9D(SlgQl1D8OMCxrJnsE5IfFessCooiweSMeHlukGeQMaVe7sMy1wnbk3inK3wPDGujmhoVHe4js0ZNnDsddrbrfOScCOKUntp(VMtEXK8vwXsGgutjSUPQvMVeemyQ5lat6CZVyOPD3ZVyCdVSKF2hpiWcc2birvkE)3H9Wr4TeCmeBkqDAudLBXrQ(ZYivNHWrTY)Z1T3DoFVRSzb0YBLdItpqFEZSzFXsJiVLDAEgff)Evl32jiBr5mOe(y0bV3AAPOWN)vcoSTsI99tjX(hBLK2Yh2pvYh23pcNw)Qx2q7PNKpwJ0Dz(VH7V(WYGNALe7hRssDl9Ts44PHt2DI)K1LSnj0yF)eA63RTW43rHgxhGEfdqP6r9DD2Jyr8hCY15dWCzj8ZXCEJNF3k7Axh45GdGjEbygrJ8xMW01W))zXBLip55(gxNagpUsqWCAQr56inS49quOM5Ma21OnmrtY8hM5BGQK5pFwM)fIHmkZVvWnZh6EsM)XJfDQeLB3PA4UO3XvlLsOXxiNzCH0X5y44uH2iH)0jvUqLJjF5lmYozxN0j14i78haYQqq1UfUTUWOTATmEHPLbyMl7gsks25zsdALGNks3M0mlgIsERM2CJOQ(tjYX8VBeZ1vCZtIvURHgn3wVWOTgPLyoxq9gQNxk7CSkXvrmUfCusOnw69DutoYF5PtaoVdcG9KtLbykTXnIqas36QYW8HzwJPgMVQoKRxnqyiZ7Xp9nXC7yEhPrfRHDiyzGxu25Gm)tPqHGjzxbBnd1Lh3DS)P6)pGQ)3dj)tA313CP(b5jYVJQ9N6H7)FP(F3Y9p2nODs8RT3QJAf3VAo)SCX3LYflL37tznJIjOCNpnsbnZafZOXBqwnsuI4MVL5C0oBsPmDzTO63Gudm0JeA7xMDt2l)(N6whTFdvEVu6usL30BXLpvnRQw63vA01Qz2PTm70t0SML4u5xTV2QM0QQrCs6rAVDQERRa7LptQFAUWICmkfwQ5QtPWI(7CRhjUrInKgV8kbOh0EPv2VcGlUGTkXqt5htUtzRO69R1JSPz4vzVYBERhLZoUGTIS8O(ZId7LlKxonVCCXLVb9YfRnXNQLumNYgl)BRGPy10JI)OUpA7dw3VA92(k8KR6lNuvAxZDuNVQEQRF8zBZ6NAUDofDJ6xRN8Lx5jf3MkJYDE00hSXTxll7v(HqO7HLOGkFmw543fUJ)tHPyXRDZ0NFIiNzlI1QFgknLG66dS5K(6AeOkFvPef6OaTCZqXx2sTiQG3uV)8kfM3S)GltCUAD(MFjmnk0BMFv8akT(yyK7v01NQkYLDD4WlvrO87KPoUk(J7)9]]
+	"Frost", 20251009, [[Hekili:TRvFVTTnA8plbfNBCxIRSDSJZqSb2l3qxVBBfN7T7)KeTmDmrKf1PxMroyOp73ZdPTLOePKSDUEyaDORnrI85n(75vk7(2F2E(ssc1(xhynyuFlRh6b)W99FWEEYlHu75HeVNjpb)qazd83)uepobF6l(CYsC3X80ip4n2ZxKY8t(5a7fAiPL1DdTNtstwZJSNpFt6Qi2Z2ZxZwUKk3bn2ZE(NxZIZCX)NK5UN1zU8vWV7LW4bzU(S4e41R4rzUFG(mZN1ZEU4HcHHf8Kp1jHe9enbEWVkuqAazHpDP93Bp3lILqJyeq9i(0GKEl858LWgc7TFvzUDYCVoZDr6Qv7FR3AKE9ItabkZDwMBFRdRkknG55eY3sJeV5(XzU72P5vtZChi3LGWGG7dYQZgI3AwaTxefuWm3UY)awkH6c20dIN0cfXcLp)Fgd2LTRPGfzlJ6VeOvMBYwoyScO3UMeSe1KTusipi2obolmAiQtEqvPSkozsU4TcHdoXjWHjf5YqJCzjLKSwA8KKvSv5dYP3A(wHySWNaWmGG3105xAWAU)lWgypToP8zi8NL8KEsPCf9pOrGITHWcae0JzUdLscUePDo0N8ukT8AupruyikIJQreryyV1uIFY6EHOb9wbfFNq00863F8PjSnaoM7SKrfsWJaaA4OCXaC78DGtPqAujOXN7p(dzUZH3N5(pelq4USj1N8TGtveDjZdDHKmkZvYFWRlqiBXupEWsbMzCtgFJop61Ulu5fe3JZ9xY3g0RGbi)adwNLzxiqLU3OkDvvSscZ7zanwd8CstKtbxTNEc9qcJe4FRCgixybhQhQ3TncmusF1AeY(wgjs1WxM9T7BowArLrODxvxyUCwWbViGeyYcKbIyu6vJc8fxP54m7rMsfJUrOABWNueHEqENQe8PIc3yWhJ4)xtW)mj2hJuzoNeOjtmJ67BogvLSu3zvJfzS6juuGdFLZwwqcgfs9iYSNMjJNjH3St2EkT3RXNs9wxLyfFRGEpuuj2drCa7a1rMVuvtsWWRRiP(ARN4azibWXg5jWugVM67JvaTru2eu)d8FhZaFuOahdseA9wjROsX4vh8UkgreD06yDhMwY4cLFuI99sdvapHCX)2q(3ZHn1B4pKnvfhSkn6LsgifC4cAumnsgPwzv3xCvKipsakQrraMP0kldXocXjyQW5X(8Kd)sZbL1zCXZgtwSbf84axTGNPj9pWZJ)E9XXFT47Gs8DqEG)dRmIWIPoq5Cll7XxUeZJ7inWr(ZoyH6fLB8X)b1Hgq3WOXYaqdL1Z7iB4GWPAJ4Fge)XY0wTBbHRouEKhFZcsUZERI2zs1LbqbIgtdWMKkuFG4it99O)XbV)Cy7Mxq2MSwRr)oLGk89UwfxXO2h2PC9E6oYlObHaOI4dMyPPdpPAthxARypNzvQV2KTnKgNW8lBxRTORAZxavBqD8GFyWeDXGVC2AUvLJf1QUKI9HC3dvKW7SBz5s11Hsn1XuFhWLJsVpBT5EgoLAnnx8G(s3eDx6aXNbuQh5fDH01sIb2LltOnLEFQfWyv8GsrvlfbT9bCQeSTvffvtXVvQsYCni1sGYLpF41TPoRKTCh5OlAvGK)Ko6MF7ytp3UI7LgJYDepHGVfNMd2l(AW)h5nQZql5EeKJ6cgwQeGtQFlZNWNYiFmxH4zoYNgJw9))r(u3GrE9A8RUr(uBmYM8pELBq91B6mnooLtB6mMJG)knDMMQiVDJNXCGUtjLznze0RnLg(YW2wnXxhlYxhlY(ULa3WyC5IB6X6bOS05BjrbaYjgVlh4GIb0jkz)918wLgUElK2J(Vtzri(iMVbwnjnHVbaKWdGdYGNOX9Y(4FhsKL5o6BZC)bEaWrXR5HiYf4DSCW1VTc252HV76kp8Vufm19XPdhbYscV1u59MOYrPDCJsR(Z6oxxLBNKI0PUiWtT62nxtVqjWKrOzj4OvQ)DNTzQDYOoR0SHJ2TZqeJztN0cdu74To7tJ8gmnzFuJJtELXNMxtZ4W2OkFP8AUVrP9cXSF1RPnY4Fo9A(zHddAqgv6RfaEnu8Ci1dYtnQpoJp(kMp089BYC)rzpk)TaS0EWU(tYwuU(x4FciuVr9S6kQrrEPQ)g0c3g2)byYhH9(9erVBiFMZ28dWIyy1c9hJFzcrCMhEBRcwflw)80queHJPfCKPltj(3kU9EKHqHw0irLfahbxDX15F8M8VoVRXUybpm)LXOw)gGUF6WmlZC)opjq4JsdqCVJZZ8BM((vqXCpFd(zDmvwBsSZcGMgwmyPLRfQb07zNqAyiwpaBrSyolXRHIBd1Vx1kGmqFLjFQFnLN9P(vjN6PH3PoVt9lkF8MhSO)cbDKkBmrjs9AEUrElptLxYtXfAIXhL3ByRMwfRdHcS2T7ADVySvhdt5VBrQRPWntSYmflsW87Gr5PhVZffZJYDSu8nPGfgWABUbVEHPIBsX8RpCPhOGBqc3TtNgnWQrIo4cjArWsHNQEle3G3VWucNImdFE(1qmB6Wg3OszYvjXJdpGt)o(FnhM6E9WV5q3sX5yIEGyGgJIZWqIiQzykL2C(mVXDAQZ5o103Xn7ND90btUmIRvE7u)a0F8UhQH)k96w(LhtKvWKvn5MPKt9TktVIToIKSqFMZUFC5vxAS24gKk40(vSIfNnrHfo4S0O6e7Q2p9r7vKlbyOah1Hr6CQ6wLfQj43bxL5cFkihTW)qKt)hX8V)lD5FXS1N0xyxUGO472wZDNRnJG6CTkgbspu8bq4PoMh9B3UDnlALXIMjZUDfz5KjMPPIZKWFgHWZ6VBNGBZ6BERNuekOGBdJ59XH72zA8UpoSR8W915BKZSUuOi(czFpJ6UXEdUyWvlR9(S7o6eGdxzykUMjrfN)RmMIqIuMzDcYtPX02ENftbUlVV8PSMh4AMvNRQ5QKAN03ErDpWW4NeNM4UNjq78Xzn1Jx71wLGJ3vlwqFERZs3Be)2MeGMjsnj2(m0L4h2Nn63jrmOffiDwkM9kr(10VkZfDvfdqs(X1N3zPmC4zFLK5sC(eQARj7ltspf5s1zSnUGkBVoOwXKIkB6eYiQSVVyPd1Y9)hLa7CqjxquLtm7v9NBnN6sz)xuER6LeJjTAnATygRA8qofb7YoKp)Z42N5O1whL0gL0y95moDvUEuZPLTqHc6)UAtST)V)]]
 )
