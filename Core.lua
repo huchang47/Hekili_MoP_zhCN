@@ -2872,7 +2872,12 @@ function Hekili.Update()
 					slot.time = state.offset + wait
 					slot.exact_time = state.now + state.offset + wait
 					slot.delay = i > 1 and wait or (state.offset + wait)
-					slot.since = i > 1 and slot.time - Queue[i - 1].time or 0
+					local previous_time = i > 1 and Queue[i - 1].time or nil
+					if previous_time then
+						slot.since = slot.time - previous_time
+					else
+						slot.since = 0
+					end
 					slot.resources = slot.resources or {}
 					slot.depth = chosen_depth
 

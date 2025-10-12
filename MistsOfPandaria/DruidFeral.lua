@@ -64,16 +64,52 @@ spec:RegisterHook( "reset_precast", function()
     else
         removeBuff( "cat_form" )
     end
+
+    if not state.balance_eclipse then
+        state.balance_eclipse = {
+            power = 0,
+            direction = "solar"
+        }
+    end
+    state.balance_eclipse.power = state.balance_eclipse.power or 0
+    state.balance_eclipse.direction = state.balance_eclipse.direction or "solar"
     
     -- Removed workaround sync - testing core issue
 end )
 
 -- Additional debugging hook for when recommendations are generated
 spec:RegisterHook( "runHandler", function( ability )
-    -- Only log critical issues
-    if not ability then
-        -- Nil ability passed to runHandler
-        return
+    if not ability then return end
+
+    local action = ability
+    if type( ability ) == "table" then
+        action = ability.key or ability.action or ability[1]
+    end
+
+    local eclipse = state.balance_eclipse
+    if not eclipse then return end
+
+    local function clamp_power( power )
+        if power > 100 then return 100 end
+        if power < -100 then return -100 end
+        return power
+    end
+
+    if action == "wrath" then
+        eclipse.power = clamp_power( ( eclipse.power or 0 ) - 15 )
+        eclipse.direction = "solar"
+    elseif action == "starfire" then
+        eclipse.power = clamp_power( ( eclipse.power or 0 ) + 20 )
+        eclipse.direction = "lunar"
+    elseif action == "starsurge" then
+        if eclipse.direction == "lunar" then
+            eclipse.power = clamp_power( ( eclipse.power or 0 ) + 20 )
+        else
+            eclipse.power = clamp_power( ( eclipse.power or 0 ) - 20 )
+        end
+    elseif action == "celestial_alignment" then
+        eclipse.power = 0
+        eclipse.direction = "solar"
     end
 end )
 
@@ -243,6 +279,87 @@ spec:RegisterAuras( {
         max_stack = 1,
         copy = { 106951, "berserk_cat" },
         multiplier = 1.5,
+    },
+    enrage = {
+        id = 5229,
+        duration = 10,
+        max_stack = 1,
+    },
+    savage_defense = {
+        id = 62606,
+        duration = 6,
+        max_stack = 3,
+    },
+    demoralizing_roar = {
+        id = 99,
+        duration = 30,
+        max_stack = 1,
+    },
+    nature_swiftness = {
+        id = 132158,
+        duration = 8,
+        max_stack = 1,
+    },
+    dream_of_cenarius_healing = {
+        id = 108374,
+        duration = 15,
+        max_stack = 2,
+    },
+    tooth_and_claw = {
+        id = 135286,
+        duration = 6,
+        max_stack = 2,
+    },
+    tooth_and_claw_debuff = {
+        id = 135601,
+        duration = 15,
+        max_stack = 1,
+    },
+    pulverize = {
+        id = 80313,
+        duration = 20,
+        max_stack = 1,
+    },
+    celestial_alignment = {
+        id = 112071,
+        duration = 15,
+        max_stack = 1,
+    },
+    incarnation_chosen_of_elune = {
+        id = 102560,
+        duration = 30,
+        max_stack = 1,
+    },
+    lunar_eclipse = {
+        id = 48518,
+        duration = 15,
+        max_stack = 1,
+    },
+    solar_eclipse = {
+        id = 48517,
+        duration = 15,
+        max_stack = 1,
+    },
+    shooting_stars = {
+        id = 93400,
+        duration = 12,
+        max_stack = 3,
+    },
+    lunar_shower = {
+        id = 81192,
+        duration = 6,
+        max_stack = 3,
+    },
+    wild_mushroom_stacks = {
+        id = 138094,
+        duration = 20,
+        max_stack = 3,
+    },
+    dream_of_cenarius = {
+        id = 145152,
+        duration = 30,
+        max_stack = 1,
+        copy = "dream_of_cenarius_damage",
     },
 
     incarnation_king_of_the_jungle = {
@@ -1346,7 +1463,7 @@ spec:RegisterAbilities( {
     savage_roar = {
         -- Use dynamic ID so keybinds match action bar (glyphed vs base)
         id = function()
-            if IsSpellKnown and IsSpellKnown(127568) then return 127568 end
+            if IsSpellKnown and IsSpellKnown(127568, false) then return 127568 end
             return 52610
         end,
         copy = { 52610, 127568, 127538, 127539, 127540, 127541 },
@@ -2542,6 +2659,37 @@ end )
 
 -- Expose SimC-style toggles directly in state for APL expressions
 spec:RegisterStateExpr( "maintain_ff", function() return state.settings.maintain_ff ~= false end )
+spec:RegisterStateExpr( "faerie_fire_auto", function()
+    if state.settings.faerie_fire_auto ~= nil then
+        return state.settings.faerie_fire_auto
+    end
+    return state.settings.maintain_ff ~= false
+end )
+spec:RegisterStateExpr( "auto_pulverize", function()
+    if state.settings.auto_pulverize ~= nil then
+        return state.settings.auto_pulverize
+    end
+    return state.settings.bear_weaving_enabled ~= false
+end )
+spec:RegisterStateExpr( "should_spend_rage", function()
+    local threshold = state.settings.rage_dump_threshold or 80
+    return rage.current >= threshold
+end )
+spec:RegisterStateExpr( "can_spend_rage_on_maul", function()
+    local floor_threshold = state.settings.maul_rage_floor or 30
+    local rage_after = rage.current - 30
+    return rage_after >= floor_threshold and rage.current >= 30
+end )
+spec:RegisterStateExpr( "eclipse_power", function()
+    local eclipse = state.balance_eclipse
+    return eclipse and eclipse.power or 0
+end )
+spec:RegisterStateExpr( "eclipse_direction", function()
+    local eclipse = state.balance_eclipse
+    return eclipse and eclipse.direction or "solar"
+end )
+spec:RegisterStateExpr( "lunar", function() return "lunar" end )
+spec:RegisterStateExpr( "solar", function() return "solar" end )
 -- Map APL variables to consolidated settings.
 spec:RegisterStateExpr( "opt_bear_weave", function() return state.settings.bear_weaving_enabled ~= false end )
 spec:RegisterStateExpr( "opt_wrath_weave", function() return state.settings.wrath_weaving_enabled ~= false end )
