@@ -1760,6 +1760,22 @@ spec:RegisterAbilities( {
             -- Strict sequence action - handled by SimC
         end,
     },
+
+    mirror_image = {
+        id = 55342,
+        cast = 0,
+        cooldown = 180,
+        gcd = "spell",
+        
+        toggle = "cooldowns",
+        
+        startsCombat = false,
+        texture = 135994,
+        
+        handler = function()
+            applyBuff( "mirror_image" )
+        end,
+    },
 } )
 
 -- State Functions and Expressions

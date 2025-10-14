@@ -55,6 +55,7 @@ actions.single_target+=/heart_strike,if=runes.blood.count>=1|runes.death.count>=
 actions.single_target+=/death_coil,if=runic_power>=60
 actions.single_target+=/horn_of_winter,if=buff.horn_of_winter.down
 actions.single_target+=/empower_rune_weapon,if=runic_power.deficit>=40&(runes.blood.count=0|runes.frost.count=0|runes.unholy.count=0)
+actions.single_target+=/rune_strike,if=runic_power>=30
 
 ## AoE rotation (4+ targets)
 actions.aoe+=/outbreak,if=variable.need_dots
@@ -65,3 +66,4 @@ actions.aoe+=/heart_strike,if=runes.blood.count>=1|runes.death.count>=1
 actions.aoe+=/death_strike,if=runes.unholy.count>=1&runes.frost.count>=1
 actions.aoe+=/death_coil,if=runic_power>=80
 actions.aoe+=/horn_of_winter
+actions.aoe+=/rune_strike,if=runic_power>=30
