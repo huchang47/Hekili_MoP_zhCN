@@ -659,7 +659,7 @@ spec:RegisterAuras( {
         duration = 0,
         max_stack = 1,
         generate = function( t )
-            if IsSpellKnown( 56368 ) then
+            if IsPlayerSpell( 56368 ) then
                 t.name = "Glyph of Combustion"
                 t.count = 1
                 t.expires = 9999999999
@@ -680,7 +680,7 @@ spec:RegisterAuras( {
         duration = 0,
         max_stack = 1,
         generate = function( t )
-            if IsSpellKnown( 56375 ) then
+            if IsPlayerSpell( 56375 ) then
                 t.name = "Glyph of Living Bomb"
                 t.count = 1
                 t.expires = 9999999999
@@ -701,7 +701,7 @@ spec:RegisterAuras( {
         duration = 0,
         max_stack = 1,
         generate = function( t )
-            if IsSpellKnown( 56374 ) then
+            if IsPlayerSpell( 56374 ) then
                 t.name = "Glyph of Inferno Blast"
                 t.count = 1
                 t.expires = 9999999999
@@ -792,7 +792,7 @@ spec:RegisterAuras( {
         duration = 0,
         max_stack = 1,
         generate = function( t )
-            if IsSpellKnown( 140468 ) then
+            if IsPlayerSpell( 140468 ) then
                 t.name = "Flameglow"
                 t.count = 1
                 t.expires = 9999999999

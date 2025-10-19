@@ -677,16 +677,16 @@ end)
             duration = 20,
             max_stack = 1,
             generate = function( t )
-                if not IsSpellKnown( 56377 ) then -- Check if glyph is learned (spell id for the glyph effect)
+                if not IsPlayerSpell( 56377 ) then -- Check if glyph is learned (spell id for the glyph effect)
                     t.count = 0
                     t.expires = 0
                     t.applied = 0
                     t.caster = "nobody"
                     return
                 end
-                
+    
                 local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 12472 )
-                
+    
                 if name then
                     t.name = "Enhanced Icy Veins"
                     t.count = count > 0 and count or 1
@@ -695,7 +695,7 @@ end)
                     t.caster = caster
                     return
                 end
-                
+    
                 t.count = 0
                 t.expires = 0
                 t.applied = 0
@@ -707,7 +707,7 @@ end)
             duration = 0,
             max_stack = 1,
             generate = function( t )
-                if IsSpellKnown( 56372 ) then
+                if IsPlayerSpell( 56372 ) then
                     t.name = "Glyph of Splitting Ice"
                     t.count = 1
                     t.expires = 9999999999

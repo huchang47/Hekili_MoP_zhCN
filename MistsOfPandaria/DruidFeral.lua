@@ -16,13 +16,82 @@ local Hekili = _G[ addon ]
 local class, state = Hekili.Class, Hekili.State
 
 local floor = math.floor
+local min, max = math.min, math.max
 local strformat = string.format
+local ipairs = ipairs
 
 local spec = Hekili:NewSpecialization(103, true)
 
 spec.name = "Feral"
 spec.role = "DAMAGER"
 spec.primaryStat = 2 -- Agility
+
+local function getSpecConfig()
+    local profile = Hekili.DB and Hekili.DB.profile
+    if not profile or not profile.specs then return nil end
+    profile.specs[ 103 ] = profile.specs[ 103 ] or {}
+    local specConfig = profile.specs[ 103 ]
+    specConfig.settings = specConfig.settings or {}
+    return specConfig
+end
+
+local function getSpecSettingRaw( key )
+    local specConfig = getSpecConfig()
+    if not specConfig then return nil end
+
+    local settings = specConfig.settings
+    if settings and settings[ key ] ~= nil then
+        return settings[ key ]
+    end
+
+    if specConfig[ key ] ~= nil then
+        return specConfig[ key ]
+    end
+
+    return nil
+end
+
+local function getSetting( key, default )
+    local value = getSpecSettingRaw( key )
+    if value == nil then
+        return default
+    end
+    return value
+end
+
+local function settingEnabled( key, default )
+    local value = getSpecSettingRaw( key )
+    if value == nil then
+        if default ~= nil then
+            return default ~= false
+        end
+        return true
+    end
+    return value ~= false
+end
+
+local function isSpellKnown( spellID )
+    if not spellID then return false end
+
+    if type( spellID ) == "table" then
+        for _, id in ipairs( spellID ) do
+            if isSpellKnown( id ) then
+                return true
+            end
+        end
+        return false
+    end
+
+    if IsPlayerSpell and IsPlayerSpell( spellID ) then
+        return true
+    end
+
+    if IsSpellKnown and IsSpellKnown( spellID, false ) then
+        return true
+    end
+
+    return false
+end
 
 -- Use MoP power type numbers instead of Enum
 -- Energy = 3, ComboPoints = 4, Rage = 1, Mana = 0 in MoP Classic
@@ -65,14 +134,11 @@ spec:RegisterHook( "reset_precast", function()
         removeBuff( "cat_form" )
     end
 
-    if not state.balance_eclipse then
-        state.balance_eclipse = {
-            power = 0,
-            direction = "solar"
-        }
+    local eclipse = state.balance_eclipse
+    if eclipse then
+        eclipse.power = eclipse.power or 0
+        eclipse.direction = eclipse.direction or "solar"
     end
-    state.balance_eclipse.power = state.balance_eclipse.power or 0
-    state.balance_eclipse.direction = state.balance_eclipse.direction or "solar"
     
     -- Removed workaround sync - testing core issue
 end )
@@ -362,6 +428,13 @@ spec:RegisterAuras( {
         copy = "dream_of_cenarius_damage",
     },
 
+    natures_vigil = {
+        id = 124974,
+        duration = 30,
+        max_stack = 1,
+        type = "Magic",
+    },
+
     incarnation_king_of_the_jungle = {
         id = 114107,
         duration = 30,
@@ -509,6 +582,40 @@ spec:RegisterAuras( {
         duration = 3600,
         max_stack = 1
     },
+    stealthed = {
+        id = 5215,
+        duration = 3600,
+        max_stack = 1,
+        generate = function( t )
+            local prowl_buff = buff.prowl
+            local incarnation_buff = buff.incarnation or buff.incarnation_king_of_the_jungle
+            local stealth_up = ( prowl_buff and prowl_buff.up ) or ( incarnation_buff and incarnation_buff.up )
+
+            t.up = stealth_up or false
+            t.down = not stealth_up
+            t.count = stealth_up and 1 or 0
+            t.caster = "player"
+
+            if prowl_buff and prowl_buff.up then
+                t.remains = prowl_buff.remains or 0
+                t.expires = prowl_buff.expires or 0
+                t.applied = prowl_buff.applied or 0
+            elseif incarnation_buff and incarnation_buff.up then
+                t.remains = incarnation_buff.remains or 0
+                t.expires = incarnation_buff.expires or 0
+                t.applied = incarnation_buff.applied or 0
+            else
+                t.remains = 0
+                t.expires = 0
+                t.applied = 0
+            end
+
+            t.all = stealth_up or false
+            t.prowl = prowl_buff and prowl_buff.up or false
+            t.incarnation = incarnation_buff and incarnation_buff.up or false
+            t.value = t.count
+        end,
+    },
     rake = {
         id = 1822, -- Correct Rake ID for MoP
         duration = 15,
@@ -520,9 +627,16 @@ spec:RegisterAuras( {
             tick_dmg = function( t )
                 -- Return the snapshotted tick damage for the current Rake DoT
                 if not t.up then return 0 end
-                local snap = bleed_snapshot[ target.unit ]
-                local base_tick = 1000 -- Base Rake tick damage (placeholder)
-                return base_tick * ( snap and snap.rake_mult or 1 )
+                if get_bleed_snapshot_value then
+                    local stored = get_bleed_snapshot_value( "rake", t.unit )
+                    if stored and stored > 0 then
+                        return stored
+                    end
+                end
+                if predict_bleed_value then
+                    return predict_bleed_value( "rake", nil, t.unit )
+                end
+                return 0
             end,
             tick_damage = function( t )
                 -- Alias for consistency with SimC
@@ -553,9 +667,16 @@ spec:RegisterAuras( {
             tick_dmg = function( t )
                 -- Return the snapshotted tick damage for the current Rip DoT
                 if not t.up then return 0 end
-                local snap = bleed_snapshot[ target.unit ]
-                local base_tick = 2000 -- Base Rip tick damage (placeholder)
-                return base_tick * ( snap and snap.rip_mult or 1 )
+                if get_bleed_snapshot_value then
+                    local stored = get_bleed_snapshot_value( "rip", t.unit )
+                    if stored and stored > 0 then
+                        return stored
+                    end
+                end
+                if predict_bleed_value then
+                    return predict_bleed_value( "rip", nil, t.unit )
+                end
+                return 0
             end,
             tick_damage = function( t )
                 -- Alias for consistency with SimC
@@ -690,6 +811,7 @@ spec:RegisterEvent( "PLAYER_ENTERING_WORLD", function ()
             if not Hekili.DB.profile.specs[103] then
                 Hekili.DB.profile.specs[103] = {}
             end
+            Hekili.DB.profile.specs[103].settings = Hekili.DB.profile.specs[103].settings or {}
             Hekili.DB.profile.specs[103].enabled = true
             
             -- Set default package if none exists
@@ -716,7 +838,9 @@ end )
 
 -- Function to remove any form currently active.
 spec:RegisterStateFunction( "unshift", function()
-    if conduit.tireless_pursuit and conduit.tireless_pursuit.enabled and ( buff.cat_form.up or buff.travel_form.up ) then applyBuff( "tireless_pursuit" ) end
+    if conduit and conduit.tireless_pursuit and conduit.tireless_pursuit.enabled and ( buff.cat_form.up or buff.travel_form.up ) then
+        applyBuff( "tireless_pursuit" )
+    end
 
     removeBuff( "cat_form" )
     removeBuff( "bear_form" )
@@ -754,7 +878,7 @@ spec:RegisterHook( "runHandler", function( ability )
     local a = class.abilities[ ability ]
 
     if not a or a.startsCombat then
-        break_stealth()
+        state.break_stealth()
     end
 end )
 
@@ -772,6 +896,7 @@ end )
 local combo_generators = {
     rake              = true,
     shred             = true,
+    ravage            = true,
     swipe_cat         = true,
     thrash_cat        = true,
     mangle_cat        = true,
@@ -795,7 +920,7 @@ spec:RegisterStateTable( "druid", setmetatable( {},{
         -- MoP: No Primal Wrath or Lunar Inspiration
         elseif k == "primal_wrath" then return false
         elseif k == "lunar_inspiration" then return false
-        elseif k == "delay_berserking" then return state.settings.delay_berserking
+        elseif k == "delay_berserking" then return getSetting( "delay_berserking", nil )
         elseif debuff[ k ] ~= nil then return debuff[ k ]
         end
     end
@@ -807,6 +932,13 @@ spec:RegisterStateExpr( "bleeding", function ()
 end )
 
 -- MoP: Effective stealth is only Prowl or Incarnation (no Shadowmeld for snapshotting in MoP).
+spec:RegisterStateExpr( "stealthed_all", function ()
+    if buff.stealthed and buff.stealthed.all ~= nil then
+        return buff.stealthed.all
+    end
+    return buff.prowl.up or ( buff.incarnation and buff.incarnation.up )
+end )
+
 spec:RegisterStateExpr( "effective_stealth", function ()
     return buff.prowl.up or ( buff.incarnation and buff.incarnation.up )
 end )
@@ -898,7 +1030,7 @@ end )
 
 -- Check if we should pool energy for upcoming refreshes (based on SimC pool input)
 spec:RegisterStateExpr( "should_pool_energy", function()
-    local poolLevel = state.settings.pool or 0 -- 0=no pooling, 1=light, 2=heavy
+    local poolLevel = getSetting( "pool", 0 ) or 0 -- 0=no pooling, 1=light, 2=heavy
     
     if poolLevel == 0 then
         return false -- No pooling
@@ -1317,7 +1449,7 @@ spec:RegisterStateExpr( "tf_energy_threshold_advanced", function()
     local totalDelay = reactionTime + clearcastingDelay
     local threshold = math.max( 0, 40 - (totalDelay * (energy.regen or 0)) )
 
-    if settings.use_healing_touch and buff.dream_of_cenarius_damage.up and (combo_points.current == 5) then
+    if settingEnabled( "use_healing_touch", true ) and buff.dream_of_cenarius_damage.up and ( combo_points.current == 5 ) then
         return 100
     end
 
@@ -1381,6 +1513,25 @@ end )
 
 spec:RegisterStateExpr( "behind_target", function ()
     return UnitExists("target") and UnitExists("targettarget") and UnitGUID("targettarget") ~= UnitGUID("player")
+end )
+
+
+spec:RegisterStateExpr( "shred_position_ok", function ()
+    if behind_target then return true end
+
+    local stealthed = buff.stealthed.up or buff.prowl.up or buff.shadowmeld.up
+    if stealthed then return true end
+
+    local incarnation = buff.incarnation_king_of_the_jungle or buff.incarnation
+    if incarnation and incarnation.up then
+        return true
+    end
+
+    if debuff.mighty_bash.up or debuff.maim.up or debuff.incapacitating_roar.up or debuff.pulverize.up then
+        return true
+    end
+
+    return false
 end )
 
 
@@ -1455,6 +1606,12 @@ spec:RegisterAbilities( {
         school = "physical",
         texture = 136033,
         startsCombat = true,
+        usable = function()
+            if not settingEnabled( "maintain_ff", true ) then
+                return false, "maintain_ff disabled"
+            end
+            return true
+        end,
         handler = function()
             applyDebuff("target", "faerie_fire")
         end,
@@ -1494,6 +1651,9 @@ spec:RegisterAbilities( {
         spendType = "energy",
         startsCombat = true,
         form = "cat_form",
+        known = function()
+            return isSpellKnown( { 33876, 33917 } )
+        end,
         handler = function()
             gain(1, "combo_points")
         end,
@@ -1505,6 +1665,12 @@ spec:RegisterAbilities( {
         gcd = "spell",
         school = "physical",
         startsCombat = true,
+        usable = function()
+            if not settingEnabled( "maintain_ff", true ) then
+                return false, "maintain_ff disabled"
+            end
+            return true
+        end,
 
         handler = function()
             applyDebuff("target", "faerie_fire")
@@ -1518,6 +1684,12 @@ spec:RegisterAbilities( {
         gcd = "spell",
         school = "physical",
         startsCombat = true,
+        usable = function()
+            if not settingEnabled( "maintain_ff", true ) then
+                return false, "maintain_ff disabled"
+            end
+            return true
+        end,
         handler = function()
             applyDebuff("target", "faerie_fire")
         end,
@@ -1837,9 +2009,7 @@ spec:RegisterAbilities( {
         handler = function ()
             applyDebuff( "target", "rake" )
             gain( 1, "combo_points" )
-            local snap = bleed_snapshot[ target.unit ]
-            snap.rake_mult = current_bleed_multiplier()
-            snap.rake_time = query_time
+            store_bleed_snapshot( "rake" )
         end,
     },
 
@@ -1911,11 +2081,13 @@ spec:RegisterAbilities( {
             return combo_points.current > 0
         end,
         handler = function ()
+            local cp = combo_points.current or 0
+            local snapshot_cp = max( cp, 1 )
             applyDebuff( "target", "rip" )
-            spend( combo_points.current, "combo_points" )
-            local snap = bleed_snapshot[ target.unit ]
-            snap.rip_mult = current_bleed_multiplier()
-            snap.rip_time = query_time
+            if cp > 0 then
+                spend( cp, "combo_points" )
+            end
+            store_bleed_snapshot( "rip", snapshot_cp )
         end,
     },
 
@@ -1932,6 +2104,30 @@ spec:RegisterAbilities( {
         spendType = "energy",
         startsCombat = true,
         form = "cat_form",
+        usable = function ()
+            if shred_position_ok then
+                return true
+            end
+
+            return false, "requires position or control"
+        end,
+        handler = function ()
+            gain( 1, "combo_points" )
+        end,
+    },
+
+    -- Ravage: High-damage opener used from stealth or Incarnation.
+    ravage = {
+        id = 6785,
+        copy = { 102545 }, -- Ravage! free-cast variant
+        cast = 0,
+        cooldown = 0,
+        gcd = "totem",
+        school = "physical",
+        spend = 60,
+        spendType = "energy",
+        startsCombat = true,
+        form = "cat_form",
         handler = function ()
             gain( 1, "combo_points" )
         end,
@@ -1939,7 +2135,8 @@ spec:RegisterAbilities( {
 
     -- Skull Bash: Interrupts spellcasting.
     skull_bash = {
-        id = 80965,
+        id = 106839,
+        copy = { 80965, 80964 },
         cast = 0,
         cooldown = 10,
         gcd = "off",
@@ -1952,9 +2149,16 @@ spec:RegisterAbilities( {
         end,
         debuff = "casting",
         readyTime = state.timeToInterrupt,
+        known = function()
+            return isSpellKnown( { 106839, 80965, 80964 } )
+        end,
         handler = function ()
             interrupt()
         end,
+    },
+
+    skull_bash_cat = {
+        copy = "skull_bash",
     },
 
     -- Survival Instincts: Reduces all damage taken by 50% for 6 sec.
@@ -1981,10 +2185,14 @@ spec:RegisterAbilities( {
         spendType = "energy",
         startsCombat = true,
         form = "cat_form",
+        known = function()
+            return isSpellKnown( 106830 )
+        end,
         handler = function ()
             applyDebuff( "target", "thrash" )
             applyDebuff( "target", "weakened_blows" )
             gain( 1, "combo_points" )
+            store_bleed_snapshot( "thrash" )
         end,
     },
     thrash_bear = {
@@ -2001,6 +2209,7 @@ spec:RegisterAbilities( {
             applyDebuff( "target", "thrash" )
             applyDebuff( "target", "weakened_blows" )
             gain( 1, "combo_points" )
+            store_bleed_snapshot( "thrash" )
         end,
     },
     -- Tiger's Fury: Instantly restores 60 Energy and increases damage done by 15% for 6 sec.
@@ -2219,44 +2428,6 @@ spec:RegisterAuras( {
     },
 } )
 
--- Auras for advanced techniques
-spec:RegisterAuras( {
-    lacerate = {
-        id = 33745,
-        duration = 15,
-        tick_time = 3,
-        mechanic = "bleed",
-        max_stack = 3,
-    },
-
-    -- Bear Form specific auras
-    bear_form_weaving = {
-        duration = 3600,
-        max_stack = 1,
-    },
-} )
-
--- State expressions for advanced techniques
-spec:RegisterStateExpr( "should_bear_weave", function()
-    if not state.settings.bear_weaving_enabled then return false end
-    
-    -- Bear-weave when energy is high and we're not in immediate danger
-    return energy.current >= 80 and 
-           not buff.berserk.up and 
-           not buff.incarnation_king_of_the_jungle.up and
-           target.time_to_die > 10
-end )
-
-spec:RegisterStateExpr( "should_wrath_weave", function()
-    if not state.settings.wrath_weaving_enabled then return false end
-    
-    -- Wrath-weave during Heart of the Wild when not in combat forms
-    return buff.heart_of_the_wild.up and 
-           not buff.cat_form.up and 
-           not buff.bear_form.up and
-           mana.current >= 0.06 * mana.max
-end )
-
 -- Settings for advanced techniques
 spec:RegisterSetting( "bear_weaving_enabled", false, {
     name = "Enable Bear-Weaving",
@@ -2296,14 +2467,7 @@ spec:RegisterSetting( "opt_use_ns", false, {
     width = "full"
 } )
 
-spec:RegisterSetting( "opt_melee_weave", true, {
-    name = "Melee-Weave Focus ",
-    desc = "Prefer Cat Form melee time; monocat keeps this on while other weaves are off.",
-    type = "toggle",
-    width = "full"
-} )
-
-spec:RegisterRanges( "rake", "shred", "skull_bash", "growl", "moonfire" )
+spec:RegisterRanges( "rake", "shred", "ravage", "skull_bash", "growl", "moonfire" )
 
 spec:RegisterOptions( {
     enabled = true,
@@ -2384,11 +2548,11 @@ spec:RegisterSetting( "regrowth", true, {
 } )
 
 spec:RegisterVariable( "regrowth", function()
-    return state.settings.regrowth ~= false
+    return settingEnabled( "regrowth", true )
 end )
 
 spec:RegisterStateExpr( "filler_regrowth", function()
-    return state.settings.regrowth ~= false
+    return settingEnabled( "regrowth", true )
 end )
 
 spec:RegisterSetting( "solo_prowl", false, {
@@ -2435,14 +2599,23 @@ spec:RegisterVariable( "pool_energy", function()
 end )
 
 spec:RegisterVariable( "lazy_swipe", function()
-    return state.settings.lazy_swipe ~= false
+    return settingEnabled( "lazy_swipe", false )
 end )
 
 spec:RegisterVariable( "solo_prowl", function()
-    return state.settings.solo_prowl ~= false
+    return settingEnabled( "solo_prowl", false )
 end )
 
 -- Bleed snapshot tracking (minimal: Tiger's Fury multiplier)
+spec:RegisterStateTable( "balance_eclipse", {
+    power = 0,
+    direction = "solar",
+    reset = function( t )
+        t.power = 0
+        t.direction = "solar"
+    end
+} )
+
 spec:RegisterStateTable( "bleed_snapshot", setmetatable( {
     cache = {},
     reset = function( t )
@@ -2453,14 +2626,40 @@ spec:RegisterStateTable( "bleed_snapshot", setmetatable( {
         if not t.cache[ k ] then
             t.cache[ k ] = {
                 rake_mult = 0,
+                rake_value = 0,
+                rake_ap = 0,
                 rip_mult = 0,
+                rip_value = 0,
+                rip_ap = 0,
+                rip_cp = 0,
                 rake_time = 0,
                 rip_time = 0,
+                thrash_mult = 0,
+                thrash_value = 0,
+                thrash_ap = 0,
+                thrash_time = 0,
             }
         end
         return t.cache[ k ]
     end
 } ) )
+
+local function resolve_bleed_snapshot_unit( unit )
+    if unit ~= nil then
+        return unit
+    end
+    if state.target and state.target.unit then
+        return state.target.unit
+    end
+    return "target"
+end
+
+local function get_bleed_snapshot_record( unit )
+    unit = resolve_bleed_snapshot_unit( unit )
+    local container = state and state.bleed_snapshot
+    if not container then return nil, unit end
+    return container[ unit ], unit
+end
 
 spec:RegisterStateFunction( "current_bleed_multiplier", function()
     local mult = 1.0
@@ -2476,78 +2675,181 @@ spec:RegisterStateFunction( "current_bleed_multiplier", function()
     if buff.dream_of_cenarius_damage and buff.dream_of_cenarius_damage.up then
         mult = mult * 1.30
     end
-    
+
     if buff.synapse_springs and buff.synapse_springs.up then
         mult = mult * 1.065
+    end
+
+    if buff.natures_vigil and buff.natures_vigil.up then
+        mult = mult * 1.12
     end
     
     return mult
 end )
 
+local function resolve_attack_power()
+    if state.stat and state.stat.attack_power and state.stat.attack_power > 0 then
+        return state.stat.attack_power
+    end
+
+    if UnitAttackPower then
+        local base, pos, neg = UnitAttackPower( "player" )
+        if base then
+            return ( base or 0 ) + ( pos or 0 ) - ( neg or 0 )
+        end
+    end
+
+    return 0
+end
+
+-- MoP coefficients derived from wowsims/mop feral implementation.
+local CLASS_SPELL_SCALING = 112.7582 / 0.10300000012
+local RAKE_BASE_TICK = 0.09000000358 * CLASS_SPELL_SCALING
+local RAKE_AP_COEFF = 0.30000001192
+local RIP_BASE_TICK = 0.10300000012 * CLASS_SPELL_SCALING
+local RIP_CP_BASE = 0.29199999571 * CLASS_SPELL_SCALING
+local RIP_AP_COEFF = 0.0484
+local RIP_DAMAGE_MULT = 1.2
+local THRASH_BASE_TICK = 0.62699997425 * CLASS_SPELL_SCALING
+local THRASH_AP_COEFF = 0.141
+
+spec:RegisterStateFunction( "predict_bleed_value", function( kind, cp, unit )
+    kind = kind or "rake"
+    local ap = max( resolve_attack_power(), 0 )
+    local mastery_bonus = 1 + ( ( state.stat and state.stat.mastery_value or 0 ) * 0.01 )
+    local multiplier = current_bleed_multiplier()
+
+    if kind == "rake" then
+        return ( RAKE_BASE_TICK + RAKE_AP_COEFF * ap ) * mastery_bonus * multiplier
+    elseif kind == "rip" then
+        cp = cp or combo_points.current or 0
+        local points = max( cp, 1 )
+        local tick = RIP_BASE_TICK + RIP_CP_BASE * points + RIP_AP_COEFF * points * ap
+        return tick * mastery_bonus * multiplier * RIP_DAMAGE_MULT
+    elseif kind == "thrash" then
+        return ( THRASH_BASE_TICK + THRASH_AP_COEFF * ap ) * mastery_bonus * multiplier
+    end
+
+    local points = max( cp or 1, 1 )
+    return ap * points * mastery_bonus * multiplier
+end )
+
+spec:RegisterStateFunction( "store_bleed_snapshot", function( kind, cp, unit )
+    kind = kind or "rake"
+    local snap, resolved = get_bleed_snapshot_record( unit )
+    if not snap then return end
+
+    local value = predict_bleed_value( kind, cp, resolved )
+    local mult = current_bleed_multiplier()
+    local ap = resolve_attack_power()
+    local now = query_time or state.now or 0
+
+    if kind == "rake" then
+        snap.rake_mult = mult
+        snap.rake_value = value
+        snap.rake_ap = ap
+        snap.rake_time = now
+    elseif kind == "rip" then
+        snap.rip_mult = mult
+        snap.rip_value = value
+        snap.rip_ap = ap
+        snap.rip_cp = cp or combo_points.current or 0
+        snap.rip_time = now
+    elseif kind == "thrash" then
+        snap.thrash_mult = mult
+        snap.thrash_value = value
+        snap.thrash_ap = ap
+        snap.thrash_time = now
+    else
+        local prefix = string.lower( tostring( kind ) )
+        snap[ prefix .. "_mult" ] = mult
+        snap[ prefix .. "_value" ] = value
+        snap[ prefix .. "_ap" ] = ap
+        snap[ prefix .. "_time" ] = now
+    end
+end )
+
+spec:RegisterStateFunction( "get_bleed_snapshot_value", function( kind, unit )
+    local snap = get_bleed_snapshot_record( unit )
+    if not snap then return 0 end
+    kind = kind or "rake"
+
+    if kind == "rake" then
+        return snap.rake_value or 0
+    elseif kind == "rip" then
+        return snap.rip_value or 0
+    elseif kind == "thrash" then
+        return snap.thrash_value or 0
+    end
+
+    local prefix = string.lower( tostring( kind ) )
+    return snap[ prefix .. "_value" ] or 0
+end )
+
 spec:RegisterStateExpr( "rake_stronger", function()
-    local snap = bleed_snapshot[ target.unit ]
-    local now_mult = current_bleed_multiplier()
-    return now_mult > ( snap.rake_mult or 0 ) + 0.001
+    local predicted = predict_bleed_value and predict_bleed_value( "rake" ) or 0
+    local stored = get_bleed_snapshot_value and get_bleed_snapshot_value( "rake" ) or 0
+
+    if stored <= 0 then
+        return predicted > 0
+    end
+
+    return predicted > stored * 1.001
 end )
 
 spec:RegisterStateExpr( "rip_stronger", function()
-    local snap = bleed_snapshot[ target.unit ]
-    local now_mult = current_bleed_multiplier()
-    return now_mult > ( snap.rip_mult or 0 ) + 0.001
+    local predicted = predict_bleed_value and predict_bleed_value( "rip" ) or 0
+    local stored = get_bleed_snapshot_value and get_bleed_snapshot_value( "rip" ) or 0
+
+    if stored <= 0 then
+        return predicted > 0
+    end
+
+    return predicted > stored * 1.001
 end )
 
 spec:RegisterStateExpr( "rake_damage_increase_pct", function()
-    local snap = bleed_snapshot[ target.unit ]
-    local last = snap.rake_mult or 0
-    local now = current_bleed_multiplier()
-    if last <= 0 then return 0 end
-    return max( 0, ( now / last ) - 1 )
+    local predicted = predict_bleed_value and predict_bleed_value( "rake" ) or 0
+    local stored = get_bleed_snapshot_value and get_bleed_snapshot_value( "rake" ) or 0
+
+    if stored <= 0 or predicted <= 0 then
+        return 0
+    end
+
+    return max( 0, ( predicted / stored ) - 1 )
 end )
 
 spec:RegisterStateExpr( "rip_damage_increase_pct", function()
-    local snap = bleed_snapshot[ target.unit ]
-    local last = snap.rip_mult or 0
-    local now = current_bleed_multiplier()
-    if last <= 0 then return 0 end
-    return max( 0, ( now / last ) - 1 )
+    local predicted = predict_bleed_value and predict_bleed_value( "rip" ) or 0
+    local stored = get_bleed_snapshot_value and get_bleed_snapshot_value( "rip" ) or 0
+
+    if stored <= 0 or predicted <= 0 then
+        return 0
+    end
+
+    return max( 0, ( predicted / stored ) - 1 )
 end )
 
--- T16H SimC Compatibility: Predicted tick damage for action vs current DoT
--- These calculate what the tick damage WOULD BE if we cast Rake/Rip now with current buffs
--- vs the snapshotted tick damage of the existing DoT
-spec:RegisterStateTable( "action", setmetatable( {}, {
-    __index = function( t, k )
-        if k == "rake" then
-            return setmetatable( {}, {
-                __index = function( rt, rk )
-                    if rk == "tick_damage" then
-                        -- Calculate potential Rake tick damage with current buffs
-                        local base_tick = 1000 -- Placeholder
-                        local mult = current_bleed_multiplier()
-                        return base_tick * mult
-                    end
-                    -- Fall back to ability data
-                    return class.abilities.rake and class.abilities.rake[rk] or nil
-                end
-            } )
-        elseif k == "rip" then
-            return setmetatable( {}, {
-                __index = function( rt, rk )
-                    if rk == "tick_damage" then
-                        -- Calculate potential Rip tick damage with current buffs
-                        local base_tick = 2000 -- Placeholder
-                        local mult = current_bleed_multiplier()
-                        return base_tick * mult
-                    end
-                    -- Fall back to ability data
-                    return class.abilities.rip and class.abilities.rip[rk] or nil
-                end
-            } )
-        end
-        -- Fall back to default action table
-        return class.abilities[k]
+-- Provide SimC-style action.<spell>.tick_damage hooks without replacing the core state.action table.
+do
+    local function rake_tick_damage()
+        return predict_bleed_value and predict_bleed_value( "rake" ) or 0
     end
-} ) )
+    setfenv( rake_tick_damage, state )
+
+    local function rip_tick_damage()
+        return predict_bleed_value and predict_bleed_value( "rip" ) or 0
+    end
+    setfenv( rip_tick_damage, state )
+
+    if spec.abilities and spec.abilities.rake then
+        spec.abilities.rake.tick_damage = rake_tick_damage
+    end
+
+    if spec.abilities and spec.abilities.rip then
+        spec.abilities.rip.tick_damage = rip_tick_damage
+    end
+end
 
 spec:RegisterStateExpr( "bearweave_trigger_ok", function()
     if not buff.cat_form.up then return false end
@@ -2566,6 +2868,8 @@ end )
 spec:RegisterStateExpr( "should_bear_weave", function()
     if not opt_bear_weave then return false end
     if query_time <= ( action.cat_form.lastCast + gcd.max ) then return false end
+    local thrash_cd = cooldown.thrash_bear
+    if not thrash_cd or not thrash_cd.ready then return false end
     
     local urgent_refresh = ( (debuff.rip.remains > 0 and debuff.rip.remains <= 3)
         or (debuff.rake.remains > 0 and debuff.rake.remains <= 3)
@@ -2604,6 +2908,19 @@ spec:RegisterStateExpr( "should_wrath_weave", function()
     if should_delay_bleed_for_tf( debuff.rip, 2, true ) or should_delay_bleed_for_tf( debuff.rake, 3, false ) then return false end
 
     return mana.current >= 0.06 * mana.max
+end )
+
+spec:RegisterStateExpr( "bear_thrash_pending", function()
+    if buff.bear_form.down then return false end
+
+    local lastBear = action.bear_form and action.bear_form.lastCast or -math.huge
+    if lastBear <= 0 then
+        return debuff.thrash.down
+    end
+
+    local lastThrash = action.thrash_bear and action.thrash_bear.lastCast or -math.huge
+
+    return lastThrash < lastBear
 end )
 
 spec:RegisterStateFunction( "tf_expected_before", function( future_time )
@@ -2658,25 +2975,29 @@ spec:RegisterStateExpr( "berserk_clip_for_hotw", function()
 end )
 
 -- Expose SimC-style toggles directly in state for APL expressions
-spec:RegisterStateExpr( "maintain_ff", function() return state.settings.maintain_ff ~= false end )
+spec:RegisterStateExpr( "maintain_ff", function()
+    return settingEnabled( "maintain_ff", true )
+end )
 spec:RegisterStateExpr( "faerie_fire_auto", function()
-    if state.settings.faerie_fire_auto ~= nil then
-        return state.settings.faerie_fire_auto
+    local value = getSetting( "faerie_fire_auto", nil )
+    if value ~= nil then
+        return value
     end
-    return state.settings.maintain_ff ~= false
+    return settingEnabled( "maintain_ff", true )
 end )
 spec:RegisterStateExpr( "auto_pulverize", function()
-    if state.settings.auto_pulverize ~= nil then
-        return state.settings.auto_pulverize
+    local value = getSetting( "auto_pulverize", nil )
+    if value ~= nil then
+        return value
     end
-    return state.settings.bear_weaving_enabled ~= false
+    return settingEnabled( "bear_weaving_enabled", false )
 end )
 spec:RegisterStateExpr( "should_spend_rage", function()
-    local threshold = state.settings.rage_dump_threshold or 80
+    local threshold = getSetting( "rage_dump_threshold", 80 ) or 80
     return rage.current >= threshold
 end )
 spec:RegisterStateExpr( "can_spend_rage_on_maul", function()
-    local floor_threshold = state.settings.maul_rage_floor or 30
+    local floor_threshold = getSetting( "maul_rage_floor", 30 ) or 30
     local rage_after = rage.current - 30
     return rage_after >= floor_threshold and rage.current >= 30
 end )
@@ -2691,71 +3012,24 @@ end )
 spec:RegisterStateExpr( "lunar", function() return "lunar" end )
 spec:RegisterStateExpr( "solar", function() return "solar" end )
 -- Map APL variables to consolidated settings.
-spec:RegisterStateExpr( "opt_bear_weave", function() return state.settings.bear_weaving_enabled ~= false end )
-spec:RegisterStateExpr( "opt_wrath_weave", function() return state.settings.wrath_weaving_enabled ~= false end )
-spec:RegisterStateExpr( "opt_snek_weave", function() return state.settings.opt_snek_weave ~= false end )
-spec:RegisterStateExpr( "opt_use_ns", function() return state.settings.opt_use_ns ~= false end )
-spec:RegisterStateExpr( "opt_melee_weave", function() return state.settings.opt_melee_weave ~= false end )
-spec:RegisterStateExpr( "use_trees", function() return state.settings.use_trees ~= false end )
-spec:RegisterStateExpr( "use_hotw", function() return state.settings.use_hotw ~= false end )
+spec:RegisterStateExpr( "opt_bear_weave", function() return settingEnabled( "bear_weaving_enabled", false ) end )
+spec:RegisterStateExpr( "opt_wrath_weave", function() return settingEnabled( "wrath_weaving_enabled", false ) end )
+spec:RegisterStateExpr( "opt_snek_weave", function() return settingEnabled( "opt_snek_weave", true ) end )
+spec:RegisterStateExpr( "opt_use_ns", function() return settingEnabled( "opt_use_ns", false ) end )
+spec:RegisterStateExpr( "opt_melee_weave", function()
+    local bear = settingEnabled( "bear_weaving_enabled", false )
+    local wrath = settingEnabled( "wrath_weaving_enabled", false )
+    return not bear and not wrath
+end )
+spec:RegisterStateExpr( "use_trees", function() return settingEnabled( "use_trees", false ) end )
+spec:RegisterStateExpr( "use_hotw", function() return settingEnabled( "use_hotw", false ) end )
 spec:RegisterStateExpr( "disable_shred_when_solo", function()
-    return state.settings.disable_shred_when_solo ~= false
+    return settingEnabled( "disable_shred_when_solo", false )
 end )
 -- Provide in_group for APL compatibility in emulated environment
 spec:RegisterStateExpr( "in_group", function()
     -- Avoid calling globals in the sandbox; treat as solo in emulation
     return false
-end )
-
--- Missing variables for bearweave and other APL logic
-spec:RegisterStateExpr( "bearweave_trigger_ok", function()
-    -- Check if bearweave is appropriate (low health, need survivability)
-    return health.pct <= 50 or incoming_damage_3s > (health.current * 0.3)
-end )
-
-spec:RegisterStateExpr( "thrash_aoe_efficient", function()
-    -- Thrash is efficient for AoE when there are 2+ enemies
-    return active_enemies >= 2
-end )
-
-spec:RegisterStateExpr( "energy_time_to_max", function()
-    -- Calculate time to reach max energy
-    if energy.current >= energy.max then return 0 end
-    local deficit = energy.max - energy.current
-    local regen_rate = energy.regen or 10
-    return deficit / regen_rate
-end )
-
-spec:RegisterStateExpr( "clip_rip_with_snapshot", function()
-    if not debuff.rip.up then return false end
-    if buff.dream_of_cenarius_damage.up and buff.dream_of_cenarius_damage.remains <= gcd.max then
-        return true
-    end
-    if not buff.dream_of_cenarius_damage.up then return false end
-    if combo_points.current <= 3 then return true end
-    return false
-end )
-
-spec:RegisterStateExpr( "clip_rake_with_snapshot", function()
-    if not debuff.rake.up then return false end
-    if buff.dream_of_cenarius_damage.up and buff.dream_of_cenarius_damage.remains <= gcd.max then
-        return true
-    end
-    if not buff.dream_of_cenarius_damage.up then return false end
-    if combo_points.current <= 3 then return true end
-    return false
-end )
-
-spec:RegisterStateExpr( "clip_roar_for_min_offset", function()
-    if buff.savage_roar.down then return false end
-    if not debuff.rip.up then return false end
-    local roar_end = buff.savage_roar.remains or 0
-    local rip_refresh = debuff.rip.remains or 0
-    local min_offset = 40
-    if player.level >= 90 and talent.dream_of_cenarius and talent.dream_of_cenarius.enabled then min_offset = 30 end
-    if roar_end >= rip_refresh + min_offset then return false end
-    if roar_end >= target.time_to_die then return false end
-    return true
 end )
 
 spec:RegisterStateExpr( "combo_points_for_rip", function()

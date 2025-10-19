@@ -8,7 +8,11 @@ actions.precombat+=/potion,if=settings.potions
 actions.precombat+=/aimed_shot
 
 ## Interrupt
-actions+=/counter_shot,if=target.is_casting
+actions+=/silencing_shot,if=talent.silencing_shot.enabled&target.is_casting
+
+## Variables
+actions+=/call_action_list,name=variables
+actions.variables+=/variable,name=steady_focus_refresh,op=set,value=(buff.steady_focus_pre.stack=2&buff.steady_focus.remains<=7)
 
 ## Auto-cast cooldowns after 2s
 actions+=/call_action_list,name=cooldowns,if=time>=2
@@ -25,18 +29,18 @@ actions+=/call_action_list,name=execute_phase,if=target.health.pct<=20
 actions+=/call_action_list,name=sustain_phase
 
 ## OPENER SEQUENCE (First 10 seconds)
-# Align with logs: early hardcast/SS setup, then Stampede → RF + gloves + racial
-actions.opener+=/aimed_shot,if=focus>=50
+# Requested order: SrS > AMoC > CDs > Fervor + Chimera, then Steady Shots
 actions.opener+=/serpent_sting,if=!debuff.serpent_sting.up
-actions.opener+=/fervor,if=talent.fervor.enabled
 actions.opener+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled
-actions.opener+=/steady_shot
-actions.opener+=/steady_shot
 actions.opener+=/stampede,if=talent.stampede.enabled
 actions.opener+=/rapid_fire
-actions.opener+=/use_item,slot=hands,if=buff.rapid_fire.up
+actions.opener+=/use_item,slot=hands,if=buff.rapid_fire.up&cooldown.synapse_springs.ready
 actions.opener+=/blood_fury,if=buff.rapid_fire.up
+actions.opener+=/fervor,if=talent.fervor.enabled
 actions.opener+=/chimera_shot
+actions.opener+=/steady_shot,if=time=4
+actions.opener+=/steady_shot,if=variable.steady_focus_refresh
+actions.opener+=/barrage,if=buff.stormlash_totem_raid.up
 actions.opener+=/glaive_toss,if=talent.glaive_toss.enabled&cooldown.glaive_toss.ready&focus>=15
 
 ## BURST WINDOW (Rapid Fire/Bloodlust active)
@@ -92,8 +96,8 @@ actions.execute_phase+=/arcane_shot,if=focus>=60|(focus>=43&cooldown.chimera_sho
 actions.execute_phase+=/steady_shot,if=!in_flight
 
 ## Cooldowns (after opener)
-actions.cooldowns+=/rapid_fire,if=time>10
 actions.cooldowns+=/a_murder_of_crows,if=talent.a_murder_of_crows.enabled&time>10
+actions.cooldowns+=/rapid_fire,if=time>10
 actions.cooldowns+=/stampede,if=time>10
 actions.cooldowns+=/dire_beast,if=talent.dire_beast.enabled
 actions.cooldowns+=/lynx_rush,if=talent.lynx_rush.enabled

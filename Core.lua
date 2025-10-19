@@ -134,10 +134,16 @@ function Hekili:OnInitialize()
 	end
 
 	if LDB then
-		---@class MinimapDataObject
-		---@field text string
+		---@class MinimapDataObject : LibDataBroker.DataDisplay
 		---@field RefreshDataText fun(self: MinimapDataObject)
 
+		-- Declare a local class name for the minimap object and annotate the variable so
+		-- fields can be injected safely into ns.UI.Minimap (avoids modifying the LDB union type).
+		---@class HekiliMinimap : MinimapDataObject
+		---@field OnClick fun(self: table, button: string)
+		---@field OnEnter fun(self: table)
+		---@field OnLeave fun(self: table)
+		---@type HekiliMinimap
 		ns.UI.Minimap = ns.UI.Minimap
 			or LDB:NewDataObject("Hekili", {
 				type = "data source",
@@ -2284,9 +2290,12 @@ function Hekili.Update()
 		return
 	end
 
-	local profile = Hekili.DB.profile
+	local profile = Hekili.DB and Hekili.DB.profile
+	if not profile or not profile.specs then
+		return
+	end
 
-	local specID = state.spec.id
+	local specID = state and state.spec and state.spec.id
 	if not specID then
 		return
 	end

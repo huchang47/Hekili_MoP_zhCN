@@ -378,6 +378,28 @@ spec:RegisterAuras( {
             t.caster = "nobody"
         end,
     },
+    sudden_death = {
+        id = 52437,
+        duration = 10,
+        max_stack = 1,
+        generate = function( t )
+            local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 52437 )
+
+            if name then
+                t.name = name
+                t.count = count or 1
+                t.expires = expirationTime
+                t.applied = expirationTime - duration
+                t.caster = caster
+                return
+            end
+
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+        end,
+    },
     
     -- Enhanced Berserker Rage Tracking
     berserker_rage = {
@@ -1125,7 +1147,7 @@ spec:RegisterAbilities( {
         toggle = "cooldowns",
 
         startsCombat = false,
-        texture = 458972,
+        texture = 132109,
 
         handler = function()
             applyBuff( "recklessness" )
@@ -1170,7 +1192,7 @@ spec:RegisterAbilities( {
         spendType = "rage",
         
         startsCombat = true,
-        texture = 589617,
+        texture = 589068,
         
         handler = function()
             removeBuff( "bloodsurge" )
@@ -1280,7 +1302,7 @@ spec:RegisterAbilities( {
         spendType = "rage",
 
         startsCombat = true,
-        texture = 236171,
+        texture = 132453,
 
         handler = function()
             -- Ranged pull; no extra state
@@ -1828,6 +1850,94 @@ spec:RegisterAbilities( {
             applyDebuff( "target", "demoralizing_shout" )
         end,
     },
+
+    -- Stance switching abilities for MoP
+    battle_stance = {
+        id = 2457,
+        cast = 0,
+        cooldown = 1.5,
+        gcd = "spell",
+
+        spend = 0,
+        spendType = "rage",
+
+        startsCombat = false,
+        texture = 132349,
+
+        usable = function()
+            return state.current_stance ~= "battle", "already in battle stance"
+        end,
+
+        handler = function()
+            removeBuff( "berserker_stance" )
+            removeBuff( "defensive_stance" )
+            applyBuff( "battle_stance" )
+            state.current_stance = "battle"
+
+            local current_rage = (state.rage and state.rage.current) or 0
+            if current_rage > 0 then
+                spend( current_rage * 0.25, "rage" )
+            end
+        end,
+    },
+
+    defensive_stance = {
+        id = 71,
+        cast = 0,
+        cooldown = 1.5,
+        gcd = "spell",
+
+        spend = 0,
+        spendType = "rage",
+
+        startsCombat = false,
+        texture = 132341,
+
+        usable = function()
+            return state.current_stance ~= "defensive", "already in defensive stance"
+        end,
+
+        handler = function()
+            removeBuff( "battle_stance" )
+            removeBuff( "berserker_stance" )
+            applyBuff( "defensive_stance" )
+            state.current_stance = "defensive"
+
+            local current_rage = (state.rage and state.rage.current) or 0
+            if current_rage > 0 then
+                spend( current_rage * 0.25, "rage" )
+            end
+        end,
+    },
+
+    berserker_stance = {
+        id = 2458,
+        cast = 0,
+        cooldown = 1.5,
+        gcd = "spell",
+
+        spend = 0,
+        spendType = "rage",
+
+        startsCombat = false,
+        texture = 132275,
+
+        usable = function()
+            return state.current_stance ~= "berserker", "already in berserker stance"
+        end,
+
+        handler = function()
+            removeBuff( "battle_stance" )
+            removeBuff( "defensive_stance" )
+            applyBuff( "berserker_stance" )
+            state.current_stance = "berserker"
+
+            local current_rage = (state.rage and state.rage.current) or 0
+            if current_rage > 0 then
+                spend( current_rage * 0.25, "rage" )
+            end
+        end,
+    },
 } )
 
 -- Range
@@ -1853,7 +1963,7 @@ spec:RegisterOptions( {
 } )
 
 -- Default pack for MoP Fury Warrior
-spec:RegisterPack( "Fury", 20251006, [[Hekili:vV1EVXTns8plbfWXPxYE7U2BStGxd0G2IRbxZvGTf9)0JvIRxEwsuLuYB8Hf6Z(nKupOOi1d7nxYHIKAlnV4Wz(ndhX4SW53D2e6NHC(0Y5lxTy(83oB5Y5xEXkNnzpMIC2K6hCV)DWpK4hZ)vkjRWldXY4V6XiIFixemsonaETZMT54OSFjXzRz5EPZg)8S9eQZMnX57O47D2ShhgIKCGyboB(99ywHh)p(fEL6VWJSd(9GmmjPWlcZYGxVJql8(hO7Xr4zctBhocmIVRW7p9PumH((cVFoN(yXh)o4z)gffqI36d2)Bk8(JuU5fccHsIbgi)5gCmiZFL8BfFuQh2S0kw(BR)7WFNfHCz7j5zVgVB9l2MVB3mwg11)oSlojBwE6zYhQsk8uZYd(Hy)KqCYDDLPFmoXVrE6KAvMaNjbOxhSNqyO1sZWcLj(PGSYCbwaxPrA2f5ZU)18WG1hG1hIYC3IZSiWDesOK2TrWwMBkknfrDP4TmxW2bdNIJTy2Pe(Z4oGmCm6M5ZwzMo4hVpcXyjWFgM6TrGj5Ud2)BtRmA4hr78ZJYQIPyIGIFkzp3b2FubiAieMe4ZYCjz7HfzaHefsoKWuPHMN4k)nxE46R55pRjPOeeT2EUwLHG9(07qvVB98JhJjpGIrqKviwUZEBlgsZJJrrcg4CcKHKHlGLbXkZOiG2bnPkLWLtxfUsL)TqiaIEpFB1xAPY4tuc)3frLGZTW7hcFO0nsfPUqWl8)5cw3XQkCT8loR3i(7zX(F(nx0YsYzixium(1Sis2AytlueqCELhGerySCMll2NThmSJhR2J0Fhff7Jty3S8vNDUGx1GS2C26nL8D7Y5VYOHj8TzuCY9OSfFdBBl)2W2ANSAZCmemcb6JLdFAGFcYnJqPLX7IyS6qSlNRsDe(U9zm3)DE4DvPhMvcFnEw9IvSqY2JPSSQ1A7O87Cj7CbNFW9StKmlHplZMVl3nLCaYrBqvnV)ucAWbBaFIBigDZYvdcxWahoKMkzMlCofpGCbCTymITEXGsWNG6Y3TRxwHm)VeyKfENVJVGbed0HcpgGRdj5nXmZKqPgWnnrslVB)UDdSRx3XE2Y5MCQZpZgdMwo(p4dc5lUAeXuaMBpEJtKMSGvBtepF4edQUdA8xnTV8)vAxb0Wuin00k0ojq0HgeIMNX7bn4EEozhopGJGU5GvZ9OAof6ILtBAcaYJ3iqkEJmacAfGaDAI5DVp2gTM1cRz05HvULlForV6QEOSYVikDe5OFz07W95zJ12QzGLMm6CsYNbvVJD3sI6PGCF8hcAaQgrj9dXAxaOpJcYZqkDDVh5hLTFwAqg4UpEuiqwo)iTUHiyZRxXzmlvNOrKYznLzQ55diGbAh8wE9)N4za6OA4OveCGYcNlPBxFT9y6r7cLs6QNIKSyvVB(ev(19WGXZcv3N6YE4S06Y2tjhQaI)bYp9KGFHg1gnORQhtY3qiMD5yeWDDzAIDxyL9r3HWOKqVv57SUhpCRKHX2oB1z06Mt(Hi)qKalfYmrqh0j4a5iq(z8NfXfnJwRWlGeNcbpBHFj7XU7AvIQf(qZJRnJ1Zp7fPr(pIOZIjpabUNXlvbqgZwD25V4PFeu(Os6IfVw0wKU1QG)R)QdakC0bCsyZoqmGF7geH8FaSzlbSwlID8OiTv5uLvkA8W5LPGtfeVJ517AvGh92oMPIg6i5bXNKip)A58KAMYwTGQg1udMf4Mtn(E5b8m(QM2b6tYTqd)r0oucdo6jpUwFUDZcREl)4RqhuUBFeyhwQhiuHZcNazdC)sOFmSGDxXUTmOdw6F)8zlTilQFu0JC(cKJ4qTRHvNnKuVWMfIIjGKX)hS6yKhsAlwzrCYy3qxk6oE3(IcgAg7fZTWRKgydjbPZIn1jpuVBvCylwC2CWNMalcg)dcaBw44ucnRez6LTQ79sO8g6VYXuoYfJeduZNqBSCa)C0T7qSzfF8FItGxT49fE)rclpLlpobsBdeQAPUxwt)kR03gpQHJ3ALdLuYgYxmFI0BFfOaTOq)s7R4MCCf6VyI0B3dz2EUAS0l243rIa1bQLVRs9HYuhqu45qHxGvmWwgNSkzWh0uH328Sk6siIOM8KwuhgYjoe6rzRpd9EaDGx9RbgU8bTablnO2rIHYpKWPkg02NwOX9DPvELFqafhTDs1MU5O2mBn7sohg9h1FcMP5rUE0zLg1kuxAA6BQOa2TpBOa9LMwv(DujPMbbSNKAoPZESWutQnBp2b9mTATdbOznF9HauBcCkOcL15ovHL6nJmMYnkfyTM5ihS30Ss7XQ2sg6PKIX0T3nXOp7LqnhDp6sOF9J)0c2(L4kt(Q2AKV94SHLIcC(0vlD2iEM4YzO2Re8GpjU1hOe)TrOqNp4SjGchGLI95xaJEohzH3Tq1NcVJhl8ohweDg3yH3nqSX8cVZGLLTd)69kNnsZ2zJ6EVtMZNw(TIHjhEb3KU4BftQE6iCR6sRw1l4bEQhdvrcTMZaxmR4IP61TvVQ4bkF7tsHnPQCzC1eDLQIQ5GECjD9ZqsktaGlQ3zvuDgPq9wgFt10yEBus5uI5kyXCvNSQlPThEH9SYUtiOrGkWvcPypfY8ydk8wdlkLuYgceYZE8)aJLbYaajVWUK1JHROR1awL3jmkov(Urpvzvdvsk3AUU)8nHzTY6cUroxnGCSU7ypnQr4VBUnFbxc2tIuxM2Ta7Pos(Vr6A5tkqu9zPISuh7JqyVtn0wDylTJTZ47IItjvx9PgO1YXD0soShvZHufw91krATV2bYsHUYlWOSDN(r2LYeCKL56DUwuc0DffkNqv)aZLWjvXmQ3rRgbjpbxn0Srbz2AwnULFfZpDm9ofr0JingTCYsJVzTwa6fRmvrOoOK)bbuLY59vULVzpiSgViauzwGaCEPJs7l2RjjtF1EXMgVycuIN)PlQmvdLKQwlvFDIV1xoYiTARTUgO9L0Y)VAjTCGY1dxwyB9TDBGA2Jqu1xdUbkxBgE)sf4923poJ1OhYYexGkUBVV7UwJg1Mc1a1FpjQS1qSmwtUglMucUR1bLPajB93VQk0PZ9YBGI5CJO52XjkgTyCi8TpTx)L811YTA9c2JA8jizL96595y4KLJOwq7RQVPQqTVJ9I96QxPDt77VvHg5vD)6Bjld3YELk8AV0ydeIRDF1ITHxzvAdDhyOmV8F0fQx3EtvQLu13fT3uHzdnnnF2Qob8gQMoeN6NJVNdvzK)w4HzYGRNWCku3WEUJwqvwp9Pb0b032b4T2VID5Q11GEKuFDnyxODRDBdE0uP7rk3L9hDoPUpN6OauBsyHA(DRHF0txynxSbRn1(mUDfQlGEUlfY(GNxHF16wviEOmptCc8zRQAe6fp)oRAouKPXJSUQHPm95EOo1L2iG90ivvGG21WOrQ1FzHbAJQteLCju3sKAxqAdTQNoQMYyzS3i1tBSmTMCxpdvAWbou49252COxPQevlqtjNWzkKvFc9EX)BoHUskC9HWNkwppKVpOGPJ6Fkh8RELSP2t(P1AAQfo1g1pT2rRQP2Qrn6QPNWJkQvw220rMsz5tO11T(UTjNmL67FPmWL1fIhbuN(mgEUqSNI5XlN8z5xcUFiTUxAlHBP5IBv49982MvSy9pjC)yF6FidzBbJvTxO6OAUkB9dpowHVq5SaDVsB9d6PTSUqPIGPRZw)ix6ctXUuUFBMGCgLmu(E8YGJ6XXQpxCL7ePwC(svYkR51MIluPq5dN1MQlnOoJZUx(Fo)3p]] )
+spec:RegisterPack( "Fury", 20251017, [[Hekili:nR1EZTTns8plTzghNEUQ6rSDthlptDUEZvpTPzQsU8FKeIescN5dDaGwX3OHF2Vfa8biiajTJBMBYKejsG99U43UqEZ8(G3Qieh79U5tNF(SPZUCYSlw86fER4pSh7TApk8o0w4dPOe4F)h50hep8H4muKyVSSCAi8cVvRZjX8Fn1BTvco9cVvOC(UmQ3Qvj5BOK78wTJefHv7aZc9w9HDewrG4VOIGsoxeKTb(EiNKLweetyC41BYOfb)t8DKyYeqCOzBiXGq8IIaHawe8jeLseR5NF)VvU6FxTtbXEpkncrjOIBHnCdIHJGNde)tzhyKeyrFi7dWQO4yscjfji4nKvkID7lEXlKVlmlznIxei((TkXJnzF1Z)Bl)b4F5XyF2USC(zKnl)M15B2mr)PtY3BFRWhsazKKU1C7MVbiXjpccVgtzy6DyQpJJsdXAYLXBKKqPP7ZJJR8acBpnlPXwzNnXzzr8Dektk6Csc(Qzto3LYgNXy5mFwcITRz9f3wASfEiW4xXFDdUy77q0T4QTTCQ(7AukksTgPUItfFDsu2Hu9vVppjbhlPKGK8jryLnhX4GbFcfdRvFd08uF138fXLNjsrwMKDpobNkv8QppjIOSQxF(G7hLjfuXZVh7JtXjem76zdUpgiIG)xj6TmqO44UlpcVbNYawWQTZRKuaI(vKqzOHN)Ve5kRJXv5DCrwX2IGtHaG8yex(L6CN7rX546T8QgFElbeKR7lxJsEcz(XGD2phYgplB)sgMFMKus363x5kAfRmbTFFmbh5J4JLnBWi(ovqE4DS2msYH)nKWZ8r0quk2hkS8zW6prUAPDQi4TLIayVeYqrW3xeSJSDhMbMS9IQoeouW4WomurPviwhrRBKVD1KItqKuMkfQuiYIf0MPkC9wO4K0weIuLjpT0D8tfbF7FaF)JSpE4JWAsHkD3isoxdF)Blc2sZY33JpcstVd8ISu4VULpOguLvEIUF8QzUPm6Ee8zvYwSifr9ai3uqMOtE(4KSyeuQzNgZQF2xa)KoIpqjP3HfhSCGW3P8eICK)uZW5w0as5t44KZyXz8LCfTMjKZtFSYZRoEuUbDpwRJbgfVN)8YBPj6prHeuSUfQFxL)g4i8N3GTYZbGN(0ORup(f5PgfbICroe2aLZhKJ9CYZjonZhpgwME7QqWIEszno71KTLUQYNyPYYkHJkfwQw1SXYmxAupfyqBfyza6COxxJk(QzXQsYxVCUBsZ4z0e)1zXCTe)MhoyMVBkhbccCyknRvbmTNocARcP(momNJ)bzjzwoveEbN5e2tjdSAl1UwwUacTFK4CnfcLtS98Y4g309ajocoveGL3q711ILoLB90A6wMQVvcga0NdYdgZfi3uN1o6yaNU6JhhWCEtt0iavHehJPJk0Tr6fs7ECAeK9oAtLir66Lxo19gaahzKWoB5n9SfZMhe74QfdZd(oky6Rq09Z)XV0aJ7Mye0LLi(x4xK6QgmbPNsvHUeJuTJtEGMsKNpvRYdGuvAhRiBRZxREyDQWPNwxETniSRxU4KAQF84PvFUSVgRaYaqlVsRGLextynMidj8jbZQnjE(WbPO3FDOFQCk)1G5PnxE2Qd(jinmwCQtvV6yrN1VngJUxpfwX1dvlUUyrcSC)q1Q1pKR1Z7EuxVhORzhF6hM((62bqRjXeob3j48rFcAzaPLAMTu3XDMzPfD01(nyXtqQC6nnFHJIMxo9eX6AAn(QLVEuYM1kQNpTUw5Vx2RUXeDQAHVrIaoSxfURgsqvR9ZMBDxAZNWyd)O11pwylJJAwpw4V307FBLTzOaISBc2F9dWwbJ2HmQmDBhgfdfq2hYV6IPNqsdZeJcWpcLawt)ZzxxUGe0N)UPtMFUdstrXXpi2yOcPVgz1pJRT4GtYG9r(Ve9PInKimZLiOYzJ8P4TqGev23SPO4AVQ1a(Ku8yL(7jHGl8bFAU6eiT9ar0Y4x9LaXVERG4ygqPQbPkMG6benf0wMyuPqLlsY(mkVSO5lBbj4LWr24)toHkgUjllbwnkNNLG4IhabLPBHZrlUvsNnzXqkRe6gkNIe9QHPyjOayXK0IaUyzkntne2IG158Q1LMjfI80wRoksS4i4GT1ig(NGWpbKqBNNx(kDmRIGvl6y9GdhR(9BKu4vlaeoFmLLVxqlXcQuLxAo3ZxoXbNHQiJLN))In1MA0evowTrzbVWPfupUvz9(1KQfDHXK7Hx7Tcqyh69UlN7Ts(m5TiOh6cp4DY7LOSuN3nERYG8bg8QvkYbjhLqueFkoh(pXycLgJHgvO6YgOK9kc9fnDtPC4RUAeDSsECiR9rRcUX7kp5wNzTHqly3cd2vXL22bdL)rpmtGEWJWGGlOupOOlcUQiaqcjeTx7q00rv3rWg9aoDoFZQXBoSmdOfcor4CTa7vPic14Cd1OHQwbXlj5tMF1gjfrf8)IH4Fhe(ptIqnDfsXLoCMvtVecYJZ46FVrop9PlnfbVQi44rrjYnDM0OrWZygkRqv(X(vL5FDe9wMR5c56noKRMXJAOWDgX6Zvi)SPoJ5EYKTrDQNkRKvML8nww5Oun0Cl9WPlKMnSjfUEDLc)0aJFvQhlaVQuSnlZ3hZRdcA3XyDTY2EAvxHsM4Q4U(6mkGAzoUJX9jzNzb7H3M0WAVHZIGRxwemxRSFZkKCBW6QD7(P3cBnCQzJsgnybulJUyKCsBNsw5Qkz54BnJIDnh4oHtDh3BJL32iFvXQsrYSANbLnB4VHUDh4BjvR1kTbiizLRcy6EEZkyUNCChr1viMkbRVi75M1ZAjewMFSZuY5UkxPBl6OJAZxwxRu1We6WLtLe3DrLML(MPnmT1WsKuWSIHjfeoqncOpDe5(LLamiVCkc6uvSuqh3GYJTIAxlbtIohKAnEQMmInOYURH68ybliG1tVPU(9C0qq1p)dB4vBiuNFqhGROiqRWTXpndvloLy2R2C)yjf7Uz6ws6pBC0h6q1gmXXS129F1dkpZFmjTOstVLQiJ6M1TfBynYRDcZJ63Y1J8hYLUj)BQk01(Nqv)rMvBYYVilzPtxevRXS2B0wi8WNZpWVpRU5GUBlZ2k1f3w9rkDWIiU(CT13cuNcTplxfL1wGmV4PkiFNQHkTD3ZQYPlKlSP868P142p185AUxhxpLCVVYweKd7zx0BTVuRHbHzPXB3ve)YrVtnAMQNOPVkDhpikYVkDh)1dIPRk01xOIrivV3XwNJC7CLAAnVy7A10J6C1wT7Iyp6U4gQrQHAI2rP0o3w3ysz86Vp5UMSVSULCJXAay8gYGB07dGgZjDmL0f6qi1cl1Xp2xVM6OILQHj0ORGx96rOGDqh3tlN1OJp3n6yElOo9I7T5EEKe9cLI09wRK48AU5QIGVdGkpzUgYsZRJRF0jg8vhQV(LV1)HeJvmNPlMDUMU(pCWuq1iLTROR)k99O1A3zx)1PnOrzONmaRZn0vrC9xOIpQX63FxrTVdxfy)5DcCf34C)UBBe6h1WAu3PvF9i13SwgGbTh0YO7Du9hV)3d]] )
 
 -- Register pack selector for Fury
 

@@ -3271,7 +3271,15 @@ local mt_stat = {
 		elseif k == "mp5" then
 			t[k] = state.mana and state.mana.regen or 0
 		elseif k == "attack_power" then
-			t[k] = UnitAttackPower("player") + UnitWeaponAttackPower("player")
+			local base, pos, neg = UnitAttackPower("player")
+			local ap = (base or 0) + (pos or 0) + (neg or 0)
+			if UnitWeaponAttackPower then
+				local wBase, wPos, wNeg = UnitWeaponAttackPower("player")
+				if wBase then
+					ap = ap + (wBase or 0) + (wPos or 0) + (wNeg or 0)
+				end
+			end
+			t[k] = ap
 		elseif k == "crit_rating" then
 			t[k] = GetCombatRating(CR_CRIT_MELEE)
 		elseif k == "haste_rating" then
@@ -8323,20 +8331,20 @@ function state:IsKnown(sID)
 		return false, "item [ " .. ability.item .. " ] missing"
 	end
 
-	if ability.noOverride and IsSpellKnownOrOverridesKnown(ability.noOverride) then
+	if ability.noOverride and IsSpellKnownOrOverridesKnown(ability.noOverride, true) then
 		return false, "override [ " .. ability.noOverride .. " ] disallowed"
 	end
 
 	if ability.known ~= nil then
 		if type(ability.known) == "number" then
 			return IsPlayerSpell(ability.known)
-				or IsSpellKnownOrOverridesKnown(ability.known)
+				or IsSpellKnownOrOverridesKnown(ability.known, true)
 				or IsSpellKnown(ability.known, true)
 		end
 		return ability.known
 	end
 
-	return IsPlayerSpell(sID) or IsSpellKnownOrOverridesKnown(sID) or IsSpellKnown(sID, true)
+	return IsPlayerSpell(sID) or IsSpellKnownOrOverridesKnown(sID, true) or IsSpellKnown(sID, true)
 end
 
 do

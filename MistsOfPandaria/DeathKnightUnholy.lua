@@ -95,6 +95,7 @@ local summonPet, dismissPet, setDistance, interrupt =
 	state.summonPet, state.dismissPet, state.setDistance, state.interrupt
 local buff, debuff, cooldown, active_dot, pet, totem, action =
 	state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
+local glyph = state.glyph
 
 -- Runes (unified model on the resource itself to avoid collision with a state table)
 do
@@ -1898,11 +1899,32 @@ spec:RegisterAbilities({
 		id = 77575,
 		cast = 0,
 		cooldown = function()
-			return spec.blood and 30 or 60
+			if glyph and glyph.outbreak and glyph.outbreak.enabled then
+				return 0
+			end
+			return 60
 		end,
 		gcd = "spell",
 
+		spend = function()
+			if glyph and glyph.outbreak and glyph.outbreak.enabled then
+				return 30
+			end
+			return 0
+		end,
+		spendType = "runic_power",
+
 		startsCombat = true,
+
+		usable = function()
+			if glyph and glyph.outbreak and glyph.outbreak.enabled then
+				local current = (state.runic_power and state.runic_power.current) or 0
+				if current < 30 then
+					return false, "requires 30 runic power"
+				end
+			end
+			return true
+		end,
 
 		handler = function()
 			applyDebuff("target", "frost_fever")

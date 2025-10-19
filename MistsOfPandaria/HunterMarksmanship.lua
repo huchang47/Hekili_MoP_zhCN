@@ -129,6 +129,12 @@ spec:RegisterTalents( {
 
     -- Auras
 spec:RegisterAuras( {
+        -- Internal helper for opener gating on Stormlash.
+        stormlash_totem_raid = {
+            id = 0, -- internal only
+            duration = 10,
+            max_stack = 1,
+        },
         -- Common aspects
         aspect_of_the_hawk = {
             id = 13165,
@@ -234,6 +240,14 @@ spec:RegisterAuras( {
         haste = 0.15
     
     },
+
+        -- Internal helper aura to track consecutive Steady Shots for Steady Focus maintenance.
+        -- Not a real game aura; used by APL conditions like buff.steady_focus_pre.stack.
+        steady_focus_pre = {
+            id = 0, -- internal only
+            duration = 10,
+            max_stack = 2,
+        },
 
         thrill_of_the_hunt = {
             id = 34720,
@@ -663,8 +677,10 @@ spec:RegisterAuras( {
         startsCombat = false,
             toggle = "cooldowns",
         
-        handler = function ()
+    handler = function ()
                 applyBuff( "rapid_fire" )
+        -- Break Steady Focus pre-chain on non-Steady cast
+        removeBuff("steady_focus_pre")
         end,
     },
     
@@ -685,6 +701,8 @@ spec:RegisterAuras( {
             texture = 132213,
         
         handler = function ()
+                -- Track consecutive Steady Shots for Steady Focus precondition.
+                addStack("steady_focus_pre", 10, 1)
                 -- Master Marksman: 50% chance to gain a stack on Steady Shot cast
                 -- At 2 stacks, gain Ready, Set, Aim... buff for instant free Aimed Shot
                 if talent.master_marksman.enabled then
@@ -712,8 +730,9 @@ spec:RegisterAuras( {
             
         startsCombat = true,
 
-        handler = function ()
+    handler = function ()
                 applyDebuff( "target", "serpent_sting" )
+        removeBuff("steady_focus_pre")
         end,
     },
     
@@ -728,7 +747,7 @@ spec:RegisterAuras( {
         
         startsCombat = true,
         
-        handler = function ()
+    handler = function ()
                 -- Apply Explosive Shot DoT (fires a shot that explodes after a delay)
                 applyDebuff( "target", "explosive_shot" )
                 
@@ -740,6 +759,7 @@ spec:RegisterAuras( {
                 
                 -- Explosive Shot is the signature Survival ability
                 -- It does high fire damage and is central to the rotation
+                removeBuff("steady_focus_pre")
         end,
     },
     
@@ -752,8 +772,9 @@ spec:RegisterAuras( {
             startsCombat = true,
             toggle = "cooldowns",
         
-        handler = function ()
+    handler = function ()
                 applyBuff( "stampede" )
+        removeBuff("steady_focus_pre")
         end,
     },
     
@@ -771,24 +792,7 @@ spec:RegisterAuras( {
         end,
     },
     
-        counter_shot = {
-            id = 147362,
-            cast = 0,
-            cooldown = 24,
-            gcd = "spell",
-            school = "physical",
-
-            startsCombat = true,
-            toggle = "interrupts",
-
-            debuff = "casting",
-            readyTime = state.timeToInterrupt,
-
-            handler = function ()
-                applyDebuff( "target", "counter_shot" )
-                -- interrupt() handled by the system
-            end,
-        },
+        -- Counter Shot exists in MoP but Marksmanship uses Silencing Shot when talented; prefer silencing_shot.
 
         silencing_shot = {
         id = 34490,
@@ -1582,4 +1586,4 @@ spec:RegisterOptions( {
     width = "full"
 } )
 
-    spec:RegisterPack( "Marksmanship", 20251005, [[Hekili:TNvBVrnUw4Fli0TQOfMDsAhUWQovc4oROSAlCjfX(PK4jXdtuZKKn2PqLQYV99yNxStIDINzBz3pWhan12Nx8588C8XXUwUx56eIOy3lTNBVWA(8fZSE(j2loX1HEBg21jdfCn6lWpsq7G))3r5xt2HsiBJYytEBCkkKPesArEaSaxN1frX0lsCxRqZ22wwWAZWbWWlo11zBuyiUATysGRZvBJiL(S)Hk9RTDPF6g4VdOrPjL(Xrekm9M08s)3IVokoAg4i5PBIIbZ)4hx6l7JWAksOyyTpdMi9dL(lMTy28Y3Xw4h2Ii4NTg(VWs)8ukIzHFP0)1f5GHo(8xm))aY)HN80sFNccffXg1E(ZKgF13WbfuWfp(m76rlFx57QCwYSSCCq6U1i6pT8N3YDeI3oW9EA0MLhtWuAuYxiZyJ4HsU9U7OO8VGPZIiERtjKNCetp3G9ctPZKfF58JQxjnAh2JM6fgHp3AHAdJyXBQx6gp6wS3w0x5M)rRl2Sz2W5MvKD0JOOyCcT3Sr5PjvlbNGwhdbndmxRqtAtfZjSiBb7sVbcxQnAwkBmMnAJQvdr04KqCl0JSnLYsxmWWfSWBErgTvayzbP8OoFHmLlYpbicL7nvs)QcA6ZyJv6hKMghM(1eggEdh6zt6OtuCSx1F6XaZpLXSw2kf3mG3D(s7gL)(mCctpe8FwGtcyOTnr5mBznNnAqAsi5jY2iVizOjs5QPr)NTeeU2aaGNPTVgLaUaH9d62sFGDWq24nBGuIbBH1mT4vPeMv4j0CuwuOh4UyihE3D8XwhNMggdmkyOgxqjx0iBM4LXKvk9SfJIPBNLfqbk806axXHhrnNT02a9qQQruPN2C3hwD5Qpcfqw9))0QlFZki39RJK7MvLKy2ylKKYr1y0btdMAxgoS2F5S1MHgspBLsKnumjYBxrEiG2b2xqoaeK09G5gXieCo8tQhNGWP9HyEEVZe8CVITfgfER(n9yZk40TOVDmiCoVMj7eHdXMDZd18Lp9rNRk9)8fx()E)NHm6hzH1sFiXI)5x3aURoY6gSuYvMH01WIQJ1dUjnOGiOmDgnhVdWzKZwEQwvRg903(7FIQNg2Zq(OsZ3BNVCX8JAQfotEx0SRpFPLwf(Lye74skC2Pe2vA0guRWeYtMZIXhv7hYNMAMFBAEMlaK80lakpaLG7BHxozK5eja6Lqn13(kNvYnYW7c6n8tPqqzEi9ClC0fB3afOanrQgpdcgrqyQJ)vxx7(h2kuSwqRKTpiiRq(9hWQt2deUku3diyvYNpuKuD)yDo(UESUhFBcernIFYi7(TNw0a(D(KZvV6cj8Vul7CgGdfLeIYLB0OULhhUFdvYz6KrqIG2)sqSEUA9LohZFpth6RB1mIbEW(tk6RI9Kx0x8DfX0OwXRo3ZdoaDxeUQSKob3GZVjnxc)xnql0Vg5iJf6RIhkE0Gq03nQ04jhJl8yBmMvb)0qFyVdxTS0v)XQ38PRwjyPIlqZ4OFgJUbU8b7k3)wuCC15tcR1PN97zsyFDRMe2FvxdE5el5a4P9vXEYt7lUX80(cEa80(Q4HINoie9DJNoEY5q4PtaRvWtn0h27Wvlp9nIpNXX1FpJQ7gjDVM2pEXpjFftEwM9LmSMREPh0fopAuv25AXJTWqWb9wJbUJKrfdo86TYchFBY38YliBLKTDSXf1ywGAXliyVikE3tjXP0LBH(yiTfc6cCBbDKBtqzGyKSC(3fJtKmr7uy9xJPw7XATDDUbNtGfl(SVUoFfLNWmTRZf7YsZPSRB8IEFr3zLVZ1H)l2xtUcHb)6s(xOUALUoY8hxN6aL7RDPG1yRtmItqo4C5rixhnFDeHwBMHPMtKnNiG2ZyNoLX0IEfkFWsykEHwf)OsFnhwiTrKNHPUNlVBKQL0B78FnBzVqRZP5CiPnBBvjMIEPz2ZAUz5E2FkxuRf2OlqQQ5Gs)7Ut1m1vPl9pBzP)PQD7g430UAx8vBldgdVoiuGEq1EM3EUwfXwVOtIs)ZHG1jc1iA7OfUng7PBVfL(hXEUh(fYyjHfZfkUALJdohPeltZ6B2q2WSnK1cHHLwClIwP1LK)LZ7AqvDduh64lSbP2PUENzKBlrkPjorxqJMY5wySZzRdEyPN0jL(oDUwsKL(I4D8uToWjMi)lxOlurzVc5geawhVeYGxbsI6l9GrtCSe46dcO9FyHQJe9QE712tFBlKmIIzHAlPivVxeQJIRpTD0kpQqITvmvJdhDZi)fphVi1GxJbIAq)dZn3q1xkD8sykmdlgABQD6EeKIYCgPLo3IUcs2(SLJdkpM9As9Eq5Quu3hvU0)jCMEDj7(pTCPpSPRQfm8jM5rE5YGYsooCVPKLYh)TPOMzp7Se9DGYgNAyKtOyfYVdDZYQEnAD(sReJZQ6)y1c1vnqlZqrbV(9ajkpmEXRQ6o9Qoi601KEP1)AGCCJklOSD3PkI1thYnQpzl4dVlNqrI5MQ0J6R2j0u7utvCrxpiABPqx5d(D(MQYS8j5kV)hemJzyOkTPO)PgZ1CjWgbA)BfD90tg7EYyxHt7wI7F79QRZV2)2WN4SvZBdxpETUMUzTHpjA9qAdFYE7FqBdx)La(NVnCJUIW9rx4t2U)uDHpzB8t0fUrDXpAx4DAo8hviUhRqCqynlD2zYsipOSD91AmcNozXIj4jgrO3JInJZh(X5L)Gn83NnShWX7ZZ((Uq1g5ePjpsCQtKaOoQGUf6XXb6IAtE018bD)Rd]] )
+    spec:RegisterPack( "Marksmanship", 20251015, [[Hekili:TRvBZXjos4FlU26MYUIdlZypoXB5Xv54DsfNRwV5coxUpbOzqtGYmaRq4SUkx8B)AjXlcqcyMeV7E1TFizWG6xuR(5PBjWEQ9D2wEik2(2zMZMp1C6CJzNyE(j2w0htW2wjO13J(cCreAl8))cICF6wuuQFqc7HpggJ8y6inoJSggGT1QSGq6nr2RuQ4zVggBcEnC75NAB5h45HfJfNU226o)G0Cx2)q5Uf2o3nEd83RPbXr5UHbPu4XBIj5UVdFFqyGHTf)Mm3iobhHjWv3YNz4i0QqSN9BSTeYdghtGXqDsPbrFrywsqI4zFe)Bz4uk2dmjXdt(PCxlIvU7L5Ux9lXxZV46FoL)7BXKhy(WlGB5hSftqhN7s9XGlArXiVhHF9JbVYc0pftcq2whK76HxLTzJrdVWilXMcbKwECTCuuimydKZ2mMB5eVXznj(RPgLJUA21zimfFYqkoLI2MG9WD1x5tyQ5uMAkFabLe45SjGGLvnmQ5AI7(OiVgbdECOwnqqi3DsU7644qV4VgzK(yekjf7KMqGyuQbHfubpkmMwQnWCNPDU1v)1oZQW4y42zKhz64vdfF2WxR7gDe3NPIxlhBwlYhCs9zUAJOZ56nfitU7IC3tLJ(S5SqpGWtn1k9di4h42gfISjEDwQdbVHGt91RW2GKwrVuAmzBik13HgtXBDiOaVMXreHWyhy6AW03VeIcEadQkTkXT5kU8aici0egshMkaKdcntNxBAPbBZMmw4FhVoJIDs8rPyvma1o0H5UauSykwhV4PGp9KQNqWBrbrGBCbBfk39iURbkjiYztyWx8PAdYZgzQXjYJd41cvnOt1oN6HBrd3NcWAR1)TiyUqC2wq6ZwuwlnrrWCXRAEQhjYgpSubmZBdWflLsz5BZcPbvQzhbJYPiS1M5MAHN)zLB2dONhLP(e2QnWydLpC8Za3PDGMSgfHhdpWAyfZrqLCb4tgNPB1QhOV0K6mtbG4Wgt1tpPzSroPUgPWgPW2gsicdjpScePPuq5t4S1HzP0gjZTdk65FgdmfEq58jTFYJHkgZDDXeeAtyQ5afN7H2uLoKQ72FLDvc3PAEFtqpWgoRWWYv3cF1pRFwKcvf(y0V7qYs97QPQh1pfIEyQwuxBIeTnISJDC0MlPuVuqO7X0PLcu93kyaAjZSwYmRgLROJLMveea5QHHjaj)98wBLhgL1P7geW0oQK70a4N1Gwey2gz2iYxWuJGuhgsMBOQ0RgsPk5UQmici8e)HdR3Drh8oI9yu2lZq9UkYWbwMzJuX1a8(Z)f0NlAb8YI0Q4IDDmCb1wCCv9AOMHR3jZQmcC9xdIGz0qyh(kMpgfs9nswt58cV2C8gkQOPQbkp3XmSy4SXANM9V1dqRxTKcbrO(tLwOTIu)pAFH6QRT7T8PpVF3B5tF2Uu3cZnhB3ct1zN9PUW3V230NYp6UT03)5(1bO(okBe415o90aPuR0NAo(K5X1o55Jov4eDtDQC9bfG54ewoVKJwoA2vHzyoiVdo2jHW26mA998TGpJ7MdG2FfG25QVK5r1oV5oCtoP)Mb6pegi24h9Mo3PINTRQvVx9bQp(3BFDi2NrtOoo(M)VA7Raf264TRqd0Hpela(rkFdommMdk6rruQUZ(vWkF58Rah5bZD2AlS)co0KZtAkVJawqbYzC8ck24PugLSK2k2xqJjlpOHyVKaAvwf6R3lfwl3cEJXeqG(b5dSuX1X6okBqATHDcfJO2fQh224hASjjns0pXy1kwsmtlP1QtCJkQqfOLgC50g9Z3BIYEXT)Txs5BSc4z7ufW)ykfnAwT)Q2N7(XZRVQ1OAsvFzNXS0k6ue4CypR4vqAcZ9VIirmKKT1nBtIj83135TE7Ig5VNrNgVjG124p8d5UYV2ZC33XzZYDFj8G4paZbJ5gM5VNnWpWWvVCf8FGEjXuetT)uU7Baqhuh6YxB(pa5)WrhN7Aj6keU7mZxkD)LI9bd3)Izf3n)95Vx4Hadqjn)lw8JY0QhhSzXHDy2F6PMS6hnrdF(cZjD5XVC6C1gUlXiZ8hON0CYbJJZEmMRsObT5au0toqqoR2OcMvMnAZ(QXjRYEzlxSKHByHxswcTsayynpKmM679m3M0582k1()UCBqYAV9zJCmBVjlEOZqnQUfiu51IbRAFmhhNWIchZ3c1Id7z)tlMnrld9flE1rLE)vz04xYMr1KxSx6)goWA2iMtvsXdHqS)YfZkv(VYppowJo)wgetzyjOXmMTMAYU764iV0JKTrRt3tycXX6vQ)lwacxyG3KX1M4mLszxq9ZD9zLlYDXB2ajCJykiFWumR0TpYNEQthKLUGsMMrzZIQ)IuVw7UbiOgwhnoPoLQ5IfZgHEASV4Q1UpS82LFeOhx(V(0YBVEjS29wvRDWqFo(CnQriIvFgIvUjhoNJM(IuiBNx5JeGx)BqsHpu8MBK5lA9rBOqQ6CjfpmlfydP4ThZE1dl4VEd1jHt6)fKOq11VSc1AuHiIn7kn9ATp5Usi3DPYiwv7aLi4fNo8469dPq1uv8fqunp18jtOqsPUVKM2k6WBI(U7MWDVlxWQtxWm9PpADxU7NV52F(x)mGD(ilUdP)qG)hFtjns5U6QPanK5I6gvo8avnKxWoPMQ)0JMCqvxAATJ6fX2oZUdaBPH6AZvluk7TFKkOiQp3CsVhIaSUOvHFVx9hLFxTrKlGnHOxM624RIw6A(FKgUkGn2eoUaqsK5ysIA5Wfg78bxDorc0Clur9DxzTuUjDEh(xZ7rbbvr2YpPKRytSYIf87NalibWsfi61iGPilKpQMGRIQC7D2CT8AHmsM4Bg9EMw0BTv2lqLoX1NAwlXZiMrYT23SFDZm15(AxSKd7IStRpzD3v3iLGkTFrEkQffkEJiY9bw0rAzRnVvSHB2IlfIrSwIRCMgDH9Dj5rd1FBdPorUJ7S7WL2Qy3tuBRH63watdIINLVAHlLBROTGvVBarcBFTj3r2bAjAsbh58EuXZfIPteEVan9VoPHryatx4SNz(0thwC9PNmuHaHUvFo)hvCmcnBj(af7lBKaQUa8L)NLx)P7wwdWRp4hg8(Zy0dy2rEL7(pHiQO2tT5ASBSNt8BBdPg)2EuviGE84DhI3wf7oeVTggneVTG7bmTTkEUGPDIs7fmT)yTgy6aM(VaW0bWnDHPxxFovhwCqvInZj1Px1Ps9I9CV)t4hL1ut1QSE2X1vFdTXjg03aR)woL8VUF8NQfU6Z3us2oFTNQfD0j9QfxZXxm2ZQqVQk)Un3HXot9yRpgenpx6J1eLr9Jj2wwBZ2qcUN)(lS)Vd]] )
