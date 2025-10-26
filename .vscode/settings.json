@@ -143,7 +143,10 @@
         "callHook",
         "RED_FONT_COLOR",
         "GREEN_FONT_COLOR",
-        "coroutine"
+        "coroutine",
+        "ClassTalentImportExportMixin",
+        "ExportUtil",
+        "PlayerUtil"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.runtime.builtin": {

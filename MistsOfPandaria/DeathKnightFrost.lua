@@ -47,6 +47,21 @@ local GetRuneType = GetRuneType
 local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
 
 
+-- Helper: Live count of ready Death Runes using MoP API.
+local function CountReadyDeathRunes()
+    local count = 0
+    if GetRuneCooldown and GetRuneType then
+        for i = 1, 6 do
+            local _, _, ready = GetRuneCooldown( i )
+            if ready and GetRuneType( i ) == 4 then
+                count = count + 1
+            end
+        end
+    end
+    return count
+end
+
+
 -- Runes (unified model matching retail structure)
 spec:RegisterResource( 5, { -- Runes = 5 in MoP (Total rune count for UI display)
     rune_regen = {
@@ -333,7 +348,7 @@ FrostCombatFrame:SetScript( "OnEvent", function( self, event, ... )
             if subEvent == "SPELL_AURA_APPLIED" then
                 if spellID == 59921 then -- Frost Fever
                     frostEventData.disease_management.frost_fever_applications = frostEventData.disease_management.frost_fever_applications + 1
-                elseif spellID == 59879 then -- Blood Plague
+                elseif spellID == 55078 then -- Blood Plague
                     frostEventData.disease_management.blood_plague_applications = frostEventData.disease_management.blood_plague_applications + 1
                 end
             end
@@ -678,76 +693,48 @@ spec:RegisterStateTable( "death_runes", setmetatable( {
     state = {},
 
     reset = function()
-        for i = 1, 6 do
-            local start, duration, ready = GetRuneCooldown( i )
-            local type = GetRuneType( i )
-            local expiry = ready and 0 or start + duration
-            state.death_runes.state[i] = {
-                type = type,
-                start = start,
-                duration = duration,
-                ready = ready,
-                expiry = expiry
-            }
-        end
+        -- No persistent snapshot; we compute live values via WoW API when queried.
+        wipe( state.death_runes.state )
     end,
 
     getActiveDeathRunes = function()
-        local activeRunes = {}
-        if state.death_runes and state.death_runes.state then
-            local state_array = state.death_runes.state
+        local active = {}
+        if GetRuneCooldown and GetRuneType then
             for i = 1, 6 do
-                if state_array[i] and state_array[i].type == 4 and state_array[i].expiry < state.query_time then
-                    table.insert(activeRunes, i)
+                local _, _, ready = GetRuneCooldown( i )
+                if ready and GetRuneType( i ) == 4 then
+                    table.insert( active, i )
                 end
             end
         end
-        return activeRunes
+        return active
     end,
 
     getActiveRunes = function()
-        local activeRunes = {}
-        if state.death_runes and state.death_runes.state then
-            local state_array = state.death_runes.state
+        local active = {}
+        if GetRuneCooldown then
             for i = 1, 6 do
-                if state_array[i] and state_array[i].expiry < state.query_time then
-                    table.insert(activeRunes, i)
-                end
+                local _, _, ready = GetRuneCooldown( i )
+                if ready then table.insert( active, i ) end
             end
         end
-        return activeRunes
+        return active
     end,
 
     countDeathRunes = function()
-        local count = 0
-        if state.death_runes and state.death_runes.state then
-            local state_array = state.death_runes.state
-            for i = 1, 6 do
-                if state_array[i] and state_array[i].type == 4 and state_array[i].expiry < state.query_time then
-                    count = count + 1
-                end
-            end
-        end
-        return count
+        return CountReadyDeathRunes()
     end,
 
     countRunesByType = function(type)
+        if not GetRuneCooldown or not GetRuneType then return 0 end
         local count = 0
-        if state.death_runes and state.death_runes.state then
-            local state_array = state.death_runes.state
-            local runeMapping = {
-                blood = {1, 2},
-                frost = {3, 4},
-                unholy = {5, 6}
-            }
-            local runes = runeMapping[type]
-            if runes then
-                for _, rune in ipairs(runes) do
-                    if state_array[rune] and state_array[rune].type == 4 and state_array[rune].expiry < state.query_time then
-                        count = count + 1
-                    elseif state_array[rune] and state_array[rune].type == (type == "blood" and 1 or type == "frost" and 2 or 3) and state_array[rune].expiry < state.query_time then
-                        count = count + 1
-                    end
+        local desired = ( type == "blood" and 1 ) or ( type == "frost" and 2 ) or ( type == "unholy" and 3 ) or 0
+        for i = 1, 6 do
+            local _, _, ready = GetRuneCooldown( i )
+            if ready then
+                local rtype = GetRuneType( i )
+                if rtype == 4 or rtype == desired then
+                    count = count + 1
                 end
             end
         end
@@ -957,14 +944,44 @@ spec:RegisterAbilities( {
             end
         end,
     },
+
+    -- Blood Boil (for Rolling Blood talent disease spread)
+    blood_boil = {
+        id = 48721,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        spend_runes = { 1, 0, 0 }, -- Costs Blood rune
+
+        startsCombat = true,
+
+        usable = function()
+            -- Prefer using when we have diseases to spread or in AoE
+            return talent.roiling_blood.enabled and (active_enemies >= 2 or debuff.frost_fever.up or debuff.blood_plague.up)
+        end,
+
+        handler = function()
+            -- Rolling Blood: Blood Boil spreads diseases similar to Pestilence
+            if talent.roiling_blood.enabled then
+                if debuff.frost_fever.up then
+                    active_dot.frost_fever = min(active_enemies, active_dot.frost_fever + active_enemies - 1)
+                end
+                if debuff.blood_plague.up then
+                    active_dot.blood_plague = min(active_enemies, active_dot.blood_plague + active_enemies - 1)
+                end
+            end
+            gain(10, "runic_power")
+        end,
+    },
     
     soul_reaper = {
-        id = 114867,
+        id = 130735,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
         
-        spend_runes = {0, 0, 1}, -- 0 Blood, 0 Frost, 1 Unholy
+        spend_runes = {0, 1, 0}, -- 0 Blood, 1 Frost, 0 Unholy (Frost spec)
         
         gain = 10,
         gainType = "runic_power",
@@ -1005,7 +1022,7 @@ spec:RegisterAuras( {
     },
 
     blood_plague = {
-        id = 59879,
+        id = 55078,
         duration = 30,
         tick_time = 3,
         max_stack = 1,
@@ -1114,7 +1131,7 @@ spec:RegisterAuras( {
     },
 
     soul_reaper = {
-        id = 114867,
+        id = 130735,
         duration = 5,
         max_stack = 1,
     },
@@ -1691,6 +1708,17 @@ spec:RegisterAbilities( {
         
         toggle = "cooldowns",
         
+        usable = function ()
+            -- Stricter gating to avoid early ERW usage.
+            -- Allow during Pillar window with slightly lower RP deficit, otherwise require higher deficit.
+            local frost_plus_death = ( runes.frost.count or 0 ) + ( runes.death.count or 0 )
+            local rp_def = runic_power.deficit or 0
+            if buff.pillar_of_frost.up then
+                return frost_plus_death == 0 and rp_def >= 30
+            end
+            return frost_plus_death == 0 and rp_def >= 40
+        end,
+        
         handler = function ()
             gain(6, "runes")
             gain(25, "runic_power")
@@ -1941,15 +1969,13 @@ end )
 spec:RegisterStateExpr( "obliterate_runes_available", function()
     local fr = state.frost_runes and state.frost_runes.current or 0
     local ur = state.unholy_runes and state.unholy_runes.current or 0
-    local dr = 0
-    if state.death_runes and state.death_runes.count then dr = state.death_runes.count end
+    local dr = CountReadyDeathRunes()
     return (fr > 0 and ur > 0) or dr >= 2
 end )
 
 spec:RegisterStateExpr( "howling_blast_runes_available", function()
     local fr = state.frost_runes and state.frost_runes.current or 0
-    local dr = 0
-    if state.death_runes and state.death_runes.count then dr = state.death_runes.count end
+    local dr = CountReadyDeathRunes()
     return fr > 0 or dr > 0
 end )
 
@@ -2049,7 +2075,7 @@ spec:RegisterStateExpr( "runes", function()
         blood = { count = state.blood_runes and state.blood_runes.current or 0 },
         frost = { count = state.frost_runes and state.frost_runes.current or 0 },
         unholy = { count = state.unholy_runes and state.unholy_runes.current or 0 },
-        death = { count = state.death_runes and state.death_runes.count or 0 }
+        death = { count = CountReadyDeathRunes() }
     }
 end )
 
@@ -2058,7 +2084,7 @@ spec:RegisterStateExpr( "runes_by_type", function()
         blood = { count = state.blood_runes and state.blood_runes.current or 0 },
         frost = { count = state.frost_runes and state.frost_runes.current or 0 },
         unholy = { count = state.unholy_runes and state.unholy_runes.current or 0 },
-        death = { count = state.death_runes and state.death_runes.count or 0 }
+        death = { count = CountReadyDeathRunes() }
     }
 end )
 
@@ -2074,9 +2100,7 @@ spec:RegisterStateExpr( "rune_deficit", function()
     if state.unholy_runes and type(state.unholy_runes) == "table" and state.unholy_runes.current then 
         total = total + state.unholy_runes.current 
     end
-    if state.death_runes and type(state.death_runes) == "table" and state.death_runes.count then 
-        total = total + state.death_runes.count 
-    end
+    total = total + CountReadyDeathRunes()
     return 6 - total
 end )
 
@@ -2093,9 +2117,7 @@ spec:RegisterStateExpr( "rune_current", function()
     if state.unholy_runes and type(state.unholy_runes) == "table" and state.unholy_runes.current then
         total = total + state.unholy_runes.current
     end
-    if state.death_runes and type(state.death_runes) == "table" and state.death_runes.count then
-        total = total + state.death_runes.count
-    end
+    total = total + CountReadyDeathRunes()
     return total
 end )
 
@@ -2105,7 +2127,7 @@ spec:RegisterStateExpr( "runes_current", function()
     if state.blood_runes and state.blood_runes.current then total = total + state.blood_runes.current end
     if state.frost_runes and state.frost_runes.current then total = total + state.frost_runes.current end
     if state.unholy_runes and state.unholy_runes.current then total = total + state.unholy_runes.current end
-    if state.death_runes and state.death_runes.count then total = total + state.death_runes.count end
+    total = total + CountReadyDeathRunes()
     return total
 end )
 
@@ -2203,5 +2225,5 @@ spec:RegisterSetting( "frost_execute_threshold", 35, {
 
 -- Register default pack for MoP Frost Death Knight
 spec:RegisterPack(
-	"Frost", 20251012, [[Hekili:TR17VTTnt4)wkkGrlAGMSDSBZqva2pElwZWkkG7NLeTevKGLffKOsMhm0F77OO(bPePKCIbE)Y(W2sO49C8oE3ZDhZSxA)d7D(ik2(BRmxTzP5YvgRwV6JlxzVJEkfBVlf5Da9i8djOJW)(lzKCkB1tXeKpt6CsrMh8f7D7lIIPFnXEVki3E7A7DOcAijZE3UJfbzrhS3fg57J5sGZ9S39JWO8sx2)GkDRvDPlja(DpAejP0nokNcFoGKv6(h4drXrg27QwS6WeL8ym2HIYEetHf(wLbItq7JX(2)Q9oVSikolcbMhkgNqn2hti(GaPg17Q0DrP7(IGG6p5fYaZiNcNMs37TkDxAcws1XbS5gXTPG9oLYkscjXNC2hh9yivsHpHG9b)Mrcg774taZPvhssX0ZAT6zmyif09zy0bgc3QfH3u6cIzeWUNDcWpHZmOrEha)AhsHKNJHfGtekV6aTzk44UP0y0Jf4H4Xx3jNcXeygEBN2aX)n2RGIRCEzfj48ANRHhPiHwFr1Pcikn2bS(uCgtbFCAfaGg55qahGhkT098zHlPdhzy5FQdFU)QZc(0muq0rCFyg4zVtloCJUsVs28C9ieiEcGILOc6bIPVCfX8j8V6Jr0qnkAGnTuFsj3PNsEgNXXzRPEF8YjZ3QdSIXyVWzNUjkuLA0NUvrtamAjoKaNNJsGLn8jpNiA8IFSco95Ecwp4rdI8IQ9M3AwDQFxJ7w6Ya(UP27c(hFF3bcFScFh2EDEgsiGfz3kabCaQiUJ0SrGJrj(obzy8)Gfp2kO7AKWdfh7W)fhgZmNF2HxaPXZNptISICSJNF(mr3JqIzxa5JtYXe)jSdobFmcNx7J7ub4B0QbebpoJxFSbOxppO9IXONuY)nhPLl9vDLMMH9ih3JgEP2lSCE3R88pa0CCcRIValFvIG83nksBVIBqaLD8etT0qSdeM63tX3kU3muuUYDTrCxPK6WAXDSvAhrXXOmMwd49UiUvk)cDonkOS29ifP1ton3I06Zo0vsTILyYY3P4CAuC1D4OzjV8oK2ARUbj9znZOGvfVMdcyJ8XEOtdUOLRZihr8)X69x3603n3SyQivRI4BskqzGPDG1SB2pfxa)NLvRvZU0qdRiWEAK4CsgHyumuzk1dmYpZOf3iQH6g6uf4pTggPnt(v5yT12Dg6sivKym9Pyq3l3zkIUueMQ0HP1qvwxpgnGOLBJDPKXf9xoeNrIYpkViL1b6ZOSu5LrjErqIVt4P8QyyfkWjOi7uV1Xz54mMhvE98tjOui6jpnd(woRSGGpjnJ4XIFHI2Qk8ntpcRvAdid1Jk5V7AWwbfWmHgMWSIv5iYlmkrHwA5gQY5QRH)IlOmz3P)xDgH6mFAM1z0uIW7KxBht5SBmfrGV2su9d7A2Q4aPVI5BvzcZz2ZxvXU(dLQOu1vOaOktB8XuVGrhND3WuXHkgnT(n1bRdBdwxh0nzVZQv15mSKiBAVmdgH94PHtGsl9(KnYPEg2vcxhiiSdg)KsYYGm)Xt7a3Ak08WJHqcJbdGNWDajmKWi5AHqgz(0MAEmH2SzfPrnObbrjhW0LtbipTQU3NQsTuIJFeM38ZQnnkSfVrYSQ3ZQRSoxnroLAvSqVgeZ5QhnJo6d(OvdV836OHxrDy4AHtOU3cHvFhc3z7P(nSnVZEh0OucRdg7DFfKlJYkq9XEpmTr5dGlof7bcUzzv7nbrSwkEBP7VZoRLU)zcRY9px6w9u6GH(xKVx6UXyJH57lFO8H3cB97ndUx(ah(CJ2z5)G1pfaLVoCd795T4uw5o7bhQ6nltUPbqjEj17P)S7Q3vxcP6VZdk08nz6VgNXVrYGORVedbgnIbBw4zPexU)RdDdRjnR2jHMERTK93efy1)vOefV3BXWLgrWm540unVb09w3oPG8(ghkR16jfv6HFyoToVBRDdY28ZCHQnOBiPwqtW3u1XR1Y5izDJjYsoycVpBTEZCqRT1uz8EJUoppF(nA67CoAtQThznkqyCV1DMZbnbklzS0mL25ZdMqREPUPZQxqCYS6LumvMiGntK1SM40y1RnCsS5yLDtrPWi7g8Aoq10zPcGuoMvhdqDojW2M4ZAZkJXCYD9DjLgT5UdO0yjwAEKs1IpGls1M6C8sKfILYulx7LZLjNCBtmzvuM7ERvMQfVJBUYD0VRk1cXikGAlhVH14GvvZrx2HwgGMMD0HX5ZdBT4ZwR2CbyV66GnVsLoSwOcQTAC8k6ZqlUVBqxpwMNppOBhlZ3Vq5L)AZMSMDv1fkD)bVWGlK1tG(Uo1DgLQC0gpdZqZoD6MkFHMjYV3APPEOLE2cb4v(iilA9mTLh0JCZlzi5rNHCsVfqvcXKfw6dH0F36wiu(GjAXq4DaKSG6YSlgoG89I1P7dN4GUs4jv678521B4KVahvhMTLgg56P9nbQ5RKdUbJ5snXbNhvGQiL5I8BsTdSDKaBX)AXcX1Q(lpFrH1YTTZqw3FSz9yOH3rjVXTMxa1tBH5QUwHzyw3msy(7fOaR(6vn5VfY5M13kq3JrYerxE6Ij5aAb8vsw(jfqkhzl9(xIXUT7V3Zn2LlOnxQvurANEk6Lqd1I7vG)P7oUJ6qXr8LqLO9yQnDx4UrEmAEcWVq(Fq0)TFqv4pml4Lg73x45gLZ391keNJ2Rm(EBF8U8GvUCsjf9)4viCR2t)Qlt1CA79)VpuB7)9]]
+	"Frost", 20251026, [[Hekili:TRvBVTnos4FlbfWObjqNFjo9fuhGE32f32dx3I6c0VjjAj6yIilQtIk58bd9B)gksjrkrkj7K27l3h2UnuCEgodN5zgonUZC)U76qed7(L5tNVC20536mFXIztFR7A2HeS76euWdO7H)smAp8N)EknJXx9qeffYLoJMNgaFXD9MCse7pID3ycYP38g31OC2oAQ7617Z3MsEWD9osyiwibolWD933rYk85)hQWxQ6cF6w4NdyeACHFejJbFElnTW)VJFGerCCxxUy5HHeFFe2JHsVhZGf(sPbIJrBIWHU)v31bPegoLGaZdfHJzoBIO0qqGeh5Uk8Nu4VjF7w5Nc2XbZjJbNMc)7wv4pBkyjLhhWMRe3Lb27qklpEhn6G3MiY97yAk8reSp4NCIX4qVqkyo16qtkUEwyvp9bdnNTjfJEGJWnwr4IcFqmNT87zVT4hXPomsWdGFTbPD0NIGfGtekR8aTCi4eUPKi0954U4jw3lJbXeyoE3oSbI)34GCgU05LMhJZehzNaAEmtEp1ObiinYdm(eCkh)3mm(aMKapky)bOKc)JhvUJEyphRWdn4lCxngWBhHci7XTHPJJ9DwXXMnR4qeXnw8iuiCcGINNc6bcPpDfX9jIVgIrSDwuuhBAM9CsHtpH(eovGZTtT7JNny6MmUkcJd2n6SnvHkvJ9STswcGql2JU17jsmSSti9PyvJx9JLW1o1RAR49L2Th3J69eeQYxKZkMsse7yny6bmURHHirf(F6B)49aHi9Pc)V91c)xVd4hG0n8wsaHDzH)h)YVv4htl8ljTV634xsYBmloDhPWcN)ntlDwV2yc2vgV7bPaHU0LFrdh(TO8OgA4klDpjo0BBkg)FWQEcdeOvseGII8e)GhNRxW47jkjvDzMnsQX8mSxqy2irpGsJ43Pz9tBYf)rShogVNGZK(VgvaUkRAarX9ZH2gBa6fJd6Gim6rJmQJrA9IPLxPjP4a6(niJ1w1cwLrB)JyErR3lJbHGP)jfcvx6S0z6L9LMyp3(cz1zbDaCGYWXbWTAsBMIQpvhwu9zu6(dCTX2H9GO3WwbH3OU3uejZ4UwQUReQmhwDh3QTdsuekLR1TIoOu3kteemM2vm2brpTky3po2wfSNrjpsPuIKGhQXRrZARYF9h7TldHKBa0hSJLFYNKeCgJevflzpr98BP822MTSJs7ncnIs8LmZEiGSnehGou34J5kZ6bVJPbMNvhs)A7SXcrt7SWMsjgYfPadtgM1aw1U5)TOC4)nRCnj7zvzgdjHdJKGZ1zhgfbfxtcaR8dCA)LQAq2cSPK0H1qpnMlUl77HanNHgYdd5OdFk60W37MQIUwiMPCVH1qzAxl2xOyHWgBYjJYBV8omqNKTxFrgVP9NqPj6lJIdiqMV3UdzLbXguG3280dTwhNMHt5Eu91ZoeJsGONSKu4BzLL2A8jjP0aE8l0uIjgIr6r4V(WbsrdyA(7M3Ky4vsJeA4n5L0k7rb7iXg0sn5qzoNShLZU43Gn0))Rj(Z4K8ZVM4BhznrlLZcoeu38Agp4Yqe9ZTCA7QKvBvDCdN)Wlmzb2lB(cvxUZKamuw9fOyTjB7LDWaJSKFZ776Lb6SE1H25O3xamM3TQs83kZGxBPFcHbqPUsu)jZwhvWCLRdee3fd3T00uiZV)Uyb3Ac0NZ97GeghoapIBas5TxgYDRVFHmYSHn1SikRAZ9K5cbrXpGzZgcqrELSnTYUcyuVqcw0N28LvkSgpd5UT058xyDo3y68qQyIDnOMZjFXRPS2QTCkd06tF7hf(3dClVhynW)RCskOZV8NMgDvH)R5JGa6Si8YcF4(e(JqqeeNpLphS6aZW80YYzC7RWxyGdgPCUJ8QIWZC(XIPUYjOa0YzCJx(pocWvTg6NmM3ON76)aCzPmEXX306FXdNIpdxVj4aqWLZk7cClH351Rk8hXOwk(CXNFfS1Vwn)MIplGpZPEKoxT6VOZvAEp60Cxt2U6cZmJMfV9WxmVRMuFZFxe(z5B6eTvM(FJYJP(D(4sRed2SYSivxU9ibVM356Q6Nho8wRlRWDqTh9OQ4TgaNqAeT0XkieRg83DRUzqbfnt3v2vlguuTP9XDAnE3A7gKT6VlesAqxttwbVm46YNbSA2yKu2cKUKDE27hwTy5yqRUFDD8UWwpUhpEHLoChJ206WsxJkma3T6DthdAkKp6yz5PRhp25zRYLAEYQCb1NRkxYWtvvbS6zQvRP(ev5ADFE6ySYMNwAWiBEn6yGQQjwdaz8TNnmaYCszzJn5PCEszHHgnxN7EESDQI3HlY0MAC8AKfQfLmlx9LZPjNEdACznu36UvZNAw8gU5s3r7(3mleNOak7U)AElkRkBd70o06au1wLnmoESBtmFy18LNa2ZFzWwuPYgwtmb1TGJhcx)Fr3rMTbdDYz1GEDNgNUQtttRME5eJHClMwLRUUSAuH)3fLJGtjHc9TDO5aQvVQolIbeYWrZ2uhMyzId3TA2u7qRnbjf4nopQj1UL6Is2rUAOsAUZriN2SoktdhSCwBi0(LUOgcJdeYkgkZ5qZcKf3N0jw4o1MdAJM6741GtRE7XJ1Rxvi4e8tnywxpQNBN6rEijj7ymt6oIJEnXoNhtGE8yNmMtYVP1dYT9exR(R6GsyTPFTjoPOA9NrWr22VPeTi6E2)Eny)mzHdZin0nthlnwDRfL9DdN1fvpFo7sfU0YV(IsKud5yzqQfOzeYkhaJtjEIncHjds2uRTMXexsX8ZwDpZIaV1aK6PSAZTunPSE)TgtCtsUvsIArvPtBPOZGETg2xaE1MWTgkrdNWZHI06X0knMYvJ(4ke5IFK(jir8MRmLjcpS(utdBl8yt4e7(xs2Mqv)As1unRZop7224D6jnc50soB)XxG4E5v(ZUpGQtBRFnNyUU)3)]]
 )

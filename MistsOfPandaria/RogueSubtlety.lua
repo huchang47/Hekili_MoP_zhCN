@@ -1669,6 +1669,23 @@ spec:RegisterSetting( "use_shadow_blades", true, {
     width = "full"
 } )
 
+spec:RegisterSetting( "dance_min_rupture", 10, {
+  name = "Minimum Rupture Time for Dance",
+  desc = "Minimum Rupture remaining (seconds) required before recommending Shadow Dance.",
+  type = "range",
+  min = 0,
+  max = 18,
+  step = 1,
+  width = 1.5
+} )
+
+spec:RegisterSetting( "allow_shadowstep", true, {
+  name = strformat( "Allow %s", Hekili:GetSpellLinkWithTexture( 36554 ) ), -- Shadowstep
+  desc = "If checked, Shadowstep will be recommended by the cooldowns list when conditions are met.",
+  type = "toggle",
+  width = "full"
+} )
+
 spec:RegisterSetting( "energy_threshold", 75, {
     name = strformat( "Energy Threshold for Cooldowns" ),
     desc = "Minimum energy before using major cooldowns like Shadow Dance (50-100)",

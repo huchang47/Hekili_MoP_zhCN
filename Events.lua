@@ -18,6 +18,106 @@ local function RequestUpdate(reason)
     end)
 end
 
+-- Swing timer integration will be initialized after StartEventHandler is called
+local swingTimerInitialized = false
+local function InitializeSwingTimer()
+    if swingTimerInitialized then return end
+    
+    local SwingAPI = LibStub and LibStub:GetLibrary("LibClassicSwingTimerAPI", true)
+    if not SwingAPI then return end
+    
+    local function SyncSwingSpeeds(mhSpeed, ohSpeed)
+        local sw = state.swings
+        if not sw then return end
+
+        local changed
+
+        if mhSpeed and mhSpeed > 0 then
+            sw.mh_speed = mhSpeed
+            state.mainhand_speed = mhSpeed
+            if sw.mh_actual and sw.mh_actual > 0 then
+                sw.mh_projected = sw.mh_actual + mhSpeed
+                sw.mh_pseudo = sw.mh_actual
+                sw.mh_pseudo_speed = mhSpeed
+                state.nextMH = sw.mh_projected
+            end
+            changed = true
+        end
+
+        if ohSpeed and ohSpeed > 0 then
+            sw.oh_speed = ohSpeed
+            state.offhand_speed = ohSpeed
+            if sw.oh_actual and sw.oh_actual > 0 then
+                sw.oh_projected = sw.oh_actual + ohSpeed
+                sw.oh_pseudo = sw.oh_actual
+                sw.oh_pseudo_speed = ohSpeed
+                state.nextOH = sw.oh_projected
+            end
+            changed = true
+        end
+
+        if changed then
+            RequestUpdate("SWING_TIMER_SPEED")
+        end
+    end
+
+    SwingAPI:RegisterCallback("SWING_TIMER_READY", function(event, mhSpeed, ohSpeed)
+        SyncSwingSpeeds(mhSpeed, ohSpeed)
+    end)
+
+    SwingAPI:RegisterCallback("SWING_TIMER_SPEED", function(event, mhSpeed, ohSpeed)
+        SyncSwingSpeeds(mhSpeed, ohSpeed)
+    end)
+
+    SwingAPI:RegisterCallback("SWING_TIMER_MAINHAND", function(event, timestamp, speed)
+        local sw = state.swings
+        if not sw then return end
+
+        local now = timestamp or GetTime()
+        sw.mh_actual = now
+
+        if speed and speed > 0 then
+            sw.mh_speed = speed
+            state.mainhand_speed = speed
+        end
+
+        local mhSpeed = sw.mh_speed or speed or 0
+        if mhSpeed > 0 then
+            sw.mh_projected = now + mhSpeed
+            sw.mh_pseudo = now
+            sw.mh_pseudo_speed = mhSpeed
+            state.nextMH = sw.mh_projected
+        end
+
+        RequestUpdate("SWING_TIMER_MAINHAND")
+    end)
+
+    SwingAPI:RegisterCallback("SWING_TIMER_OFFHAND", function(event, timestamp, speed)
+        local sw = state.swings
+        if not sw then return end
+
+        local now = timestamp or GetTime()
+        sw.oh_actual = now
+
+        if speed and speed > 0 then
+            sw.oh_speed = speed
+            state.offhand_speed = speed
+        end
+
+        local ohSpeed = sw.oh_speed or speed or 0
+        if ohSpeed > 0 then
+            sw.oh_projected = now + ohSpeed
+            sw.oh_pseudo = now
+            sw.oh_pseudo_speed = ohSpeed
+            state.nextOH = sw.oh_projected
+        end
+
+        RequestUpdate("SWING_TIMER_OFFHAND")
+    end)
+    
+    swingTimerInitialized = true
+end
+
 local PTR = ns.PTR
 local TTD = ns.TTD
 
@@ -452,6 +552,9 @@ function ns.StartEventHandler()
     end )
 
     Hekili:RunSpellCallbacks()
+    
+    -- Initialize swing timer integration after event system is ready
+    InitializeSwingTimer()
 end
 
 

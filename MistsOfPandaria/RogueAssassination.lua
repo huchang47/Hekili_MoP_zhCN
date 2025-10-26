@@ -1551,6 +1551,7 @@ kidney_shot = {
         school = "shadow",
         
         startsCombat = false,
+        toggle = "cooldowns",
         
         handler = function()
             applyBuff("shadow_blades", 12) -- 12 second duration

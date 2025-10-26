@@ -361,10 +361,14 @@ spec:RegisterAuras( {
         duration = 30,
         max_stack = 1,
     },
-    nature_swiftness = {
-        id = 132158,
-        duration = 8,
+    -- Persistent display-only aura to indicate Nature's Swiftness availability.
+    -- IMPORTANT: Uses a distinct fake ID to avoid colliding with the real 10s buff (132158).
+    -- The APL only checks buff.natures_swiftness (10s) and remains unaffected by this.
+    natures_swiftness_passive = {
+        id = 1321580, -- fake ID to avoid state collisions
+        duration = 3600,
         max_stack = 1,
+        name = "Nature's Swiftness (Passive)",
     },
     dream_of_cenarius_healing = {
         id = 108374,
@@ -2185,9 +2189,6 @@ spec:RegisterAbilities( {
         spendType = "energy",
         startsCombat = true,
         form = "cat_form",
-        known = function()
-            return isSpellKnown( 106830 )
-        end,
         handler = function ()
             applyDebuff( "target", "thrash" )
             applyDebuff( "target", "weakened_blows" )
@@ -2299,6 +2300,7 @@ spec:RegisterAbilities( {
         gcd = "off",
         school = "nature",
         talent = "heart_of_the_wild",
+        toggle = "cooldowns",
         startsCombat = false,
         handler = function ()
             applyBuff( "heart_of_the_wild" )
@@ -2321,16 +2323,18 @@ spec:RegisterAbilities( {
 
     -- Force of Nature (MoP talent): Summons treants to assist in combat.
     force_of_nature = {
-        id = 102703,
+        id = 106737,
         cast = 0,
         cooldown = 60,
         gcd = "spell",
         school = "nature",
         talent = "force_of_nature",
+        toggle = "cooldowns",
         startsCombat = true,
         handler = function ()
             -- Summon handled by game
         end,
+        copy = 102703, -- Alternative spell ID for MoP Classic
     },
 
     -- Shadowmeld: Night Elf racial ability
@@ -2497,7 +2501,7 @@ spec:RegisterSetting( "disable_shred_when_solo", false, {
 } )
 
 -- Feature toggles
-spec:RegisterSetting( "use_trees", false, {
+spec:RegisterSetting( "use_trees", true, {
     type = "toggle",
     name = "Use Force of Nature",
     desc = "If checked, Force of Nature will be used on cooldown.",
@@ -2546,6 +2550,27 @@ spec:RegisterSetting( "regrowth", true, {
     type = "toggle",
     width = "full",
 } )
+
+-- Enable/disable Ferocious Bite in rotation (mapped to user's setting key)
+spec:RegisterSetting( "ferociousbite_enabled", true, {
+    name = "Enable Ferocious Bite",
+    desc = "If checked, Ferocious Bite can be recommended when conditions are met.",
+    type = "toggle",
+    width = "full",
+} )
+
+-- Expose Ferocious Bite enable flag and bite thresholds for APL expressions
+spec:RegisterStateExpr( "ferociousbite_enabled", function()
+    return settingEnabled( "ferociousbite_enabled", true )
+end )
+
+spec:RegisterStateExpr( "min_bite_rip_remains", function()
+    return getSetting( "min_bite_rip_remains", 11 ) or 11
+end )
+
+spec:RegisterStateExpr( "min_bite_sr_remains", function()
+    return getSetting( "min_bite_sr_remains", 11 ) or 11
+end )
 
 spec:RegisterVariable( "regrowth", function()
     return settingEnabled( "regrowth", true )
@@ -2830,6 +2855,27 @@ spec:RegisterStateExpr( "rip_damage_increase_pct", function()
     return max( 0, ( predicted / stored ) - 1 )
 end )
 
+-- Prevent bad bleed clipping with weaker snapshots when substantial duration remains.
+-- These are simple, conservative heuristics to support APL flags used by WoWSims imports.
+-- If the new snapshot isn't stronger, and the DoT has more than ~2 ticks left, we avoid clipping.
+spec:RegisterStateExpr( "clip_rake_with_snapshot", function()
+    -- If the new Rake would be stronger, don't block.
+    if rake_stronger then return false end
+    local rem = (debuff.rake and debuff.rake.remains) or 0
+    local tick = (debuff.rake and debuff.rake.tick_time) or 3
+    -- Block clipping when plenty of duration remains and we're not gaining a stronger snapshot.
+    return rem > (2 * tick)
+end )
+
+spec:RegisterStateExpr( "clip_rip_with_snapshot", function()
+    -- If the new Rip would be stronger, don't block.
+    if rip_stronger then return false end
+    local rem = (debuff.rip and debuff.rip.remains) or 0
+    local tick = (debuff.rip and debuff.rip.tick_time) or 2
+    -- Block clipping when plenty of duration remains and we're not gaining a stronger snapshot.
+    return rem > (2 * tick)
+end )
+
 -- Provide SimC-style action.<spell>.tick_damage hooks without replacing the core state.action table.
 do
     local function rake_tick_damage()
@@ -3021,7 +3067,7 @@ spec:RegisterStateExpr( "opt_melee_weave", function()
     local wrath = settingEnabled( "wrath_weaving_enabled", false )
     return not bear and not wrath
 end )
-spec:RegisterStateExpr( "use_trees", function() return settingEnabled( "use_trees", false ) end )
+spec:RegisterStateExpr( "use_trees", function() return settingEnabled( "use_trees", true ) end )
 spec:RegisterStateExpr( "use_hotw", function() return settingEnabled( "use_hotw", false ) end )
 spec:RegisterStateExpr( "disable_shred_when_solo", function()
     return settingEnabled( "disable_shred_when_solo", false )
@@ -3059,13 +3105,19 @@ spec:RegisterStateExpr( "bear_weave_ready", function()
 end )
 
 spec:RegisterStateExpr( "should_bite", function()
+    if not ferociousbite_enabled then return false end
     if combo_points.current < 5 then return false end
     if not debuff.rip.up or buff.savage_roar.down then return false end
-    if target.health.pct <= 25 then return true end
-    local rip_refresh = debuff.rip.remains or 0
-    local roar_refresh = buff.savage_roar.remains or 0
-    local bite_time = buff.berserk.up and 3 or 4
-    return min( rip_refresh, roar_refresh ) >= bite_time
+
+    -- Execute phase: always okay to bite if Rip and Roar are maintained.
+    if target.health.pct <= 25 then
+        return true
+    end
+
+    -- Non-execute: respect user-configurable minimum remaining times.
+    local rip_ok = (debuff.rip.remains or 0) >= (min_bite_rip_remains or 11)
+    local roar_ok = (buff.savage_roar.remains or 0) >= (min_bite_sr_remains or 11)
+    return rip_ok and roar_ok
 end )
 
-spec:RegisterPack( "Feral", 20251008, [[Hekili:vZtwVnUrs)BrViiHmqRoSYbGKbYUFzXMaSZ8GNNffnvllctrkqszhdiOF7FvFW(S6MKwk7Ifjt8yYUU6UURMzZSnFFZt7IRjB(68PZxoB60FEYSFE(p9WdBEQ(JtKnpDko514xG)sE8r4)(pjLXz0N(rwr8ok0vfNltG3S5PNpNMv)75BEghLlG1EIKS5RZMc)1dP72r4RLuLS5PVFiT66w6FIVUvq0RBl2d)EsDAr(1TzPv1WR3xuED7)I8AAw6KnpXEiLn(1V9BWp(ktGi5XpNr2T5VV5PItavj1BEIJLnp9wCzk9T0)w2z4htzplIlEhJtZRH)eTF)MAqa6n2MPJTIt1rptGF9Ds8BekcxyHWg8KeNLfX)LiQiXfmbAsIRJauLEe25RH)HZLysBszAnb4ifJnrtIUUD41T7ipFE)(j7JH1rI2NwsMSR49C27OmWBKiso5ykb2QxT(625S3WGHYhWU)XjNpP4CneHTJP4O64Yxi1asQQtZFrHGQxpdY(ZXvh4c3PsssXXNJBrahiyQJXLVgvSpQ(aj690SDgmN9ldZHdcjNnpe7uuHIrx3k35RkYkIovw8E21TxUa625rCb76wyFD61TJzBTnuLTsdsYEcLEp0klxf)gyVevwexAGcTNtr0spQFhIZ3vbRoROU5xGv)JEwDDzA(RK6znai)DaMFkmmZTGzofMF2cgUw)BPLhj5vrpdYA0PcoAKBn8FNPWSRijSQsDCgjVEYUss8rQ2qcSQY0ZvteRMDmOFYrTBRYjVYTB5NEgV8CfjkVQ5ee5eObLGPu5lFmj5CzjWcClQhKh9Jy)R40Na(mlk)iQ690915KQQg0499LeQXTYoDmNt7awPlJTG846ZLKkRxRjwjzG)lHnRYrbNeuTzqdVaCWuPeXhbMzjBvLPNIkj7b8Fic8Er4m6ujJwg)kX7cgBYgyMKhiXzaBfvxCo5qBoF6Gka6r8qFYPumtkkYO7miBMYtiUyPzTJVXhqz6Z4B2HiHDEXqKZwu0U4JaZ0WhTSz0z2)62fOCFinhLKbliSJXBqwwDNLfpA5AcdScmVZ9uASzlQH4d(5lWaExr9K6dLqO3i4TcZBQLP1lmC08Wey3zSMND56WIz8xMmOfJ790teb9RnZw62tiSEF0Zf5NRWCV0PK345Q9Pt9t4BPkS2UHNR3lJRpis5SBuHbrynqdkOLtB3iafazoW(vrAZlDhPgnHaKuru0bvlRJipUGGLZsNGTsOIw1sUTGPjO3bQWq0nUbjvPM8NjGl8iEkfatFD7SLgbjFMuwrkFvfMoqeC)Mt1PVa4jA)5Ypcht1X9Oe5(tmyAB2YM5R6pw1No3J(4xFDqh7dOftLf)reLwWlIQ334yLTETnszsxYCf0FP096JmUFCpcZncrAm8wpJt3QdfNZ2fLKr3wGfH)0OtqQ)GWN0Ow5FxEM)9fAWdGXneRh6CjjofmsZYR(WKtjI0NNV0GkMrZmOR48tMSR(EUPHa6PXkeu2JTLBsbtR(AszrsAXzEHqH9F(Pk6NBD8yJXbgp2wEMw9aWVJ3ws4YFbbyBQk9l5gF33Gzp0U6mkIwS0Y4MYtCRB3m2SJcyyy2)SRymRVIV8vFaY2GRfO0Vi7va3B(Uh65UNVS)(LB0yUon5vwmpFcXIwS)8K4(nPQeYwC2uVsSW5kR9fKJGIgjp5JUq6wy8EXE(ZXqJ9Au4BEKm7U)tZT3VCn6qQghJZFjRPUHVolyp9gfWG0YAwQcR6gtq11XAbOAsGt1dMURL2CiQ3hRDPv0FgvDOKSl69dK8iAtjrXS8eBaRtLVuwW4cT42uKW2Q8NosxkO2jl1(lJknuiAr8Up8EO6p5cNgZb840akusz4oeFCM)i4ctWtqAIYe9VfLCgIGWP8z0WRpwwszWAqqtHfZO)g6pLqvOdLzOSmCGMomHaLxlATTx8zLxEZl0tEDXuNwJBBcidhkBn(9HG6Tw3xZ7vTw)UsZ5HZ18Zrb5zxwrXoznM(gAqtx)BHQIClOjmgvxeTlvK348Fm0SecM(MOteP5jXL5X01B0PyeJdfxRbu4CIK(PP9AUUKqnBgsfhgTbRLecTli8U42D6BbylPPyWehkQFxNhG01kRnMUMoxmc1JolAg)j8klPjpZrSw0ehmZDoDSiVibF0F9SXDUZET)dZ1bH6TwdXNZNaJQXmX3aQj57aiBK)ge14(uNCb9A2ZbdUqNy6DaYKEpOVSgV3MlX2lvFgMh3DtZJzfzzI8(wzjlhlnmYBNIFZ(oHfNexPZGKSp(C2NuVv)shCpVlc2TQTpxmHUHDJwnh0uXoGz3WVM1ri7ghLUUHD(i(SXS4Pib)6gwpsYieCMw)viAZTJFzGcDmREiIUD3Wj19Snkzpdj(v7y0tzh6eW3sWIv1obv30cDAO90AKsHvUw7ZvVrnjJUD9BmT04bVBqbCQL(c4QnQ4vDVQWIBUOjTMvSyTtKZA8fIPFR5Y2zDQK8wtHQua183R9qexbTruSkJrICH4eOnm7kolM6HKYQjfskKAX(Oxs2n5i4xgVafaBk2KUmmpjTXITHvw5On7STMnDVqEwCcPmUULwUIJz5vtjQjR5JX)jpRz6Mg5pjjNRjQ2vA2YqTgRJ209LDzyhnxAfuvfQ1Erl2y)VXuYSpdTMODp6PvlJDHnaN3yx2JtKOD07UzOK9qzw0wwJOigqi6vpan7ESF3d3x63ybmaztRrZ1tpGMz2smTBEqaphFgUFvt3t6RUG3tDF3MpAsXby2vsMTTUUhAKRiZkfi6hGvxeV69kQLoZUNFze6E0vTenzKs0cn0BbrZfDaiZ3)TV()9TV(5syF2Dnn9EELHBhHTv2A)ZfF2sDuQFNy81uQGzvjkYnGsz)sk7F)TV(T)XV(DSdZoHWMUoCFo(SYY)ZDVFSer4TVbXBOaYUv9t)L5)eOohxMdXRGQb(9JNkkRP9LHgTJJvXnMFY1)GDvI3NMjTeQ(H1)Tgb5lukUwtl(lmbt)jx)dFGzQUkG0kN3GaRPAQbTUnDqWvLbQbT2v3niW8k90auCNpdcK2PRgKAp1p4Yc1eaQA7xqqOfIPbbRvAEbWtHvc49nqiVOtvdLadAxQ9)qc2e5D2hqG9DU)lP7xpGfLc5Q6JJIMWzkq1JEJccNhH1psgCqXQxUiV79RNoEihLn33EC8Pf8uXfwJ9afq6reeN64xOntFnBGbDzHnn6VhRDUNDcw304hFiTDt)ytokiamrAXuHfP7YdrK)Hu0Osvy165d9FwHqkWZLKAAT0hfeKDveyVCX3aiEekCSdiU5u4VqCp)(GB1auUp4RfTguI4o3fqh4hXXV2qrO4Y)8vgIO9HJsR5Cqr7B6dZG5ADy4PP0DQ5mWch6rDmpSTbNmCKtrOxUGoUKX6wQSGXuzwnjzd6RfSEONl7vVmxBON6JZIFQP)jCPZF7ks47rQpidTJzVxO3HJmsLxf4(YfJxWdmpg1l0iZr5VA9dGl(rJe(4X((xg69DcReyVz8LlbXbCOrFj2NXHGnD6OaWuyLq946LdTlDAfeM6YfNRdh9XJhh4yJFm4WuD6OazdFig)cSB7FXlRNkIYITbDZbt4IjSPjDlf47kWNq0bMyHdpGDs5WxWX2NMXw9PzmeLfBot1ULoXFMe9X1p4s1riDm6Yf8l4iyzoz5yBEs2dL7elP7vs2PDwshIwGA430SuLHyTMhhDA9mxl2OQlRd17D9JRNVC4a7gWJJy9CFDXQRNfD7cD8qBODx4Sft95UAGtF0Dud9rAzxVX5GUHMM(BFl4i8U5i3EGVATw)V5AY69(E16fIhQ659Q1l1s4cPx30Wj6QLSQBbMJ9th1rTAFh62llD8urJqRrpw5pYwId8KD7WFC2sr0d98p8D(73)BfsfsoETy4apG302WTW1Epcx2fVMRrCBoWUTKIe0mtjm857J6E1W2Bg5WCsnJzxUy)vy4(e53LXypBOZCfmlL0hFWIfnVfdAz3PUI2ROUTuFNfCN9gk(lePbz)Lv4MwDdiwOOfbQ3NN2c5nKUmvX6XP9kVeUURi8VNO7yXPDf2MtnyJODHEOzgWGp9Ls9A1xVGTFdJCb6vC8fyz4ILwNMuyRoUwOzP5BLgnVDH9gvJfxpBx(zHhnrK8X61HtR8l63jGpe7HnUfIoCGZ9()(sD1DYUFXjApmbRnMm13rOkK4xnFAPDEoRhl8NP6YX4oCepCGQmwpDy1clWM2GMlzVDSdZTRq1iyeeVlSP6eMFV5d7T0QU6Lt9vWsVDrACR01uh1U27DxJqH74cY)LsiItzRO(MBlYAv6KUpAiD3HvBl6g(0rCP7R(PEByley9A3UnupC0ahXJM1fIc3SX3(gFtOS5DE33MM0uungG96zU0gk51ByfSKyDYg1OB9XYzc(d2ZPPzKSIP0m1hu2dDuB4F9dezRr7hyTwYt)qNSuVaf13pmURiHNerl))lMEHuqJbvVSFyPQ2OJW8zw7OjGor2PDdo3HX2raDgd7uDwLpU)FqvnoYR6182KqP5Rh5TcF6iVP1zK5abnrvShhSqveaCtfZlSsO9BeQ0A03V)1V9BoNsAv84E0IbaQE0mBy6fFjUMg(DdX1WWaOlZHFw3PKhgKFNG6WE3SwHPTTVaGf0k0dCw()NTebc8TcUMzNxU2o3MNIpxFOOCZtpD88(Y0xz3tLn))p]] )
+spec:RegisterPack( "Feral", 20251026, [[Hekili:DV1EVnoUr8plbhGHnYg)kpU29IxG9ES9UfDrrrZE4Ck2)ZwYY02crw0vIkUbiqF27mKus8LEy3Cff9pUBte5mCgY5XVziZIjlECX81(mYIhMoE6Ttgp9UHtVEY13mDXC2lhilMFWp4j)TWpe7Vh()FIK4hHF9LiQ)AK6uAwsamYI5RYcJy)w8IvMSeM0bsWIhMm(6fZ3fUEnrmjsAWI5pUlmn3d)p)Cp5QL7r3a)EalKgN7ffMYGH3qtY9(vYtHrHdxmN)rC9PhiXKe4NEGRmKy)vrK1l(XfZf0Vy(gFssiz5MWeIyrtcpig5RCAZ9sj)ZmsCaSU93MfUMSEW7Z9(0NY9U6d5E)H)teXp94NU8hjjPKKNGjE)SRhN7H0V9LbIXXnG1WeK0fEaM2JaxoggVMEuoPh3L4NUtFKfZbzIbsP)I5p7d)dOcd37hgZG)B5gyVOxU3AYQSnBgQOndbAJxWGnAuZlu3eqEv3hGXV2yNPA1eY)WGSKesml37(z5ExpUIzSWTGcTCtwYliJUPwgXLnLzpm7qfxwj21qoCBTCiGUFfD5bkO1PkcuU3TC1NVasgbmN)TlGTryJjmfz3Y0DjK1lpUJeVmLgr5ZaLGNjlb1CFiboya1BsU3GkrJteky39Miy8tKsMV3pEliyb(mCf((tCf(WmTLOUnxWAg5(F58oAyCZrPiYa3XF5HF(Rp4YDIcuLsyvKwyPI)uug8ptmCVEKaw3Gd8HecqyUhJE4QiYZKiW7kDhnb(ev6bYGtnWf3pkc0wiiao5CpqQwsbMT3p6DOVgUAWzkoPJe)NjPCHyPi0KI)sPpXPk(vCdw2LRiWVYxixorNbdtJjpvXqtNP2z4ytgEmXNTRIJMoxTZXj3QYs2MLROXzPU8hkyraS9Vu8llXGWIqXfmGFI7YyVtKRCElSg5NPNxS9)bdsuWEbmxIxN7XzeqFmMQ6niyRthnMFYwcByGFklmERsmMNYaLEf4Nj0k0UQuPmCe5JPh9U(fKlJbrajY1uZ1g3nHKM7BodGm8fydGZTiYA)IuBdxt2egektnmbs596RIOUu2qmvZWecU5LkZDigNpy4b9XMkglGsJW9sTqsMtCGwqAvnP(uqxiduASHW1NeavHEKv1SC79ZIk9FmcE74aP(ufL2t6HpuZtySrJ7ur(baSkM5wzLOumbH5tAJEeQzS19iMhIk0vcRu8CiH0kuai)ZL5ELQvraIAs81OXAXXtQ)ZWHXYeQFsXMqn5)Y9uoJuiRzdAvMHB1ltclTPlSlrPTDlv47ltzj04TykQbfqowtI8Fb5kN7SnfFpic(e(5JHqq50y)dqsoMvI66nGv9QmKW6C0WbAqgXrDjK43Rtkr4JncuRwNmP8lIKzObYpAQddQbjsd(y9DGfexLokwftVrmxdu2kFZqyEQ4)QhHz1x103MaFwp8Wwc1FHMJJl3elVATjDtlwX)zSvZ0HsCwGzhBINioCtibGs8t(Wo0xfSgQYJY8XjacplXpons(BybSFJ(T5H7t54yLeum9pYx2b1b(YmkANqpjal5i2yNOUiTCQRyuDIdi62MJCOLEub7k)0fcdLfTwdsB3wxofNFE5(LlT6aLg26zSh0rzIJAOrFEtJ5pONYVrU7tjU8P7eTPYc9(4x)L3ghdGrokXd2xLUYyNuuQEd3zUenvK1Wn4)RQHRthbwL5u571aWUDqHmqbVPry2A5VOMcrIQo9fmLoea9qcKtifI36V2ej4pP6RxxSggq)te2KILS83BicJCotnOzA5wvXexfrPRLGu1WwRbbxMZJxmvJiWli4avU9BwEJoubzHAWjazjJUCDirMq7UI(C(CyYEsC6YvaFwk5AJUZm)iiP9WW4a)KyEi(HY51EhCuiQ5u1o4ImsLqbxYr3Ha(aiDhT2hrM)xBpgzgy9WsiebkFPIbmnGSKUbmHzzq1WfSOCnmMaUwtg3Tfdfw11Ah4ZYqwX2HWuJwRTvAI)RcNPZDbTy2wCw4)TNgtrCsVjXd)IGzVNhuCdIk)aSFWbbOguedHag2dAoG1PhbSTEeD6HaT4OwiqwzxFCS75SDGRYsIFp2gVWTXvTdaS2al7DSOxuJIwv3)PwyPcQqhvowgWsTAzTqm34iqKRyvkIu9HomdqvecR4Zo6z)PwTaVYffo2wxH7exaZxAqintOnItBOkb)SOZ0zrnbVU1b)MLY9(5KSqWpV)xO)(Gse0xXTvq))p(7)9CV58RCck(fDVW7TbSM2XyhsF)OrBHQAZwne0UrhPhtbIhTNEyegpB0EOojsYOSWrRXvz0gCjh5FicS9EGYiPaFUk37lHjju8wCGGe5E8(gYma0lDEX(xJsp8L(OF7i0Zye3HBegylof0HSu(mbjApA9dkggziKcNeaWVH8LCUSm8CV4mShL4THHXma5)qKSUdSH4RqTMUklLHc2vBbdoGb)Ti6kCVtEYuCxzczdhyfzhiVCDQFGFSGp0Njjj8lJd(9xkGWHs8FaqgaEKq3dsauVcmzY)chovQRW8WcotVADcGHnEW7kPgzDe9i2W1xkxcYBkepJGKVX49mJy2CW0tVf(gXpBeC5P3oFKhcdptol)QdStDJR7jreIBHwDihbUAN)Laou5C1hDegRB8uacsNL8V5ahKEkCEGc9BGgm7)zH)vHXEJ1cQGmeqzYBMZKPAvbiV4Ax4KQNTnvfbivyqD34yky5EFaGKkaiDn)3l5HJeSM0Izzzg3(CzkB9Sz13U2tm7TPh3PKZfTxGkNpRMNZRY9)2TmVQTLyB8uADwU3ndvstR36unaoPhdpiAcOd4no2beirQVnfOkEx5nxy0rpPyf8sqe48YlYkf3SDeltfNsll3nw3rGwB9TBnzU33pC652TEhcpROhtny5iMGUnZ3WVjBZbiizjCGa)kwdIapbhGX34EHNFtYe3je27TgeprrzPlbZHnSyitU5Ddv1qgm)EjCKF9Xr)bzBc9iBN7xPsvULIIZKfXToH4VhJweaItsywAvrCdQ8fGywR9z0KxQKSQoCxeAWs4vd840XPbXRwoQ0ZpxsLr3)GkjJGJZLmAwWUMJWPjmvz4BEtqE3fUIWCJYTILipCewbF5Rp81F6Jp6YqWvjQT02ojixaC3teYbSnEDT7Nf1tFw47S64Mb(IZR72gjlHrbSPiEw1NP2r)Kyex7I5)2(d0egASo5oJxI2W8pJ5APBcrH(7G9Lox5YN)U)ukEbzRS(f8h)VFjmYv9)OQy(mNlVXLYGS8KRM5hAPAM8plShsVC2OcR33HMzZuQT5DCRz1Vupz61TiP04MkAKyL0bkuRM7OrYRIjPqTsGQgjwyKOqOmCBJeP4sRqPYxRN8Y6cKew1TYgjbX9RqbVZGctUsiVLmyyjsAGvMGEFx4MzxuhCy3SOatS7rva4wXBJhjHtcf4AfQOdaWs1RSx)vmPSLBatWndGM9VdBy)m(1kGsrZxNqxyvX1fCcZDQ75wDxb1mE5Te4E8w2Nq114wcE9v7Bi4(ztVZn)vAFpYR6VjGEU6FFtQuPOPtZRV6Ut3ozLrF5rw(SvN(71Cx(DZzRMPBXBuQ61wt9713QQOAuWbst6AFAFvYj)JO2x9a(0KoL4Y9Q5T(zZSQ3XN4Cw91(jfTUGJUIXymwGVwOr1e1QyQ963g26b9AevDVlQh9RPqPbWTwbQw(bhH1dT1ElOahR1cvLgQEvl7qpDCY3p7MX4bsXIWVZ5zJuEILwJveJU0LZ8Le1kbQpuGE91Fsn3pBY4xFTVzjZ3p76xF1O(vioZRV20BKeMWGbwId(egRsFyi89uF(JFa)dxWM8Yh7O1yfV(qRZMk4j9S3bC9Wgb9L7L09cJRegoAgqA4)RLOOG1PNDnYfoN2pasfdr0dxz7gxctRQRV9sR(60Z(Yi15zhYV3Z1LX8HXgmcmsePMTBesV(QVSr32uQVMXb9UWSVi9UWDhrmfcW8fLI(AVur5kAAAR96eRwZQxLyXIA9EenpxkBWvD(NIDaLNEOqK0F2HGqnW80bFYyCfYcdqRldojNNCZUDaOT9R5TS1dfGQMCnBIPmv9Y9mpVlnfV12SRNT86YASuFDfH6I(USCSSylh8gNh8NQYZDolBWALa7tjV9(KsMQzq5UpR3FZWBnPRSDQMdW9l06D4SjiR1v37NDxpRnmhld6Q3bMDtpNbdmpd)(Htpf)DbgR)mEUJk4iR6hZLMLRvCkklxBCDuz2WhLAWpnscCuIuhiJ)i2ojkoVCxNYkGPGBkpDFRN6O09wn3DTNtUxtWK1248dyQ(tHlPfwEN47NrbMUGql7jNTxzC3OZUZkDKqREQmwQED9vWuTmINxZLU6Jq5qDaKHdQucT6yuz8thJ0ANhSOad456Z2qAusI6Ga9hKsJ0kmM62n5wUs1AEkUTwEDFH7j3pzA7KOy1lLM)x5V34QnwHAD5BuHYLCt)4U8ZTLkFSdAAUvioiOeHtxaobi6ojOkwR25HvZ1wwJUcn36OQnyBCYM0ub2QL3S9p0WB2UAPbozf)ZUn4JBMaNrON0onwbzTOPREMN9nIvTGYlFREGjYLWbbDPb5t6(kzREVL)Ly)do)lXUs6e)fK3bJIjTstB2fnqwtMgnqwJ57RHod8QtU1bfUpOeP1680vVeZ5(zm4GBX857Z2KYVrZf)7]] )

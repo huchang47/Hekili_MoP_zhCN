@@ -32,6 +32,8 @@ actions+=/backstab,if=combo_points<5&energy>=35
 
 # Cooldowns
 actions.cooldowns+=/shadow_dance,if=settings.use_shadow_dance&energy>=75&!stealthed.all&buff.slice_and_dice.up&dot.rupture.remains>=10
+actions.cooldowns-=/shadow_dance,if=settings.use_shadow_dance&energy>=75&!stealthed.all&buff.slice_and_dice.up&dot.rupture.remains>=10
+actions.cooldowns+=/shadow_dance,if=settings.use_shadow_dance&energy>=settings.energy_threshold&!stealthed.all&buff.slice_and_dice.up&dot.rupture.remains>=settings.dance_min_rupture
 actions.cooldowns+=/vanish,if=energy>=45&combo_points<=2&!stealthed.all&cooldown.shadow_dance.remains>10
 actions.cooldowns+=/shadow_blades,if=talent.shadow_blades.enabled&settings.use_shadow_blades&(buff.shadow_dance.up|time<20|target.time_to_die<40)
 actions.cooldowns+=/shadowstep,if=settings.allow_shadowstep&talent.shadowstep.enabled&target.distance>=12

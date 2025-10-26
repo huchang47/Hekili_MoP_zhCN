@@ -18,7 +18,8 @@ actions+=/blood_fury,if=buff.vendetta.up
 actions+=/berserking,if=buff.vendetta.up
 actions+=/arcane_torrent,if=energy<60
 # T16H Cooldown management
-actions+=/shadow_blades,if=buff.bloodlust.react|time>60
+# Prefer pairing Shadow Blades with Vendetta or near execute; still allow on BL or after 60s.
+actions+=/shadow_blades,if=buff.vendetta.up|target.time_to_die<40|buff.bloodlust.react|time>60
 actions+=/vendetta,if=buff.slice_and_dice.up&dot.rupture.ticking
 # Stealth opener
 actions+=/mutilate,if=buff.stealth.up
@@ -42,5 +43,7 @@ actions.generator+=/mutilate,if=combo_points<5
 actions.finisher+=/slice_and_dice,if=buff.slice_and_dice.remains<2&combo_points>=2
 actions.finisher+=/rupture,if=ticks_remain<2&target.time_to_die>=8&combo_points>=1
 actions.finisher+=/rupture,if=combo_points=5&ticks_remain<3&target.time_to_die>=8
+# Pool slightly before Envenom to avoid starving the next GCD unless Rupture needs refresh.
+actions.finisher+=/pool_resource,if=combo_points>=5&energy<60&dot.rupture.remains>4
 actions.finisher+=/envenom,if=combo_points>=5
 actions.finisher+=/envenom,if=combo_points>=2&buff.slice_and_dice.remains<3

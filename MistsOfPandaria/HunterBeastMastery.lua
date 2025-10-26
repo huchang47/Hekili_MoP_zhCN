@@ -1292,8 +1292,7 @@ end )
             gcd = "spell",
             school = "physical",
 
-            spend = 25,
-            spendType = "focus",
+            spend = 0,
 
             startsCombat = true,
 

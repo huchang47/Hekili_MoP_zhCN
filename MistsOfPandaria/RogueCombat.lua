@@ -1965,6 +1965,22 @@ spec:RegisterSetting( "use_killing_spree", true, {
     width = "full"
 } )
 
+-- Optional: Avoid casting Killing Spree while Adrenaline Rush is active (can cause energy waste)
+spec:RegisterSetting( "avoid_killing_spree_during_ar", true, {
+    name = strformat( "Avoid %s during %s", Hekili:GetSpellLinkWithTexture( 51690 ), Hekili:GetSpellLinkWithTexture( 13750 ) ), -- KS during AR
+    desc = "If checked, Killing Spree will not be recommended while Adrenaline Rush is active.",
+    type = "toggle",
+    width = "full"
+} )
+
+-- Optional: Allow auto-toggling Blade Flurry based on enemy count
+spec:RegisterSetting( "auto_blade_flurry", true, {
+    name = strformat( "Auto-toggle %s", Hekili:GetSpellLinkWithTexture( 13877 ) ), -- Blade Flurry
+    desc = "If checked, Blade Flurry is toggled on for cleave and off for single-target.",
+    type = "toggle",
+    width = "full"
+} )
+
 spec:RegisterSetting( "bandits_guile_threshold", 3, {
     name = strformat( "Bandit's Guile Threshold for Eviscerate" ),
     desc = "Minimum Bandit's Guile stack level before recommending Eviscerate (0 = None, 1 = Shallow, 2 = Moderate, 3 = Deep)",

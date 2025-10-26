@@ -29,8 +29,9 @@ actions.cooldowns+=/berserking,if=buff.tigers_fury.up
 actions.cooldowns+=/potion,name=virmens_bite_potion,if=buff.berserk.up|target.time_to_die<=26
 actions.cooldowns+=/incarnation,if=talent.incarnation.enabled&buff.tigers_fury.up
 actions.cooldowns+=/berserk,if=buff.tigers_fury.up|berserk_clip_for_hotw
-# Use Force of Nature at 3 charges or with trinket procs (T16H optimization)
-actions.cooldowns+=/force_of_nature,if=variable.use_trees&talent.force_of_nature.enabled&(charges=3|buff.tigers_fury.up|target.time_to_die<20)
+# Use Force of Nature when it lines up with damage windows (MoP has no charges)
+# Prefer using with Tiger's Fury or Berserk, or near end of fight.
+actions.cooldowns+=/force_of_nature,if=variable.use_trees&talent.force_of_nature.enabled&(buff.tigers_fury.up|buff.berserk.up|target.time_to_die<=16)
 actions.cooldowns+=/heart_of_the_wild,if=variable.use_hotw&talent.heart_of_the_wild.enabled&(buff.berserk.down|berserk_clip_for_hotw)
 
 actions.maint+=/faerie_fire,if=variable.maintain_ff&debuff.faerie_fire.down&buff.cat_form.up
@@ -44,20 +45,19 @@ actions.snek+=/thrash_cat,if=buff.dream_of_cenarius_damage.up&active_enemies>=4&
 actions.snek+=/swipe_cat,if=buff.dream_of_cenarius_damage.up&active_enemies>=4&buff.cat_form.up
 
 actions.bear+=/bear_form,if=variable.opt_bear_weave&bearweave_trigger_ok&cooldown.thrash_bear.ready
-actions.bear+=/thrash_bear,if=buff.bear_form.up&rage.current>=25&!prev.thrash_bear
-actions.bear+=/cat_form,if=buff.bear_form.up&buff.clearcasting.up&!bear_thrash_pending
+actions.bear+=/thrash_bear,if=buff.bear_form.up&rage.current>=25&!prev.thrash_bear,strict=1
 actions.bear+=/maul,if=buff.bear_form.up&rage.current>=30&buff.clearcasting.down&!prev_off_gcd.maul&active_enemies<3
 actions.bear+=/mangle_bear,if=buff.bear_form.up&active_enemies<3
 actions.bear+=/lacerate,if=buff.bear_form.up&active_enemies<3
-actions.bear+=/cat_form,if=buff.bear_form.up&(energy_time_to_max<=gcd.execute|dot.rake.remains<=3|dot.rip.remains<=5|cooldown.tigers_fury.remains<=2)&!bear_thrash_pending
+actions.bear+=/cat_form,if=buff.bear_form.up&!bear_thrash_pending
 
 actions.wrath+=/wrath,if=variable.opt_wrath_weave&should_wrath_weave
-
-actions.st+=/tigers_fury,if=(tf_timing|cat_excess_energy>15)&buff.berserk.down&buff.clearcasting.down&buff.cat_form.up
+actions.st+=/tigers_fury,if=(tf_timing|cat_excess_energy>15)&buff.berserk.down&buff.cat_form.up
 actions.st+=/savage_roar,if=!buff.savage_roar.up&combo_points.current>0&buff.cat_form.up
 actions.st+=/rip,if=combo_points_for_rip&(dot.rip.down|dot.rip.remains<=2|rip_stronger)&buff.cat_form.up&!delay_rip_for_tf
 actions.st+=/rake,if=(dot.rake.down|dot.rake.remains<=3|rake_stronger)&buff.cat_form.up&!delay_rake_for_tf
 actions.st+=/thrash_cat,if=buff.clearcasting.up&(dot.thrash_cat.down|dot.thrash_cat.remains<=3)&buff.cat_form.up
+actions.st+=/thrash_cat,if=active_enemies>=2&buff.cat_form.up&(dot.thrash_cat.down|dot.thrash_cat.remains<=3)
 actions.st+=/ferocious_bite,if=should_bite_emergency&buff.cat_form.up
 actions.st+=/ferocious_bite,if=should_bite&buff.cat_form.up
 actions.st+=/shred,if=(buff.berserk.up|buff.clearcasting.up&(dot.thrash_cat.up|combo_points.current>=5))&buff.cat_form.up&(behind_target|buff.incarnation_king_of_the_jungle.up|buff.incarnation.up|buff.stealthed.up|buff.shadowmeld.up|debuff.mighty_bash.up|debuff.maim.up|debuff.incapacitating_roar.up|debuff.pulverize.up)&!(variable.disable_shred_when_solo&active_enemies=1&!in_group)
@@ -67,7 +67,7 @@ actions.st+=/faerie_fire,if=variable.maintain_ff&debuff.faerie_fire.down&buff.ca
 actions.st+=/pool_resource,if=should_pool_energy&combo_points.current=0&buff.cat_form.up
 
 actions.aoe+=/faerie_fire,cycle_targets=1,if=variable.maintain_ff&debuff.faerie_fire.down&buff.cat_form.up
-actions.aoe+=/tigers_fury,if=energy.current<=35+variable.tf_bonus&buff.berserk.down&buff.clearcasting.down&buff.cat_form.up
+actions.aoe+=/tigers_fury,if=energy.current<=35+variable.tf_bonus&buff.berserk.down&buff.cat_form.up
 actions.aoe+=/savage_roar,if=active_enemies>=3&(buff.savage_roar.down|(buff.savage_roar.remains<3&combo_points.current>0))&buff.cat_form.up
 actions.aoe+=/thrash_cat,if=dot.thrash_cat.remains<4.5
 actions.aoe+=/rake,cycle_targets=1,if=active_enemies<=6&dot.rake.remains<4.5

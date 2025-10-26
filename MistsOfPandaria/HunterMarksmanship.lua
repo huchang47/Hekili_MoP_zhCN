@@ -135,6 +135,27 @@ spec:RegisterAuras( {
             duration = 10,
             max_stack = 1,
         },
+        -- Stormlash (player buff) for burst-window awareness.
+        stormlash = {
+            id = 120676,
+            duration = 10,
+            max_stack = 1,
+            generate = function( t )
+                local name, _, _, _, duration, expires, caster = FindUnitBuffByID( "player", 120676 )
+                if name then
+                    t.name = name
+                    t.count = 1
+                    t.applied = expires - duration
+                    t.expires = expires
+                    t.caster = caster
+                    return
+                end
+                t.count = 0
+                t.expires = 0
+                t.applied = 0
+                t.caster = "nobody"
+            end,
+        },
         -- Common aspects
         aspect_of_the_hawk = {
             id = 13165,
@@ -702,7 +723,9 @@ spec:RegisterAuras( {
         
         handler = function ()
                 -- Track consecutive Steady Shots for Steady Focus precondition.
-                addStack("steady_focus_pre", 10, 1)
+                -- Increment steady_focus_pre stack count (max 2)
+                local current_stacks = buff.steady_focus_pre.stack or 0
+                applyBuff("steady_focus_pre", 10, math.min(2, current_stacks + 1))
                 -- Master Marksman: 50% chance to gain a stack on Steady Shot cast
                 -- At 2 stacks, gain Ready, Set, Aim... buff for instant free Aimed Shot
                 if talent.master_marksman.enabled then
@@ -846,6 +869,18 @@ spec:RegisterAuras( {
             spendType = "focus",
             
             startsCombat = true,
+            usable = function()
+                -- Always allow instant proc version
+                if buff.master_marksman.up then return true end
+                -- Gate hard-casts per 'aimed' logic
+                local focus_now = (state.focus and state.focus.current) or 0
+                if focus_now >= 85 then return true end
+                if buff.rapid_fire and buff.rapid_fire.up then return true end
+                local cs_in = (cooldown.chimera_shot and cooldown.chimera_shot.remains) or 0
+                local crows_in = (cooldown.a_murder_of_crows and cooldown.a_murder_of_crows.remains) or 999
+                if cs_in > 3 and crows_in > 3 then return true end
+                return false, "aimed gated to avoid starving CS/Crows"
+            end,
         
         handler = function ()
                 -- Consume Master Marksman buff if present
@@ -909,11 +944,10 @@ spec:RegisterAuras( {
         kill_shot = {
             id = 53351,
         cast = 0,
-            cooldown = 0,
+            cooldown = 10,
         gcd = "spell",
             
-            spend = 35,
-            spendType = "focus",
+            spend = 0,
             
             startsCombat = true,
             texture = 236174,
@@ -1254,6 +1288,16 @@ spec:RegisterAuras( {
             spendType = "focus",
 
             startsCombat = true,
+            usable = function()
+                -- Optional gating: prefer during raid burst or when not starving Chimera/Crows soon.
+                if settings and settings.mm_gate_barrage_on_burst then
+                    if buff.stormlash and buff.stormlash.up then return true end
+                    local cs_in = (cooldown.chimera_shot and cooldown.chimera_shot.remains) or 0
+                    local crows_in = (cooldown.a_murder_of_crows and cooldown.a_murder_of_crows.remains) or 999
+                    if cs_in <= 3 or crows_in <= 3 then return false, "hold for upcoming CS/Crows" end
+                end
+                return true
+            end,
 
             handler = function ()
                 applyBuff( "barrage" )
@@ -1499,6 +1543,24 @@ end )
 
     -- Threat is provided by engine; no spec override
 
+    -- MM variables approximating APL logic.
+    -- Refresh Steady Focus when we have 2 stacks and <= 7s remains.
+    spec:RegisterVariable( "steady_focus", function()
+        -- Emulate: 2 consecutive Steady Shots (steady_focus_pre.stack == 2) and Steady Focus buff needs refresh (<=7s).
+        local pre = buff.steady_focus_pre and buff.steady_focus_pre.stack == 2
+        local needs = buff.steady_focus and buff.steady_focus.remains <= 7
+        return (pre and needs) or false
+    end )
+
+    -- Permit Aimed Shot hard-cast during high-focus/burst, or when not starving upcoming Chimera/Crows within 3s.
+    spec:RegisterVariable( "aimed", function()
+        local focus_now = (state.focus and state.focus.current) or 0
+        local rf = buff.rapid_fire and buff.rapid_fire.up
+        local cs_in = (cooldown.chimera_shot and cooldown.chimera_shot.remains) or 0
+        local crows_in = (cooldown.a_murder_of_crows and cooldown.a_murder_of_crows.remains) or 999
+        return (focus_now >= 85) or rf or (cs_in > 3 and crows_in > 3)
+    end )
+
 -- === SHOT ROTATION STATE EXPRESSIONS ===
 
     -- For Survival, Cobra Shot is the primary focus generator and maintains Serpent Sting
@@ -1586,4 +1648,11 @@ spec:RegisterOptions( {
     width = "full"
 } )
 
-    spec:RegisterPack( "Marksmanship", 20251015, [[Hekili:TRvBZXjos4FlU26MYUIdlZypoXB5Xv54DsfNRwV5coxUpbOzqtGYmaRq4SUkx8B)AjXlcqcyMeV7E1TFizWG6xuR(5PBjWEQ9D2wEik2(2zMZMp1C6CJzNyE(j2w0htW2wjO13J(cCreAl8))cICF6wuuQFqc7HpggJ8y6inoJSggGT1QSGq6nr2RuQ4zVggBcEnC75NAB5h45HfJfNU226o)G0Cx2)q5Uf2o3nEd83RPbXr5UHbPu4XBIj5UVdFFqyGHTf)Mm3iobhHjWv3YNz4i0QqSN9BSTeYdghtGXqDsPbrFrywsqI4zFe)Bz4uk2dmjXdt(PCxlIvU7L5Ux9lXxZV46FoL)7BXKhy(WlGB5hSftqhN7s9XGlArXiVhHF9JbVYc0pftcq2whK76HxLTzJrdVWilXMcbKwECTCuuimydKZ2mMB5eVXznj(RPgLJUA21zimfFYqkoLI2MG9WD1x5tyQ5uMAkFabLe45SjGGLvnmQ5AI7(OiVgbdECOwnqqi3DsU7644qV4VgzK(yekjf7KMqGyuQbHfubpkmMwQnWCNPDU1v)1oZQW4y42zKhz64vdfF2WxR7gDe3NPIxlhBwlYhCs9zUAJOZ56nfitU7IC3tLJ(S5SqpGWtn1k9di4h42gfISjEDwQdbVHGt91RW2GKwrVuAmzBik13HgtXBDiOaVMXreHWyhy6AW03VeIcEadQkTkXT5kU8aici0egshMkaKdcntNxBAPbBZMmw4FhVoJIDs8rPyvma1o0H5UauSykwhV4PGp9KQNqWBrbrGBCbBfk39iURbkjiYztyWx8PAdYZgzQXjYJd41cvnOt1oN6HBrd3NcWAR1)TiyUqC2wq6ZwuwlnrrWCXRAEQhjYgpSubmZBdWflLsz5BZcPbvQzhbJYPiS1M5MAHN)zLB2dONhLP(e2QnWydLpC8Za3PDGMSgfHhdpWAyfZrqLCb4tgNPB1QhOV0K6mtbG4Wgt1tpPzSroPUgPWgPW2gsicdjpScePPuq5t4S1HzP0gjZTdk65FgdmfEq58jTFYJHkgZDDXeeAtyQ5afN7H2uLoKQ72FLDvc3PAEFtqpWgoRWWYv3cF1pRFwKcvf(y0V7qYs97QPQh1pfIEyQwuxBIeTnISJDC0MlPuVuqO7X0PLcu93kyaAjZSwYmRgLROJLMveea5QHHjaj)98wBLhgL1P7geW0oQK70a4N1Gwey2gz2iYxWuJGuhgsMBOQ0RgsPk5UQmici8e)HdR3Drh8oI9yu2lZq9UkYWbwMzJuX1a8(Z)f0NlAb8YI0Q4IDDmCb1wCCv9AOMHR3jZQmcC9xdIGz0qyh(kMpgfs9nswt58cV2C8gkQOPQbkp3XmSy4SXANM9V1dqRxTKcbrO(tLwOTIu)pAFH6QRT7T8PpVF3B5tF2Uu3cZnhB3ct1zN9PUW3V230NYp6UT03)5(1bO(okBe415o90aPuR0NAo(K5X1o55Jov4eDtDQC9bfG54ewoVKJwoA2vHzyoiVdo2jHW26mA998TGpJ7MdG2FfG25QVK5r1oV5oCtoP)Mb6pegi24h9Mo3PINTRQvVx9bQp(3BFDi2NrtOoo(M)VA7Raf264TRqd0Hpela(rkFdommMdk6rruQUZ(vWkF58Rah5bZD2AlS)co0KZtAkVJawqbYzC8ck24PugLSK2k2xqJjlpOHyVKaAvwf6R3lfwl3cEJXeqG(b5dSuX1X6okBqATHDcfJO2fQh224hASjjns0pXy1kwsmtlP1QtCJkQqfOLgC50g9Z3BIYEXT)Txs5BSc4z7ufW)ykfnAwT)Q2N7(XZRVQ1OAsvFzNXS0k6ue4CypR4vqAcZ9VIirmKKT1nBtIj83135TE7Ig5VNrNgVjG124p8d5UYV2ZC33XzZYDFj8G4paZbJ5gM5VNnWpWWvVCf8FGEjXuetT)uU7Baqhuh6YxB(pa5)WrhN7Aj6keU7mZxkD)LI9bd3)Izf3n)95Vx4Hadqjn)lw8JY0QhhSzXHDy2F6PMS6hnrdF(cZjD5XVC6C1gUlXiZ8hON0CYbJJZEmMRsObT5au0toqqoR2OcMvMnAZ(QXjRYEzlxSKHByHxswcTsayynpKmM679m3M0582k1()UCBqYAV9zJCmBVjlEOZqnQUfiu51IbRAFmhhNWIchZ3c1Id7z)tlMnrld9flE1rLE)vz04xYMr1KxSx6)goWA2iMtvsXdHqS)YfZkv(VYppowJo)wgetzyjOXmMTMAYU764iV0JKTrRt3tycXX6vQ)lwacxyG3KX1M4mLszxq9ZD9zLlYDXB2ajCJykiFWumR0TpYNEQthKLUGsMMrzZIQ)IuVw7UbiOgwhnoPoLQ5IfZgHEASV4Q1UpS82LFeOhx(V(0YBVEjS29wvRDWqFo(CnQriIvFgIvUjhoNJM(IuiBNx5JeGx)BqsHpu8MBK5lA9rBOqQ6CjfpmlfydP4ThZE1dl4VEd1jHt6)fKOq11VSc1AuHiIn7kn9ATp5Usi3DPYiwv7aLi4fNo8469dPq1uv8fqunp18jtOqsPUVKM2k6WBI(U7MWDVlxWQtxWm9PpADxU7NV52F(x)mGD(ilUdP)qG)hFtjns5U6QPanK5I6gvo8avnKxWoPMQ)0JMCqvxAATJ6fX2oZUdaBPH6AZvluk7TFKkOiQp3CsVhIaSUOvHFVx9hLFxTrKlGnHOxM624RIw6A(FKgUkGn2eoUaqsK5ysIA5Wfg78bxDorc0Clur9DxzTuUjDEh(xZ7rbbvr2YpPKRytSYIf87NalibWsfi61iGPilKpQMGRIQC7D2CT8AHmsM4Bg9EMw0BTv2lqLoX1NAwlXZiMrYT23SFDZm15(AxSKd7IStRpzD3v3iLGkTFrEkQffkEJiY9bw0rAzRnVvSHB2IlfIrSwIRCMgDH9Dj5rd1FBdPorUJ7S7WL2Qy3tuBRH63watdIINLVAHlLBROTGvVBarcBFTj3r2bAjAsbh58EuXZfIPteEVan9VoPHryatx4SNz(0thwC9PNmuHaHUvFo)hvCmcnBj(af7lBKaQUa8L)NLx)P7wwdWRp4hg8(Zy0dy2rEL7(pHiQO2tT5ASBSNt8BBdPg)2EuviGE84DhI3wf7oeVTggneVTG7bmTTkEUGPDIs7fmT)yTgy6aM(VaW0bWnDHPxxFovhwCqvInZj1Px1Ps9I9CV)t4hL1ut1QSE2X1vFdTXjg03aR)woL8VUF8NQfU6Z3us2oFTNQfD0j9QfxZXxm2ZQqVQk)Un3HXot9yRpgenpx6J1eLr9Jj2wwBZ2qcUN)(lS)Vd]] )
+    spec:RegisterSetting( "mm_gate_barrage_on_burst", true, {
+        name = "Gate Barrage on Burst Window",
+        desc = "Prefer using Barrage during raid burst (e.g., Stormlash) and avoid using it within 3s of Chimera Shot or A Murder of Crows becoming ready.",
+        type = "toggle",
+        width = "full",
+    } )
+
+    spec:RegisterPack( "Marksmanship", 20251026, [[Hekili:TRvBVTjYw4FlrRUwoQjU(100v1rknRRA6vB2ElP3E)KbmmoGcgyhgIBKS43(9mdWWamdGDs2URu)qITHzoZzoZ5558cSC0YBxQzBsqlVz8WXZgnC8zdgpz05JwQrEmeTul006EZ7GV4BUb()VBIVpAJPFKJBi9Mp6fyAtLruqm2cgWsTvXUEKR9xUsQGh(wySHil4YZMUuZX12gLowuK1sTBDCJsmO)zMyKT2jgbRHFBrCd8tm8CJiWTxhGtm(i6Exp3bl1yxKQgbHiFeg(2nSDgY3CLhYE57xQLoFyXryyme9iIR)DPll2nm9EFb9NXOicYgwsSnc)RjgAyTeJlsmU83dUI9LR(Ti2NFaHFGQdVcUKJ7ge28KedIdcurncY0(r4tNaqR0a5tqyxZLAhLyyJwfVE9GsAXG4WLeWGurJlMhX0dg8at9nXu1spyTUfoyB0G8rZ3D1gcvWtAtWreZnHiBuD5LFhQyMsft(nWMHU26RDXirrdJAMc7UJPVDjJbZouigWiKy0lXWkiWZoyR)GOh9ndJq6rHyWgfnatnQGg5fqYLgSCNPCVvx(fkZkVGa4YX4hPY4nTzFwZoRRBDsVoveNlABSs9h0JCOQAjRZBvUupycFaxgomOBu91bwXr6y0AmkYr8aHDxMOb5nAyZ7)isaEJNzKt5TVjgtb1ubufNuBZFNNP7diDsqe3FR8bL4aWPE(9Oauq)bKY8eJrZkwAHbVKUd0qFhzftq6HoMriza3cfQFIbGGY2xfgjMNZUDYUdgTX01huJ3bQX0eJJzQgiexF91EU35quAzh3Xt0jIJdOJ8KnOPk3tnqjOGYscgRYH(gtyVG13KXvtpuSe2OMWEXMVpvdGOJhoQac1nUOSJYPfIztShXLlM9edj6IqpBMnujQ6hLVzdyvMvM4GPN2arlW6R7edQtvdn2Y0h1fSkh8ZoBuDu1awvyhD2Wu0q)s7ZPtkBye9OlGj0rMU2deGddSahkDcmbbeKc6787Wyy9IJiL8KRAruhYRlyu4g57NOMzoEIbqh3PiFLyc4bo7krqNGjNntgmrnDqMqTbLvFfcofRVHlUxZSbzIY7r)VRJJHak1Ke)wDIpqc0vjsSvEGWGTimZvTMO43QziDMGYImwY(3NhzPiwkhI1gGkXOcWRUpyLbdiSJLhQUk)HYuR2ZCOQXRKlycmR7rKr5ZG)Bzy3ktACLjnMnPsyeHSWkJsgvkvZvW5hcFplD9YdRjhF8DiYahKPhXzqOfjf)moJBmlKB9ZcrYQWa2NmEgB0AtiExNyzICHpSa1vx0JK5fKPwUr6ukv2oItyuAwCwhjgyltiSt6p0Pf(Kw(JEAbA5rsAlXFgzoLUFChfCbtBZ0ymbtT1JecPJJ9vk4Ss2ApTMkbB4z8jputJBMvXy47BD9HDuB0E1CKay65d7(c5NLABlKIk8x746uolAjuMDskrGreOI4sHuXs9p0SZLQUhuI3Q973)eVv7TxoBWUM32ivluRX0FrZIwTpF3s6vDS)dll8oubEZjHRolEHe1MoS7(YDlT(3oSRoctuT3jIHhKGLdcPU8ckA(OPFZlgXW4Hy0d63zzpyKyjcmDJFRX1UvlG)3WY5PsV4yD(OOBAFi1wSL1ITTqqghZhG)poXik2Ycff5s)zPEVbfZ4BtxH3aFnBbhW2w5eEY61IKqVDYYiCyD(mbopjXTEbtCSKr8spVGTjgxMYJOXonCmX2Nst)GBmD9PAkWZ)AhWr90S9bT5M(0jaXeWpaeG0dy3aW38XSUG2)kTxFfvtGvERlXHkNjLnWPqjMRx5Gl)muYFjHsOJVZ9WzVYcQA6jfT(Qlv)9ZUb9ZUb983niiaKvWMvMTuNwUwzsFque(zM527f078wgvAmUyiTz2aZfCXMPMWKfizpvcjJOqfkg2MGhkvlPIz0mlg4HaH4iS(eqPD0n9Fm13POQ1vayi)upJAXg8iOU7qr6m2QedWRzOy1UuxfagPB7IyHQebzIZSzwrzmzc1UI(EOxqedWcUHntkY3MPv4hvifEj)PCHsaELIjqkvGxB(C7FmINEOPNyK0Z2RiP)1esRBSJ)DTONdlyH6qFDZAOo4vxoytRCaGP07L948PB(TMyFkoAP21BcdWSNB(BR8K6hK8jkVCWAxAYY)YVKyi(keKy8rgbqIXPWnc(me6FWSbdt(eDGFMIQoDf8pqU4aIjvS)AIX7biheq7IZh(VG5)5JpbYSnn3s4QJhEQW1xK2we46VBC2vt(uYNs1qa)NhV4vZFDDE4tCxp)i1C09oQBHi6YYXNuRRzlre6DuASa5lQiBlDL6xJWF3UYK9h3tbn)8H9QtVFXOzYx4YSZ0LUmD(fZhlFIPeY0juL0wHzL72tpNPErxt1zCCiHpbyyLB2kv8n272E16BBU0)V51tlk9Q9y7eATqZFOyOWeFXkVTWUWxqqLY)EQQiRS3tccP24ty1ZoVV8Y87jVe)EkdJa62XS97pKkr7ITG5XuzZZw3lMF(SD7QNy7UD9BmV5lM0R9A2VyYXhN7dDzmjGzgkc(qpAxZ4fh3bpl(SyoYGgXGtPc)pyDxNMA3FgdE2uQqyFqxRrdPx1kW3gSAcRrLE1NUePnPpx(VBom5Sf49XmPL2H4OuZp9OnIs7IwVgiQ6WwqSnZ0vrMzVwLe5QG0afDAnZsDlLaOsjUq8L2LrP(UlvmVB(4oiNsnhHF295f3S4laAzX)5RlU5QfWz3hKD2XOtE(FZ1kqpPN(uEtXmuzXQuKuRK5wdliq7Q8bZlthYEY6IS2vE)1KmRcFjj3mocIIsqBoH(elNZEUOYDc718twvIOlEgNYLOKPK2XdHTxLMLuFgI0qsTyCMAQuB8nnt2wi9rqZ1)sph86dxivyH9GK0T7Pov7EzmW08jYOz(6x0UnX4BxFZV9hFdacFHAebFzWk(63NZjKxuAbF2arIL6MI(hjR0OmQg5XZMECVJ4zmRCDKFIuvz2F0ufjuKUd)0rAvwDuaLlMOxZH5MpsPuFUDboaLx9KkQSIBZuvp2Z7kxX3JT)a)PHDXFQIwNzBE7W2oJMiGFUbIu(Xl1wiw7eRWRRy5Eycrh2W65JqsArPxpeowCHDintltGPi2JnQY4SSOxhSJDX8vIEewINmq(mLa5Iv5GWxQMEdUjft5fe6iOxhkg4jT1QCKjA8t9r1(Q2TxETGBQqX8mhvnceAgkAqilVS8nRuff9iMagkAcVCLPuowplUqkIfuDHK7oxtD2FqtvrS)URvLqXdeIkH0OPffPpv9e5p(N2tcU2CBjHNEzmLZAqeVuWMAw4dc5085KkWtlRDM2E2qOG0SVpDsBXdsLT8hNZXzDxQCgVhjPSRoIOQJWx8)wC1xVDrbcVOTCu893qSEEqRE)FdM0S(eWxUsfB9scGRUqYbWvhfhc0GgV)y8QIy)X4vLqNX4vN4bGtRkIxkCAnR0bHtB2wRcN2YA)3aCAlaN640Rk6dv)SgrLwFNqgF8Uo9QNCT9IIswH6I3pVwF53TJUONnt(0lEz4fer93EE5tM)(Vlm3AVU8YNANHfYNo)DCxyY1EL4LpvHI7L)kW3RFTI(Fg7aQmvsr3y6ARxulQ8xF99ySJvy14D1rX95VY6QoWOxtzQs7218lOEmXjaVutBt8AS79SNp3Y))]] )

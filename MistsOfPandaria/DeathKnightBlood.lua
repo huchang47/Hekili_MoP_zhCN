@@ -1948,9 +1948,18 @@ spec:RegisterAbilities({
 		cooldown = 0,
 		gcd = "spell",
 
-		spend_runes = { 1, 0, 0 }, -- 1 Blood, 0 Frost, 0 Unholy
+		spend = function()
+			return buff.crimson_scourge.up and 0 or 1
+		end,
+		spendType = function()
+			return buff.crimson_scourge.up and nil or "blood_runes"
+		end,
 
 		startsCombat = true,
+
+		usable = function()
+			return buff.crimson_scourge.up or runes.blood.count > 0 or runes.death.count > 0
+		end,
 
 		handler = function()
 			-- Blood Boil base functionality for MoP
@@ -1960,6 +1969,9 @@ spec:RegisterAbilities({
 			end
 			if debuff.blood_plague.up and state.talent.roiling_blood.enabled then
 				active_dot.blood_plague = min(active_enemies, active_dot.blood_plague + active_enemies - 1)
+			end
+			if buff.crimson_scourge.up then
+				removeBuff("crimson_scourge")
 			end
 		end,
 	},
@@ -2198,6 +2210,17 @@ spec:RegisterAbilities({
 		toggle = "cooldowns",
 
 		startsCombat = false,
+
+		usable = function()
+			-- Conservative gate: only when we cannot cast Death Strike (no FU or death pair) and RP deficit is high.
+			local fu_pair_unavailable = ( (runes.frost.count or 0) + (runes.unholy.count or 0) ) == 0 and (runes.death and runes.death.count or 0) < 2
+			local rp_def = runic_power.deficit or 0
+			-- Allow slightly earlier if Vampiric Blood is up (mitigation window), else require larger deficit.
+			if buff.vampiric_blood.up then
+				return fu_pair_unavailable and rp_def >= 30
+			end
+			return fu_pair_unavailable and rp_def >= 40
+		end,
 
 		handler = function()
 			gain(25, "runicpower")
@@ -2621,6 +2644,13 @@ spec:RegisterTotems({
 	},
 })
 
+-- Ensure death rune container exists for consistent counting across APLs
+if not state.death_runes then
+	state.death_runes = { count = 0 }
+elseif type(state.death_runes) ~= "table" then
+	state.death_runes = { count = tonumber(state.death_runes) or 0 }
+end
+
 -- Convert runes to death runes (Blood Tap, etc.)
 spec:RegisterStateFunction("convert_to_death_rune", function(rune_type, amount)
 	amount = amount or 1
@@ -2635,6 +2665,35 @@ spec:RegisterStateFunction("convert_to_death_rune", function(rune_type, amount)
 		state.unholy_runes.current = state.unholy_runes.current - amount
 		state.death_runes.count = state.death_runes.count + amount
 	end
+end)
+
+-- Provide a unified 'runes' table so APL conditions like runes.death.count work in Blood
+spec:RegisterStateExpr("runes", function()
+	local function readyCount(indices, acceptType)
+		local c = 0
+		for _, idx in ipairs(indices) do
+			local _, _, ready = GetRuneCooldown(idx)
+			local rtype = GetRuneType(idx)
+			if ready and (not acceptType or rtype == acceptType) then c = c + 1 end
+		end
+		return c
+	end
+
+	local blood = readyCount({1,2})
+	local frost = readyCount({5,6})
+	local unholy = readyCount({3,4})
+	local death = readyCount({1,2,3,4,5,6}, 4)
+
+	return {
+		blood = { count = blood },
+		frost = { count = frost },
+		unholy = { count = unholy },
+		death = { count = death },
+	}
+end)
+
+spec:RegisterStateExpr("runes_by_type", function()
+	return state.runes
 end)
 
 -- Add function to check runic power generation
@@ -2942,5 +3001,5 @@ spec:RegisterSetting("use_army_of_the_dead", true, {
 
 -- Register default pack for MoP Blood Death Knight
 spec:RegisterPack(
-	"Blood", 20251014, [[Hekili:9Q1EVTTnq8plfdinDltZ2XonTOUaTR7r7wlkG62FkjAjABUijQjrLuxyOp77iPEqkjkjNMvu02ysE)UJ3BEooZD(KJDaIHD(WIzlwnF28LwlwS6QvRCSzhsWo2ji)Bq7GFigfb)7RdP0a(QhcPOao1z08uFyhh7n5Kq2BJD20dKZxnBoC2eSpS8Qzo27jbby5zXz(o2FApjRWJ)xuHxjtl8OBHp7Zi04cVqsgd2ElnTW73X3qcjwGGKs3scb2)DfEVbJy7l8(JyYU9SNx4jK1cVZFp9JpP4DfV77GZ8XuSpnAdIv8ojUzwjvl9dR)PnCsCHvYWX(4liBx)On5B3APVUvEIbYPXy3S9eCyaNwjPnRzfqVlUFk3ttJDPBDVJeZWP1eRV8a0NIizy3amsW4hLGzw72tZdT4h(wC)eLqfA2svZpttbn(VgsVR(0WzIiXbUBtX4VGvxgfZirODeF4QHddViabFcVEpgfY2BfH(83pZ6YzQu4JcdDLF0LBkVG7qT(wukbTjeNn(r9P0qUciJFdROZkhU2(btG8a8wCCgOl0oBAEC3JIOctVu15IJXreC2lxVCucZiX7cXUmu6omRsV(31xrpsCwcjfdoLBou49Hx9BfEG2lbN2itw1AeGjv)Se9YR6f0K1zy2f3IcZXRNpfkXFg7NZW6ukLsRstwIp7fRVC1uqlgJdCdOSwsYJGLQcucr7YXwmI)nGg54rXwBtPzm3T4Bbh5YDMc3IimYoKqrdrbGdGoxjXG7maLR0d0DfyOA5fE8OYDC1Sk7Y7r)dpvsLBfykqXbHAsvTl39l1Gg5NuQHUmEBE6bnh)o6LJhR3R0EBapWDdNYv)pm4LhVNgEGNJi(l6Iyjzka1Hj9d5TOiiobsUiU7dlM9JaXhVHMZtDrtzewEGWInQZYsDNfLmyAOZZ(5QM(BkyVyv)Gbzs4PmsMii6cObmdqX(CyeyFhgLqJhZy3oB3LgU6Prh4vKy7Bk3aLcWRbnxzgf(hDzu3ac(LRNFTbDipBgHHJY6FBzTPXm9Yi53uLAVWdcdf9Ju4LfrPS9AHZnLa4QiE3cUzSuYn3lFJRMnrGpNBeYSKHjWDmpMbQLZKRkskwV4toES80cqQwFXtmWkzQHsFhgkehxLbgwZchZvBbNPKMYFp3ezLXGgSa(n7Ss2j2vYoUHSJS1SO61y9mtcMSaGBig7Vxr2uxUw8QTV11vEaKkPJHTOECH3NKfK9EZhTH(bN)Jxw4j9vZuUaAfVH7anNTjfJUrZhSwgntx5LSXbWyHrZyq8parq5sL34vpBtoede6cYEISvY2jKpRxpsZWv6rts2lJilTMQlxBnbOHSIj07WPqhtGd2PuGzaRHKz(uIizRgxE2SXiRXwm9yrZycjbszDWuXzfOUYXuloEuvCVxVRg46DFE2qBmWrcg1UwHImWJTj(eM0G(vhBAsqecGMATrjCzDBBVI(lqAEkt4jbrZl)H(cMHw4pHqy5PtWzm4TKLD3zkO9SrJgLOjTOqlLqzsF0H2BlHEdyWBVZdH7LQi8158RIuVUNQ13lVaAEFT3DyRSJnOsZGJxp9Gfo23HsJbnCgFkbq2Cc4WMYkNeWJ18IEmVdG)nx(gRmAeCAuoJgHy8fGQFX7G7AX7(tsmS1QNx49xXz5jC84hqkPaOQP2ESf31Rhox3UYdfx16K(X1eCTrcA3hQuuFBu1bFARPNaB7ydIgyHCSTJY3cwbhBXwIr5OQkHf(Gy8qLz2DETJTFk0XgegbwPortaWcw5yxf15WaJOreum8fEVCDHh34xbHItchLlnIYJk8mfO2GMwfzoElhdVEIVBGRU4mhQvJRIQE9K3zGFsNqq5LFEd8kfV5m4kJmyGYWv8sxdVCMy9Zl8gONAVJhv2Vw2FsJaQYqUe(0PBJF2S2WWZPWb56HaPFvMIcvj7vh9PAwqoNE2iCsjtBnJ46KozC7Wj1m3ConF201mxzuZm3CuOPI9kIK2Mc4Muizvj)2oo9OIG9NPQH0SfT3u3mk3vX1QNErazMXvjBr5H9MuQIwLjvQhLiEuQpckUdrX9KtQcGwZ0Kpf7iXOVBnpP(YivHr7zpkZU6khEE9qUgohu7zBor0Rlh1xAPjHqZt4goXdN(Mrfu6IOL82ilGEa6lLXuivV6KWROEy2d5xOpGo533qkjrU5qFNbTQl0)0(gUixVJ5tr0A2z4YC3Na9blY1(liqXeu)nju7hvxhLwgLwdQWk044nyldMvHMmvFtuTNAPW2slFWStmE(05q9OAp1wn0WTdFB4GwlNdh1pf40hC7Wnh0DGBYmjnzBl8(EOaH1YYkindFRW7f69l2DCVd3tXK59Iv61hu72E4Mjobw0)1BLJE7WmuYinvmMJwF5TVuPTJUdnEK(p4t6vTgF3bax2J01k2Q2tqUPPKANYQrdRNQ5dZVprXDsFjYzXRd9)8dCmo1pERuJ(iJMHruN(Q2oPpzHwkPLQhTzkdToL5Cjp0nbBoHYdDJ9NW7qUE43HyOOQUkCW3rm1N2Y066AqpYjNqXq(YUVWOr1z2l(8bEZ6G2jOVEPyCUrVMf99SYj8OFtFthc5XW32rPu9T6Hm1Y2WTgmW3lIqq7zOLFBKFvjs6M284LE8sPqtCzyMAJaYtZ)PWC4)MlwRSv(Qh20JN34i153BbW7ETSEzdhQALQh)OX5WadvsQchAkrnYqtLJE8bgxkMC8(L9hVZ)TSQry6wxKv)hN)l]]
+	"Blood", 20251026, [[Hekili:9Q1EVTnos8plflqq62C6SJJttpuhGUB372Tl2IcOE3FkjAjABErsuqIkz9cd9z)gsQhKuIskUPhkABmFmV4m)MhoEl9(QNBeIH9(81lUE9YfxFRZ1RwD3Y78CzhZWEUzOWhq7HFifLa)7pftPr8vpgtrr8BxqlZdHD8C3wsIz)wQ32Hj5BHZMHdHLxVWZ9ajkclplUi0Z9Rhifvb8)IQcQzAvaDh85qgHMwfetkyW27O5vb)k(bsmXbeKC6osmW(FOk4Jye7qvWVNs2FG9pQceYAvWL)b9lVU6tvF6hGZ8LCCinzlIv9jjDlCYAw6nB(7B5xXhwPaNgIVISBZR2wUBNJ(6oLzwUonf7xCGGJJ43vE1U1CIOpLo8npqZt9P78FIKYW5TxwF5rUFoIuG9JWibJFvgM5S)aTm2HF4hXdFPmQWYwBA(zAoyX)NX0NApnCMesAK)UCm(VWQlJszKe0EsiOA444RIqWNWBoGrXSdojO)8hx4SAH6ncrXX(Yp6ZFkVI7qT5ruobTngxm9rdP0yUbOGRHn3ZPeu7WOzC9i8oCAbyl0oBEzA)JIOINEPPZhNIti4I73CZKxSGKUpg7Zq57XSg76)PvfdiPfzKCm4uU9yvWN)W)QkaSEz48ozYP1IamP5NLuVwvVIMTPaZU6ruCjEZY5Ct8FIdlzy9BkLsN6NSSq273SA9COwkgh5hrzgsYRGLAcuIr7lXoms4dGf50jXw7YPfm)D4hbh56DMd3simYEKWqdrbGdGoxjPG7mqkFPhO)A4HYWl80jfDC9IM3L)a9F5qjnUvWtbknkwtQAD5opObTR)SGg6Z4DL5h1C87zxoDQDV63Bl0dC3W5CZ)ld9EeLao1asGqqhNMdtbsiElTKJZqZzewzKW8o5l7n6VSkWnAu3eQAoK(61dtliQNhENntIOlFwOzeknKtgbTFcJYOPt9WyImTYIMNNCKN9GDOl1aylWBadxD0p)J(mQFebF)ML3zXeYrEimCsXWBlZJm1lVmQ7JnWWvbqiJO2HQGIekLDql0RdUMBI4z29ly5KholxJBxmtcFj)rOWPm9an(iOJLPmWSCHCvbaw7IV(0P6tlisZ6x)AlSsggx77WqX40g0synhCk3SfDHcKs4b(tKtbdkgc43IlQzNyxj74pK9KTUfvvJnlSjysWA)ymo8GISPUCR4zbh)cBq)xCP5nYXjiiniKR50PE3sDtr4aiOKqsTzv6a5kYXwf8vzs2Gp(fxOgVL)TvvbsF6cffvlHmOR0s22Cm6bnF128z2VxTXOZrXAYo70GeEeI0kLgz7zebv8Fxa63pNtsk4196cVF58IHHADd5frKKGJiqb2XhRRgMxEwvGmwWo)L(6qooWQgIo2MfkuYi)cjF0YGzsdPgVLsIpRRdX7X(G9ptwIRz(Ll65GFVA9nMut4H09KaFeW4ZOpHZVFZ7wmLHq7IZmM3onbWMCwpAQRjnHLA4fNP(D7i6350lHjnWjcgzMusrgCAJnVPfAsXA9MjGGEok7Q2A2(a9xG8guMiZce2FZBgkQhQF)zeRlpTUNDngyo8rEAg57Oki4GGDtwLRKvz4cg0ZAtvKVW8s0KlHMdjG)RXGruqoewvt4dPSEoGgdzqN5LmyNDAAUZlr8NQi8THoiP0yU0QvAvRbAHNphATAHNl4cuahVDMlR9CFcLNcEefEU)gemNZ4TD(wJXP4u9jpxujdyUNRBs5oGbEUITeZ2rnifw4ZI5fv7B69tEUWlkiSeeia9IWaclyLNBtKOhdKpRu4vGpOfV9osPLiMtVvtrVbcs6ixBozoPUXGunhYWPuoXQCsMC3VLK1QIRLieUGT2QoA7sTYExedNq3o9ZxtREbxaaTMbrvb3VPkyzh5vsOZP)BTsFfhwjrE3IoQO4CZPYDJrfJyXAjsrCvIj7jUQX2Co9Uj4uFvVk40PgoPGJ0JtQ4rCoTCX8nn3A30S0EaOTC8kYK2McYzpACGm9sP7MfcJ9LdAVFtZQ6VrW1GB96orzGYleYJ9O5EwPvwTsm(d9ouzChKvZbvMMPkFgaxQ5ggtpGpABzKRXqMgclQHgMdKuIW6lNOE7KVgccAGa06PaotQ32M(q4iZIcD9koocc)(DZKO2xr7jYklGuCdHEmNRQNHs823oH7HsyPJl2m1odi9X(IemYWm8iahpr3GZ(tr062z8eCNteVDhmqzm)wduEcA)6fA9JAZitRdPvIMyQoEJw2GDtOTNQ)VyAhzowIeaMPlnLw(0ANz88ZNdTZVD8AdSZHoAPp72XdW7p0nzqEhqyvWpca9o8meCvOBaCvbVxhWU)eFhV8HzZBEHV2GUhT0INbhgw7wBKoIHYgVeJP8agcqDLsTm9hB8efAWN1BtUyod6pc46YyUt5LYCgYDvH0CI2HdBKrDKIlMJRznUIamHNG47C3hJ1fUOGhRd8RzZrB0qVo8rBA57SK0n9HHaOA9UgTNNVHbm0dTEGUxgfw7CA5XQwP5W(w1JQqf9tnv3jVC9mmv3jVC9b9C6o5UP6oXsXhZgC4zxPFt5PJIqmB8DlzVuBkZ08zxxUC4(HM(Tc6wskgxA1Z5AToQmLj7qm2(UNeYJLV)PAPYO1pnx9U8kdOtMBor7HTY241qnY3u1yyHtdIEz)7w)vtb(cCpsPUy77Vs7qcpwToO1F4uLEPlDxhHd4rtbKUcmtTeo5P5)uCj8FlfRv3Fut3Id4LonL69BisTITwLdn1NoGp30CyKz(jTEJneVozOlR)a(ltlfZgBy1Wyd8FF26eM(10WA)J3)l]]
 )
