@@ -621,32 +621,32 @@ local function RegisterMistweaverSpec()
         cycle = false,
         nameplates = false,
         damage = false, -- Mistweaver is primarily a healer
-        package = "Mistweaver",
+        package = "织雾Simc",
     })
 
     spec:RegisterSetting("uplift_min_targets", 4, {
-        name = strformat("Min. %s Targets", Hekili:GetSpellLinkWithTexture(spec.abilities.uplift.id)),
-        desc = "The minimum number of players with Renewing Mist before Uplift will be recommended.",
+        name = strformat("最小%s目标数", Hekili:GetSpellLinkWithTexture(spec.abilities.uplift.id)),
+        desc = "当拥有缥缈之雾的玩家数量至少达到此数值时，将推荐使用振魂引",
         type = "range", min = 1, max = 20, step = 1, width = "full"
     })
     spec:RegisterSetting("mana_tea_min_stacks", 10, {
-        name = strformat("Min. %s Stacks", Hekili:GetSpellLinkWithTexture(spec.abilities.mana_tea.id)),
-        desc = "The minimum number of Mana Tea stacks required before it will be recommended.",
+        name = strformat("最小%s层数", Hekili:GetSpellLinkWithTexture(spec.abilities.mana_tea.id)),
+        desc = "需要至少此数量的法力茶层数时，才会推荐使用。",
         type = "range", min = 1, max = 20, step = 1, width = 1.5
     })
     spec:RegisterSetting("mana_tea_health_pct", 75, {
-        name = strformat("%s Mana %% Threshold", Hekili:GetSpellLinkWithTexture(spec.abilities.mana_tea.id)),
-        desc = "The mana percentage below which Mana Tea will be recommended.",
+        name = strformat("%s 法力 %% 阈值", Hekili:GetSpellLinkWithTexture(spec.abilities.mana_tea.id)),
+        desc = "需要低于此法力百分比时，才会推荐使用法力茶。",
         type = "range", min = 1, max = 99, step = 1, width = 1.5
     })
     spec:RegisterSetting("fistweave_mana_pct", 85, {
-        name = "Fistweave Mana % Threshold",
-        desc = "The mana percentage above which you may be prompted to enter Crane Stance to conserve mana.",
+        name = "织拳法力阈值",
+        desc = "当法力百分比高于此数值时，可能会提示你进入鹤形态以节省法力（俗称织拳流）。",
         type = "range", min = 1, max = 100, step = 5, width = "full"
     })
 
     -- APL Package
-    spec:RegisterPack("Mistweaver", 20250816, [[Hekili:1AvBVXjoq4FlRQeQv3vUf2KM2tH8H7(sBLA)c9ZgmWWUUlGr2MSDRI43Eh7LS8oK70DQQje7zEMNz88gXH8nIFcvbKV6U192TV35D24hoo7i(QZLaXVKgFKUh)OGMJ)8lmP6eqFee6RoNXPjAiK8krmE9hz5aTo8VRKkEoXpQILP(ubjAAJ4s8PvQdCrJIe)dSKe4I8GmM4)TdmzDO()iQnuPoKNI)DSIXlQdZqcHxNYf1HFeoYYy2eFZHgxdsPvzk8ZVAC1lAr8RKqatb5sIpuqJYGeYFrui)6kuugNNeKwjopqQD9KcesqCKvSFGu3OLQ9e)ybArbd9sfndku2Xhybrc4KDJq1Hw1H4H250Fuh(wZ31Hp4vh6AUsBXhHaOaYzG8Yn7m3evLMANxjJZGGCiNloBxvEbooplHFQO1yXhOI9A11426gpFVM53(syUIlkHeEpYNZFeJdgOD6dDJ0A0F3lb9tyk2Zq3hj9nAyUBny(jueilpacOhh30eU6CDvzRjApwBK3VMrmHTkHunnznxPb6dZc00p4TWiW37tyuniNDbkNT)RXc(rjKfGja5gGCMfitectRlrFug8tGMzlGCkRaZBU)58XfY6MW2rzy5lVsfCKfF0yE3Ln)JmmgB8APDmVQqzYRUDHQKwJjRe77fZ2nRTMVQAsJ4mNRRRYm31KziQKh0u470eiaFat6LfAaySiAq64fLSIcTaXcAb0g4MVZY)5oZM19N15789tgY37V2S7FoFB5X3Prg7oFNMPquX2dIGs(jq06)tMJ3APgDOzxkOMVN0RB8c0K3uh(0tl1nVBB)38syX4sR57BTESCb)7dDh8PJY9M4PWvceqmppI2oXDH2lkkwz3psNb7PXNd4PbQdySjVeeCXGx3jLXyEKa4IjsTunBAS9oI)jQqNuIJ6)uEjxO0vGUdwGWU(ZAYZtzz4wmV6v1HFHxC8pXFDDFN6pR)3fTK2xD0FZ7pMKq)ol1BGBATIl2bFe1RRO09W2vs6D61vq6E6Zt01mzMnoSAQYEl(7h8CT6Nt(G3oRjZpSMDRcp3HmOzW)asmy5bRllo45muB9W(bQ2DZGUI3o4UJcJ3bWAZ4P)JIA6P2ddBDhY3vHEZN1k1pM2v02XVllxV652ePPghFV7CprJqT7mXRGoAiR3TwZtSjAWRrACAtpiCMIIMcI1gTyTWyY)p51M1iwxJJ9bhBS7XQPxMX6cvB72MeKR6nC400V6lMe9AepVBE6PjJk4d9BwhZ553sAzguilHySR8DBn9Pj)6]])
+    spec:RegisterPack("织雾Simc", 20250816, [[Hekili:1AvBVXjoq4FlRQeQv3vUf2KM2tH8H7(sBLA)c9ZgmWWUUlGr2MSDRI43Eh7LS8oK70DQQje7zEMNz88gXH8nIFcvbKV6U192TV35D24hoo7i(QZLaXVKgFKUh)OGMJ)8lmP6eqFee6RoNXPjAiK8krmE9hz5aTo8VRKkEoXpQILP(ubjAAJ4s8PvQdCrJIe)dSKe4I8GmM4)TdmzDO()iQnuPoKNI)DSIXlQdZqcHxNYf1HFeoYYy2eFZHgxdsPvzk8ZVAC1lAr8RKqatb5sIpuqJYGeYFrui)6kuugNNeKwjopqQD9KcesqCKvSFGu3OLQ9e)ybArbd9sfndku2Xhybrc4KDJq1Hw1H4H250Fuh(wZ31Hp4vh6AUsBXhHaOaYzG8Yn7m3evLMANxjJZGGCiNloBxvEbooplHFQO1yXhOI9A11426gpFVM53(syUIlkHeEpYNZFeJdgOD6dDJ0A0F3lb9tyk2Zq3hj9nAyUBny(jueilpacOhh30eU6CDvzRjApwBK3VMrmHTkHunnznxPb6dZc00p4TWiW37tyuniNDbkNT)RXc(rjKfGja5gGCMfitectRlrFug8tGMzlGCkRaZBU)58XfY6MW2rzy5lVsfCKfF0yE3Ln)JmmgB8APDmVQqzYRUDHQKwJjRe77fZ2nRTMVQAsJ4mNRRRYm31KziQKh0u470eiaFat6LfAaySiAq64fLSIcTaXcAb0g4MVZY)5oZM19N15789tgY37V2S7FoFB5X3Prg7oFNMPquX2dIGs(jq06)tMJ3APgDOzxkOMVN0RB8c0K3uh(0tl1nVBB)38syX4sR57BTESCb)7dDh8PJY9M4PWvceqmppI2oXDH2lkkwz3psNb7PXNd4PbQdySjVeeCXGx3jLXyEKa4IjsTunBAS9oI)jQqNuIJ6)uEjxO0vGUdwGWU(ZAYZtzz4wmV6v1HFHxC8pXFDDFN6pR)3fTK2xD0FZ7pMKq)ol1BGBATIl2bFe1RRO09W2vs6D61vq6E6Zt01mzMnoSAQYEl(7h8CT6Nt(G3oRjZpSMDRcp3HmOzW)asmy5bRllo45muB9W(bQ2DZGUI3o4UJcJ3bWAZ4P)JIA6P2ddBDhY3vHEZN1k1pM2v02XVllxV652ePPghFV7CprJqT7mXRGoAiR3TwZtSjAWRrACAtpiCMIIMcI1gTyTWyY)p51M1iwxJJ9bhBS7XQPxMX6cvB72MeKR6nC400V6lMe9AepVBE6PjJk4d9BwhZ553sAzguilHySR8DBn9Pj)6]])
 
 end
 

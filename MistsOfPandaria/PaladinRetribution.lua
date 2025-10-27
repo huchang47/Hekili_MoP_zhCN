@@ -2231,7 +2231,7 @@ spec:RegisterOptions( {
 
     potion = "jade_serpent_potion",
 
-    package = "Retribution",
+    package = "惩戒Simc",
 
     holy_prism_heal = false,
     execution_sentence_heal = false,
@@ -2247,19 +2247,19 @@ spec:RegisterStateExpr( "seal_of_righteousness_threshold", function()
 end )
 
 spec:RegisterSetting("recommend_seals", true, {
-    name = "Recommend Seals",
-    desc = "If checked, the addon will recommend the best seal to use based on the current number of targets.",
+    name = "推荐圣盾",
+    desc = "如果勾选，插件将根据当前目标数量推荐最佳圣盾。",
     type = "toggle",
     width = "full"
 } )
 -- Slider option to set number of targets to recommend Seal of Righteousness, default is 4
 spec:RegisterSetting("seal_of_righteousness_threshold", 4, {
-    name = "Seal of Righteousness Threshold",
-    desc = "The number of targets to recommend Seal of Righteousness (recommended: 4). " ..
-        "This setting will be disregarded if 'Recommend Seals' is unchecked.",
+    name = "圣盾推荐阈值",
+    desc = "推荐圣盾的目标数量阈值（推荐：4）。" ..
+        "如果'推荐圣盾'未勾选，此设置将被忽略。",
     type = "range", min = 1, max = 6, step = 1,
     width = "full"
 } )
 
 -- Register default pack for MoP Retribution Paladin
-spec:RegisterPack( "Retribution", 20250720, [[Hekili:9M1xVTTnq8plfdWOPRZZw2EnBikpS9sBEOyyQpljAjABUilPrsLudyOp77iLLfjfPKskArrBt4D8UF3F1DsHld)syqkIJd)S3cVnlUDP38fl9wUCtya)ujomOeL8iAp8d5OJW)(pyoLSTItkYf0oLvGsfYGvurta6bKJ)ffTJxhVz9T)YTHbBRiz8pLhU1UEwdxTeNe(5pSim4ajnf3WkMLeg8LdewDS4VO64laPoUyh87jceuhNryCG8UcAD8hXpsYiZbyrl2rYaW8t1X)nkdLsY)J6yfKx)aqXaP1pu)qJuzZlP4KIJBr8F2)x3MHzms((OIDrpc)p79KD(BR2TBoJJ4S5PfpNpt(7TCkpACHDKS)a)QWoIyCm90ltCLfnwJnA)Bv6(J4CUWUUYbCodJYeQNtR4h6Sf1tBaH4kpHJW54Jem7UwoOcyJlQy5a8I4hOy2HIS0znk(n(lMjbbO60iXDy(GmX2qGMK6HenQ2q09(JbPXasJ7tO53EXJxuKMvX4ZPyGRZNBogLNqahzuzXZy68QYMWd6jC(ErO8zkcCzvL3C(mhr3J5Z5KJ4iErukbFN)6f3OQts()vryeDfRCO0spFU3Xu8rejNDNV3nZElyDNAGZ9(RSQ2ooEN3IlIlL8ejhhvwrlly4gBudB6M01iIkmQkvVW(kenLGYfbHwVKEnI77krOuJyQGDokdU(C1JNJZrqvq6S(Ejik0zIcNIQORy4ichF89IwwquNK)iMVuOKNquIqKZVCye7uEselRG7VCMnLyldqjcPtaAiK8O)YjagVraJ33jWiZWJ2vrpPDkMYWurGtlBGMGYfjuuQSnshf8xXjY(OqDvohNNGvcG9joCy81zuAwvMO(NfDabf7Q5sAN)DhfxkVyGd7OaeMDR8uRB93mqrzBJhTAbTmEOSFyLRk7eAfdLcIqk8zQGqveqoAzgIYIEcdf1jYhnzbWdcQXKNttEMDkn98wR13qgnfDCKDPuj9mIWFpdN4NuaT)HO3CdMBLOakJXZ9lMngl35VyU3Rmky)zitY)n4T6Gk)aU7jJ2si1CRTJlmnT0AmGPsjpIhoiyWS1GGdEudcoyPxqa)1cAcH5Ogu)e4XZnrck0(LtW0LBI8kte517ZovEqmwglQvITTqS53g2f0YLvB3KOQrBs7BiLBs5w2QnT5Ch2CV6WSzUMevnxtA9mxNaxjaUUjaAePx)Y6v7AaS7xpj4m6nBABsVKNQo8J8W2uTWaqYm4ox2B6dEWAspJO5IPScd(0XYckhYiJ9m2jAE9dHbiyy(cAyWhHjdrHbscYf(W7qvzC4h)SCbWwL9NHbjuyyfyUeXIB7STxqD8Sgv15VQJVRoEKHXLxRzhH6434xhVqEIXi61XafXy6a2LwdSDOkcc5GFyAiU)(dwr(9(td6thOAsra4vob8BRJLy2yXJ64ZNRJBjAU(HeooArhFtZD7VraeJaeVg8630b5MfGeyC9Oy0ChLgf5kzVrDEsantAlDZj040xnas15(DGGwOOoR9Ounlf8iSTndNWOpjyNu09Ucb9BVob5CljHm)GtzoWcrT(ulQvss171gh6WJQefq4wdi0Yx7ItQGY9olYkILDjNwGL9mAJKjlJA3i6gJO5TqDfAa8)9HHV3la(E)yHVNa(lxiWFlO7wqt1MeSTuJTRBSzYMNkB6RWzYQ7(sJUk3yjGF7UkTm2(arAaUBAn0cG)GXUggKW2D)iBpCYZwdu48nJ2ru9HigBT1RlXLoY6qxDkjjYhPbO9XonvLa7dOd3nehWbmjZtP1GXyBsfB2g0UXz4JN5kc0(uq4zUJO3FxTI1yttJswVfgyeM6ga6iRP2jDXK6Qg2y3eCCTdQnoRIh0atRlX5itv6orX(CnUtx8gzAWbeLTGHN7EI2QnxBlWPT3TuOU7tnggBx)tkMnQjkgBdBMOywPQNO4yv6jKO44M2suCYQAII7QD39cnPihSTl7P3Q8ssdSoV6ZzAOiH2TQU7Rbcd)S5Wh6(zZT3NGd28k28S95rXLUYShXuQ9CxGTAALYATfhUgBL2ikxD56o2vMfI6owZ3tWeCSMxXMJTppQo2rkJ79giCTP8ipqy1Rz(a37HDVMc7fEFb704qKwTHPTwJXR64AV0R0cfsl46N1m0YlSO9sBn)oTnFezkPSHU9peS5xbUNdO7J825N3Q(LzLTbg2jQ(TDDjfR2H8tel9NQLmx2AxVGz94DRA)t4)p]] )
+spec:RegisterPack( "惩戒Simc", 20250720, [[Hekili:9M1xVTTnq8plfdWOPRZZw2EnBikpS9sBEOyyQpljAjABUilPrsLudyOp77iLLfjfPKskArrBt4D8UF3F1DsHld)syqkIJd)S3cVnlUDP38fl9wUCtya)ujomOeL8iAp8d5OJW)(pyoLSTItkYf0oLvGsfYGvurta6bKJ)ffTJxhVz9T)YTHbBRiz8pLhU1UEwdxTeNe(5pSim4ajnf3WkMLeg8LdewDS4VO64laPoUyh87jceuhNryCG8UcAD8hXpsYiZbyrl2rYaW8t1X)nkdLsY)J6yfKx)aqXaP1pu)qJuzZlP4KIJBr8F2)x3MHzms((OIDrpc)p79KD(BR2TBoJJ4S5PfpNpt(7TCkpACHDKS)a)QWoIyCm90ltCLfnwJnA)Bv6(J4CUWUUYbCodJYeQNtR4h6Sf1tBaH4kpHJW54Jem7UwoOcyJlQy5a8I4hOy2HIS0znk(n(lMjbbO60iXDy(GmX2qGMK6HenQ2q09(JbPXasJ7tO53EXJxuKMvX4ZPyGRZNBogLNqahzuzXZy68QYMWd6jC(ErO8zkcCzvL3C(mhr3J5Z5KJ4iErukbFN)6f3OQts()vryeDfRCO0spFU3Xu8rejNDNV3nZElyDNAGZ9(RSQ2ooEN3IlIlL8ejhhvwrlly4gBudB6M01iIkmQkvVW(kenLGYfbHwVKEnI77krOuJyQGDokdU(C1JNJZrqvq6S(Ejik0zIcNIQORy4ichF89IwwquNK)iMVuOKNquIqKZVCye7uEselRG7VCMnLyldqjcPtaAiK8O)YjagVraJ33jWiZWJ2vrpPDkMYWurGtlBGMGYfjuuQSnshf8xXjY(OqDvohNNGvcG9joCy81zuAwvMO(NfDabf7Q5sAN)DhfxkVyGd7OaeMDR8uRB93mqrzBJhTAbTmEOSFyLRk7eAfdLcIqk8zQGqveqoAzgIYIEcdf1jYhnzbWdcQXKNttEMDkn98wR13qgnfDCKDPuj9mIWFpdN4NuaT)HO3CdMBLOakJXZ9lMngl35VyU3Rmky)zitY)n4T6Gk)aU7jJ2si1CRTJlmnT0AmGPsjpIhoiyWS1GGdEudcoyPxqa)1cAcH5Ogu)e4XZnrck0(LtW0LBI8kte517ZovEqmwglQvITTqS53g2f0YLvB3KOQrBs7BiLBs5w2QnT5Ch2CV6WSzUMevnxtA9mxNaxjaUUjaAePx)Y6v7AaS7xpj4m6nBABsVKNQo8J8W2uTWaqYm4ox2B6dEWAspJO5IPScd(0XYckhYiJ9m2jAE9dHbiyy(cAyWhHjdrHbscYf(W7qvzC4h)SCbWwL9NHbjuyyfyUeXIB7STxqD8Sgv15VQJVRoEKHXLxRzhH6434xhVqEIXi61XafXy6a2LwdSDOkcc5GFyAiU)(dwr(9(td6thOAsra4vob8BRJLy2yXJ64ZNRJBjAU(HeooArhFtZD7VraeJaeVg8630b5MfGeyC9Oy0ChLgf5kzVrDEsantAlDZj040xnas15(DGGwOOoR9Ounlf8iSTndNWOpjyNu09Ucb9BVob5CljHm)GtzoWcrT(ulQvss171gh6WJQefq4wdi0Yx7ItQGY9olYkILDjNwGL9mAJKjlJA3i6gJO5TqDfAa8)9HHV3la(E)yHVNa(lxiWFlO7wqt1MeSTuJTRBSzYMNkB6RWzYQ7(sJUk3yjGF7UkTm2(arAaUBAn0cG)GXUggKW2D)iBpCYZwdu48nJ2ru9HigBT1RlXLoY6qxDkjjYhPbO9XonvLa7dOd3nehWbmjZtP1GXyBsfB2g0UXz4JN5kc0(uq4zUJO3FxTI1yttJswVfgyeM6ga6iRP2jDXK6Qg2y3eCCTdQnoRIh0atRlX5itv6orX(CnUtx8gzAWbeLTGHN7EI2QnxBlWPT3TuOU7tnggBx)tkMnQjkgBdBMOywPQNO4yv6jKO44M2suCYQAII7QD39cnPihSTl7P3Q8ssdSoV6ZzAOiH2TQU7Rbcd)S5Wh6(zZT3NGd28k28S95rXLUYShXuQ9CxGTAALYATfhUgBL2ikxD56o2vMfI6owZ3tWeCSMxXMJTppQo2rkJ79giCTP8ipqy1Rz(a37HDVMc7fEFb704qKwTHPTwJXR64AV0R0cfsl46N1m0YlSO9sBn)oTnFezkPSHU9peS5xbUNdO7J825N3Q(LzLTbg2jQ(TDDjfR2H8tel9NQLmx2AxVGz94DRA)t4)p]] )

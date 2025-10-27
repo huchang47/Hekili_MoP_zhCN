@@ -1955,12 +1955,12 @@ spec:RegisterOptions( {
 
     potion = "virmen_bite_potion", -- MoP-era agility potion
 
-    package = "Combat"
+    package = "战斗Simc"
 } )
 
 spec:RegisterSetting( "use_killing_spree", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 51690 ) ), -- Killing Spree
-    desc = "If checked, Killing Spree will be recommended based on the Combat Rogue priority. If unchecked, it will not be recommended.",
+    name = strformat( "使用 %s", Hekili:GetSpellLinkWithTexture( 51690 ) ), -- Killing Spree
+    desc = "如果勾选，根据战斗Simc优先级推荐使用剔骨。若未勾选，则不会自动推荐该技能。",
     type = "toggle",
     width = "full"
 } )
@@ -1968,22 +1968,22 @@ spec:RegisterSetting( "use_killing_spree", true, {
 -- Optional: Avoid casting Killing Spree while Adrenaline Rush is active (can cause energy waste)
 spec:RegisterSetting( "avoid_killing_spree_during_ar", true, {
     name = strformat( "Avoid %s during %s", Hekili:GetSpellLinkWithTexture( 51690 ), Hekili:GetSpellLinkWithTexture( 13750 ) ), -- KS during AR
-    desc = "If checked, Killing Spree will not be recommended while Adrenaline Rush is active.",
+    desc = "如果勾选该选项，当能量刺激处于激活状态时，插件将不会推荐使用剑刃乱舞",
     type = "toggle",
     width = "full"
 } )
 
 -- Optional: Allow auto-toggling Blade Flurry based on enemy count
 spec:RegisterSetting( "auto_blade_flurry", true, {
-    name = strformat( "Auto-toggle %s", Hekili:GetSpellLinkWithTexture( 13877 ) ), -- Blade Flurry
-    desc = "If checked, Blade Flurry is toggled on for cleave and off for single-target.",
+    name = strformat( "自动切换 %s", Hekili:GetSpellLinkWithTexture( 13877 ) ), -- Blade Flurry
+    desc = "如果勾选该选项，系统会根据战斗环境自动切换 剑刃乱舞：在出现多个目标会自动开启该技能，而在单体目标战斗中则会自动关闭",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "bandits_guile_threshold", 3, {
-    name = strformat( "Bandit's Guile Threshold for Eviscerate" ),
-    desc = "Minimum Bandit's Guile stack level before recommending Eviscerate (0 = None, 1 = Shallow, 2 = Moderate, 3 = Deep)",
+    name = strformat( "匪首狡黠的剔骨阈值" ),
+    desc = "在推荐剔骨之前，匪首狡诈的栈数必须达到此阈值（0 = 无，1 = 浅，2 = 中，3 = 深）",
     type = "range",
     min = 0,
     max = 3,
@@ -1992,36 +1992,36 @@ spec:RegisterSetting( "bandits_guile_threshold", 3, {
 } )
 
 spec:RegisterSetting( "blade_flurry_toggle", "aoe", {
-    name = strformat( "%s Toggle", Hekili:GetSpellLinkWithTexture( 13877 ) ), -- Blade Flurry
-    desc = "Select when Blade Flurry should be recommended:",
+    name = strformat( "%s切换", Hekili:GetSpellLinkWithTexture( 13877 ) ), -- Blade Flurry
+    desc = "选择剑刃乱舞应被推荐的时机：",
     type = "select",
     values = {
-        aoe = "Only in AoE",
-        always = "Always",
-        never = "Never"
+        aoe = "仅AOE",
+        always = "总是",
+        never = "从不"
     },
     width = 1.5
 } )
 
 spec:RegisterSetting( "anticipation_management", true, {
-    name = strformat( "Manage %s", Hekili:GetSpellLinkWithTexture( 114015 ) ), -- Anticipation
-    desc = "If checked, the addon will optimize combo point usage to avoid wasting combo points when using the Anticipation talent.",
+    name = strformat( "管理%s", Hekili:GetSpellLinkWithTexture( 114015 ) ), -- Anticipation
+    desc = "如果勾选，当启用‘预感’天赋时，插件将优化连击点的使用，以避免浪费连击点。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "allow_shadowstep", true, {
-    name = strformat( "Allow %s", Hekili:GetSpellLinkWithTexture( 36554 ) ), -- Shadowstep
-    desc = "If checked, Shadowstep may be recommended for mobility and positioning. If unchecked, it will only be recommended for damage bonuses.",
+    name = strformat( "允许%s", Hekili:GetSpellLinkWithTexture( 36554 ) ), -- Shadowstep
+    desc = "如果勾选，将在需要时推荐使用暗影步以提升移动性和定位。若未勾选，则仅在需要伤害提升时推荐使用暗影步。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "use_tricks_of_the_trade", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 57934 ) ), -- Tricks of the Trade
-    desc = "If checked, Tricks of the Trade will be recommended based on the Combat Rogue priority. If unchecked, it will not be recommended automatically.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 57934 ) ), -- Tricks of the Trade
+    desc = "如果勾选，将根据战斗Simc优先级推荐使用嫁祸诀窍。若未勾选，则不会自动推荐该技能。",
     type = "toggle",
     width = "full"
 } )
 
-spec:RegisterPack( "Combat", 20251009, [[Hekili:fNvBVTnos4FlgfqjbBQxlzl3TlSdW1E42DdUDrXPE3hLeTeTTG1BhfvkcGH(TFZqQxOKPKtslWv0TRTi5mpZmpCEXY109RUoHeo19VSwyzBUyXhNBzTCT9sxh(Z5uxNCsWjYb4dPKe4F)CwYochF8ZXzKq84fzLSayjxNDLrX8)i1DNgzATAPLRdPKFmJ564KuUNfDY15yuyivEcArGRZxpgvu5J)hPYVw3v(z7HVhWJYsR8JJk4WY7Zyv()o9uuC0CxhXdrWSpknQ4iLbF(VeghnLSlMg6(jxNaweNYIiGPffCQWJrtirGe3u5Bv5Bu5ZjSdu(CEuc1JN5fgbQ(HTWQRflFReepr9OP0KiArZrpFUYFwL)UY97NVlMes92hxYyppVmVY)oWQfq31HvMZlzuPTYIYLp9RMR)9kF0XMv5)LSOuEL))O2mkC5GxCu7yiCqW(bbwdZ4ZH9LuKL6XPj50c0U6z1OH1HTbBg17suVnRtFkQiGYWWQcwW95Ca0pSqMwNEZ53ts9Y27DkfaCbgWsPEbHUo2VaVXV1OGIRz8RM2FDzCxj4qFIsayDWRGdut6fEGcmMacQz9HUHq6EszmFAMxnhjllmUecjmkiDjbsh5dq4QfDiipt8)BmXMhFcSQ(OrcCTaOHN(ebzycgkqxcYYIdZ(wAZJLUi0Pw5VwfbmAobcf1Wy1eE6ea)qezH06e6S4ibuIN4ksbO6o5EKKgcb3I4mEZxaXB)Js8chU3(s2ZOyx)dtSWfuk7eWzqX(HrflsFp8SiCQ6mjSaskgSzmAQ4g3VmnVzisuajjeKbrCRIvwhxhLvH38vWbqNtpr5Mn()2Vdi6J))erwdqKfIiZfJcjnjOfPVfu8XtqlX1Oz3nEbz2vxtBcTpHBaYRl2bOPsE275zhoelYZyAQEFMKSdCydUrBovwnK1c3unx0uNkaZF6LJPpL2XYwJKtIb22CskKmmkxCvEETyfNwDbVGJy0QveDUknrFm)XO6F13V(xj0F7FLkQtG1GzFwqzrpbQLn2cwL7MwluTWgXwUdCZ7lpq7j0MJH8Rp27CZUoIM9AK(AP0viBYC0APz)hXsv(FlId)7FtXvw5xuMNNXe5zmhV(GI)WEHAnMyzTrOcGKYETC)aF0wP4PkvrC(XtURaHL2VOeXdIUc5pEwEPWIJcOEqLgiduaTRGxxhDTS8X3PPTs6byhr8cVdqtW05fCO3vrPetZ6kSQ3ie9Q0lO2xlAdUo4wWliaj5Vl(Omm)jHMVbe7VH6gAFoLtp0vL2C8kt10Wec7efkqMX8cPe(XEKXlVoJwvBxMd7Bs0Mj81Ew3qfiG1WQDAm52o)(5MoIbECECexhfxTr7up5N9WjduT4lYmz)9MzsgkLxRVQdbHJNCuQU2MrNXWcTVatz2vGC7fNqkn3d4SrhoYBRd32Yx)RvD07AUlUx9wEnjE8kc1nxo(Pxo0N0o(g2J7Wc9VaxsBItzEt9EazUF9RP24lWmEFFU)OXpUO14a5WXndamOT9(1ZhwoVnpahipWfe14S01kxaZ7nzd(x5k903jNiP(lvSdsKXLENNGwLXLB(jbw668nclfUwuGd9JjTsWQt1d2FtR38MkFg9)wgXqgDrgwzbBEkbgefEaWMsb208Qh)NqYFGq9Rv()706kD4gKOceijpp(zmmcd5EdS)Qh)JKMnTAWVUaSmyh50aaUyd75SS9qIvxN3v5)VYous)v5eQeaU3(NzFbOkZTNBcvPRE8Dy(4cuQO4CIs(CL)xJW8wMRXFWcwwuqLFTery8o4eFPXAHeAcGuu9OerfZB9e)02FEFmP4094pmZwOqmMIbMSPa8kJTFySN6TtjEji3LHrNuC(t6ihs1tDFmLFKeVfI1HXpRF)s6T(1QjT6xCix6(O9BVwbj9APhL7fjgPF)pf)oadD5T2ekjDdSF(8LdXSz1cvbGZK3tGDdoJsDw)zWngz(7hw3tOLfup4(yY94urBfJjlmwafBxC(S(mWkNVBm4x3XAhZ9vDS(J3IhvMDEZugvZSNTU(HAOwXxoDP2GYwRRRlRFK6civxBGV(rKU5gryClUu3iOpS1YyMUHpV785bBDJLH2n2lIigSubKVGXfupVKC2qcEWCHXTQvh3Seq1eDKyORrGnlrBzKXjhi)vVf5V6o4pg3E7edLzm6iIg1uwRf31P7lhAREBpS9JI9nBkDn76sz9I7URFYeLHVuUiz3JC3Z91gKS7ra6BIkIAP9O3OBzlVL5p6bWlstpX8vBSAPf6x302yS5U2AAAOsCEy7QE(Z3qHNbmXTMgt1Q)DkETx1imQOCqBU3JDDUTTPteZ9GK9B5YX2vgZUIHCfa10XUOQ2e6VMEnyuKZNNEmeWrBE(SoOdXu95nGQP63)YRBm98U13gxVqh0riR75nfUTFFVbnFuHqm272OR3MwyGTWP(EtUV(1MS1gb4WAfR0lHHXwzQHUxeYgl9NBW77ycBO9Tv1jOgAHWtlERxxQwJllIcf8wBCrLTZN1xeuR6g8IS05O(GX1E9yqXCTcx5TGHJ14()(]] )
+spec:RegisterPack( "战斗Simc", 20251009, [[Hekili:fNvBVTnos4FlgfqjbBQxlzl3TlSdW1E42DdUDrXPE3hLeTeTTG1BhfvkcGH(TFZqQxOKPKtslWv0TRTi5mpZmpCEXY109RUoHeo19VSwyzBUyXhNBzTCT9sxh(Z5uxNCsWjYb4dPKe4F)CwYochF8ZXzKq84fzLSayjxNDLrX8)i1DNgzATAPLRdPKFmJ564KuUNfDY15yuyivEcArGRZxpgvu5J)hPYVw3v(z7HVhWJYsR8JJk4WY7Zyv()o9uuC0CxhXdrWSpknQ4iLbF(VeghnLSlMg6(jxNaweNYIiGPffCQWJrtirGe3u5Bv5Bu5ZjSdu(CEuc1JN5fgbQ(HTWQRflFReepr9OP0KiArZrpFUYFwL)UY97NVlMes92hxYyppVmVY)oWQfq31HvMZlzuPTYIYLp9RMR)9kF0XMv5)LSOuEL))O2mkC5GxCu7yiCqW(bbwdZ4ZH9LuKL6XPj50c0U6z1OH1HTbBg17suVnRtFkQiGYWWQcwW95Ca0pSqMwNEZ53ts9Y27DkfaCbgWsPEbHUo2VaVXV1OGIRz8RM2FDzCxj4qFIsayDWRGdut6fEGcmMacQz9HUHq6EszmFAMxnhjllmUecjmkiDjbsh5dq4QfDiipt8)BmXMhFcSQ(OrcCTaOHN(ebzycgkqxcYYIdZ(wAZJLUi0Pw5VwfbmAobcf1Wy1eE6ea)qezH06e6S4ibuIN4ksbO6o5EKKgcb3I4mEZxaXB)Js8chU3(s2ZOyx)dtSWfuk7eWzqX(HrflsFp8SiCQ6mjSaskgSzmAQ4g3VmnVzisuajjeKbrCRIvwhxhLvH38vWbqNtpr5Mn()2Vdi6J))erwdqKfIiZfJcjnjOfPVfu8XtqlX1Oz3nEbz2vxtBcTpHBaYRl2bOPsE275zhoelYZyAQEFMKSdCydUrBovwnK1c3unx0uNkaZF6LJPpL2XYwJKtIb22CskKmmkxCvEETyfNwDbVGJy0QveDUknrFm)XO6F13V(xj0F7FLkQtG1GzFwqzrpbQLn2cwL7MwluTWgXwUdCZ7lpq7j0MJH8Rp27CZUoIM9AK(AP0viBYC0APz)hXsv(FlId)7FtXvw5xuMNNXe5zmhV(GI)WEHAnMyzTrOcGKYETC)aF0wP4PkvrC(XtURaHL2VOeXdIUc5pEwEPWIJcOEqLgiduaTRGxxhDTS8X3PPTs6byhr8cVdqtW05fCO3vrPetZ6kSQ3ie9Q0lO2xlAdUo4wWliaj5Vl(Omm)jHMVbe7VH6gAFoLtp0vL2C8kt10Wec7efkqMX8cPe(XEKXlVoJwvBxMd7Bs0Mj81Ew3qfiG1WQDAm52o)(5MoIbECECexhfxTr7up5N9WjduT4lYmz)9MzsgkLxRVQdbHJNCuQU2MrNXWcTVatz2vGC7fNqkn3d4SrhoYBRd32Yx)RvD07AUlUx9wEnjE8kc1nxo(Pxo0N0o(g2J7Wc9VaxsBItzEt9EazUF9RP24lWmEFFU)OXpUO14a5WXndamOT9(1ZhwoVnpahipWfe14S01kxaZ7nzd(x5k903jNiP(lvSdsKXLENNGwLXLB(jbw668nclfUwuGd9JjTsWQt1d2FtR38MkFg9)wgXqgDrgwzbBEkbgefEaWMsb208Qh)NqYFGq9Rv()706kD4gKOceijpp(zmmcd5EdS)Qh)JKMnTAWVUaSmyh50aaUyd75SS9qIvxN3v5)VYous)v5eQeaU3(NzFbOkZTNBcvPRE8Dy(4cuQO4CIs(CL)xJW8wMRXFWcwwuqLFTery8o4eFPXAHeAcGuu9OerfZB9e)02FEFmP4094pmZwOqmMIbMSPa8kJTFySN6TtjEji3LHrNuC(t6ihs1tDFmLFKeVfI1HXpRF)s6T(1QjT6xCix6(O9BVwbj9APhL7fjgPF)pf)oadD5T2ekjDdSF(8LdXSz1cvbGZK3tGDdoJsDw)zWngz(7hw3tOLfup4(yY94urBfJjlmwafBxC(S(mWkNVBm4x3XAhZ9vDS(J3IhvMDEZugvZSNTU(HAOwXxoDP2GYwRRRlRFK6civxBGV(rKU5gryClUu3iOpS1YyMUHpV785bBDJLH2n2lIigSubKVGXfupVKC2qcEWCHXTQvh3Seq1eDKyORrGnlrBzKXjhi)vVf5V6o4pg3E7edLzm6iIg1uwRf31P7lhAREBpS9JI9nBkDn76sz9I7URFYeLHVuUiz3JC3Z91gKS7ra6BIkIAP9O3OBzlVL5p6bWlstpX8vBSAPf6x302yS5U2AAAOsCEy7QE(Z3qHNbmXTMgt1Q)DkETx1imQOCqBU3JDDUTTPteZ9GK9B5YX2vgZUIHCfa10XUOQ2e6VMEnyuKZNNEmeWrBE(SoOdXu95nGQP63)YRBm98U13gxVqh0riR75nfUTFFVbnFuHqm272OR3MwyGTWP(EtUV(1MS1gb4WAfR0lHHXwzQHUxeYgl9NBW77ycBO9Tv1jOgAHWtlERxxQwJllIcf8wBCrLTZN1xeuR6g8IS05O(GX1E9yqXCTcx5TGHJ14()(]] )

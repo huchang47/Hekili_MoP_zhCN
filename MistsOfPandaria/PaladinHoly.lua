@@ -1270,7 +1270,7 @@ spec:RegisterOptions( {
     
     potion = "jade_serpent_potion",
     
-    package = "Holy",
+    package = "奶骑Simc",
     
     holy_shock_heal = true,       -- Use Holy Shock for healing (true) or damage (false) 
     holy_prism_heal = true,       -- Use Holy Prism for healing (true) or damage (false)
@@ -1283,7 +1283,7 @@ spec:RegisterOptions( {
 } )
 
 -- Register default pack for MoP Holy Paladin
-spec:RegisterPack( "Holy", 20250515, [[Hekili:T1PBVTTn04FlXjHj0OfnrQ97Lvv9n0KxkzPORkyzyV1ikA2JC7fSOhtkfLjjRKKGtkLQfifs4YC7O3MF11Fw859fNZXPb72TQWN3yiOtto8jREEP(D)CaaR7oXR]hYdVp)NhS4(SZdhFpzmYBPn2qGdjcw5Jt8jc((52Lbb6W0P)MM]] )
+spec:RegisterPack( "奶骑Simc", 20250515, [[Hekili:T1PBVTTn04FlXjHj0OfnrQ97Lvv9n0KxkzPORkyzyV1ikA2JC7fSOhtkfLjjRKKGtkLQfifs4YC7O3MF11Fw859fNZXPb72TQWN3yiOtto8jREEP(D)CaaR7oXR]hYdVp)NhS4(SZdhFpzmYBPn2qGdjcw5Jt8jc((52Lbb6W0P)MM]] )
 
 -- Register pack selector for Holy
 

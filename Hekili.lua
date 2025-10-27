@@ -251,10 +251,10 @@ Hekili.GameBuild = buildStr
 ns.PTR = false
 Hekili.IsPTR = ns.PTR
 
-ns.Patrons = "|cFFFFD100Current Status|r\n\n"
-    .. "All existing specializations are currently supported, though healer priorities are experimental and focused on rotational DPS only.\n\n"
-    .. "If you find odd recommendations or other issues, please follow the |cFFFFD100Report Issue|r link below and submit all the necessary information to have your issue investigated.\n\n"
-    .. "Please |cffff0000do not|r submit tickets for routine priority updates (i.e., from SimulationCraft). They are routinely updated."
+ns.Patrons = "|cFFFFD100目前的状态|r\n\n"
+    .. "目前已经支持所有的专精，但治疗专精的优先级是试验性的，只可用于发呆时打DPS。\n\n"
+    .. "如果你发现奇怪的问题或建议，请前往下方的|cFFFFD100问题报告|r链接提交必要的信息，以便你的问题能够尽快修正。\n\n"
+    .. "请不要提交默认优先级的问题（来自于SimulationCraft），它们将在发布后同步更新。谢谢！"
 
 do
     local cpuProfileDB = {}
@@ -549,10 +549,10 @@ function Hekili:SaveDebugSnapshot( dispName )
             local pack = self.DB and self.DB.profile and self.DB.profile.packs and self.DB.profile.packs[packName]
 
             if pack and not pack.builtIn then
-                custom = format( " |cFFFFA700(Custom: %s[%d])|r", state.spec and state.spec.name or "Unknown", state.spec and state.spec.id or 0 )
+                custom = format( " |cFFFFA700(自定义：%s[%d])|r", state.spec and state.spec.name or "未知", state.spec and state.spec.id or 0 )
             end
 
-            local overview = format( "%s%s; %s|r", packName, custom, dispName or "Unknown" )
+            local overview = format( "%s%s; %s|r", packName, custom, dispName or "未知" )
             local displayPool = Hekili.DisplayPool and Hekili.DisplayPool[dispName]
             local recs = displayPool and displayPool.Recommendations or {}
 
@@ -674,15 +674,20 @@ end
 -- Fallback for GetSpecialization / GetSpecializationInfo / CanPlayerUseTalentSpecUI
 
 -- MoP Classic spec detection function
+-- EasyPlay：修正默认专精为第一专精
 function Hekili:GetMoPSpecialization()
     local _, class = UnitClass("player")
     if not class then
         return nil, nil
     end
-
     -- Use the proper mapping from Constants.lua
     local selectedSpec = GetSpecialization and GetSpecialization() or GetActiveTalentGroup and GetActiveTalentGroup() or 1
-    
+
+    -- EasyPlay：当角色等级不足 10 级或未选择专精时，强制设定默认专精
+    if not selectedSpec or selectedSpec == 0 or UnitLevel("player") < 10 then
+        selectedSpec = 1
+    end
+
     -- Use the fallback mapping from Constants.lua
     local fallbackMapping = {
         HUNTER = { [1] = 253, [2] = 254, [3] = 255 },       -- Beast Mastery, Marksmanship, Survival
@@ -697,9 +702,14 @@ function Hekili:GetMoPSpecialization()
         WARLOCK = { [1] = 265, [2] = 266, [3] = 267 },      -- Affliction, Demonology, Destruction
         WARRIOR = { [1] = 71, [2] = 72, [3] = 73 }          -- Arms, Fury, Protection
     }
-    
+
     local specID = fallbackMapping[class] and fallbackMapping[class][selectedSpec] or 0
-    
+
+    -- EasyPlay：若仍为 0，强制从 SpecData 读取首专精
+    if specID == 0 and SpecData[class] and SpecData[class][1] then
+        specID = SpecData[class][1][1]
+    end
+
     -- Get spec name from the Specializations table
     local specName = "Unknown"
     if specID > 0 and ns.Specializations[specID] then
@@ -710,7 +720,6 @@ function Hekili:GetMoPSpecialization()
 
     return specID, specName
 end
-
 -- Manual function to force spec detection and update
 function Hekili:ForceSpecDetection()
     local specID, specName = self:GetMoPSpecialization()

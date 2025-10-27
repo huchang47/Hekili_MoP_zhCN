@@ -4,33 +4,33 @@
 local addon, ns = ...
 
 local function TestSpecDetection()
-    print("=== Hekili WeakAuras-Style Spec Detection Test ===")
+    print("=== Hekili WeakAuras 风格专精检测测试 ===")
     
     -- Test if our new system is available
     if ns.GetSpecializationInfoForClassID then
-        print("✓ ns.GetSpecializationInfoForClassID is available")
+        print("✓ ns.GetSpecializationInfoForClassID 已可用")
     else
-        print("✗ ns.GetSpecializationInfoForClassID is NOT available")
+        print("✗ ns.GetSpecializationInfoForClassID 不可用")
     end
     
     if ns.GetSpecialization then
-        print("✓ ns.GetSpecialization is available")
+        print("✓ ns.GetSpecialization 已可用")
     else
-        print("✗ ns.GetSpecialization is NOT available")
+        print("✗ ns.GetSpecialization 不可用")
     end
     
     -- Test current player
     local className, classFile = UnitClass("player")
-    print("Player class:", className, classFile)
+    print("玩家职业:", className, classFile)
     
     -- Test current spec detection
     if ns.GetSpecialization then
         local currentSpec = ns.GetSpecialization()
-        print("Current spec index:", currentSpec or "nil")
+        print("当前专精索引:", currentSpec or "nil")
         
         if currentSpec and ns.GetSpecializationInfo then
             local specID, specName, description, icon, role = ns.GetSpecializationInfo(currentSpec)
-            print("Current spec info:", specID or "nil", specName or "nil", role or "nil")
+            print("当前专精信息:", specID or "nil", specName or "nil", role or "nil")
         end
     end
     
@@ -42,39 +42,39 @@ local function TestSpecDetection()
     
     local classID = classIDMap[classFile]
     if classID and ns.GetSpecializationInfoForClassID then
-        print("Testing GetSpecializationInfoForClassID for", classFile, "(ID:", classID..")")
+        print("针对 GetSpecializationInfoForClassID 测试", classFile, "(ID:", classID..")")
         
         -- Try to get spec info for each spec of this class
         for specIndex = 1, 4 do -- Max 4 specs (Druid has 4)
             local specID, specName, description, icon, role = ns.GetSpecializationInfoForClassID(classID, specIndex)
             if specID then
-                print("  Spec", specIndex..":", specID, specName or "Unknown", role or "Unknown")
+                print("  专精", specIndex..":", specID, specName or "未知", role or "未知")
             else
-                print("  Spec", specIndex..": No data")
+                print("  专精", specIndex..": 没有数据")
             end
         end
     end
     
     -- Test the original broken APIs for comparison
-    print("=== Testing Original APIs (should be broken) ===")
+    print("=== 测试原始 API (应该是不可用的) ===")
     if C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfo then
-        print("✓ C_SpecializationInfo.GetSpecializationInfo exists")
+        print("✓ C_SpecializationInfo.GetSpecializationInfo 已存在")
     else
-        print("✗ C_SpecializationInfo.GetSpecializationInfo does NOT exist")
+        print("✗ C_SpecializationInfo.GetSpecializationInfo 不存在")
     end
     
     if GetSpecializationInfoForClassID then
-        print("✓ GetSpecializationInfoForClassID exists")
+        print("✓ GetSpecializationInfoForClassID 已存在")
         -- Test original API
         if classID then
             local specID, specName = GetSpecializationInfoForClassID(classID, 1)
-            print("Original API result for spec 1:", specID or "nil", specName or "nil")
+            print("原始 API 结果 专精 1:", specID or "nil", specName or "nil")
         end
     else
-        print("✗ GetSpecializationInfoForClassID does NOT exist")
+        print("✗ GetSpecializationInfoForClassID 不存在")
     end
 
-    print("=== Test complete ===")
+    print("=== 测试完成 ===")
 end
 
 -- Make the test function available to the main addon

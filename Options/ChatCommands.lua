@@ -93,7 +93,7 @@ function Hekili:CmdLine( input )
         recover  = function () self:HandleRecoverCommand() end,
         fix      = function () self:HandleFixCommand( args ) end,
         snapshot = function () 
-            print("Snapshot command handler called")
+            self:Print("快照命令已调用")
             self:MakeSnapshot() 
         end,
         skeleton = function () self:HandleSkeletonCommand( input ) end,
@@ -101,40 +101,40 @@ function Hekili:CmdLine( input )
             if ns.TestSpecDetection then
                 ns.TestSpecDetection()
             else
-                print("Spec test function not available")
+                self:Print("专精测试函数不可用")
             end
         end,
         testauras = function()
-            self:Print("Testing MoP aura scanning...")
+            self:Print("测试 MoP 光环扫描...")
             
             -- Test basic UnitBuff API first
-            self:Print("=== Testing UnitBuff API ===")
+            self:Print("=== 测试 UnitBuff API ===")
             local testResult = UnitBuff("player", 1)
-            self:Print("UnitBuff('player', 1) returns: %s", tostring(testResult))
+            self:Print("UnitBuff('player', 1) 返回: %s", tostring(testResult))
             
             -- Test with different filters
             local testResult2 = UnitBuff("player", 1, "HELPFUL")
-            self:Print("UnitBuff('player', 1, 'HELPFUL') returns: %s", tostring(testResult2))
+            self:Print("UnitBuff('player', 1, 'HELPFUL') 返回: %s", tostring(testResult2))
             
             -- Test ALL return values from first buff to see what MoP actually returns
-            self:Print("=== Raw UnitBuff Return Values ===")
+            self:Print("=== 测试 UnitBuff 返回值 ===")
             local r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17 = UnitBuff("player", 1)
-            self:Print("Raw values: 1=%s, 2=%s, 3=%s, 4=%s, 5=%s, 6=%s, 7=%s, 8=%s, 9=%s, 10=%s, 11=%s, 12=%s, 13=%s, 14=%s, 15=%s, 16=%s, 17=%s", 
+            self:Print("原始返回值: 1=%s, 2=%s, 3=%s, 4=%s, 5=%s, 6=%s, 7=%s, 8=%s, 9=%s, 10=%s, 11=%s, 12=%s, 13=%s, 14=%s, 15=%s, 16=%s, 17=%s", 
                 tostring(r1), tostring(r2), tostring(r3), tostring(r4), tostring(r5), tostring(r6), tostring(r7), tostring(r8), tostring(r9), tostring(r10), 
                 tostring(r11), tostring(r12), tostring(r13), tostring(r14), tostring(r15), tostring(r16), tostring(r17))
             
             -- Test player buffs with more verbose output
-            self:Print("=== Player Buffs ===")
+            self:Print("=== 测试玩家光环 ===")
             local buffCount = 0
             local success, errorMsg = pcall(function()
                 for i = 1, 40 do
-                    self:Print("Checking buff slot %d...", i)
+                    self:Print("检查光环槽位 %d...", i)
                     
                     -- Try to safely call UnitBuff
                     local callSuccess, name, rank, icon, count, debuffType, duration, expires, caster, isStealable, shouldConsolidate, spellID, canApplyAura, isBossDebuff, isCastByPlayer, v1, v2, v3 = pcall(UnitBuff, "player", i)
                     
                     if not callSuccess then
-                        self:Print("ERROR calling UnitBuff(%d): %s", i, tostring(name))
+                        self:Print("ERROR 调用 UnitBuff(%d): %s", i, tostring(name))
                         break
                     end
                     
@@ -213,7 +213,7 @@ function Hekili:CmdLine( input )
     elseif command == "help" then
         self:DisplayChatCommandList( "all" )
     else
-        self:Print( "Invalid command. Type '/hekili help' to see the available commands." )
+        self:Print( "无效命令。输入 '/hekili help' 查看可用的命令。" )
         return true
     end
 end
@@ -339,21 +339,21 @@ function Hekili:HandleSetCommand( args )
         local cycleValue = tonumber( subToggleOrState )
         if cycleValue and cycleValue >= 0 and cycleValue <= 20 and floor( cycleValue ) == cycleValue then
             profile.specs[ state.spec.id ].cycle_min = cycleValue
-            self:Print( format( "Target Swap minimum time to die set to %d seconds.", cycleValue ) )
+            self:Print( format( "目标切换的最小存活时间已设置为 % d 秒。", cycleValue ) )
         elseif subToggleOrState == nil then
             -- Toggle cycle if no state is provided
             profile.specs[ state.spec.id ].cycle = not profile.specs[ state.spec.id ].cycle
-            local toggleStateText = profile.specs[ state.spec.id ].cycle and "|cFF00FF00ON|r" or "|cFFFF0000OFF|r"
-            self:Print( format( "Target Swap toggle set to %s.", toggleStateText ) )
+            local toggleStateText = profile.specs[ state.spec.id ].cycle and "|cFF00FF00开启|r" or "|cFFFF0000关闭|r"
+            self:Print( format( "目标切换状态已设置为 %s。", toggleStateText ) )
         elseif subToggleOrState == "on" or subToggleOrState == "off" then
             -- Explicitly set cycle to on or off
             local toggleState = ( subToggleOrState == "on" )
             profile.specs[ state.spec.id ].cycle = toggleState
-            local toggleStateText = toggleState and "|cFF00FF00ON|r" or "|cFFFF0000OFF|r"
-            self:Print( format( "Target Swap toggle set to %s.", toggleStateText ) )
+            local toggleStateText = toggleState and "|cFF00FF00开启|r" or "|cFFFF0000关闭|r"
+            self:Print( format( "目标切换状态已设置为 %s。", toggleStateText ) )
         else
             -- Invalid parameter handling
-            self:Print( "Invalid input for 'cycle'. Use 'on', 'off', leave blank to toggle, or provide a whole number from 0 to 20 to set the minimum time to die." )
+            self:Print( "目标切换的指令无效。请使用“on”和“off”和留空进行操作，或者提供一个 0 到 20 之间的整数来设置目标最小存活时间。" )
         end
         self:ForceUpdate( "CLI_TOGGLE" )
         return true
@@ -377,7 +377,7 @@ function Hekili:HandleSetCommand( args )
         if self:HandleSpecSetting( subToggleOrState, explicitState) then
             return true
         else
-            self:Print( "Invalid spec setting specified." )
+            self:Print( "指定的专精设置无效。" )
             return true
         end
     end
@@ -388,8 +388,8 @@ function Hekili:HandleSetCommand( args )
     if toggleCategory then
         if subToggleOrState == "on" or subToggleOrState == "off" then
             toggleCategory.value = ( subToggleOrState == "on" )
-            local stateText = toggleCategory.value and "|cFF00FF00ON|r" or "|cFFFF0000OFF|r"
-            self:Print( format( "|cFFFFD100%s|r is now %s.", mainToggle, stateText ) )
+            local stateText = toggleCategory.value and "|cFF00FF00开启|r" or "|cFFFF0000关闭|r"
+            self:Print( format( "|cFFFFD100%s|r 当前状态是 %s。", mainToggle, stateText ) )
             self:ForceUpdate( "CLI_TOGGLE" )
             return true
         end
@@ -409,30 +409,30 @@ function Hekili:HandleSetCommand( args )
                 elseif explicitState == nil then
                     lowerToggleCategory[ subToggleOrState ] = not lowerToggleCategory[ subToggleOrState ]
                 else
-                    self:Print( "Invalid explicit state. Use 'on' or 'off'." )
+                    self:Print( "你输入的状态无效，请使用 'on'（开启）或 'off'（关闭）。" )
                     return true
                 end
 
                 toggleCategory[ subToggleOrState ] = lowerToggleCategory[ subToggleOrState ]  -- Update the original case-sensitive table
-                local stateText = lowerToggleCategory[ subToggleOrState ] and "|cFF00FF00ON|r" or "|cFFFF0000OFF|r"
-                self:Print( format( "|cFFFFD100%s_%s|r is now %s.", mainToggle, subToggleOrState, stateText ) )
+                local stateText = lowerToggleCategory[ subToggleOrState ] and "|cFF00FF00开启|r" or "|cFFFF0000关闭|r"
+                self:Print( format( "|cFFFFD100%s_%s|r 当前状态是 %s。", mainToggle, subToggleOrState, stateText ) )
                 self:ForceUpdate("CLI_TOGGLE" )
                 return true
             else
-                self:Print("Invalid sub-toggle specified." )
+                self:Print("你指定的开关设置无效。" )
                 return true
             end
         end
 
         -- Default Toggle Behavior for Main Toggle (Toggle)
         self:FireToggle( mainToggle, explicitState )
-        local mainToggleState = profile.toggles[ mainToggle ].value and "|cFF00FF00ON|r" or "|cFFFF0000OFF|r"
-        self:Print( format( "|cFFFFD100%s|r is now %s.", mainToggle, mainToggleState ) )
+        local mainToggleState = profile.toggles[ mainToggle ].value and "|cFF00FF00开启|r" or "|cFFFF0000关闭|r"
+        self:Print( format( "|cFFFFD100%s|r 当前状态是 %s。", mainToggle, mainToggleState ) )
         self:ForceUpdate( "CLI_TOGGLE" )
         return true
     end
     -- Invalid Toggle or Setting
-    self:Print( "Invalid toggle or setting specified." )
+    self:Print( "你指定的开关或设置无效。" )
     return true
 end
 
@@ -459,7 +459,7 @@ function Hekili:HandleFixCommand( args )
         Hekili:LoadScripts()
         ACD:SelectGroup( "Hekili", "packs", packName )
         if profile.notifications.enabled then
-            Hekili:Notify( "Your pack has been reset to default", 6 )
+            Hekili:Notify( "你的技能组已重置为默认设置", 6 )
         end
 
         return true
@@ -519,7 +519,7 @@ function Hekili:HandleFixCommand( args )
         -- Reset display mode to automatic.
         self:SetMode( "automatic" )
 
-        self:Print( "Your UI displays have been restored to default positions and visibility." )
+        self:Print( "你的用户界面显示已恢复到默认位置和显示状态。" )
         self:BuildUI()
         self:UpdateDisplayVisibility()
         self:ForceUpdate( "CLI_TOGGLE" )
@@ -539,7 +539,7 @@ function Hekili:HandleFixCommand( args )
             end
         end
 
-        self:Print( "All standard toggles have been fixed (enabled), except 'funnel' (disabled) and 'mode' (unchanged)." )
+        self:Print( "除 'funnel'（已禁用）和 'mode'（保持不变）外，所有标准开关已修复（已启用）。" )
         return true
     end
 
@@ -554,7 +554,7 @@ function Hekili:HandleFixCommand( args )
         interrupts.castRemainingThreshold = defaults.profile.castRemainingThreshold
         interrupts.filterCasts = defaults.profile.filterCasts
 
-        self:Print( "Interrupt display has been restored, set to separate mode, and interrupt tuning values reset." )
+        self:Print( "打断显示已恢复，已设置为独立模式，并且打断调整值已重置。" )
         self:BuildUI()
         self:UpdateDisplayVisibility()
         self:ForceUpdate( "CLI_TOGGLE" )
@@ -581,16 +581,16 @@ function Hekili:HandleSpecSetting( specSetting, specValue )
                 if specValue == nil or specValue == "toggle" then
                     local newValue = not profile.specs[ state.spec.id ].settings[ setting.name ]
                     profile.specs[ state.spec.id ].settings[ setting.name ] = newValue
-                    local stateText = newValue and "|cFF00FF00ON|r" or "|cFFFF0000OFF|r"
-                    self:Print( format( "%s set to %s.", setting.name, stateText ) )
+                    local stateText = newValue and "|cFF00FF00开启|r" or "|cFFFF0000关闭|r"
+                    self:Print( format( "%s 已设置为 %s。", setting.name, stateText ) )
                 elseif specValue == "on" then
                     profile.specs[state.spec.id].settings[setting.name] = true
-                    self:Print( format( "%s set to |cFF00FF00ON|r.", setting.name ) )
+                    self:Print( format( "%s 已设置为 |cFF00FF00开启|r。", setting.name ) )
                 elseif specValue == "off" then
                     profile.specs[state.spec.id].settings[setting.name] = false
-                    self:Print( format( "%s set to |cFFFF0000OFF|r.", setting.name ) )
+                    self:Print( format( "%s 已设置为 |cFFFF0000关闭|r。", setting.name ) )
                 else
-                    self:Print( "Invalid input. Use 'on', 'off', or leave blank to toggle for toggle settings." )
+                    self:Print( "输入无效。对于切换设置，请使用 'on'、'off'，或留空以进行切换。" )
                 end
                 return true
 
@@ -599,16 +599,16 @@ function Hekili:HandleSpecSetting( specSetting, specValue )
                 local newValue = tonumber( specValue )
                 if newValue and newValue >= ( setting.info.min or -math.huge ) and newValue <= ( setting.info.max or math.huge ) then
                     profile.specs[ state.spec.id ].settings[ setting.name ] = newValue
-                    self:Print( format( "%s set to |cFF00B4FF%.2f|r.", setting.name, newValue ) )
+                    self:Print( format( "%s 已设置为 |cFF00B4FF%.2f|r。", setting.name, newValue ) )
                 else
-                    self:Print( format( "Invalid value for %s. Must be between %.2f and %.2f.", setting.name, setting.info.min or 0, setting.info.max or 100 ) )
+                    self:Print( format( "%s 的值无效。必须介于 %.2f 和 %.2f 之间。", setting.name, setting.info.min or 0, setting.info.max or 100 ) )
                 end
                 return true
             end
         end
     end
 
-    self:Print( "Invalid spec setting specified." )
+    self:Print( "指定的专精设置无效。" )
     return false
 end
 
@@ -617,43 +617,43 @@ function Hekili:DisplayChatCommandList( list )
 
     -- Generate and print the "all" overview message.
     if list == "all" then
-        self:Print( "Use |cFFFFD100/hekili set|r to adjust toggles, display modes, and specialization settings via chat commands or macros.\n\n" )
+        self:Print( "使用 |cFFFFD100/hekili set|r 通过聊天命令或宏来调整开关、显示模式和专精设置。\n\n" )
     end
 
     -- Toggle Options Section
     local function getTogglesChunk()
-        return "Toggle Options:\n" ..
-            " - |cFFFFD100cooldowns|r, |cFFFFD100potions|r, |cFFFFD100interrupts|r, etc.\n" ..
-            " - Example commands:\n" ..
-            "   - Enable Cooldowns: |cFFFFD100/hek set cooldowns on|r\n" ..
-            "   - Disable Interrupts: |cFFFFD100/hek set interrupts off|r\n" ..
-            "   - Toggle Defensives: |cFFFFD100/hek set defensives|r\n\n"
+        return "切换选项:\n" ..
+            " - |cFFFFD100冷却技能|r, |cFFFFD100药水|r, |cFFFFD100打断|r 等\n" ..
+            " - 示例命令:\n" ..
+            "   - 开启冷却技能: |cFFFFD100/hek set cooldowns on|r\n" ..
+            "   - 关闭打断: |cFFFFD100/hek set interrupts off|r\n" ..
+            "   - 切换防御技能: |cFFFFD100/hek set defensives|r\n\n"
     end
 
     -- Display Mode Control Section
     local function getModesChunk()
-        return format( "Display Mode Control (currently |cFFFFD100%s|r):\n", profile.toggles.mode.value or "unknown" ) ..
-            " - Toggle Mode: |cFFFFD100/hek set mode|r\n" ..
-            " - Set specific mode:\n" ..
-            "   - |cFFFFD100/hek set mode automatic|r\n" ..
-            "   - |cFFFFD100/hek set mode single|r\n" ..
-            "   - |cFFFFD100/hek set mode aoe|r\n" ..
-            "   - |cFFFFD100/hek set mode dual|r\n" ..
-            "   - |cFFFFD100/hek set mode reactive|r\n\n"
+        return format( "显示模式控制 (当前: |cFFFFD100%s|r):\n", profile.toggles.mode.value or "未知" ) ..
+            " - 切换模式: |cFFFFD100/hek set mode|r\n" ..
+            " - 设置特定模式:\n" ..
+            "   - |cFFFFD100/hek set mode automatic|r (自动)\n" ..
+            "   - |cFFFFD100/hek set mode single|r (单体)\n" ..
+            "   - |cFFFFD100/hek set mode aoe|r (AOE)\n" ..
+            "   - |cFFFFD100/hek set mode dual|r (双目标)\n" ..
+            "   - |cFFFFD100/hek set mode reactive|r (响应式)\n\n"
     end
 
     -- Target Swap (Cycle) Setting Section
     local function getCycleChunk()
-        return "Target Swap Setting:\n" ..
-            " - Toggle Target Swap: |cFFFFD100/hek set cycle|r\n" ..
-            " - Set minimum time to die for target swaps: |cFFFFD100/hek set cycle #|r (0-20)\n" ..
-            " - Enable: |cFFFFD100/hek set cycle on|r\n" ..
-            " - Disable: |cFFFFD100/hek set cycle off|r\n\n"
+        return "目标切换设置：\n" ..
+            " - 切换目标切换： |cFFFFD100/hek set cycle|r\n" ..
+            " - 设置目标切换的最小剩余存活时间： |cFFFFD100/hek set cycle #|r (0-20)\n" ..
+            " - 启用： |cFFFFD100/hek set cycle on|r\n" ..
+            " - 禁用： |cFFFFD100/hek set cycle off|r\n\n"
     end
 
     -- Specialization Settings Section
     local function getSpecializationChunk()
-        local output = "Specialization Settings for " .. ( state.spec.name or "your specialization" ) .. ":\n"
+        local output = "" .. ( state.spec.name or "你当前专精" ) .. "的专精设置：\n"
         local hasToggle, hasNumber = false, false
         local exToggle, exNumber, exMin, exMax, exStep
 
@@ -665,18 +665,18 @@ function Hekili:DisplayChatCommandList( list )
                     output = output .. format(
                         " - |cFFFFD100%s|r = %s|r (%s)\n",
                         setting.name,
-                        profile.specs[ state.spec.id ].settings[ setting.name ] and "|cFF00FF00ON" or "|cFFFF0000OFF",
+                        profile.specs[ state.spec.id ].settings[ setting.name ] and "|cFF00FF00开启" or "|cFFFF0000关闭",
                         type( setting.info.name ) == "function" and setting.info.name() or setting.info.name
                     )
                     hasToggle = true
                     exToggle = setting.name
                 elseif setting.info.type == "range" then
                     output = output .. format(
-                        " - |cFFFFD100%s|r = |cFF00FF00%.2f|r, min: %.2f, max: %.2f\n",
+                        " - |cFFFFD100%s|r = |cFF00FF00%.2f|r, 最小： %.2f, 最大： %.2f\n",
                         setting.name,
                         profile.specs[ state.spec.id ].settings[ setting.name ],
-                        setting.info.min and format( "%.2f", setting.info.min ) or "N/A",
-                        setting.info.max and format( "%.2f", setting.info.max ) or "N/A"
+                        setting.info.min and format( "%.2f", setting.info.min ) or "无",
+                        setting.info.max and format( "%.2f", setting.info.max ) or "无"
                     )
                     hasNumber = true
                     exNumber = setting.name
@@ -690,10 +690,10 @@ function Hekili:DisplayChatCommandList( list )
         -- Example Commands for Specialization Settings
         if hasToggle then
             output = output .. format(
-                "\nExample commands for toggling specialization settings:\n" ..
-                " - Toggle On/Off: |cFFFFD100/hek set spec %s|r\n" ..
-                " - Enable: |cFFFFD100/hek set spec %s on|r\n" ..
-                " - Disable: |cFFFFD100/hek set spec %s off|r\n",
+                "\n切换专精设置的命令示例：\n" ..
+                " - 切换 开启/关闭： |cFFFFD100/hek set spec %s|r\n" ..
+                " - 启用： |cFFFFD100/hek set spec %s on|r\n" ..
+                " - 禁用： |cFFFFD100/hek set spec %s off|r\n",
                 exToggle, exToggle, exToggle
             )
         end
@@ -702,8 +702,8 @@ function Hekili:DisplayChatCommandList( list )
             -- Adjust range display based on step size
             local rangeFormat = exStep and exStep >= 1 and "%d-%d" or "%.1f-%.1f"
             output = output .. format(
-                "\nExample command for setting numeric values:\n" ..
-                " - Set to a value within range: |cFFFFD100/hek set spec %s #|r ( " .. rangeFormat .. ")\n",
+                "\n设置数值的示例命令:\n" ..
+                " - 设置一个在范围内的值： |cFFFFD100/hek set spec %s #|r ( " .. rangeFormat .. ")\n",
                 exNumber, exMin or 0, exMax or 100
             )
         end
@@ -713,12 +713,12 @@ function Hekili:DisplayChatCommandList( list )
 
     -- Other Commands Section (only included with "all")
     local function getOtherCommandsChunk()
-        return "Other available commands:\n" ..
-            " - |cFFFFD100/hekili priority|r - View or change priority settings\n" ..
-            " - |cFFFFD100/hekili profile|r - View or change profiles\n" ..
-            " - |cFFFFD100/hekili move|r - Unlock or lock the UI for positioning\n" ..
-            " - |cFFFFD100/hekili enable|r or |cFFFFD100/hekili disable|r - Enable or disable the addon\n" ..
-            " - |cFFFFD100/hekili dump [abilities|auras|<key>] [filter]|r - Dump current spec data or a specific entry\n"
+        return "其他可用命令：\n" ..
+            " - |cFFFFD100/hekili priority|r - 查看或更改优先级设置\n" ..
+            " - |cFFFFD100/hekili profile|r - 查看或更改配置文件\n" ..
+            " - |cFFFFD100/hekili move|r - 解锁或锁定UI，进行位置调整。\n" ..
+            " - |cFFFFD100/hekili enable|r 或者 |cFFFFD100/hekili disable|r - 启用或者禁用插件\n" ..
+            " - |cFFFFD100/hekili dump [abilities|auras|<key>] [filter]|r - 导出当前专精数据或特定条目\n"
     end
 
     -- Determine which sections to print based on the input
@@ -744,15 +744,15 @@ function Hekili:HandleSkeletonCommand( input )
         self.Skeleton = ""  -- must happen BEFORE NotifyChange!
         LibStub("AceConfigRegistry-3.0"):NotifyChange("Hekili")
         self:StartSkeletonListener()
-        self:Print( "Addon will now gather specialization information. Select all talents and use all abilities for best results." )
+        self:Print( "插件现在将收集专精信息。为获得最佳效果，请选择所有天赋并使用所有技能。" )
     end
 end
 
 function Hekili:HandleProfileCommand( args )
     if not args[2] then
-        local output = "Use |cFFFFD100/hekili profile name|r to swap profiles. Valid profile names are:"
+        local output = "使用 |cFFFFD100/hekili profile name|r 来切换配置文件。有效的配置文件名称如下："
         for name, prof in ns.orderedPairs( Hekili.DB.profiles ) do
-            output = output .. format( "\n - |cFFFFD100%s|r %s", name, Hekili.DB.profile == prof and "|cFF00FF00(current)|r" or "" )
+            output = output .. format( "\n - |cFFFFD100%s|r %s", name, Hekili.DB.profile == prof and "|cFF00FF00(当前)|r" or "" )
         end
         self:Print( output )
         return
@@ -760,11 +760,11 @@ function Hekili:HandleProfileCommand( args )
 
     local profileName = args[2]
     if not rawget( Hekili.DB.profiles, profileName ) then
-        self:Print( "Invalid profile name. Please choose a valid profile." )
+        self:Print( "无效的配置名称。请选择一个有效的配置。" )
         return
     end
 
-    self:Print( format( "Set profile to |cFF00FF00%s|r.", profileName ) )
+    self:Print( format( "配置文件已设置为 |cFF00FF00%s|r。", profileName ) )
     self.DB:SetProfile( profileName )
     return
 end
@@ -780,10 +780,10 @@ function Hekili:HandleEnableDisableCommand( args )
     end
 
     if enable then
-        self:Print( "Addon enabled." )
+        self:Print( "插件已启用。" )
         self:Enable()
     else
-        self:Print( "Addon disabled." )
+        self:Print( "插件已禁用。" )
         self:Disable()
     end
     return
@@ -791,16 +791,16 @@ end
 
 function Hekili:HandleMoveCommand( args )
     if InCombatLockdown() then
-        self:Print( "Cannot unlock UI elements in combat." )
+        self:Print( "战斗中无法解锁UI元素。" )
         return
     end
 
     if args[1] == "lock" then
         ns.StopConfiguration()
-        self:Print( "UI locked." )
+        self:Print( "UI已锁定。" )
     else
         ns.StartConfiguration()
-        self:Print( "UI unlocked for movement." )
+        self:Print( "UI已解锁，可以移动。" )
     end
     return
 end
@@ -818,7 +818,7 @@ function Hekili:HandleRecoverCommand()
     self:RestoreDefaults()
     self:RefreshOptions()
     self:BuildUI()
-    self:Print( "Default displays and action lists restored." )
+    self:Print( "默认显示和动作列表已恢复。" )
     return
 end
 
@@ -841,31 +841,31 @@ function Hekili:HandlePriorityCommand( args )
         -- Set the default priority if found
         if defaultPriority then
             Hekili.DB.profile.specs[ spec ].package = defaultPriority
-            local output = format("Switched to the built-in default priority for your specialization: %s%s|r.", Hekili.DB.profile.packs[ defaultPriority ].builtIn and BlizzBlue or "|cFFFFD100", defaultPriority )
+            local output = format("已切换到你当前专精的内置默认优先级：%s%s|r。", Hekili.DB.profile.packs[ defaultPriority ].builtIn and BlizzBlue or "|cFFFFD100", defaultPriority )
             self:Print( output )
             self:ForceUpdate( "CLI_TOGGLE" )
         else
             -- If no built-in default is found, display an error message
-            self:Print( "No built-in default priority available for this specialization." )
+            self:Print( "此专精没有内置的默认优先级。" )
         end
         return true
     end
 
     -- No additional argument provided, show available priorities
     if not args[2] then
-        local output = "Use |cFFFFD100/hekili priority name|r to change your current specialization's priority via command-line or macro."
+        local output = "使用 |cFFFFD100/hekili priority name|r 通过命令行或宏来更改你当前专精的优先级。"
 
         if #priorities < 2 then
-            output = output .. "\n\n|cFFFF0000You must have multiple priorities for your specialization to use this feature.|r"
+            output = output .. "\n\n|cFFFF0000你必须为你的专精设置多个优先级才能使用此功能。|r"
         else
             output = output .. "\nValid priority |cFFFFD100name|rs are:"
             for _, priority in ipairs( priorities ) do
                 local isCurrent = Hekili.DB.profile.specs[ spec ].package == priority
-                output = format( "%s\n - %s%s|r %s", output, Hekili.DB.profile.packs[ priority ].builtIn and BlizzBlue or "|cFFFFD100", priority, isCurrent and "|cFF00FF00(current)|r" or "" )
+                output = format( "%s\n - %s%s|r %s", output, Hekili.DB.profile.packs[ priority ].builtIn and BlizzBlue or "|cFFFFD100", priority, isCurrent and "|cFF00FF00(当前)|r" or "" )
             end
         end
 
-        output = format( "%s\n\nTo create a new priority, see |cFFFFD100/hekili|r > |cFFFFD100Priorities|r.", output )
+        output = format( "%s\n\n要创建新的优先级，请查看 |cFFFFD100/hekili|r > |cFFFFD100优先级|r。", output )
         self:Print( output )
         return true
     end
@@ -877,7 +877,7 @@ function Hekili:HandlePriorityCommand( args )
     for _, priority in ipairs( priorities ) do
         if priority:lower():match( pattern ) then
             Hekili.DB.profile.specs[ spec ].package = priority
-            local output = format( "Priority set to %s%s|r.", Hekili.DB.profile.packs[ priority ].builtIn and BlizzBlue or "|cFFFFD100", priority )
+            local output = format( "优先级已设置为 %s%s|r。", Hekili.DB.profile.packs[ priority ].builtIn and BlizzBlue or "|cFFFFD100", priority )
             self:Print( output )
             self:ForceUpdate( "CLI_TOGGLE" )
             return true
@@ -885,7 +885,7 @@ function Hekili:HandlePriorityCommand( args )
     end
 
     -- If no matching priority found, display valid options
-    local output = format( "No match found for priority '%s'.\nValid options are:", rawName )
+    local output = format( "未找到优先级 '%s' 的匹配项。\n有效选项如下：", rawName )
     for i, priority in ipairs( priorities ) do
         output = output .. format( " %s%s|r%s", Hekili.DB.profile.packs[ priority ].builtIn and BlizzBlue or "|cFFFFD100", priority, i == #priorities and "." or "," )
     end

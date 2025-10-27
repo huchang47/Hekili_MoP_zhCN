@@ -1175,9 +1175,15 @@ spec:RegisterAuras( {
             t.caster = "nobody"
         end
     },
-
-    deadly_calm = {
+    -- 注释掉没有还出错的致命平静
+    --[[ deadly_calm = {
         id = 85730,
+        duration = 10,
+        max_stack = 1,
+    }, ]]--
+
+    sudden_death = {
+        id = 52437,
         duration = 10,
         max_stack = 1,
     },
@@ -1366,8 +1372,8 @@ spec:RegisterStateTable( "protection", {
             applyDebuff( "target", "colossus_smash", 6 )
         end,
     },
-
-    deadly_calm = {
+    -- 注释掉没有还出错的致命平静
+    --[[ deadly_calm = {
         id = 85730,
         cast = 0,
         cooldown = 60,
@@ -1383,7 +1389,7 @@ spec:RegisterStateTable( "protection", {
         handler = function()
             applyBuff( "deadly_calm" )
         end,
-    },
+    }, ]]--
 
     sudden_death = {
         id = 52437,
@@ -2389,22 +2395,22 @@ spec:RegisterRanges( "devastate", "charge", "heroic_throw" )
 
 -- Protection Warrior Settings
 spec:RegisterSetting( "use_shield_wall", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 871 ) ), -- Shield Wall
-    desc = "If checked, Shield Wall will be recommended when health drops below the defensive threshold. If unchecked, it will not be recommended automatically.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 871 ) ), -- Shield Wall
+    desc = "如果勾选，盾墙将在生命低于防御爆发生命阈值时推荐使用。不勾选，将不会自动推荐。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "use_last_stand", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 12975 ) ), -- Last Stand
-    desc = "If checked, Last Stand will be recommended as an emergency defensive cooldown. If unchecked, it will not be recommended automatically.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 12975 ) ), -- Last Stand
+    desc = "如果勾选，破釜沉舟将作为紧急爆发防御。不勾选，将不会自动推荐。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "defensive_health_threshold", 50, {
-    name = "Defensive Cooldown Health Threshold",
-    desc = "Health percentage threshold below which major defensive cooldowns will be recommended (Shield Wall, Last Stand).",
+    name = "防御爆发生命阈值",
+    desc = "生命低于此阈值时，将推荐使用盾墙和破釜沉舟。",
     type = "range",
     min = 20,
     max = 80,
@@ -2413,8 +2419,8 @@ spec:RegisterSetting( "defensive_health_threshold", 50, {
 } )
 
 spec:RegisterSetting( "shield_barrier_rage_threshold", 60, {
-    name = strformat( "%s Rage Threshold", Hekili:GetSpellLinkWithTexture( 112048 ) ), -- Shield Barrier
-    desc = "Minimum rage required before recommending Shield Barrier for rage dumping.",
+    name = strformat( "%s怒气阈值", Hekili:GetSpellLinkWithTexture( 112048 ) ), -- Shield Barrier
+    desc = "推荐使用盾牌格挡前的最低怒气值。",
     type = "range",
     min = 20,
     max = 100,
@@ -2423,35 +2429,35 @@ spec:RegisterSetting( "shield_barrier_rage_threshold", 60, {
 } )
 
 spec:RegisterSetting( "maintain_sunder_armor", true, {
-    name = strformat( "Maintain %s", Hekili:GetSpellLinkWithTexture( 7386 ) ), -- Sunder Armor
-    desc = "If checked, the addon will prioritize maintaining 3 stacks of Sunder Armor on the target.",
+    name = strformat( "维持%s", Hekili:GetSpellLinkWithTexture( 7386 ) ), -- Sunder Armor
+    desc = "如果勾选，插件将优先维持目标身上3层破甲效果。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "shield_block_priority", "automatic", {
-    name = strformat( "%s Priority", Hekili:GetSpellLinkWithTexture( 2565 ) ), -- Shield Block
-    desc = "When to prioritize Shield Block usage:",
+    name = strformat( "%s优先级", Hekili:GetSpellLinkWithTexture( 2565 ) ), -- Shield Block
+    desc = "当承受物理伤害时，是否优先推荐格挡。",
     type = "select",
     values = {
-        automatic = "Automatic (when taking physical damage)",
-        always = "Always maintain uptime",
-        defensive = "Only when low health",
-        never = "Never recommend"
+        automatic = "自动（当承受物理伤害时）",
+        always = "始终保持",
+        defensive = "仅当生命值低时",
+        never = "从不推荐"
     },
     width = 2
 } )
 
 spec:RegisterSetting( "vengeance_optimization", true, {
-    name = strformat( "Optimize for %s", Hekili:GetSpellLinkWithTexture( 76691 ) ), -- Vengeance
-    desc = "If checked, the rotation will prioritize damage abilities when Vengeance stacks are high.",
+    name = strformat( "优化%s", Hekili:GetSpellLinkWithTexture( 76691 ) ), -- Vengeance
+    desc = "如果勾选，将在复仇层数高时优先推荐伤害技能。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "vengeance_stack_threshold", 5, {
-    name = "Vengeance Stack Threshold",
-    desc = "Minimum Vengeance stacks before prioritizing damage abilities over pure threat abilities.",
+    name = "复仇层数阈值",
+    desc = "在复仇层数达到此阈值后，将优先推荐伤害技能而不是防御技能。",
     type = "range",
     min = 1,
     max = 10,
@@ -2460,8 +2466,8 @@ spec:RegisterSetting( "vengeance_stack_threshold", 5, {
 } )
 
 spec:RegisterSetting( "aoe_enemy_threshold", 3, {
-    name = "AoE Enemy Threshold",
-    desc = "Number of enemies required before switching to AoE rotation (Thunder Clap, Cleave).",
+    name = "AoE 敌人数量阈值",
+    desc = "切换至 AoE 循环（雷霆一击、顺劈斩）所需的敌人数量。",
     type = "range",
     min = 2,
     max = 8,
@@ -2470,62 +2476,62 @@ spec:RegisterSetting( "aoe_enemy_threshold", 3, {
 } )
 
 spec:RegisterSetting( "use_heroic_strike", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 78 ) ), -- Heroic Strike
-    desc = "If checked, Heroic Strike will be recommended for rage dumping on single targets.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 78 ) ), -- Heroic Strike
+    desc = "如果勾选，将在单目标时推荐使用英勇打击来消耗怒气。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "threat_mode_priority", "survival", {
-    name = "Rotation Priority Mode",
-    desc = "Select the primary focus of the rotation:",
+    name = "切换优先级模式",
+    desc = "选择输出循环的主要侧重点：",
     type = "select",
     values = {
-        survival = "Survival (Maximum Mitigation)",
-        threat = "Threat (Maximum Threat Generation)",
-        balanced = "Balanced (Survival + Threat)",
-        damage = "Damage (When Vengeance is High)"
+        survival = "生存（最大防护）",
+        threat = "威胁（最大威胁生成）",
+        balanced = "平衡（生存+威胁）",
+        damage = "伤害（当复仇高时）"
     },
     width = 2
 } )
 
 spec:RegisterSetting( "auto_taunt", true, {
-    name = strformat( "Auto-Recommend %s", Hekili:GetSpellLinkWithTexture( 355 ) ), -- Taunt
-    desc = "If checked, Taunt will be recommended when threat is low or lost.",
+    name = strformat( "自动推荐%s", Hekili:GetSpellLinkWithTexture( 355 ) ), -- Taunt
+    desc = "如果勾选，将在威胁低或丢失时推荐使用嘲讽。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "use_spell_reflection", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 23920 ) ), -- Spell Reflection
-    desc = "If checked, Spell Reflection will be recommended against incoming magical attacks.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 23920 ) ), -- Spell Reflection
+    desc = "如果勾选，将推荐使用法术反射来抵抗即将到来的魔法攻击。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "cooldown_usage", "defensive", {
-    name = "Cooldown Usage Priority",
-    desc = "When to use major cooldowns (Avatar, Bloodbath, etc.):",
+    name = "爆发使用优先级",
+    desc = "在何种情况下优先使用主要爆发（变身、浴血奋战等）：",
     type = "select",
     values = {
-        defensive = "Defensive situations only",
-        aggressive = "Use for damage when safe",
-        automatic = "Automatic based on situation",
-        never = "Never recommend"
+        defensive = "仅在防御姿态时",
+        aggressive = "在安全时用于伤害",
+        automatic = "根据情况自动",
+        never = "从不推荐"
     },
     width = 2
 } )
 
 spec:RegisterSetting( "maintain_buffs", true, {
-    name = "Maintain Shouts",
-    desc = "If checked, the addon will remind you to maintain Battle Shout or Commanding Shout.",
+    name = "保持怒吼",
+    desc = "如果勾选，将提醒你保持战斗怒吼或命令怒吼。",    
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "use_berserker_rage", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 18499 ) ), -- Berserker Rage
-    desc = "If checked, Berserker Rage will be recommended for fear/charm immunity and rage generation.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 18499 ) ), -- Berserker Rage
+    desc = "如果勾选，将推荐使用狂暴之怒以获得恐惧/魅惑免疫效果并生成怒气。",
     type = "toggle",
     width = "full"
 } )
@@ -2545,7 +2551,7 @@ spec:RegisterOptions( {
     
     potion = "mogu_power_potion",
     
-    package = "Protection",
+    package = "防战Simc",
 } )
 
 -- State Expressions for MoP Protection Warrior
@@ -2689,7 +2695,7 @@ spec:RegisterStateExpr( "tank", function()
     }
 end )
 
-spec:RegisterPack( "Protection", 20250827, [[Hekili:nRvCVnUUn8plbhqA7B3L5K20R9qBb2WgWEh2omG8g2)zBfBLgVABLjl3(6qG)SpsjBljBlhNB792WHE11IIKIK)OiLS)s)FYFtmrq9)2kVvR9UZ7(fRwT6oVR93iE)a1FZbs0lKNHhYjz4FYzIQqbTqGd9EkJeJSOGvYJGH93STmjv8J5(B7Z3Lxdp4VHuk2Z4(B2KvUJN8I)M9jXXu1mOfr(B(P9jfvH4pKQWA5xfY2b)DKiHLxfMMuiGH3X4vH)j6ljPjlKQ2UKuqj(qv4FNW5jm(xQc)RGctvt7RF4d4FtJyzBjIQVQ4wXIdnV6384Vf(FrknOypRu8XKDpwqfIK8NlwKrsYfWpbBl3TRy(m8xlke8aYZjbWqlkpu)stwaVDy5apKrYJbwpDzrYsYjA50LfoLfmZ8i6hJ2Zyf0hJP7O5fjVsR(QYI8hO7iLPIgRBrltq1CpH)mfvorsg9rVJhZyVsZOW6norX3NUZCchkZYOPYjGZeiJQuwsbU2wWPaTMtGxMhO(Ra0R(rmm7XgHG8PVaxBo)TuEbL)cLhWjknT1mwwqdShEUuxO54ZlIzVLBYjK8ebntPccEs(luXsKJrmwks9II9j004G3iPPWkbDtfpDV3jzYQZKjBtzS4GDL83XjQ8(QjbJe9IPJwBbGL8uOMWJi50abJZRnWOX4bPfjJ8ZF6glnjn559IIG)rz8Zn(JURJIuswZ6WsTiphW2faMGOxkoNjEGHp1DTinxLhoESoUcJhHvrqCc9HvwreraL9dPAd7TKLGuMBJ9GStSa5RNptShcxflO)SmDZPcAlG5d4EL(H8eP4vAanNMLqlEC5j5aHr7pVNm0nM6TVhGAga6tJnaX1O6Wg7SwJxOx8y6aTbThCXyS5xUNssf7xCis8qlrTCkqnQwtoEmjhs5GPJIjzq4uaK33lR4PA2abx)G3I1x5qRsHeebiapUNsPh6xgD661xnFu05sphkDmnJXjPj)lR84trMgHSd6D2IBGr59q0QxlZDn)se0AeEytJmHNPPWW0T2ZLBWmZHLJWCGGd4MRjI3N94f50xP8lMFz)8oOoE84LJZHhVGK(g59IlM3Nb1M)hwDLtT9afW6C6Uu1w89JN7qW8wFd4zsIA8qR74Dw6Y7OOQqWYLivdt61UMss2bQAx6xtIG0UV3zI34nxqsXn46rjStfzBkn2bNRPkGxwSVptNDAUQsDSrM36tQ8wvHq9seuyAHALyd3c5vc8SLTUb(euwa2tDyrToOMrJGhkybZS3fdAff80Dx5wJIHyDitkNnr1A0nj7XDX(Y8yaqfLsoGSFwmdRRHEi4ngmsbSxueU9RBoySJNBI4GULdv66Mlk1GWHKodxVOjfZVSU0lZxwdkhAeibB0lpC9ywz6RqMyOOEu4JWca0lRP4EV5DTunq6Bgrma6INfSLLkMIV0nF2t5maId1ON8s)cdTgDUmt6TEtyT7MKP26GD9wRgrO16iKdN9wdA93X(JdHrHsd(VaYSl)mJ87o22uc0Ug6RMI86o7ZeX2D6Gro6L3iVs)(M8aOr1q9WGQxhLsRLvVaLAwEEqZrap9mute01Z98DhnQIZ(l1TD1VTWfnDKPJqbZZHbhx1)4ytvgC7V5ncphvpS7FOgwytlgxu3H)fw4IlGWF6)SmHdHRHfSmGASM9mWebVaei4)kwu91)Csom0nFPk8VLxuEa5hsGstqMQJcUOL81ojVoYqt6TU5SH7rt)NDsFRlwt89oj2kVLEcl9Mg7Lw3DS0u2B4owGPJtkQcFJYH3d5fHjMatsGK1WbSbLQWTLIg6YzsxdSmnPoogjogYNSLuq)ceif(jWdzSllgBnG7nwDaeNNJDKfCNMwnmslDohRUvnMH74hzpI))QjT94FopJ61UJPLh9cUChuEqoNZtsJGEgcx6g80dxENtsvzXNciBye8uXyUcYRRC)8muUdzn6uvRJRCJkA7I(Ij4V73z7ftpNADhOtjTQzS8KYT2PHUP4nn7t6)PawLzXbk(hZAu8BTflgl4Vbw4r(F7Zx7Vr(o5HUBUTi8IVjpn)6s58)9(BIGoSP8ecq6WLivfo7rWavxMu4CyzmyzH4ixIl)bABk84r9zonyRBvHpbWYQWR83OwxWVL83x4)Tv)NRZdPwArzuPjkVRDkVzGJB4g70mZSGyKB3GCRzqJmxMIaiBTjz1zS6qYTN2omyTKn(gxn7P8polCSk8binGLVXKiuZ(Stn7KCffnOBCPBdE19Es11rxHssUXsxAZRIkYDN2ensOIXcSTbtKR3FAU2RFr5QqTQGq7B9082ImK9l9m9961JT3F5eGU2fUBOcpOEalGxMzzLH(y2gGuqRmvh7AWn1ibQRYYYgpXcEm8vHGv2t5T7DBnkWVwKQocgh5pYvhPzK6MMgcs3c0SpJDtjmSAUwLCnqDvNn00IZpDqI9TnPtozCJtgUglIBttmOug74PLQ(9En3qBZfxzK0Q5nJMM58fXQEIy145lgprT(wVghSFcU0EByJdUhg6CJb0X(MY0y5jz9mVClnl70zYjq(tJNwDUOH4N00vFHAkyB)lvtABwT2aVjVwoPaCb46EZBwWjDbWsEmbeL(Q4KiPzyrwgxiNr0hsJKRDrqtiva(A9TTjZLT0sXTlZcLsxq03HuEceZy3RNLgaJRsj32w3qjLXpEcEYbLQm0haXu3vzwtjvwFDdwd15BCW9(ntO8Ur1GMV5bRxpWx(GrqyNbhSOp5NcHrmPzXb42bkZnA3)fSSAJun2Ld3gxBwTPDbdUlJDk6Kzs3MtXDIBZnjU2PMB37RDEST9uFB3jtpIRsV)Sjzdx6T7TAgSep1Xim(UltOM9tu8SXARt94JSl0K5PvD1)Av8PWAtGPbS68rj00TJ(QoLAql5U)uau7Zn8vZlDX6laUk8hG6zxS2URiTsmX8A2F6c)AQ5xJQUuGNSOULgUlTYoEgMZrvmRGO)zknEohxF4dnMYA0P5oP2u35tGqzi74aw7nKBUMbtm5LzXOTFzd93eyWtqr3J(LdSo6WrKH1FVeoo5dZwPxjJcgyXHu6pAZa24VoN5Mu0U(qkgomyPryqx25pApdDCxxBWiJpgJXtJ3Hh34zUNSZVpcTG6rY4j)hwCZohjAEKLQmNTDJ2K3uBfAVcUo7RzvlrDF3dufrhgn4HbO(N))o]] )
+spec:RegisterPack( "防战Simc", 20250827, [[Hekili:nRvCVnUUn8plbhqA7B3L5K20R9qBb2WgWEh2omG8g2)zBfBLgVABLjl3(6qG)SpsjBljBlhNB792WHE11IIKIK)OiLS)s)FYFtmrq9)2kVvR9UZ7(fRwT6oVR93iE)a1FZbs0lKNHhYjz4FYzIQqbTqGd9EkJeJSOGvYJGH93STmjv8J5(B7Z3Lxdp4VHuk2Z4(B2KvUJN8I)M9jXXu1mOfr(B(P9jfvH4pKQWA5xfY2b)DKiHLxfMMuiGH3X4vH)j6ljPjlKQ2UKuqj(qv4FNW5jm(xQc)RGctvt7RF4d4FtJyzBjIQVQ4wXIdnV6384Vf(FrknOypRu8XKDpwqfIK8NlwKrsYfWpbBl3TRy(m8xlke8aYZjbWqlkpu)stwaVDy5apKrYJbwpDzrYsYjA50LfoLfmZ8i6hJ2Zyf0hJP7O5fjVsR(QYI8hO7iLPIgRBrltq1CpH)mfvorsg9rVJhZyVsZOW6norX3NUZCchkZYOPYjGZeiJQuwsbU2wWPaTMtGxMhO(Ra0R(rmm7XgHG8PVaxBo)TuEbL)cLhWjknT1mwwqdShEUuxO54ZlIzVLBYjK8ebntPccEs(luXsKJrmwks9II9j004G3iPPWkbDtfpDV3jzYQZKjBtzS4GDL83XjQ8(QjbJe9IPJwBbGL8uOMWJi50abJZRnWOX4bPfjJ8ZF6glnjn559IIG)rz8Zn(JURJIuswZ6WsTiphW2faMGOxkoNjEGHp1DTinxLhoESoUcJhHvrqCc9HvwreraL9dPAd7TKLGuMBJ9GStSa5RNptShcxflO)SmDZPcAlG5d4EL(H8eP4vAanNMLqlEC5j5aHr7pVNm0nM6TVhGAga6tJnaX1O6Wg7SwJxOx8y6aTbThCXyS5xUNssf7xCis8qlrTCkqnQwtoEmjhs5GPJIjzq4uaK33lR4PA2abx)G3I1x5qRsHeebiapUNsPh6xgD661xnFu05sphkDmnJXjPj)lR84trMgHSd6D2IBGr59q0QxlZDn)se0AeEytJmHNPPWW0T2ZLBWmZHLJWCGGd4MRjI3N94f50xP8lMFz)8oOoE84LJZHhVGK(g59IlM3Nb1M)hwDLtT9afW6C6Uu1w89JN7qW8wFd4zsIA8qR74Dw6Y7OOQqWYLivdt61UMss2bQAx6xtIG0UV3zI34nxqsXn46rjStfzBkn2bNRPkGxwSVptNDAUQsDSrM36tQ8wvHq9seuyAHALyd3c5vc8SLTUb(euwa2tDyrToOMrJGhkybZS3fdAff80Dx5wJIHyDitkNnr1A0nj7XDX(Y8yaqfLsoGSFwmdRRHEi4ngmsbSxueU9RBoySJNBI4GULdv66Mlk1GWHKodxVOjfZVSU0lZxwdkhAeibB0lpC9ywz6RqMyOOEu4JWca0lRP4EV5DTunq6Bgrma6INfSLLkMIV0nF2t5maId1ON8s)cdTgDUmt6TEtyT7MKP26GD9wRgrO16iKdN9wdA93X(JdHrHsd(VaYSl)mJ87o22uc0Ug6RMI86o7ZeX2D6Gro6L3iVs)(M8aOr1q9WGQxhLsRLvVaLAwEEqZrap9mute01Z98DhnQIZ(l1TD1VTWfnDKPJqbZZHbhx1)4ytvgC7V5ncphvpS7FOgwytlgxu3H)fw4IlGWF6)SmHdHRHfSmGASM9mWebVaei4)kwu91)Csom0nFPk8VLxuEa5hsGstqMQJcUOL81ojVoYqt6TU5SH7rt)NDsFRlwt89oj2kVLEcl9Mg7Lw3DS0u2B4owGPJtkQcFJYH3d5fHjMatsGK1WbSbLQWTLIg6YzsxdSmnPoogjogYNSLuq)ceif(jWdzSllgBnG7nwDaeNNJDKfCNMwnmslDohRUvnMH74hzpI))QjT94FopJ61UJPLh9cUChuEqoNZtsJGEgcx6g80dxENtsvzXNciBye8uXyUcYRRC)8muUdzn6uvRJRCJkA7I(Ij4V73z7ftpNADhOtjTQzS8KYT2PHUP4nn7t6)PawLzXbk(hZAu8BTflgl4Vbw4r(F7Zx7Vr(o5HUBUTi8IVjpn)6s58)9(BIGoSP8ecq6WLivfo7rWavxMu4CyzmyzH4ixIl)bABk84r9zonyRBvHpbWYQWR83OwxWVL83x4)Tv)NRZdPwArzuPjkVRDkVzGJB4g70mZSGyKB3GCRzqJmxMIaiBTjz1zS6qYTN2omyTKn(gxn7P8polCSk8binGLVXKiuZ(Stn7KCffnOBCPBdE19Es11rxHssUXsxAZRIkYDN2ensOIXcSTbtKR3FAU2RFr5QqTQGq7B9082ImK9l9m9961JT3F5eGU2fUBOcpOEalGxMzzLH(y2gGuqRmvh7AWn1ibQRYYYgpXcEm8vHGv2t5T7DBnkWVwKQocgh5pYvhPzK6MMgcs3c0SpJDtjmSAUwLCnqDvNn00IZpDqI9TnPtozCJtgUglIBttmOug74PLQ(9En3qBZfxzK0Q5nJMM58fXQEIy145lgprT(wVghSFcU0EByJdUhg6CJb0X(MY0y5jz9mVClnl70zYjq(tJNwDUOH4N00vFHAkyB)lvtABwT2aVjVwoPaCb46EZBwWjDbWsEmbeL(Q4KiPzyrwgxiNr0hsJKRDrqtiva(A9TTjZLT0sXTlZcLsxq03HuEceZy3RNLgaJRsj32w3qjLXpEcEYbLQm0haXu3vzwtjvwFDdwd15BCW9(ntO8Ur1GMV5bRxpWx(GrqyNbhSOp5NcHrmPzXb42bkZnA3)fSSAJun2Ld3gxBwTPDbdUlJDk6Kzs3MtXDIBZnjU2PMB37RDEST9uFB3jtpIRsV)Sjzdx6T7TAgSep1Xim(UltOM9tu8SXARt94JSl0K5PvD1)Av8PWAtGPbS68rj00TJ(QoLAql5U)uau7Zn8vZlDX6laUk8hG6zxS2URiTsmX8A2F6c)AQ5xJQUuGNSOULgUlTYoEgMZrvmRGO)zknEohxF4dnMYA0P5oP2u35tGqzi74aw7nKBUMbtm5LzXOTFzd93eyWtqr3J(LdSo6WrKH1FVeoo5dZwPxjJcgyXHu6pAZa24VoN5Mu0U(qkgomyPryqx25pApdDCxxBWiJpgJXtJ3Hh34zUNSZVpcTG6rY4j)hwCZohjAEKLQmNTDJ2K3uBfAVcUo7RzvlrDF3dufrhgn4HbO(N))o]] )
 
 
 

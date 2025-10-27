@@ -148,4 +148,4 @@ if class and class.specs and class.specs[0] then
     })
 end
 
-Hekili:Debug( "MoP Items module loaded." )
+Hekili:Debug( "MoP 道具模块加载完成。" )

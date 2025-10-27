@@ -2167,19 +2167,19 @@ spec:RegisterOptions( {
 
     potion = "tempered_potion",
 
-    package = "Frost",
+    package = "冰霜Simc",
 } )
 
 spec:RegisterSetting( "dps_shell", false, {
-    name = strformat( "Use %s Offensively", Hekili:GetSpellLinkWithTexture( 48707 ) ),
-    desc = strformat( "If checked, %s will not be on the Defensives toggle by default.", Hekili:GetSpellLinkWithTexture( 48707 ) ),
+    name = strformat( "使用%s用于输出", Hekili:GetSpellLinkWithTexture( 48707 ) ),
+    desc = strformat( "如果勾选，那么%s将不会默认在防御状态下使用。", Hekili:GetSpellLinkWithTexture( 48707 ) ),
     type = "toggle",
     width = "full",
 } )
 
 spec:RegisterSetting( "it_macro", nil, {
-    name = strformat( "%s Macro", Hekili:GetSpellLinkWithTexture( 45477 ) ),
-    desc = strformat( "Using a mouseover macro makes it easier to apply %s and %s to other enemies without retargeting.",
+    name = strformat( "使用%s宏", Hekili:GetSpellLinkWithTexture( 45477 ) ),
+    desc = strformat( "使用鼠标悬停宏可以更方便地将%s和%s应用于其他敌人，而无需重新目标。",
         Hekili:GetSpellLinkWithTexture( 45477 ), Hekili:GetSpellLinkWithTexture( 59921 ) ),
     type = "input",
     width = "full",
@@ -2190,8 +2190,8 @@ spec:RegisterSetting( "it_macro", nil, {
 
 -- Frost Death Knight specific settings
 spec:RegisterSetting( "frost_runic_power_threshold", 80, {
-    name = "Runic Power Threshold for Frost Strike",
-    desc = "Minimum runic power to spend on Frost Strike",
+    name = "冰霜打击符文能量阈值",
+    desc = "使用冰霜打击所需的最低符文能量",
     type = "range",
     min = 20,
     max = 100,
@@ -2200,22 +2200,22 @@ spec:RegisterSetting( "frost_runic_power_threshold", 80, {
 } )
 
 spec:RegisterSetting( "frost_km_priority", true, {
-    name = "Prioritize Killing Machine",
-    desc = "Always use Killing Machine procs immediately",
+    name = "优先使用杀戮机器",
+    desc = "总是立即使用杀戮机器的触发效果",
     type = "toggle",
     width = "full",
 } )
 
 spec:RegisterSetting( "frost_rime_priority", true, {
-    name = "Prioritize Rime Procs",
-    desc = "Always use Rime procs for free Howling Blast",
+    name = "优先使用白霜",
+    desc = "总是使用白霜触发效果来释放免费的凛风冲击",
     type = "toggle",
     width = "full",
 } )
 
 spec:RegisterSetting( "frost_execute_threshold", 35, {
-    name = "Execute Threshold for Soul Reaper",
-    desc = "Target health percentage to use Soul Reaper",
+    name = "灵魂收割者执行阈值",
+    desc = "目标生命值百分比，用于使用灵魂收割者",
     type = "range",
     min = 20,
     max = 50,
@@ -2225,5 +2225,5 @@ spec:RegisterSetting( "frost_execute_threshold", 35, {
 
 -- Register default pack for MoP Frost Death Knight
 spec:RegisterPack(
-	"Frost", 20251026, [[Hekili:TRvBVTnos4FlbfWObjqNFjo9fuhGE32f32dx3I6c0VjjAj6yIilQtIk58bd9B)gksjrkrkj7K27l3h2UnuCEgodN5zgonUZC)U76qed7(L5tNVC20536mFXIztFR7A2HeS76euWdO7H)smAp8N)EknJXx9qeffYLoJMNgaFXD9MCse7pID3ycYP38g31OC2oAQ7617Z3MsEWD9osyiwibolWD933rYk85)hQWxQ6cF6w4NdyeACHFejJbFElnTW)VJFGerCCxxUy5HHeFFe2JHsVhZGf(sPbIJrBIWHU)v31bPegoLGaZdfHJzoBIO0qqGeh5Uk8Nu4VjF7w5Nc2XbZjJbNMc)7wv4pBkyjLhhWMRe3Lb27qklpEhn6G3MiY97yAk8reSp4NCIX4qVqkyo16qtkUEwyvp9bdnNTjfJEGJWnwr4IcFqmNT87zVT4hXPomsWdGFTbPD0NIGfGtekR8aTCi4eUPKi0954U4jw3lJbXeyoE3oSbI)34GCgU05LMhJZehzNaAEmtEp1ObiinYdm(eCkh)3mm(aMKapky)bOKc)JhvUJEyphRWdn4lCxngWBhHci7XTHPJJ9DwXXMnR4qeXnw8iuiCcGINNc6bcPpDfX9jIVgIrSDwuuhBAM9CsHtpH(eovGZTtT7JNny6MmUkcJd2n6SnvHkvJ9STswcGql2JU17jsmSSti9PyvJx9JLW1o1RAR49L2Th3J69eeQYxKZkMsse7yny6bmURHHirf(F6B)49aHi9Pc)V91c)xVd4hG0n8wsaHDzH)h)YVv4htl8ljTV634xsYBmloDhPWcN)ntlDwV2yc2vgV7bPaHU0LFrdh(TO8OgA4klDpjo0BBkg)FWQEcdeOvseGII8e)GhNRxW47jkjvDzMnsQX8mSxqy2irpGsJ43Pz9tBYf)rShogVNGZK(VgvaUkRAarX9ZH2gBa6fJd6Gim6rJmQJrA9IPLxPjP4a6(niJ1w1cwLrB)JyErR3lJbHGP)jfcvx6S0z6L9LMyp3(cz1zbDaCGYWXbWTAsBMIQpvhwu9zu6(dCTX2H9GO3WwbH3OU3uejZ4UwQUReQmhwDh3QTdsuekLR1TIoOu3kteemM2vm2brpTky3po2wfSNrjpsPuIKGhQXRrZARYF9h7TldHKBa0hSJLFYNKeCgJevflzpr98BP822MTSJs7ncnIs8LmZEiGSnehGou34J5kZ6bVJPbMNvhs)A7SXcrt7SWMsjgYfPadtgM1aw1U5)TOC4)nRCnj7zvzgdjHdJKGZ1zhgfbfxtcaR8dCA)LQAq2cSPK0H1qpnMlUl77HanNHgYdd5OdFk60W37MQIUwiMPCVH1qzAxl2xOyHWgBYjJYBV8omqNKTxFrgVP9NqPj6lJIdiqMV3UdzLbXguG3280dTwhNMHt5Eu91ZoeJsGONSKu4BzLL2A8jjP0aE8l0uIjgIr6r4V(WbsrdyA(7M3Ky4vsJeA4n5L0k7rb7iXg0sn5qzoNShLZU43Gn0))Rj(Z4K8ZVM4BhznrlLZcoeu38Agp4Yqe9ZTCA7QKvBvDCdN)Wlmzb2lB(cvxUZKamuw9fOyTjB7LDWaJSKFZ776Lb6SE1H25O3xamM3TQs83kZGxBPFcHbqPUsu)jZwhvWCLRdee3fd3T00uiZV)Uyb3Ac0NZ97GeghoapIBas5TxgYDRVFHmYSHn1SikRAZ9K5cbrXpGzZgcqrELSnTYUcyuVqcw0N28LvkSgpd5UT058xyDo3y68qQyIDnOMZjFXRPS2QTCkd06tF7hf(3dClVhynW)RCskOZV8NMgDvH)R5JGa6Si8YcF4(e(JqqeeNpLphS6aZW80YYzC7RWxyGdgPCUJ8QIWZC(XIPUYjOa0YzCJx(pocWvTg6NmM3ON76)aCzPmEXX306FXdNIpdxVj4aqWLZk7cClH351Rk8hXOwk(CXNFfS1Vwn)MIplGpZPEKoxT6VOZvAEp60Cxt2U6cZmJMfV9WxmVRMuFZFxe(z5B6eTvM(FJYJP(D(4sRed2SYSivxU9ibVM356Q6Nho8wRlRWDqTh9OQ4TgaNqAeT0XkieRg83DRUzqbfnt3v2vlguuTP9XDAnE3A7gKT6VlesAqxttwbVm46YNbSA2yKu2cKUKDE27hwTy5yqRUFDD8UWwpUhpEHLoChJ206WsxJkma3T6DthdAkKp6yz5PRhp25zRYLAEYQCb1NRkxYWtvvbS6zQvRP(ev5ADFE6ySYMNwAWiBEn6yGQQjwdaz8TNnmaYCszzJn5PCEszHHgnxN7EESDQI3HlY0MAC8AKfQfLmlx9LZPjNEdACznu36UvZNAw8gU5s3r7(3mleNOak7U)AElkRkBd70o06au1wLnmoESBtmFy18LNa2ZFzWwuPYgwtmb1TGJhcx)Fr3rMTbdDYz1GEDNgNUQtttRME5eJHClMwLRUUSAuH)3fLJGtjHc9TDO5aQvVQolIbeYWrZ2uhMyzId3TA2u7qRnbjf4nopQj1UL6Is2rUAOsAUZriN2SoktdhSCwBi0(LUOgcJdeYkgkZ5qZcKf3N0jw4o1MdAJM6741GtRE7XJ1Rxvi4e8tnywxpQNBN6rEijj7ymt6oIJEnXoNhtGE8yNmMtYVP1dYT9exR(R6GsyTPFTjoPOA9NrWr22VPeTi6E2)Eny)mzHdZin0nthlnwDRfL9DdN1fvpFo7sfU0YV(IsKud5yzqQfOzeYkhaJtjEIncHjds2uRTMXexsX8ZwDpZIaV1aK6PSAZTunPSE)TgtCtsUvsIArvPtBPOZGETg2xaE1MWTgkrdNWZHI06X0knMYvJ(4ke5IFK(jir8MRmLjcpS(utdBl8yt4e7(xs2Mqv)As1unRZop7224D6jnc50soB)XxG4E5v(ZUpGQtBRFnNyUU)3)]]
+	"冰霜Simc", 20251026, [[Hekili:TRvBVTnos4FlbfWObjqNFjo9fuhGE32f32dx3I6c0VjjAj6yIilQtIk58bd9B)gksjrkrkj7K27l3h2UnuCEgodN5zgonUZC)U76qed7(L5tNVC20536mFXIztFR7A2HeS76euWdO7H)smAp8N)EknJXx9qeffYLoJMNgaFXD9MCse7pID3ycYP38g31OC2oAQ7617Z3MsEWD9osyiwibolWD933rYk85)hQWxQ6cF6w4NdyeACHFejJbFElnTW)VJFGerCCxxUy5HHeFFe2JHsVhZGf(sPbIJrBIWHU)v31bPegoLGaZdfHJzoBIO0qqGeh5Uk8Nu4VjF7w5Nc2XbZjJbNMc)7wv4pBkyjLhhWMRe3Lb27qklpEhn6G3MiY97yAk8reSp4NCIX4qVqkyo16qtkUEwyvp9bdnNTjfJEGJWnwr4IcFqmNT87zVT4hXPomsWdGFTbPD0NIGfGtekR8aTCi4eUPKi0954U4jw3lJbXeyoE3oSbI)34GCgU05LMhJZehzNaAEmtEp1ObiinYdm(eCkh)3mm(aMKapky)bOKc)JhvUJEyphRWdn4lCxngWBhHci7XTHPJJ9DwXXMnR4qeXnw8iuiCcGINNc6bcPpDfX9jIVgIrSDwuuhBAM9CsHtpH(eovGZTtT7JNny6MmUkcJd2n6SnvHkvJ9STswcGql2JU17jsmSSti9PyvJx9JLW1o1RAR49L2Th3J69eeQYxKZkMsse7yny6bmURHHirf(F6B)49aHi9Pc)V91c)xVd4hG0n8wsaHDzH)h)YVv4htl8ljTV634xsYBmloDhPWcN)ntlDwV2yc2vgV7bPaHU0LFrdh(TO8OgA4klDpjo0BBkg)FWQEcdeOvseGII8e)GhNRxW47jkjvDzMnsQX8mSxqy2irpGsJ43Pz9tBYf)rShogVNGZK(VgvaUkRAarX9ZH2gBa6fJd6Gim6rJmQJrA9IPLxPjP4a6(niJ1w1cwLrB)JyErR3lJbHGP)jfcvx6S0z6L9LMyp3(cz1zbDaCGYWXbWTAsBMIQpvhwu9zu6(dCTX2H9GO3WwbH3OU3uejZ4UwQUReQmhwDh3QTdsuekLR1TIoOu3kteemM2vm2brpTky3po2wfSNrjpsPuIKGhQXRrZARYF9h7TldHKBa0hSJLFYNKeCgJevflzpr98BP822MTSJs7ncnIs8LmZEiGSnehGou34J5kZ6bVJPbMNvhs)A7SXcrt7SWMsjgYfPadtgM1aw1U5)TOC4)nRCnj7zvzgdjHdJKGZ1zhgfbfxtcaR8dCA)LQAq2cSPK0H1qpnMlUl77HanNHgYdd5OdFk60W37MQIUwiMPCVH1qzAxl2xOyHWgBYjJYBV8omqNKTxFrgVP9NqPj6lJIdiqMV3UdzLbXguG3280dTwhNMHt5Eu91ZoeJsGONSKu4BzLL2A8jjP0aE8l0uIjgIr6r4V(WbsrdyA(7M3Ky4vsJeA4n5L0k7rb7iXg0sn5qzoNShLZU43Gn0))Rj(Z4K8ZVM4BhznrlLZcoeu38Agp4Yqe9ZTCA7QKvBvDCdN)Wlmzb2lB(cvxUZKamuw9fOyTjB7LDWaJSKFZ776Lb6SE1H25O3xamM3TQs83kZGxBPFcHbqPUsu)jZwhvWCLRdee3fd3T00uiZV)Uyb3Ac0NZ97GeghoapIBas5TxgYDRVFHmYSHn1SikRAZ9K5cbrXpGzZgcqrELSnTYUcyuVqcw0N28LvkSgpd5UT058xyDo3y68qQyIDnOMZjFXRPS2QTCkd06tF7hf(3dClVhynW)RCskOZV8NMgDvH)R5JGa6Si8YcF4(e(JqqeeNpLphS6aZW80YYzC7RWxyGdgPCUJ8QIWZC(XIPUYjOa0YzCJx(pocWvTg6NmM3ON76)aCzPmEXX306FXdNIpdxVj4aqWLZk7cClH351Rk8hXOwk(CXNFfS1Vwn)MIplGpZPEKoxT6VOZvAEp60Cxt2U6cZmJMfV9WxmVRMuFZFxe(z5B6eTvM(FJYJP(D(4sRed2SYSivxU9ibVM356Q6Nho8wRlRWDqTh9OQ4TgaNqAeT0XkieRg83DRUzqbfnt3v2vlguuTP9XDAnE3A7gKT6VlesAqxttwbVm46YNbSA2yKu2cKUKDE27hwTy5yqRUFDD8UWwpUhpEHLoChJ206WsxJkma3T6DthdAkKp6yz5PRhp25zRYLAEYQCb1NRkxYWtvvbS6zQvRP(ev5ADFE6ySYMNwAWiBEn6yGQQjwdaz8TNnmaYCszzJn5PCEszHHgnxN7EESDQI3HlY0MAC8AKfQfLmlx9LZPjNEdACznu36UvZNAw8gU5s3r7(3mleNOak7U)AElkRkBd70o06au1wLnmoESBtmFy18LNa2ZFzWwuPYgwtmb1TGJhcx)Fr3rMTbdDYz1GEDNgNUQtttRME5eJHClMwLRUUSAuH)3fLJGtjHc9TDO5aQvVQolIbeYWrZ2uhMyzId3TA2u7qRnbjf4nopQj1UL6Is2rUAOsAUZriN2SoktdhSCwBi0(LUOgcJdeYkgkZ5qZcKf3N0jw4o1MdAJM6741GtRE7XJ1Rxvi4e8tnywxpQNBN6rEijj7ymt6oIJEnXoNhtGE8yNmMtYVP1dYT9exR(R6GsyTPFTjoPOA9NrWr22VPeTi6E2)Eny)mzHdZin0nthlnwDRfL9DdN1fvpFo7sfU0YV(IsKud5yzqQfOzeYkhaJtjEIncHjds2uRTMXexsX8ZwDpZIaV1aK6PSAZTunPSE)TgtCtsUvsIArvPtBPOZGETg2xaE1MWTgkrdNWZHI06X0knMYvJ(4ke5IFK(jir8MRmLjcpS(utdBl8yt4e7(xs2Mqv)As1unRZop7224D6jnc50soB)XxG4E5v(ZUpGQtBRFnNyUU)3)]]
 )

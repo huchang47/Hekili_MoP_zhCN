@@ -188,8 +188,8 @@ local specTemplate = {
     damagePets = false,
 
     -- Toggles
-    custom1Name = "Custom 1",
-    custom2Name = "Custom 2",
+    custom1Name = "自定义 1",
+    custom2Name = "自定义 2",
     noFeignedCooldown = false,
 
     abilities = {
@@ -274,7 +274,7 @@ local HekiliSpecMixin = {
         local resource = GetResourceKey( resourceID )
 
         if not resource then
-            Hekili:Error( "Unable to identify resource with PowerType " .. resourceID .. "." )
+            Hekili:Error( "无法使用 PowerType 识别资源" .. resourceID .. "." )
             return
         end
 
@@ -665,7 +665,7 @@ local HekiliSpecMixin = {
         end
 
         self:RegisterVariable( key, function()
-            return self.phases[ key ].virtual[ display or "Primary" ]
+            return self.phases[ key ].virtual[ display or "主显示" ]
         end )
     end,
 
@@ -1329,9 +1329,9 @@ function Hekili:RestoreDefaults()
         local msg
 
         if #changed == 1 then
-            msg = "The |cFFFFD100" .. changed[1] .. "|r priority was updated."
+            msg = "|cFFFFD100" .. changed[1] .. "|r优先级更新完成。"
         elseif #changed == 2 then
-            msg = "The |cFFFFD100" .. changed[1] .. "|r and |cFFFFD100" .. changed[2] .. "|r priorities were updated."
+            msg = "|cFFFFD100" .. changed[1] .. "|r 和 |cFFFFD100" .. changed[2] .. "|r优先级更新完成。"
         else
             msg = "|cFFFFD100" .. changed[1] .. "|r"
 
@@ -1339,7 +1339,7 @@ function Hekili:RestoreDefaults()
                 msg = msg .. ", |cFFFFD100" .. changed[i] .. "|r"
             end
 
-            msg = "The " .. msg .. ", and |cFFFFD100" .. changed[ #changed ] .. "|r priorities were updated."
+            msg = "" .. msg .. ", 和 |cFFFFD100" .. changed[ #changed ] .. "|r优先级更新完成。"
         end
 
         if msg then
@@ -1354,9 +1354,9 @@ function Hekili:RestoreDefaults()
         local msg
 
         if #reverted == 1 then
-            msg = "The |cFFFFD100" .. reverted[1] .. "|r priority was reverted."
+            msg = "|cFFFFD100" .. reverted[1] .. "|r 优先级已更新。"
         elseif #reverted == 2 then
-            msg = "The |cFFFFD100" .. reverted[1] .. "|r and |cFFFFD100" .. reverted[2] .. "|r priorities were reverted."
+            msg = "|cFFFFD100" .. reverted[1] .. "|r 和 |cFFFFD100" .. reverted[2] .. "|r 优先级已更新。"
         else
             msg = "|cFFFFD100" .. reverted[1] .. "|r"
 
@@ -1364,7 +1364,7 @@ function Hekili:RestoreDefaults()
                 msg = msg .. ", |cFFFFD100" .. reverted[i] .. "|r"
             end
 
-            msg = "The " .. msg .. ", and |cFFFFD100" .. reverted[ #reverted ] .. "|r priorities were reverted."
+            msg = "已恢复 " .. msg .. ", 和 |cFFFFD100" .. reverted[ #reverted ] .. "|r 的优先级。"
         end
 
         if msg then
@@ -1757,7 +1757,7 @@ all:RegisterAuras({
 
 
     casting = {
-        name = "Casting",
+        name = "施放中",
         generate = function( t, auraType )
             local unit = auraType == "debuff" and "target" or "player"
 
@@ -1782,11 +1782,11 @@ all:RegisterAuras({
 
                     if state.target.is_dummy then
                         -- Pretend that all casts by target dummies are interruptible.
-                        if Hekili.ActiveDebug then Hekili:Debug( "Cast '%s' is fake-interruptible", spell ) end
+                        if Hekili.ActiveDebug then Hekili:Debug( "施放中的 '%s' 是可以伪中断的", spell ) end
                         t.v2 = 0
 
                     elseif Hekili.DB.profile.toggles.interrupts.filterCasts and class.spellFilters[ state.instance_id ] and class.interruptibleFilters and not class.interruptibleFilters[ spellID ] then
-                        if Hekili.ActiveDebug then Hekili:Debug( "Cast '%s' not interruptible per user preference.", spell ) end
+                        if Hekili.ActiveDebug then Hekili:Debug( "根据用户偏好，施放中的 '%s' 是不可中断的。", spell ) end
                         t.v2 = 1
                     end
 
@@ -1819,11 +1819,11 @@ all:RegisterAuras({
 
                     if state.target.is_dummy then
                         -- Pretend that all casts by target dummies are interruptible.
-                        if Hekili.ActiveDebug then Hekili:Debug( "Channel '%s' is fake-interruptible", spell ) end
+                        if Hekili.ActiveDebug then Hekili:Debug( "引导中的 '%s' 是可以伪中断的。", spell ) end
                         t.v2 = 0
 
                     elseif Hekili.DB.profile.toggles.interrupts.filterCasts and class.spellFilters[ state.instance_id ] and class.interruptibleFilters and not class.interruptibleFilters[ spellID ] then
-                        if Hekili.ActiveDebug then Hekili:Debug( "Channel '%s' not interruptible per user preference.", spell ) end
+                        if Hekili.ActiveDebug then Hekili:Debug( "根据用户偏好，引导中的 '%s' 是不可中断的。", spell ) end
                         t.v2 = 1
                     end
 
@@ -2944,49 +2944,49 @@ do
     -- MoP Classic Potions - Simplified for compatibility
     local mop_potions = {
         {
-            name = "virmen_bite",
+            name = "兔妖之啮",
             item = 76089,
             duration = 25
         },
         {
-            name = "potion_of_mogu_power",
+            name = "青龙药水",
             item = 76093,
             duration = 25
         },
         {
-            name = "potion_of_the_jade_serpent",
+            name = "专注药水",
             item = 76092,
             duration = 25
         },
         {
-            name = "flask_of_spring_blossoms",
+            name = "武僧药剂",
             item = 76083,
             duration = 3600
         },
         {
-            name = "flask_of_the_warm_sun",
+            name = "春华合剂",
             item = 76084,
             duration = 3600
         },
         {
-            name = "flask_of_falling_leaves",
+            name = "暖阳合剂",
             item = 76085,
             duration = 3600
         },
         {
-            name = "flask_of_the_earth",
+            name = "秋叶合剂",
             item = 76086,
             duration = 3600
         },
         {
-            name = "flask_of_winter_bite",
+            name = "大地合剂",
             item = 76087,
             duration = 3600
         }
     }
 
     -- Register generic potion aura
-    all:RegisterAura( "potion", {
+    all:RegisterAura( "药剂", {
         duration = 30,
         max_stack = 1,
     } )
@@ -3056,8 +3056,8 @@ do
 
     -- Generic potion ability
     all:RegisterAbility( "potion", {
-        name = "Potion",
-        listName = '|T136243:0|t |cff00ccff[Potion]|r',
+        name = "药剂",
+        listName = '|T136243:0|t |cff00ccff[药剂]|r',
         cast = 0,
         cooldown = 60,
         gcd = "off",
@@ -3328,8 +3328,8 @@ all:RegisterAbilities( {
     },
     -- INTERNAL HANDLERS
     call_action_list = {
-        name = "|cff00ccff[Call Action List]|r",
-        listName = '|T136243:0|t |cff00ccff[Call Action List]|r',
+        name = "|cff00ccff[跳转技能列表]|r",
+        listName = '|T136243:0|t |cff00ccff[跳转技能列表]|r',
         cast = 0,
         cooldown = 0,
         gcd = "off",
@@ -3339,8 +3339,8 @@ all:RegisterAbilities( {
     },
 
     run_action_list = {
-        name = "|cff00ccff[Run Action List]|r",
-        listName = '|T136243:0|t |cff00ccff[Run Action List]|r',
+        name = "|cff00ccff[执行技能列表]|r",
+        listName = '|T136243:0|t |cff00ccff[执行技能列表]|r',
         cast = 0,
         cooldown = 0,
         gcd = "off",
@@ -3348,8 +3348,8 @@ all:RegisterAbilities( {
         known = function() return true end,
         usable = function() return true end,
     },    wait = {
-        name = "|cff00ccff[Wait]|r",
-        listName = '|T136243:0|t |cff00ccff[Wait]|r',
+        name = "|cff00ccff[等待]|r",
+        listName = '|T136243:0|t |cff00ccff[等待]|r',
         cast = 0,
         cooldown = 0,
         gcd = "off",
@@ -3359,16 +3359,16 @@ all:RegisterAbilities( {
     },
 
     pool_resource = {
-        name = "|cff00ccff[Pool Resource]|r",
-        listName = "|T136243:0|t |cff00ccff[Pool Resource]|r",
+        name = "|cff00ccff[资源池]|r",
+        listName = "|T136243:0|t |cff00ccff[资源池]|r",
         cast = 0,
         cooldown = 0,
         gcd = "off",
         known = function() return true end,
         usable = function() return true end,
     },    cancel_action = {
-        name = "|cff00ccff[Cancel Action]|r",
-        listName = "|T136243:0|t |cff00ccff[Cancel Action]|r",
+        name = "|cff00ccff[取消指令]|r",
+        listName = "|T136243:0|t |cff00ccff[取消指令]|r",
         cast = 0,
         cooldown = 0,
         gcd = "off",
@@ -3386,8 +3386,8 @@ all:RegisterAbilities( {
     },
 
     variable = {
-        name = "|cff00ccff[Variable]|r",
-        listName = '|T136243:0|t |cff00ccff[Variable]|r',
+        name = "|cff00ccff[变量]|r",
+        listName = '|T136243:0|t |cff00ccff[变量]|r',
         cast = 0,
         cooldown = 0,
         gcd = "off",
@@ -3397,8 +3397,8 @@ all:RegisterAbilities( {
     },
 
     healthstone = {
-        name = "Healthstone",
-        listName = "|T538745:0|t |cff00ccff[Healthstone]|r",
+        name = "治疗石",
+        listName = "|T538745:0|t |cff00ccff[治疗石]|r",
         cast = 0,
         cooldown = function () return time > 0 and 3600 or 60 end,
         gcd = "off",
@@ -3412,9 +3412,9 @@ all:RegisterAbilities( {
 
         usable = function ()
             local item = talent.pact_of_gluttony.enabled and 224464 or 5512
-            if GetItemCount( item ) == 0 then return false, "requires healthstone in bags"
-            elseif not IsUsableItem( item ) then return false, "healthstone on CD"
-            elseif health.current >= health.max then return false, "must be damaged" end
+            if GetItemCount( item ) == 0 then return false, "需要背包中有治疗石"
+            elseif not IsUsableItem( item ) then return false, "治疗石CD中"
+            elseif health.current >= health.max then return false, "必须已受到伤害" end
             return true
         end,
 
@@ -3428,42 +3428,42 @@ all:RegisterAbilities( {
         end,
     },
 
-    weyrnstone = {
-        name = function () return ( GetItemInfo( 205146 ) ) or "Weyrnstone" end,
-        listName = function ()
-            local _, link, _, _, _, _, _, _, _, tex = GetItemInfo( 205146 )
-            if link and tex then return "|T" .. tex .. ":0|t " .. link end
-            return "|cff00ccff[Weyrnstone]|r"
-        end,
-        cast = 1.5,
-        gcd = "spell",
+    -- weyrnstone = {
+    --     name = function () return ( GetItemInfo( 205146 ) ) or "治疗石" end,
+    --     listName = function ()
+    --         local _, link, _, _, _, _, _, _, _, tex = GetItemInfo( 205146 )
+    --         if link and tex then return "|T" .. tex .. ":0|t " .. link end
+    --         return "|cff00ccff[治疗石]|r"
+    --     end,
+    --     cast = 1.5,
+    --     gcd = "spell",
 
-        item = 205146,
-        bagItem = true,
+    --     item = 205146,
+    --     bagItem = true,
 
-        startsCombat = false,
-        texture = 5199618,
+    --     startsCombat = false,
+    --     texture = 5199618,
 
-        usable = function ()
-            if GetItemCount( 205146 ) == 0 then return false, "requires weyrnstone in bags" end
-            if solo then return false, "must have an ally to teleport" end
-            return true
-        end,
+    --     usable = function ()
+    --         if GetItemCount( 205146 ) == 0 then return false, "requires weyrnstone in bags" end
+    --         if solo then return false, "must have an ally to teleport" end
+    --         return true
+    --     end,
 
-        readyTime = function ()
-            local start, duration = SafeGetItemCooldown( 205146 )
-            return max( 0, start + duration - query_time )
-        end,
+    --     readyTime = function ()
+    --         local start, duration = SafeGetItemCooldown( 205146 )
+    --         return max( 0, start + duration - query_time )
+    --     end,
 
-        handler = function ()
-        end,
+    --     handler = function ()
+    --     end,
 
-        copy = { "use_weyrnstone", "active_weyrnstone" }
-    },
+    --     copy = { "use_weyrnstone", "active_weyrnstone" }
+    -- },
 
     cancel_buff = {
-        name = "|cff00ccff[Cancel Buff]|r",
-        listName = '|T136243:0|t |cff00ccff[Cancel Buff]|r',
+        name = "|cff00ccff[取消Buff]|r",
+        listName = '|T136243:0|t |cff00ccff[取消Buff]|r',
         cast = 0,
         gcd = "off",
 
@@ -3485,7 +3485,7 @@ all:RegisterAbilities( {
             return a or 134400
         end,
 
-        usable = function () return args.buff_name ~= nil, "no buff name detected" end,
+        usable = function () return args.buff_name ~= nil, "未检测到该Buff" end,
         timeToReady = function () return gcd.remains end,
         handler = function ()
             if not args.buff_name then return end
@@ -3503,8 +3503,8 @@ all:RegisterAbilities( {
     },
 
     null_cooldown = {
-        name = "|cff00ccff[Null Cooldown]|r",
-        listName = "|T136243:0|t |cff00ccff[Null Cooldown]|r",
+        name = "|cff00ccff[禁止爆发]|r",
+        listName = "|T136243:0|t |cff00ccff[禁止爆发]|r",
         cast = 0,
         cooldown = 0.001,
         gcd = "off",
@@ -3515,8 +3515,8 @@ all:RegisterAbilities( {
     },
 
     trinket1 = {
-        name = "|cff00ccff[Trinket #1]|r",
-        listName = "|T136243:0|t |cff00ccff[Trinket #1]|r",
+        name = "|cff00ccff[饰品#1]|r",
+        listName = "|T136243:0|t |cff00ccff[饰品#1]",
         cast = 0,
         cooldown = 600,
         gcd = "off",
@@ -3527,8 +3527,8 @@ all:RegisterAbilities( {
     },
 
     trinket2 = {
-        name = "|cff00ccff[Trinket #2]|r",
-        listName = "|T136243:0|t |cff00ccff[Trinket #2]|r",
+        name = "|cff00ccff[饰品#2]|r",
+        listName = "|T136243:0|t |cff00ccff[饰品#2]",
         cast = 0,
         cooldown = 600,
         gcd = "off",
@@ -3555,8 +3555,8 @@ all:RegisterAbilities( {
 -- This lets APLs request slot-based glove usage while we still drive behavior from synapse_springs.
 all:RegisterAbility( "hands", {
     -- Keep simple labels; behavior is inherited from synapse_springs.
-    name = "|cff00ccff[Hands]|r",
-    listName = "|T136243:0|t |cff00ccff[Hands]|r",
+    name = "|cff00ccff[武器技能]|r",
+    listName = "|T136243:0|t |cff00ccff[武器技能]|r",
 
     -- Copy all runtime behavior (cooldown, usable, item, handler, etc.).
     copy = "synapse_springs",
@@ -3599,16 +3599,16 @@ do
     -- 2.  Respect item preferences registered in spec options.
 
     all:RegisterAbility( "use_items", {
-        name = "Use Items",
-        listName = "|T136243:0|t |cff00ccff[Use Items]|r",
+        name = "使用道具",
+        listName = "|T136243:0|t |cff00ccff[使用道具]|r",
         cast = 0,
         cooldown = 120,
         gcd = "off",
     } )
 
     all:RegisterAbility( "unusable_trinket", {
-        name = "Unusable Trinket",
-        listName = "|T136240:0|t |cff00ccff[Unusable Trinket]|r",
+        name = "无法使用的饰品",
+        listName = "|T136240:0|t |cff00ccff[无法使用的饰品]|r",
         cast = 0,
         cooldown = 180,
         gcd = "off",
@@ -3617,24 +3617,24 @@ do
         unlisted = true
     } )
 
-    all:RegisterAbility( "heart_essence", {
-        name = function () return ( GetItemInfo( 158075 ) ) or "Heart Essence" end,
-        listName = function ()
-            local _, link, _, _, _, _, _, _, _, tex = GetItemInfo( 158075 )
-            if link and tex then return "|T" .. tex .. ":0|t " .. link end
-            return "|cff00ccff[Heart Essence]|r"
-        end,
-        cast = 0,
-        cooldown = 0,
-        gcd = "off",
+    -- all:RegisterAbility( "heart_essence", {
+    --     name = function () return ( GetItemInfo( 158075 ) ) or "心能" end,
+    --     listName = function ()
+    --         local _, link, _, _, _, _, _, _, _, tex = GetItemInfo( 158075 )
+    --         if link and tex then return "|T" .. tex .. ":0|t " .. link end
+    --         return "|cff00ccff[心能]|r"
+    --     end,
+    --     cast = 0,
+    --     cooldown = 0,
+    --     gcd = "off",
 
-        item = 158075,
-        essence = true,
+    --     item = 158075,
+    --     essence = true,
 
-        toggle = "essences",
+    --     toggle = "essences",
 
-        usable = function () return false, "your equipped major essence is supported elsewhere in the priority or is not an active ability" end
-    } )
+    --     usable = function () return false, "你装备的心能效果在其他地方已被使用，或它不是主动技能。" end
+    -- } )
 end
 
 
@@ -3846,10 +3846,10 @@ local function addItemSettings( key, itemID, options )
 
     options.disabled = {
         type = "toggle",
-        name = function () return format( "Disable %s via |cff00ccff[Use Items]|r", select( 2, GetItemInfo( itemID ) ) or ( "[" .. itemID .. "]" ) ) end,
+        name = function () return format( "禁用%s通过|cff00ccff[使用道具]使用|r", select( 2, GetItemInfo( itemID ) ) or ( "[" .. itemID .. "]" ) ) end,
         desc = function( info )
-            local output = "If disabled, the addon will not recommend this item via the |cff00ccff[Use Items]|r action.  " ..
-                "You can still manually include the item in your action lists with your own tailored criteria."
+            local output = "如果禁用，插件将不会通过|cff00ccff[使用道具]|r执行此项。" ..
+            "你仍然可以将其包含在你的技能列表中，在被插件推荐时手动使用它。"
             return output
         end,
         order = 25,
@@ -3858,8 +3858,8 @@ local function addItemSettings( key, itemID, options )
 
     options.minimum = {
         type = "range",
-        name = "Minimum Targets",
-        desc = "The addon will only recommend this trinket (via |cff00ccff[Use Items]|r) when there are at least this many targets available to hit.",
+        name = "最小目标数",
+        desc = "插件只会在至少有此数量的目标能被命中时，推荐使用（通过|cff00ccff[使用道具]|r）该饰品。",
         order = 26,
         width = "full",
         min = 1,
@@ -3869,9 +3869,9 @@ local function addItemSettings( key, itemID, options )
 
     options.maximum = {
         type = "range",
-        name = "Maximum Targets",
-        desc = "The addon will only recommend this trinket (via |cff00ccff[Use Items]|r) when there are no more than this many targets detected.\n\n" ..
-            "This setting is ignored if set to 0.",
+        name = "最大目标数",
+        desc = "插件只会在监测到小于该目标数时，推荐使用（通过|cff00ccff[使用道具]|r）该饰品。" ..
+        "设置为0时忽略此设置。",
         order = 27,
         width = "full",
         min = 0,
@@ -4112,6 +4112,11 @@ function Hekili:SpecializationChanged()
     end
 
     state.spec[ state.spec.key ] = true
+    --EasyPlay 自动加载本职业所有专精的默认配置，而不局限于当前使用的专精。
+    for i = 1, 4 do
+        local id, _, _, _, _, _ = GetSpecializationInfo( i )
+        insert( specs, id )
+    end
 
     insert( specs, 0 )
 
@@ -4186,7 +4191,7 @@ if spec then
 
                 class.variables = spec.variables
 
-                class.potionList.default = "|T967533:0|t |cFFFFD100Default|r"
+                class.potionList.default = "|T967533:0|t |cFFFFD100默认|r"
             end
 
             if specID == currentID or specID == 0 then

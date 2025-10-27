@@ -88,7 +88,7 @@ end
 
 function Hekili:RunStressTest()
     if InCombatLockdown() then
-        self:Print( "Cannot run stress test while in combat." )
+        self:Print( "战斗中无法运行压力测试。" )
         return true
     end
 
@@ -105,7 +105,7 @@ function Hekili:RunStressTest()
 
     for i, specID in ipairs( specs ) do
         local spec = class.specs[ specID ]
-        results = format( "%sSpecialization: %s\n", results, spec.name )
+results = format( "%s专精: %s\n", results, spec.name )
 
         for key, aura in ipairs( spec.auras ) do
             local keyNamed = false
@@ -115,7 +115,7 @@ function Hekili:RunStressTest()
                     if type( v ) == "function" then
                         local ok, val = pcall( v )
                         if not ok then
-                            if not keyNamed then results = format( "%s - Aura: %s\n", results, k )
+                            if not keyNamed then results = format( "%s - 光环: %s\n", results, k )
 keyNamed = true end
                             results = format( "%s    - %s = %s\n", results, tostring( val ) )
                             count = count + 1
@@ -126,7 +126,7 @@ keyNamed = true end
                     if type( v ) == "function" then
                         local ok, val = pcall( v )
                         if not ok then
-                            if not keyNamed then results = format( "%s - Aura: %s\n", results, k )
+                            if not keyNamed then results = format( "%s - 光环: %s\n", results, k )
 keyNamed = true end
                             results = format( "%s    - %s = %s\n", results, tostring( val ) )
                             count = count + 1
@@ -144,7 +144,7 @@ keyNamed = true end
                     if type( v ) == "function" then
                         local ok, val = pcall( v )
                         if not ok then
-                            if not keyNamed then results = format( "%s - Ability: %s\n", results, k )
+                            if not keyNamed then results = format( "%s - 技能: %s\n", results, k )
 keyNamed = true end
                             results = format( "%s    - %s = %s\n", results, tostring( val ) )
                             count = count + 1
@@ -155,7 +155,7 @@ keyNamed = true end
                     if type( v ) == "function" then
                         local ok, val = pcall( v )
                         if not ok then
-                            if not keyNamed then results = format( "%s - Ability: %s\n", results, k )
+                            if not keyNamed then results = format( "%s - 技能: %s\n", results, k )
 keyNamed = true end
                             results = format( "%s    - %s = %s\n", results, tostring( val ) )
                             count = count + 1
@@ -178,10 +178,10 @@ keyNamed = true end
     end
 
 
-    if postErrorCount > preErrorCount then Hekili:Print( "New warnings were loaded in /hekili > Warnings." ) end
+    if postErrorCount > preErrorCount then Hekili:Print( "新的警告信息已经添加到 /hekili > 警告中。" ) end
     if count == 0 and postErrorCount == preErrorCount then
-        Hekili:Print( "Stress test completed; no issues found." )
-        return "Stress test completed; no issues found."
+        Hekili:Print( "压力测试已完成；未发现任何问题。" )
+        return "压力测试已完成；未发现任何问题。"
     end
 
     return true
@@ -412,7 +412,7 @@ local function SkeletonHandler( self, event, unit, ... )
 
                 aura.id = spellID
                 aura.duration = duration == 0 and 3600 or duration
-                aura.type = debuffType or "None"
+                aura.type = debuffType or "无"
                 aura.max_stack = math.max( aura.max_stack or 1, count )
 
 

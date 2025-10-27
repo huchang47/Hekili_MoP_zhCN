@@ -287,7 +287,7 @@ local function GenerateDiagnosticTooltip( widget, event )
 
     if has_args then
         if needs_space then Tooltip:AddLine( " " ) end
-        Tooltip:AddLine( "Values" )
+        Tooltip:AddLine( "值" )
 
         for k, v in orderedPairs( arg ) do
             if not key_cache[k]:find( "safebool" ) and not key_cache[k]:find( "safenum" ) and not key_cache[k]:find("floor") and not key_cache[k]:find( "ceil" ) and ( type(v) ~= "string" or not v:find( "function" ) ) then

@@ -3177,9 +3177,9 @@ end)
 spec:RegisterRanges("festering_strike", "mind_freeze", "death_coil")
 
 spec:RegisterSetting("dnd_while_moving", true, {
-	name = strformat("Allow %s while moving", Hekili:GetSpellLinkWithTexture(43265)),
+	name = strformat("允许%s在移动时使用", Hekili:GetSpellLinkWithTexture(43265)),
 	desc = strformat(
-		"If checked, then allow recommending %s while the player is moving otherwise only recommend it if the player is standing still.",
+		"如果勾选，那么当玩家移动时，也会推荐使用%s。否则，只有当玩家站在原地时才会推荐使用。",
 		Hekili:GetSpellLinkWithTexture(43265)
 	),
 	type = "toggle",
@@ -3187,9 +3187,9 @@ spec:RegisterSetting("dnd_while_moving", true, {
 })
 
 spec:RegisterSetting("dps_shell", false, {
-	name = strformat("Use %s Offensively", Hekili:GetSpellLinkWithTexture(48707)),
+	name = strformat("使用%s用于输出", Hekili:GetSpellLinkWithTexture(48707)),
 	desc = strformat(
-		"If checked, %s will not be on the Defensives toggle by default.",
+		"如果勾选，那么%s将不会默认在防御状态下使用。",
 		Hekili:GetSpellLinkWithTexture(48707)
 	),
 	type = "toggle",
@@ -3199,7 +3199,7 @@ spec:RegisterSetting("dps_shell", false, {
 spec:RegisterSetting("pl_macro", nil, {
 	name = function()
 		local plague_strike = spec.abilities and spec.abilities.plague_strike
-		return plague_strike and strformat("%s Macro", Hekili:GetSpellLinkWithTexture(plague_strike.id))
+		return plague_strike and strformat("%s宏", Hekili:GetSpellLinkWithTexture(plague_strike.id))
 			or "Plague Strike Macro"
 	end,
 	desc = function()
@@ -3207,12 +3207,12 @@ spec:RegisterSetting("pl_macro", nil, {
 		local blood_plague = spec.auras and spec.auras.blood_plague
 		if plague_strike and blood_plague then
 			return strformat(
-				"Using a mouseover macro makes it easier to apply %s and %s to other enemies without retargeting.",
+				"使用鼠标悬停宏可以更方便地将%s和%s应用于其他敌人，而无需重新选择目标。",
 				Hekili:GetSpellLinkWithTexture(plague_strike.id),
 				Hekili:GetSpellLinkWithTexture(blood_plague.id)
 			)
 		else
-			return "Using a mouseover macro makes it easier to apply Plague Strike and Blood Plague to other enemies without retargeting."
+			return "使用鼠标悬停宏可以更方便地将%s和%s应用于其他敌人，而无需重新选择目标。"
 		end
 	end,
 	type = "input",
@@ -3227,9 +3227,9 @@ spec:RegisterSetting("pl_macro", nil, {
 })
 
 spec:RegisterSetting("it_macro", nil, {
-	name = strformat("%s Macro", Hekili:GetSpellLinkWithTexture(45477)),
+	name = strformat("%s宏", Hekili:GetSpellLinkWithTexture(45477)),
 	desc = strformat(
-		"Using a mouseover macro makes it easier to apply %s and %s to other enemies without retargeting.",
+		"使用鼠标悬停宏可以更方便地将%s和%s应用于其他敌人，而无需重新选择目标。",
 		Hekili:GetSpellLinkWithTexture(45477),
 		Hekili:GetSpellLinkWithTexture(59921)
 	),
@@ -3244,34 +3244,34 @@ spec:RegisterSetting("it_macro", nil, {
 
 -- MoP Unholy DK-specific settings
 spec:RegisterSetting("plague_leech_priority", "expire", {
-	name = "Plague Leech Priority",
-	desc = "When to use Plague Leech: 'expire' = only when diseases are about to expire, 'rune_generation' = for rune generation when needed",
+	name = "瘟疫虹吸优先级",
+	desc = "当疾病即将过期时使用瘟疫虹吸：'expire' = 仅当疾病即将过期时使用，'rune_generation' = 当需要符文生成时优先使用",
 	type = "select",
 	values = {
-		expire = "Disease Expiration Only",
-		rune_generation = "Rune Generation Priority",
+		expire = "疾病过期时使用",
+		rune_generation = "符文生成优先",
 	},
 	width = "full",
 })
 
 spec:RegisterSetting("sudden_doom_priority", true, {
-	name = "Sudden Doom Priority",
-	desc = "Prioritize Sudden Doom procs over other abilities",
+	name = "突发厄运优先级",
+	desc = "优先使用突发厄运的触发效果而不是其他技能",
 	type = "toggle",
 	width = "full",
 })
 
 spec:RegisterSetting("dark_transformation_auto", true, {
-	name = "Auto Dark Transformation",
-	desc = "Automatically use Dark Transformation when available",
+	name = "自动黑暗转化",
+	desc = "当可用时自动使用黑暗转化",
 	type = "toggle",
 	width = "full",
 })
 
 -- Unholy Death Knight specific settings
 spec:RegisterSetting( "unholy_runic_power_threshold", 50, {
-	name = "Runic Power Threshold for Death Coil",
-	desc = "Minimum runic power to spend on Death Coil",
+	name = "死亡线圈符文能量阈值",
+	desc = "使用死亡线圈所需的最低符文能量",
 	type = "range",
 	min = 20,
 	max = 100,
@@ -3280,22 +3280,22 @@ spec:RegisterSetting( "unholy_runic_power_threshold", 50, {
 } )
 
 spec:RegisterSetting( "unholy_shadow_infusion_priority", true, {
-	name = "Prioritize Shadow Infusion",
-	desc = "Always use Shadow Infusion procs to empower ghoul",
+	name = "优先使用暗影灌注",
+	desc = "当可用时优先使用暗影灌注来强化食尸鬼",
 	type = "toggle",
 	width = "full",
 } )
 
 spec:RegisterSetting( "unholy_sudden_doom_priority", true, {
-	name = "Prioritize Sudden Doom",
-	desc = "Always use Sudden Doom procs for free Death Coil",
+	name = "优先使用突发厄运",
+	desc = "当可用时优先使用突发厄运的触发效果而不是其他技能",
 	type = "toggle",
 	width = "full",
 } )
 
 spec:RegisterSetting( "unholy_execute_threshold", 35, {
-	name = "Execute Threshold for Soul Reaper",
-	desc = "Target health percentage to use Soul Reaper",
+	name = "灵魂收割者阈值",
+	desc = "目标生命值百分比，当低于此值时使用灵魂收割者",
 	type = "range",
 	min = 20,
 	max = 50,
@@ -3304,15 +3304,15 @@ spec:RegisterSetting( "unholy_execute_threshold", 35, {
 } )
 
 spec:RegisterSetting( "unholy_dnd_while_moving", false, {
-	name = "Use Death and Decay While Moving",
-	desc = "Cast Death and Decay even when moving",
+	name = "在移动时使用死亡凋零",
+	desc = "即使玩家移动也会推荐使用死亡凋零",
 	type = "toggle",
 	width = "full",
 } )
 
 spec:RegisterSetting( "unholy_blood_tap_threshold", 5, {
-	name = "Blood Tap Threshold",
-	desc = "Minimum Blood Charge stacks to use Blood Tap",
+	name = "鲜血分流 Threshold",
+	desc = "使用鲜血分流所需的最低鲜血充能层数",
 	type = "range",
 	min = 1,
 	max = 10,
@@ -3330,8 +3330,8 @@ spec:RegisterOptions( {
 	damage = true,
 	damageExpiration = 6,
 	potion = "mogu_power_potion",
-	package = "Unholy",
+	package = "邪恶Simc",
 } )
 
-spec:RegisterPack(	"Unholy",	20251026,	[[Hekili:TR1wpUnUv4FlblGHD6avzp2ZKPy08qBXIUPOlwaV9vltltBlmYIg6sM1lm0V9EiPefjfjLSZKaST9HDtcf55gpNVZf6vtx9RRwUfvGx9ZZ8NTyQ)Sh8MD)SP3)WQLfNpHxT8ek6v0E4VKIoc)))D6bsYz6YNtiOT0JNtkZIGpTA5MY4KIFkD1gZ0CbS3t4iy5fZwT8q82Ty(EX5rRw(RhIZRwt)pu16AUwTMSd(3rfXK0Q1jX5fWN3rYQw)pWVgNe7TAjBrMyeNUpbhwGY2JlGf(zMUHtrBsWBx9xxTmklUaNfJandLGtl8oLG2xIdtW4OdE1BSA9OQ1FbbBd(xEBjf5HLNyloUAn8p92KqiBd5h1ldFefNcY0ZvRVVA9Ll89SlJKxeUd)fCM(wM0qRSYuCUxjZC6frktlQwhuT2Ntf(x3Irfhu)4Kvl5Md4kqs8xvaw1(0xoZc3KeV)qHzfofJ3gs16w2OCkkFU3kFCrgszXMmm6vkfMBLcFWGrUio6v4UTJINxKf)kMsVf9rp5lKoKlo6CybPKBeFOFLd)B4OYcmZWz6w8f4IQL6q0rsiO4NWzu6)yFxsCvVaDs5cAt5UD1Fk6a1d3lVacraMbUftLyN44uM9jRmZOCtjvJ7jLEFbhItXhJX58poJ7BkmeNiKKqiAmCpirKZjyf3tMZBikfCeWrOZu55PRxEKmKWYGIlDTd6TB6XmgDvp(hz(ew41oCoLqP7L5MD8eHfbOCCuibCZIqN4wl2nxEjfRdIiihbabGlYF7aAl5TW40DL5aZLVyNZ32yjBolw8i8)A0eGFNiVHZ4N4rFd3brK4eMgyhHGjjhizPHKDHVfNcldGFVL2sk1pYiNDGaj5caX2fhfxBJFW)9d)dFKXGq6EdFdIWGfPauGwVdvM0MdO5ahJbNXDzy8VJLLBdqNnNaLweFeTh0L8d4KeAATJSKHhWOeq0oI(Tp67DVVjyXgAeHssc5)JqAYkEkRqE60M71C3WIIR)YCCy028bs9iiaLElM7gK0uS(8wwa2xRCarWUrn1Pnq67hgPJsWOVGnHzoKtRwnaZT4ugoICCdYyXb8ID4o35HBaXNxxsw8joZ(7uFXQ1)ZuAAW)s1AEHqGR8)I8lvRx4TWB6eHRKLGgvNo7HpGthMvWWm)o5HbTihNgHD7WiOGV3cj35SJNPItXbmakdvV14wiSOO486pPkR2VGnZPte2FYS7TEHUlkJrOaLKNMey7GyIOKgosT7WFQNDCxz25bwiJDkbUj4mwHeoViSIeotrnJqagwbjldkbWDWAB23msuTyzSO1oEoaYx6VF29T5y3P3hPMmsZ6OvEagLbCT9WkFmHajx3rJLcboikPIUhEmRh1FamjHBJP(xuCJfSYNN0J2MxE8iGi0Wx3fDDcy0(dqjAECGQ2ITCKwEHQeOMsMRtIQ(zfwWpWhunEYLr2yi90eEAXcBpRMshL9AyrgknhUAoIQdZCuQ3nPIZB3LbgYknqvWnTR2wFakUpAlnDPTAt0lnuGGcfqMpSqZ8esrZbmvDydjHk6sFfxmDiu1Th5SfnCvqttfkQX4zFdy8SEQVZoBgzNlp4Baq3vzFg9T)kQ1tVgxve05(dOwW2cSmK8HaWg5q5bcY0SB6FlPe(JPS1QRPOP4ldjH6Ns1g56chprBbGdQjZHA7MPKt9ZbBnoZSIw7cUL5niPgYNDdmxEUhZ7F0iZLLK2Xhyivy)Ycd2QoPh0)goDpyXlL7hZeALYgyQssj0GOYYhWzK48JQlYIBEdLDsDzuAumKnp8WzwVKidmGvjI26I6k8Oj1ATjsP7nLcFGwL(B20H9rwC0iuilrLPCT9lyDAI9jFzoP0tTPuD9ZbhPxLYqnDEF1FOCFOxDKPSyVxI2mflsZEcZj1qY6P66NVIY2vXFukzZyYS(jTPkGEYxV4WAKojMBSKqJ516xg(IXQK1hMIIHSjzL9SHMvbErPYkIELjMsA2Vk4OCXXYvm2oFrJfCvT(JSj3PlKIQwRBsJ3T9qgB(70yKhqXk9mgzhnqZLuaSoHoep(CaLL0BlxPABKBQlD150S)gljNW5fXjnZdWExJ)35lE4yQe38W0)K(1C9S0T3d5aMDTHzH33S5nn7Al2jnMP6DARXk53LOVs4DOHrNJeJzlNcE4QZlTr4pmBOroyRfRodUFq2vNVjGr(paWRb)wa2AjMNZq0iSJrjsjb5Ra8(MqPD8uDCTDiV92)ho)Rbo)gG3EWc8MDO0BdE7rzFxjdSIFBhqWVdGt2FdY3Xi3)hbaCyyt0PWaD1s3z9pie40lHgMtbXekT7NoEIKvqDEFu736Hx1Nzn(UlMwx8puTEipct1NR(8pa79xAEUNQpZjAUN4fG(tb)5DjO8xVJ(SpbYV6J5nRQGM3J27ZCx8UaApeppZ38(1FBdXb89wy(eTVoJ5VZNrNkD42I)gjdcw(XeOjOMtc7x69qLxw7rpVJ)MNbAp5P8j0FeY7OTye0epL3)wfprev4fXH1ZBt(4Ap5h)0qUp65OR3(uJVemV3dYB6P7zdUV3JQ8(IuZCZfIqRHt2835hPwDUJCka687owBEbthYjRH7upzNbk(CW9lgc1QlXxLA2YBnYsoRHWir7B9WQ6ggEE(Llw6L455dHFs96RYrlde8Yfhd7Q(JYdcSEP2HawVG8aaRxYWW)KjyZG)AwtEOFdrtno9nd6SXX9brgo18HiakPivzS048Ej4j)HqToZstLI9nJSNdMcAu352m0acLXaDTSE2G0q1bRPfitbRhKGACczQetz4BVem9j)lx6u20ayL2mSuzIGGsrCxUmwSSIbD0yt3mpyqUMmzisMyWvQY0hgRtUrJDnKSNdQhq2hNnzImaUixKJC0b(M3FBWTsIm9hDZ8zfGax)zv)beqpVHxn7ffFv5JR8deqH7sxWJel2mJiJ0slqHsT2BMob6JgBtrLDpucEK(GX4bBibtMmqnWaQivl0Fh9rUqyx0YlH)6i9yZfJm406(NcWelISO9JRwsNpY5R8pAiVWplwYIRfu0duw9X7OpxDa7X5VE3BvI08w7UOJzNGzlUc6p79J(TfMBJEJmJrAMCgESBfAlW)62uzaa72zcIb(tgzeVyUVmWOsjVuTsAASmGr7ZyUtK3OXwRc8E7vbE)KRrNSl5kt5ss0noCSwzxupRDk3mplL7JbCoLFs70d)bRdsYkne)o2fN3zD76hxkhPrVPUg(x8TtnXWLKmVDgx1ilJQcWgDqATPnvNTtx2cMoAmh(RTJWzs5o6KkYH)I6yBSYq7eqFQmTKqAAmurUZuyCswvyFHQPuCEDP(DMDvZ6w7qySHmyk12)ORqm1jMqfpEVtD)jMBNgwW5mcv9G)1bniHSYgcW7kQGGKdfoqCG2jLkjagN28OBVJDb3Ah3mdY4Bo7(dtcdT7JBgg7tgi5qHV617WeaIbfZmPKr7vgWBW0HI(BMUQqLgi9qPuhmtR06QWq1UhUnWtdKtFeXTBbrUA0f9dlJJyTYGlx6pPpNCFxqz4S67deJSADZbRpOtVRpsv38Q)L35OozX8R1rUwa)AdF5K5BuSlN46V2eQSawA1YLhl3bmJ9ItR(pd]]
+spec:RegisterPack(	"邪恶Simc",	20251026,	[[Hekili:TR1wpUnUv4FlblGHD6avzp2ZKPy08qBXIUPOlwaV9vltltBlmYIg6sM1lm0V9EiPefjfjLSZKaST9HDtcf55gpNVZf6vtx9RRwUfvGx9ZZ8NTyQ)Sh8MD)SP3)WQLfNpHxT8ek6v0E4VKIoc)))D6bsYz6YNtiOT0JNtkZIGpTA5MY4KIFkD1gZ0CbS3t4iy5fZwT8q82Ty(EX5rRw(RhIZRwt)pu16AUwTMSd(3rfXK0Q1jX5fWN3rYQw)pWVgNe7TAjBrMyeNUpbhwGY2JlGf(zMUHtrBsWBx9xxTmklUaNfJandLGtl8oLG2xIdtW4OdE1BSA9OQ1FbbBd(xEBjf5HLNyloUAn8p92KqiBd5h1ldFefNcY0ZvRVVA9Ll89SlJKxeUd)fCM(wM0qRSYuCUxjZC6frktlQwhuT2Ntf(x3Irfhu)4Kvl5Md4kqs8xvaw1(0xoZc3KeV)qHzfofJ3gs16w2OCkkFU3kFCrgszXMmm6vkfMBLcFWGrUio6v4UTJINxKf)kMsVf9rp5lKoKlo6CybPKBeFOFLd)B4OYcmZWz6w8f4IQL6q0rsiO4NWzu6)yFxsCvVaDs5cAt5UD1Fk6a1d3lVacraMbUftLyN44uM9jRmZOCtjvJ7jLEFbhItXhJX58poJ7BkmeNiKKqiAmCpirKZjyf3tMZBikfCeWrOZu55PRxEKmKWYGIlDTd6TB6XmgDvp(hz(ew41oCoLqP7L5MD8eHfbOCCuibCZIqN4wl2nxEjfRdIiihbabGlYF7aAl5TW40DL5aZLVyNZ32yjBolw8i8)A0eGFNiVHZ4N4rFd3brK4eMgyhHGjjhizPHKDHVfNcldGFVL2sk1pYiNDGaj5caX2fhfxBJFW)9d)dFKXGq6EdFdIWGfPauGwVdvM0MdO5ahJbNXDzy8VJLLBdqNnNaLweFeTh0L8d4KeAATJSKHhWOeq0oI(Tp67DVVjyXgAeHssc5)JqAYkEkRqE60M71C3WIIR)YCCy028bs9iiaLElM7gK0uS(8wwa2xRCarWUrn1Pnq67hgPJsWOVGnHzoKtRwnaZT4ugoICCdYyXb8ID4o35HBaXNxxsw8joZ(7uFXQ1)ZuAAW)s1AEHqGR8)I8lvRx4TWB6eHRKLGgvNo7HpGthMvWWm)o5HbTihNgHD7WiOGV3cj35SJNPItXbmakdvV14wiSOO486pPkR2VGnZPte2FYS7TEHUlkJrOaLKNMey7GyIOKgosT7WFQNDCxz25bwiJDkbUj4mwHeoViSIeotrnJqagwbjldkbWDWAB23msuTyzSO1oEoaYx6VF29T5y3P3hPMmsZ6OvEagLbCT9WkFmHajx3rJLcboikPIUhEmRh1FamjHBJP(xuCJfSYNN0J2MxE8iGi0Wx3fDDcy0(dqjAECGQ2ITCKwEHQeOMsMRtIQ(zfwWpWhunEYLr2yi90eEAXcBpRMshL9AyrgknhUAoIQdZCuQ3nPIZB3LbgYknqvWnTR2wFakUpAlnDPTAt0lnuGGcfqMpSqZ8esrZbmvDydjHk6sFfxmDiu1Th5SfnCvqttfkQX4zFdy8SEQVZoBgzNlp4Baq3vzFg9T)kQ1tVgxve05(dOwW2cSmK8HaWg5q5bcY0SB6FlPe(JPS1QRPOP4ldjH6Ns1g56chprBbGdQjZHA7MPKt9ZbBnoZSIw7cUL5niPgYNDdmxEUhZ7F0iZLLK2Xhyivy)Ycd2QoPh0)goDpyXlL7hZeALYgyQssj0GOYYhWzK48JQlYIBEdLDsDzuAumKnp8WzwVKidmGvjI26I6k8Oj1ATjsP7nLcFGwL(B20H9rwC0iuilrLPCT9lyDAI9jFzoP0tTPuD9ZbhPxLYqnDEF1FOCFOxDKPSyVxI2mflsZEcZj1qY6P66NVIY2vXFukzZyYS(jTPkGEYxV4WAKojMBSKqJ516xg(IXQK1hMIIHSjzL9SHMvbErPYkIELjMsA2Vk4OCXXYvm2oFrJfCvT(JSj3PlKIQwRBsJ3T9qgB(70yKhqXk9mgzhnqZLuaSoHoep(CaLL0BlxPABKBQlD150S)gljNW5fXjnZdWExJ)35lE4yQe38W0)K(1C9S0T3d5aMDTHzH33S5nn7Al2jnMP6DARXk53LOVs4DOHrNJeJzlNcE4QZlTr4pmBOroyRfRodUFq2vNVjGr(paWRb)wa2AjMNZq0iSJrjsjb5Ra8(MqPD8uDCTDiV92)ho)Rbo)gG3EWc8MDO0BdE7rzFxjdSIFBhqWVdGt2FdY3Xi3)hbaCyyt0PWaD1s3z9pie40lHgMtbXekT7NoEIKvqDEFu736Hx1Nzn(UlMwx8puTEipct1NR(8pa79xAEUNQpZjAUN4fG(tb)5DjO8xVJ(SpbYV6J5nRQGM3J27ZCx8UaApeppZ38(1FBdXb89wy(eTVoJ5VZNrNkD42I)gjdcw(XeOjOMtc7x69qLxw7rpVJ)MNbAp5P8j0FeY7OTye0epL3)wfprev4fXH1ZBt(4Ap5h)0qUp65OR3(uJVemV3dYB6P7zdUV3JQ8(IuZCZfIqRHt2835hPwDUJCka687owBEbthYjRH7upzNbk(CW9lgc1QlXxLA2YBnYsoRHWir7B9WQ6ggEE(Llw6L455dHFs96RYrlde8Yfhd7Q(JYdcSEP2HawVG8aaRxYWW)KjyZG)AwtEOFdrtno9nd6SXX9brgo18HiakPivzS048Ej4j)HqToZstLI9nJSNdMcAu352m0acLXaDTSE2G0q1bRPfitbRhKGACczQetz4BVem9j)lx6u20ayL2mSuzIGGsrCxUmwSSIbD0yt3mpyqUMmzisMyWvQY0hgRtUrJDnKSNdQhq2hNnzImaUixKJC0b(M3FBWTsIm9hDZ8zfGax)zv)beqpVHxn7ffFv5JR8deqH7sxWJel2mJiJ0slqHsT2BMob6JgBtrLDpucEK(GX4bBibtMmqnWaQivl0Fh9rUqyx0YlH)6i9yZfJm406(NcWelISO9JRwsNpY5R8pAiVWplwYIRfu0duw9X7OpxDa7X5VE3BvI08w7UOJzNGzlUc6p79J(TfMBJEJmJrAMCgESBfAlW)62uzaa72zcIb(tgzeVyUVmWOsjVuTsAASmGr7ZyUtK3OXwRc8E7vbE)KRrNSl5kt5ss0noCSwzxupRDk3mplL7JbCoLFs70d)bRdsYkne)o2fN3zD76hxkhPrVPUg(x8TtnXWLKmVDgx1ilJQcWgDqATPnvNTtx2cMoAmh(RTJWzs5o6KkYH)I6yBSYq7eqFQmTKqAAmurUZuyCswvyFHQPuCEDP(DMDvZ6w7qySHmyk12)ORqm1jMqfpEVtD)jMBNgwW5mcv9G)1bniHSYgcW7kQGGKdfoqCG2jLkjagN28OBVJDb3Ah3mdY4Bo7(dtcdT7JBgg7tgi5qHV617WeaIbfZmPKr7vgWBW0HI(BMUQqLgi9qPuhmtR06QWq1UhUnWtdKtFeXTBbrUA0f9dlJJyTYGlx6pPpNCFxqz4S67deJSADZbRpOtVRpsv38Q)L35OozX8R1rUwa)AdF5K5BuSlN46V2eQSawA1YLhl3bmJ9ItR(pd]]
 )

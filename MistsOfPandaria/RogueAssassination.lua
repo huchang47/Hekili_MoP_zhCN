@@ -1645,18 +1645,18 @@ spec:RegisterOptions({
     damage = true,
     damageExpiration = 8,
     potion = "virmen_bite_potion",
-    package = "Assassination"
+    package = "刺杀Simc"
 })
 spec:RegisterSetting( "use_vendetta", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 79140 ) ), -- Vendetta
-    desc = "If checked, Vendetta will be recommended based on the Assassination Rogue priority. If unchecked, it will not be recommended.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 79140 ) ), -- Vendetta
+    desc = "如果勾选，将根据刺杀Simc优先级推荐使用仇杀。若未勾选，则不会推荐该技能。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "envenom_stack_threshold", 4, {
-    name = strformat( "Envenom Stack Threshold" ),
-    desc = "Minimum deadly poison stacks on target before recommending Envenom over Rupture (1-5)",
+    name = strformat( "毒伤层数阈值" ),
+    desc = "向目标推荐使用毒伤而非割裂所需的最低致命毒药层数（范围1-5）。",
     type = "range",
     min = 1,
     max = 5,
@@ -1667,24 +1667,24 @@ spec:RegisterSetting( "envenom_stack_threshold", 4, {
 -- Shadow Clone setting removed - not available in MoP Classic
 
 spec:RegisterSetting( "mutilate_poison_management", true, {
-    name = strformat( "Optimize %s Poison Application", Hekili:GetSpellLinkWithTexture( 1329 ) ), -- Mutilate
-    desc = "If checked, the addon will optimize Mutilate usage to maintain deadly poison stacks efficiently.",
+    name = strformat( "优化%s毒药施加", Hekili:GetSpellLinkWithTexture( 1329 ) ), -- Mutilate
+    desc = "如果勾选，插件会优化毁伤的使用，以有效维护目标的致命毒药。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "allow_shadowstep", true, {
-    name = strformat( "Allow %s", Hekili:GetSpellLinkWithTexture( 36554 ) ), -- Shadowstep
-    desc = "If checked, Shadowstep may be recommended for mobility and positioning. If unchecked, it will only be recommended for damage bonuses.",
+    name = strformat( "允许使用%s", Hekili:GetSpellLinkWithTexture( 36554 ) ), -- Shadowstep
+    desc = "如果勾选，可能会为了机动性和位置而推荐使用暗影步。不勾选，仅会为了伤害而推荐使用暗影步。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "use_tricks_of_the_trade", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 57934 ) ), -- Tricks of the Trade
-    desc = "If checked, Tricks of the Trade will be recommended based on the Assassination Rogue priority. If unchecked, it will not be recommended automatically.",
+    name = strformat( "使用 %s", Hekili:GetSpellLinkWithTexture( 57934 ) ), -- Tricks of the Trade
+    desc = "如果勾选该选项，嫁祸诀窍将会根据刺杀Simc的逻辑进行推荐；如果未勾选，则不会自动推荐该技能 。",
     type = "toggle",
     width = "full"
 } )
 -- Pack (rotation logic would go here)
-spec:RegisterPack("Assassination", 20251009, [[Hekili:TEvBVTTnq4FlbfWDdlWtwYolEW2aTfRRnyTOyk7RsIwIYMWsIAKuTiab63(okA9gnLSDw(qBsep(ChVxEU78M59ONBesG9(QTL9IzwwlNA7yz5y75kEkh75MJcpG2b)sgkf(FEuuex(1NsOOi5T50cwiCIN72csI4ZzEBpfs7flTCazZXHWNxS0ZDpjkcRKfZd9CFCpHxgi)hQm4OsldOXWFhki0SYGecxahhtzLbFcFGKqM65w9XQhbogvKiGF9RvpkCgABcoY79EUHmIaZiiPfghpDBcLgLuWftzya7YGNFUmqGy7WIPcsk2xq9JiGYxvgm3YZvPF4ntR(PaEasfu)5dKWdDvhCUJMbul6EuM05PzpFhNfHfc00I8rTfBWw4jurnoGIMpGIems2bSy2RGUAGcu3IXvN9RN6SLQ7UXJJDaV1uQcU(XfSNKi8BVeeWmoMDGKTtIW9dIaodZ29uL5FxNSeeleLjFCmgotiHy5aEn(Eue9h(BtqqfGQmGrYvN94S7(uzWhO0eqei3pfLb1dPseVS0zWbxgSPY0atyM14ocEcje7dzvqejexfTMugerbmlYffmmeXcRCjnwFTVRcE9kUAHsleKejvq)xNRaJse7HY7CPx8uZrDUmSir3EqJxQNVJ9bqsjyGByZ6YaNw1ZkY8v)UVKNqXw4RiYquCf461QTGhst3s9ZPKmXrOx0cDikjzqSJjze(E4HjvWq1OJIWoPFbbjrEYui3CgwAniJ0BkEAEou5SdYMOConvpF6VP7kW)EzW74CeNtYqkk1F6l0VbpRPlMo7NldkdEpIJJGWcCKlj9dLbpsWaB7S7KmUmkjeOMz0ysc(eAWJSJJte26CVPmqpu3wyO(MjcUwaeOeOAyAkIDadf8uMFegbavlCBoOMeMiYEbW2VKrfMK5ugcqdCftv8VJ(hNR4KHtrKmUI3SQo90ev7MWZfMzpVcitLtQtUrXgaqKYH8vbonhZfNYkOjW45a9nJv9QVIrz(0y)dzGbzSv3fwNIZaIkAQk(0wvnsu6K8ftXP)Sgj(vK8yiybgR14XQJDm3RktYLe8GNYPZtmIWZrIW9J7S1jZ5(QePo5r1D0G2glTmJ)Lgf6hmBAduffAyh))vQ8XJWC6avV(fmd4WmnnJeT7hqlZ62AQkuCnfiYeBLA1TgNXTgJA9sJKdwpncjQb)BLfEUOJJ56wiN5hiwgq0WL7japlsAoLjoUlWBpo6)Bldy4)TGWKvAqpqqouHGMcjEWhcHHM3H5tlF4VizWrZSG2H)tgVixcLucLQb8QhT5TTcpBqHRZTLcx(GbRdAkCDw28b11rNYGQQHF76uO9GkSU0V1t4CfYo8d5SoTAoIR7HCrEoLOlUerlF4ZP1NVqBru4yiBTqSh6M4(r6oyzwEmIXrYP1uJi5(MYGlBWRhEZ1m7L0WEdCJVvpviaFLPXlFqzJ8Pntm(lR)14ee)WTYXexRnLOz5vJYz(SJZMDljE9nAdWz(c6ndL38C9jnR5E8gxemk30xQOj19qnVtjsMwK65NpLqD1CRUaix9V7FxWX(ahy6TYDzxxTLEd6D210iY2wdJu9o4VMGz)cbRDbBta0tYMfPpNK93zwkTAuKv3zvvAm82WDrP3(0JevHN2M769MQnRMlDY(WtmSlCLPPTkBxuRj5Ar90sfqmTLuVvUa4AOPH8AYV3oq(M1oDVO(cKQBwZCkVE3(WBwV48xUPbsvTtTJhwkPTKeSmJfJJ0BFL9K(wIToCARnCQTpFIURy(KBgzJeDf0BDcD4xTqx8J9am6d74yA3cOfGgx4lJ7RNNATLzCRB1QWtB)Gvolo)TgABaiuPk92SCaD3nRw3j2X10mDElk1zMVMPpDW84ZPYN0)fDkN2M13RH5SZHzV4YIj9uHJzvyeYXsTUgXTNmMlZPASzV)7]])
+spec:RegisterPack("刺杀Simc", 20251009, [[Hekili:TEvBVTTnq4FlbfWDdlWtwYolEW2aTfRRnyTOyk7RsIwIYMWsIAKuTiab63(okA9gnLSDw(qBsep(ChVxEU78M59ONBesG9(QTL9IzwwlNA7yz5y75kEkh75MJcpG2b)sgkf(FEuuex(1NsOOi5T50cwiCIN72csI4ZzEBpfs7flTCazZXHWNxS0ZDpjkcRKfZd9CFCpHxgi)hQm4OsldOXWFhki0SYGecxahhtzLbFcFGKqM65w9XQhbogvKiGF9RvpkCgABcoY79EUHmIaZiiPfghpDBcLgLuWftzya7YGNFUmqGy7WIPcsk2xq9JiGYxvgm3YZvPF4ntR(PaEasfu)5dKWdDvhCUJMbul6EuM05PzpFhNfHfc00I8rTfBWw4jurnoGIMpGIems2bSy2RGUAGcu3IXvN9RN6SLQ7UXJJDaV1uQcU(XfSNKi8BVeeWmoMDGKTtIW9dIaodZ29uL5FxNSeeleLjFCmgotiHy5aEn(Eue9h(BtqqfGQmGrYvN94S7(uzWhO0eqei3pfLb1dPseVS0zWbxgSPY0atyM14ocEcje7dzvqejexfTMugerbmlYffmmeXcRCjnwFTVRcE9kUAHsleKejvq)xNRaJse7HY7CPx8uZrDUmSir3EqJxQNVJ9bqsjyGByZ6YaNw1ZkY8v)UVKNqXw4RiYquCf461QTGhst3s9ZPKmXrOx0cDikjzqSJjze(E4HjvWq1OJIWoPFbbjrEYui3CgwAniJ0BkEAEou5SdYMOConvpF6VP7kW)EzW74CeNtYqkk1F6l0VbpRPlMo7NldkdEpIJJGWcCKlj9dLbpsWaB7S7KmUmkjeOMz0ysc(eAWJSJJte26CVPmqpu3wyO(MjcUwaeOeOAyAkIDadf8uMFegbavlCBoOMeMiYEbW2VKrfMK5ugcqdCftv8VJ(hNR4KHtrKmUI3SQo90ev7MWZfMzpVcitLtQtUrXgaqKYH8vbonhZfNYkOjW45a9nJv9QVIrz(0y)dzGbzSv3fwNIZaIkAQk(0wvnsu6K8ftXP)Sgj(vK8yiybgR14XQJDm3RktYLe8GNYPZtmIWZrIW9J7S1jZ5(QePo5r1D0G2glTmJ)Lgf6hmBAduffAyh))vQ8XJWC6avV(fmd4WmnnJeT7hqlZ62AQkuCnfiYeBLA1TgNXTgJA9sJKdwpncjQb)BLfEUOJJ56wiN5hiwgq0WL7japlsAoLjoUlWBpo6)Bldy4)TGWKvAqpqqouHGMcjEWhcHHM3H5tlF4VizWrZSG2H)tgVixcLucLQb8QhT5TTcpBqHRZTLcx(GbRdAkCDw28b11rNYGQQHF76uO9GkSU0V1t4CfYo8d5SoTAoIR7HCrEoLOlUerlF4ZP1NVqBru4yiBTqSh6M4(r6oyzwEmIXrYP1uJi5(MYGlBWRhEZ1m7L0WEdCJVvpviaFLPXlFqzJ8Pntm(lR)14ee)WTYXexRnLOz5vJYz(SJZMDljE9nAdWz(c6ndL38C9jnR5E8gxemk30xQOj19qnVtjsMwK65NpLqD1CRUaix9V7FxWX(ahy6TYDzxxTLEd6D210iY2wdJu9o4VMGz)cbRDbBta0tYMfPpNK93zwkTAuKv3zvvAm82WDrP3(0JevHN2M769MQnRMlDY(WtmSlCLPPTkBxuRj5Ar90sfqmTLuVvUa4AOPH8AYV3oq(M1oDVO(cKQBwZCkVE3(WBwV48xUPbsvTtTJhwkPTKeSmJfJJ0BFL9K(wIToCARnCQTpFIURy(KBgzJeDf0BDcD4xTqx8J9am6d74yA3cOfGgx4lJ7RNNATLzCRB1QWtB)Gvolo)TgABaiuPk92SCaD3nRw3j2X10mDElk1zMVMPpDW84ZPYN0)fDkN2M13RH5SZHzV4YIj9uHJzvyeYXsTUgXTNmMlZPASzV)7]])

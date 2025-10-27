@@ -2152,12 +2152,12 @@ spec:RegisterOptions( {
 
     potion = "jade_serpent",
 
-    package = "Enhancement",
+    package = "增强Simc",
 } )
 
 spec:RegisterSetting( "swing_weave_hardcasts", true, {
-    name = "Swing-Weave Hardcasts",
-    desc = strformat( "Delay %s, %s, and %s casts until there is enough time before your next main-hand swing.",
+    name = "穿插普攻的读条施法",
+    desc = strformat( "延迟 %s、%s和%s的施法，直至距离下一次主手普攻有足够时间。",
         Hekili:GetSpellLinkWithTexture( 403 ),
         Hekili:GetSpellLinkWithTexture( 421 ),
         Hekili:GetSpellLinkWithTexture( 117014 ) ),
@@ -2166,8 +2166,8 @@ spec:RegisterSetting( "swing_weave_hardcasts", true, {
 } )
 
 spec:RegisterSetting( "swing_weave_instant_stacks", 5, {
-    name = "Instant Cast Stack Threshold",
-    desc = "Treat Maelstrom Weapon stacks at or above this value as instant casts that ignore swing-weave checks.",
+    name = "瞬发施法层数阈值",
+    desc = "当漩涡武器层数达到或超过此数值时，视为瞬发施法，忽略穿插普攻的读条施法检查。",
     type = "range",
     min = 1,
     max = 5,
@@ -2176,8 +2176,8 @@ spec:RegisterSetting( "swing_weave_instant_stacks", 5, {
 } )
 
 spec:RegisterSetting( "swing_weave_buffer", 0.2, {
-    name = "Swing Buffer (s)",
-    desc = "Reserve this amount of time before the next main-hand swing when fitting a hardcast.",
+    name = "普攻缓冲时间（秒）",
+    desc = "在读条施法时，为下一次主手普攻预留的时间量。",
     type = "range",
     min = 0,
     max = 0.6,
@@ -2186,8 +2186,8 @@ spec:RegisterSetting( "swing_weave_buffer", 0.2, {
 } )
 
 spec:RegisterSetting( "swing_weave_latency", 0.1, {
-    name = "Latency Cushion (s)",
-    desc = "Additional safety window added on top of the swing buffer for latency and reaction time.",
+    name = "延迟缓冲时间（秒）",
+    desc = "在普攻缓冲时间基础上，额外增加的用于应对网络延迟和反应时间的安全窗口。",
     type = "range",
     min = 0,
     max = 0.3,
@@ -2196,6 +2196,6 @@ spec:RegisterSetting( "swing_weave_latency", 0.1, {
 } )
 
 -- Default pack for MoP Enhancement Shaman
-spec:RegisterPack( "Enhancement", 20251026, [[Hekili:fR1EVnoUr8pllcGrm6EQw(vYvyhG9ApGElWDxb8(3wIwM2wi6HHeDcsHH(S3HK6bjfPiDsAlUB312ICMHZJFZpZXB93(JTB2Ji4T)X0jtx4pz6sVPZMpD2dB3qE7mE7MZOONrhHxKHsH)(xZoHYIWP4mc9zVLKJ2tLrz(LIi45B3S7sCc53Y2UtVGxcR9moc(4LZ2U5u8(9y(AXLrB38JtXLvH0)GQcRvDvy(b49rK48SQWK4sc84d5fvH)t8ZXjXEB3W(qQzGYXW)8hSJfodTlbVF7VSDturmbxeJGfaI5fCW(CI3He4efuEkp65QWNwxfoN)48STBoexGdYYFbTLawQI0kbZFtuEEY(8xZ8AxQxboffNv2jLxrXeNvEv4OQqZsTkCvv4eVLpqTOz2oF4mCAmg20tvHlysMKtWPEPOJPOa(RP6r4rmnItyHwuI6tlXOI4SJcBT7ykiuQXn3zJB1AzRRVsC2(upyDwNKqP23cJ2NsGXJeh9mSvMA2D5WbpuzeoBpTaW7Y5ovKGEbfKGkprf)sJIhmBW29Apdb7G9aVNV2oTKIWjLKI80GxXOZ5zELeutAIFNwvKdv3p4SRNkRPUPYzDQm6eKkgKeF8ejdCmuv(OrvQ6XKdlxYsWGhRjIwsL1pRiR2QXUyIOc(svOHigSQ3IsWbeuXrmiBaqaeV)eNTvXOBjjViT1f7BgB5wsFKDgsjq(Q4nUbGmZa6L)naw4EsHVdNknzl(MbhgwwSGaymXpJzYXCrCpqMgS1HvaGsqovNJrvG5Y4HLZbCburwEogwptqMRj5OvCfRbytUxqx1oFBTTfOrJftC(eQihMjAUgon)f3YG5h4xrjpJlkdowGI4Xj1sA3YL91NldntlbZjXsp(3xZKb6yyUG8EqGCu9A8m8(GdxkERdu)61Axhjgx4Vmy(5ii3SLefG0ufoEyyrZfWFkDuyl7Ehw5c(PP8vQZ5eQyFeOSGs0bS0rqtFjlv9MukvNcGKnajb7Ytid3j36zzMDNZQgYjAoWdzvwqoy5bl0KhygdXmeI79TEV9PvaEnxp7mbjBTHBkbyOcS6digmuVED0egUt9Nt3yXW5unL12sW6O9RZEEpPEd0R3GRLwq)E8TV3(46W3gOz(XK3oFY7qro9WZSSEyBSaW8E1tkDL7KGlD3De54ZiIna9ao4ov8GTqbeEn(ajdxw6oapGHnTt9AeLL()8JPglqQ6U)PYmmb0OPFqDFCP22L9dRS2LoWhrHo3u3P(pmDUP2ODyKoNl2RgYztnJ)8rjNn1cAHXQa3O)3lTGqVLNdOlWBu5VTtoXN(T28oHrjKtENJi884A6hKyaiIKhSpgZmLzt6u5UK889jx4D8yoUwCNsCai)0sXd8WCR4SiPT)O9cu5rYo7gFAdDQwdQfSv28b8KLtKypPisDSNAw65C()kyZGWzoLLtAmJZGN8CrCkKtPq6LtaNBv0vDSaJa5m0YKm(vDgp)UbFjUa2tzWoWCcQnUgwAsrigfzLaXsXvHkIqzunvuWUOrPv(GK8GmACbVxL0QmJP1J0CkauJf5SZ9C1RR251U8yfc21Oz6(oAkc0XVqh4wNWD3oUbAw0Jty4IAPHxF(gM(2)78kDG9)33TSWn3YausDYVmGtP50AZcS1xzWVXQohHfYRTorbc(Y(oHluQdJ3clZ7VL6HpnOPXS)VMkRD9l2I6aMHizHtlxrD3PK8vuuCjlG)6aAiNpoIaoMy99vmmlxvX)KZINoVJH5Zw3mDpM1pIYjfSiiqdsStfaN19azjGeIfoPFukh2OAo41pyJilDIuf4O80DO(mm(f5tlTduTo4ZEQi(m)PBoHsrz)TQqHrDvfUjo9VxGoaVAX8h)PhRc)PQWFp)FbV1BUh82)e2DA8)MMC1DKGSrCweifIxJo9Q1jzOBvsyFSV3fjp74fCZwL)oz8Nf0jwlK66yLvEkgNS3iPn(J1X)OF3(ECsQP79ce8PVLndWj)maYT5vubv8apSFl9CEbHchmxz8EEvFhK4fYP8ciEKE5aaorJT5hIHAPn3bHdDbPVF3neNQ(E135kT0RnR5VS(VQKC814dR)IHGOEb0pQijJ(bu9IrnqqfI5aOEzWdgFLgVwlgUOND6)D3D)5za0PqWxa7QLZkvL94IVA6IRxf4b(0SjIBULNT4hQWPLjxJSRhzKz9O77XPw2uwVCYyr9A68xtoLzhW2FA5Kr3BRz01RwBejzmRunMoMVIFQmtxP13YSv8t7rEGhKgMJYO7TZABK9(MJU3jMxRNC9Qtl8P1poz84)VF6AyO95F8w8PC8CGCPOs0zsDvC6MIUy6yB)C6wgIJ4tRNjUXwMu09DVl5sFcfCJhF96xSRlr7uHmfhBGtsJA5C52WeBTV1TceW6VVN85OR)d(TDuf(nUqawVFl5v0BWl(2lO4eQ1jLG0Xdta7vh1nj01(uTO7MtvBK2lQumI3NkvBRg9SXG86M2hByoUQWFWSuXwQCxk16ehMMaYFVPZnYEcANuvVgzwwhzOjXD9A31kQBkCJ1OLU8j2yu0wTknXTrd628RBGz0TE9QMBpwNHjF1AwIx0W1htcqT(qNSvlgPBMG9vQ4LP2QsJZdtxYu7iTA3U0eNmTfo0LU9yi)QDeqoRhHbK0Uh1XTm6lM(jICJwGjRwFq14iQgoDDUwSdxd1o4oaWB39h6Q4D0TimPb6UmotPrDEl9ZtYDxUL6O3Np1aunX6CIgS4DQ7Nk9dcshWz30xe5dOzIpIWY6M2Z4HBGzbBX(20o3LU2u6MMJRw0hOVS1iHH8lFdIL3T(B5)QylAG6sdDr6VVgbAmkvLauG6UO)Yw)AjoAT5FWQdkVrM33k6pYvv9j8Z7udDRf1Chu)rGAMsXitSquvCp6lYQE16fgfLvT37hJRIULAbyaPSxaxSEKlMpBwmQYx5N5NM4Z6PdlYzQI82b7RtMf66i9laDTpve2B3uh0DMMXhiqP1(DPySN36JhamHBOXT4kvQ6Cp5gbkfp6zy0ZPCti7I692G1D(l17Kv)rq)VHKbF2fTU9)a]] )
+spec:RegisterPack( "增强Simc", 20251026, [[Hekili:fR1EVnoUr8pllcGrm6EQw(vYvyhG9ApGElWDxb8(3wIwM2wi6HHeDcsHH(S3HK6bjfPiDsAlUB312ICMHZJFZpZXB93(JTB2Ji4T)X0jtx4pz6sVPZMpD2dB3qE7mE7MZOONrhHxKHsH)(xZoHYIWP4mc9zVLKJ2tLrz(LIi45B3S7sCc53Y2UtVGxcR9moc(4LZ2U5u8(9y(AXLrB38JtXLvH0)GQcRvDvy(b49rK48SQWK4sc84d5fvH)t8ZXjXEB3W(qQzGYXW)8hSJfodTlbVF7VSDturmbxeJGfaI5fCW(CI3He4efuEkp65QWNwxfoN)48STBoexGdYYFbTLawQI0kbZFtuEEY(8xZ8AxQxboffNv2jLxrXeNvEv4OQqZsTkCvv4eVLpqTOz2oF4mCAmg20tvHlysMKtWPEPOJPOa(RP6r4rmnItyHwuI6tlXOI4SJcBT7ykiuQXn3zJB1AzRRVsC2(upyDwNKqP23cJ2NsGXJeh9mSvMA2D5WbpuzeoBpTaW7Y5ovKGEbfKGkprf)sJIhmBW29Apdb7G9aVNV2oTKIWjLKI80GxXOZ5zELeutAIFNwvKdv3p4SRNkRPUPYzDQm6eKkgKeF8ejdCmuv(OrvQ6XKdlxYsWGhRjIwsL1pRiR2QXUyIOc(svOHigSQ3IsWbeuXrmiBaqaeV)eNTvXOBjjViT1f7BgB5wsFKDgsjq(Q4nUbGmZa6L)naw4EsHVdNknzl(MbhgwwSGaymXpJzYXCrCpqMgS1HvaGsqovNJrvG5Y4HLZbCburwEogwptqMRj5OvCfRbytUxqx1oFBTTfOrJftC(eQihMjAUgon)f3YG5h4xrjpJlkdowGI4Xj1sA3YL91NldntlbZjXsp(3xZKb6yyUG8EqGCu9A8m8(GdxkERdu)61Axhjgx4Vmy(5ii3SLefG0ufoEyyrZfWFkDuyl7Ehw5c(PP8vQZ5eQyFeOSGs0bS0rqtFjlv9MukvNcGKnajb7Ytid3j36zzMDNZQgYjAoWdzvwqoy5bl0KhygdXmeI79TEV9PvaEnxp7mbjBTHBkbyOcS6digmuVED0egUt9Nt3yXW5unL12sW6O9RZEEpPEd0R3GRLwq)E8TV3(46W3gOz(XK3oFY7qro9WZSSEyBSaW8E1tkDL7KGlD3De54ZiIna9ao4ov8GTqbeEn(ajdxw6oapGHnTt9AeLL()8JPglqQ6U)PYmmb0OPFqDFCP22L9dRS2LoWhrHo3u3P(pmDUP2ODyKoNl2RgYztnJ)8rjNn1cAHXQa3O)3lTGqVLNdOlWBu5VTtoXN(T28oHrjKtENJi884A6hKyaiIKhSpgZmLzt6u5UK889jx4D8yoUwCNsCai)0sXd8WCR4SiPT)O9cu5rYo7gFAdDQwdQfSv28b8KLtKypPisDSNAw65C()kyZGWzoLLtAmJZGN8CrCkKtPq6LtaNBv0vDSaJa5m0YKm(vDgp)UbFjUa2tzWoWCcQnUgwAsrigfzLaXsXvHkIqzunvuWUOrPv(GK8GmACbVxL0QmJP1J0CkauJf5SZ9C1RR251U8yfc21Oz6(oAkc0XVqh4wNWD3oUbAw0Jty4IAPHxF(gM(2)78kDG9)33TSWn3YausDYVmGtP50AZcS1xzWVXQohHfYRTorbc(Y(oHluQdJ3clZ7VL6HpnOPXS)VMkRD9l2I6aMHizHtlxrD3PK8vuuCjlG)6aAiNpoIaoMy99vmmlxvX)KZINoVJH5Zw3mDpM1pIYjfSiiqdsStfaN19azjGeIfoPFukh2OAo41pyJilDIuf4O80DO(mm(f5tlTduTo4ZEQi(m)PBoHsrz)TQqHrDvfUjo9VxGoaVAX8h)PhRc)PQWFp)FbV1BUh82)e2DA8)MMC1DKGSrCweifIxJo9Q1jzOBvsyFSV3fjp74fCZwL)oz8Nf0jwlK66yLvEkgNS3iPn(J1X)OF3(ECsQP79ce8PVLndWj)maYT5vubv8apSFl9CEbHchmxz8EEvFhK4fYP8ciEKE5aaorJT5hIHAPn3bHdDbPVF3neNQ(E135kT0RnR5VS(VQKC814dR)IHGOEb0pQijJ(bu9IrnqqfI5aOEzWdgFLgVwlgUOND6)D3D)5za0PqWxa7QLZkvL94IVA6IRxf4b(0SjIBULNT4hQWPLjxJSRhzKz9O77XPw2uwVCYyr9A68xtoLzhW2FA5Kr3BRz01RwBejzmRunMoMVIFQmtxP13YSv8t7rEGhKgMJYO7TZABK9(MJU3jMxRNC9Qtl8P1poz84)VF6AyO95F8w8PC8CGCPOs0zsDvC6MIUy6yB)C6wgIJ4tRNjUXwMu09DVl5sFcfCJhF96xSRlr7uHmfhBGtsJA5C52WeBTV1TceW6VVN85OR)d(TDuf(nUqawVFl5v0BWl(2lO4eQ1jLG0Xdta7vh1nj01(uTO7MtvBK2lQumI3NkvBRg9SXG86M2hByoUQWFWSuXwQCxk16ehMMaYFVPZnYEcANuvVgzwwhzOjXD9A31kQBkCJ1OLU8j2yu0wTknXTrd628RBGz0TE9QMBpwNHjF1AwIx0W1htcqT(qNSvlgPBMG9vQ4LP2QsJZdtxYu7iTA3U0eNmTfo0LU9yi)QDeqoRhHbK0Uh1XTm6lM(jICJwGjRwFq14iQgoDDUwSdxd1o4oaWB39h6Q4D0TimPb6UmotPrDEl9ZtYDxUL6O3Np1aunX6CIgS4DQ7Nk9dcshWz30xe5dOzIpIWY6M2Z4HBGzbBX(20o3LU2u6MMJRw0hOVS1iHH8lFdIL3T(B5)QylAG6sdDr6VVgbAmkvLauG6UO)Yw)AjoAT5FWQdkVrM33k6pYvv9j8Z7udDRf1Chu)rGAMsXitSquvCp6lYQE16fgfLvT37hJRIULAbyaPSxaxSEKlMpBwmQYx5N5NM4Z6PdlYzQI82b7RtMf66i9laDTpve2B3uh0DMMXhiqP1(DPySN36JhamHBOXT4kvQ6Cp5gbkfp6zy0ZPCti7I692G1D(l17Kv)rq)VHKbF2fTU9)a]] )
 
 -- Register pack selector for Enhancement

@@ -8416,19 +8416,22 @@ do
 		if option.boss and not state.boss then
 			return true, "boss-only"
 		end
-		if option.targetMin > 0 and self.active_enemies < option.targetMin then
+		-- 确保targetMin和targetMax有默认值，避免nil比较错误
+		local targetMin = option.targetMin or 0
+		local targetMax = option.targetMax or 0
+		if targetMin > 0 and self.active_enemies < targetMin then
 			return true,
 				"active_enemies["
 					.. self.active_enemies
 					.. "] is less than ability's minimum targets ["
-					.. option.targetMin
+					.. targetMin
 					.. "]"
-		elseif option.targetMax > 0 and self.active_enemies > option.targetMax then
+		elseif targetMax > 0 and self.active_enemies > targetMax then
 			return true,
 				"active_enemies["
 					.. self.active_enemies
 					.. "] is more than ability's maximum targets ["
-					.. option.targetMax
+					.. targetMax
 					.. "]"
 		end
 
@@ -8487,11 +8490,15 @@ do
 
 		local profile = Hekili.DB.profile
 		local spec = rawget(profile.specs, state.spec.id)
+		-- 对于低等级角色，即使没有专精配置也不直接过滤技能
 		if not spec then
-			return true
+			spec = { abilities = {}, items = {} }
+		else
+			if not spec.abilities then spec.abilities = {} end
+			if not spec.items then spec.items = {} end
 		end
 
-		local option = ability.item and spec.items[spell] or spec.abilities[spell]
+		local option = ability.item and spec.items[spell] or spec.abilities[spell] or {}
 		local toggle = option.toggle
 		if not toggle or toggle == "default" then
 			toggle = ability.toggle

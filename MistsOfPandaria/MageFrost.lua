@@ -1768,13 +1768,13 @@ end)
         
         potion = "jade_serpent_potion",
         
-        package = "Frost",
+        package = "冰法Simc",
     } )
 
     -- Essential Frost Mage settings
     spec:RegisterSetting( "aoe_enemy_threshold", 3, {
-        name = "AoE Enemy Threshold",
-        desc = "Number of enemies at which AoE abilities like Blizzard should be used (default: 3)",
+        name = "AoE 敌人阈值",
+        desc = "在AoE技能（如暴风雪）生效的敌人数量阈值（默认：3）",
         type = "range",
         min = 2,
         max = 6,
@@ -1783,8 +1783,8 @@ end)
     } )
 
     spec:RegisterSetting( "evocation_mana_threshold", 45, {
-        name = "Evocation Mana Threshold",
-        desc = "Mana percentage below which Evocation should be used (default: 45%)",
+        name = "唤醒法力阈值",
+        desc = "当法力值低于此阈值时，将推荐使用唤醒技能（默认：45%）",
         type = "range",
         min = 20,
         max = 80,
@@ -1793,20 +1793,20 @@ end)
     } )
 
     spec:RegisterSetting( "water_elemental_freeze", true, {
-        name = "Water Elemental Freeze",
-        desc = "If checked, Water Elemental's Freeze will be recommended when Fingers of Frost stacks are low",
+        name = "水元素冰冻",
+        desc = "如果勾选，当寒冰指层数较低时，将推荐使用水元素的冰冻技能。",
         type = "toggle",
         width = "full"
     } )
 
     spec:RegisterSetting( "ice_lance_moving", true, {
-        name = "Ice Lance While Moving",
-        desc = "If checked, Ice Lance will be recommended while moving as a fallback option",
+        name = "移动时使用冰枪术",
+        desc = "如果勾选，移动时将推荐使用冰枪术作为备选方案。",
         type = "toggle",
         width = "full"
     } )
 
 -- Register default pack for MoP Frost Mage
 -- Updated October 1, 2025 - Use the MageFrost.simc file for optimized priorities
-spec:RegisterPack( "Frost", 20251008, [[Hekili:DIvBVTTnq4Flbfizdn1ZVe32nexGfGgSe02fm1U8njrltftejrnkQK6Ga(BF3jQxPOuSZhAtc5XN7iVN7UhB3zUF31zdrsD)28PZxoB60poz(SZ(WzlCDK7sPUoPKG7j3b)scjg()lf8mjU6UiozdE6mEUia2X1zDolsEvI7ARqohGmlLg4(T3FMRZw2MnuTP0SaxNVVLLP8X)ru(L(u5ZdH)oqY4jk)iwMe2oKlu()f9EweBIRtXIyuq4u4hFR4(OpHRtOG)enXJlaVqtiRJOBCVWvcXvBRyb78EGYsYmmArBJwhXE6jIyJHnNH20SItGGjPcgrFWhOE0eAmJcH9NwP8x2GxapH6Xd9c4rBqGw(AbIiciau0FMgXZWvaWE)GGTopmCsil5oQidDFiMnNiOaATFqOErKeiNcy9HXXATGWsayO0NOM4uaEitq9wZJKiyF0i7Kjl2PZBQezeHKCy9Q8zl3JKfblvJWLf5xL)Flwduf4xc4WZj)XeRuGQ8(WxgrUoPKYFKkMKNQ8F(zLVKiUJkNizXupj3Bdd4LNR8Np1kfQtaEvWoL))IBO8ZZWQOkEL1GqsIOjsJWO0sL)XkFlrPGgtkW)CGxeqYKEyG2eADS2i8(hypDn2n4UkFekj4WYCVj7UcZTKKnWvnlIlR)Joa)Jma37I4pGewyF4ruWsUNI1VpYKBv(nVm9Yc1pMqgy8sJ(MxhIL(Bwvuw)3VC5XOao3aW57rnIDaxdLGuX9qTOzwHeWir1VuvC6S6cOd2trC(gVWCXoeIFF)Hyu()Iw8)uU(NDUh3W19TRj(ZMoORpQKB3R1u77HUlJHxUfg0am3phrJHAhsKY)YcZkhuCPgqnlxp7cJeZ2kV6oKM17GF)cUrv2Ba))cnIoGUQ96iQ3u5FbSBvuCbIx1ltray2eQc9i2dqedqhdZmd2feb58I8Fg2l2jM8tVUR6SWie(k05M9UnCPSGA3R7wlp0P3gqbGd1zBjlOO(ad4H6fLqLBPcpjnoLIct2RyEPL4Qlq2cndlAhDd3JQe9ISM9lnvt5AmOlNVA5c)y26QBYNffH947pGTyQAQGga4qSoxTFPyPWI1cavgsP7ex921Kfa18)rjJx5)oygnSrm7j8EdXvSY)w(ToSyOY4R8BgF2CDZHI3cIiMlS8gvS(4ZxbGsHozpITm8OvDmMOvy1GxwECmpXZWSXL7n2O7HggBz22ityRgCz2ZTT2PrMeHTV16wgIGaE6bOvfUtLWDO65rIiby5zOcDaawCkxilBUEci6(eLVG(F5qlhiZMXrNqYL8y4XdwiaI97Oztux)fgQ1yjWj(rswEkIcAGouqOm0XEcCg11xfxz4cJpiaSnsP5HSii19gGgDqmoe83aN6MQIc11A4ZMuxN82v)wpA(PSWvhny9HDqAXpBoExYS9dANiwGXW8y7q1H5HimQwtRqKNr9a2u8PiRCvbP0UHAM5iVfiLRigao55ZXubKmksD2LZxdLgGsb9LNQNg72wxRMbDNvn(p)CF9nNpFAj4JPqUTFoON3Jhwg)5RQLWxgbhIu62rKLSv9BqhnEdEMkjZVUJnFGJPFwhqIBBuB0h)IbqJa3XCAh9OTpUMVA9OwzhlQyhhS2ZUez00wne6l9TMH)YQk7s6lvNwFLSRNTPS7f1mAub2saATp6RzTe)occBdulPEN2rG2QzN2t02QfTkRSOH84Jgq9yBp2vb3E40LTCQDbIA)AxAyVxn9DTbY(Qcb4SOhSktviWRhQyAOAE2FY)mouJXHb)qBHFzXBR(aCz)AthzyUTrR0U7uxcyUr1xdM56T)6SW7NEuu1xA1NwT08aMJ73RdT)e7Ex09LXA5G6pMfiQzlOV0XjopuWUVqVK7)p]] )
+spec:RegisterPack( "冰法Simc", 20251008, [[Hekili:DIvBVTTnq4Flbfizdn1ZVe32nexGfGgSe02fm1U8njrltftejrnkQK6Ga(BF3jQxPOuSZhAtc5XN7iVN7UhB3zUF31zdrsD)28PZxoB60poz(SZ(WzlCDK7sPUoPKG7j3b)scjg()lf8mjU6UiozdE6mEUia2X1zDolsEvI7ARqohGmlLg4(T3FMRZw2MnuTP0SaxNVVLLP8X)ru(L(u5ZdH)oqY4jk)iwMe2oKlu()f9EweBIRtXIyuq4u4hFR4(OpHRtOG)enXJlaVqtiRJOBCVWvcXvBRyb78EGYsYmmArBJwhXE6jIyJHnNH20SItGGjPcgrFWhOE0eAmJcH9NwP8x2GxapH6Xd9c4rBqGw(AbIiciau0FMgXZWvaWE)GGTopmCsil5oQidDFiMnNiOaATFqOErKeiNcy9HXXATGWsayO0NOM4uaEitq9wZJKiyF0i7Kjl2PZBQezeHKCy9Q8zl3JKfblvJWLf5xL)Flwduf4xc4WZj)XeRuGQ8(WxgrUoPKYFKkMKNQ8F(zLVKiUJkNizXupj3Bdd4LNR8Np1kfQtaEvWoL))IBO8ZZWQOkEL1GqsIOjsJWO0sL)XkFlrPGgtkW)CGxeqYKEyG2eADS2i8(hypDn2n4UkFekj4WYCVj7UcZTKKnWvnlIlR)Joa)Jma37I4pGewyF4ruWsUNI1VpYKBv(nVm9Yc1pMqgy8sJ(MxhIL(Bwvuw)3VC5XOao3aW57rnIDaxdLGuX9qTOzwHeWir1VuvC6S6cOd2trC(gVWCXoeIFF)Hyu()Iw8)uU(NDUh3W19TRj(ZMoORpQKB3R1u77HUlJHxUfg0am3phrJHAhsKY)YcZkhuCPgqnlxp7cJeZ2kV6oKM17GF)cUrv2Ba))cnIoGUQ96iQ3u5FbSBvuCbIx1ltray2eQc9i2dqedqhdZmd2feb58I8Fg2l2jM8tVUR6SWie(k05M9UnCPSGA3R7wlp0P3gqbGd1zBjlOO(ad4H6fLqLBPcpjnoLIct2RyEPL4Qlq2cndlAhDd3JQe9ISM9lnvt5AmOlNVA5c)y26QBYNffH947pGTyQAQGga4qSoxTFPyPWI1cavgsP7ex921Kfa18)rjJx5)oygnSrm7j8EdXvSY)w(ToSyOY4R8BgF2CDZHI3cIiMlS8gvS(4ZxbGsHozpITm8OvDmMOvy1GxwECmpXZWSXL7n2O7HggBz22ityRgCz2ZTT2PrMeHTV16wgIGaE6bOvfUtLWDO65rIiby5zOcDaawCkxilBUEci6(eLVG(F5qlhiZMXrNqYL8y4XdwiaI97Oztux)fgQ1yjWj(rswEkIcAGouqOm0XEcCg11xfxz4cJpiaSnsP5HSii19gGgDqmoe83aN6MQIc11A4ZMuxN82v)wpA(PSWvhny9HDqAXpBoExYS9dANiwGXW8y7q1H5HimQwtRqKNr9a2u8PiRCvbP0UHAM5iVfiLRigao55ZXubKmksD2LZxdLgGsb9LNQNg72wxRMbDNvn(p)CF9nNpFAj4JPqUTFoON3Jhwg)5RQLWxgbhIu62rKLSv9BqhnEdEMkjZVUJnFGJPFwhqIBBuB0h)IbqJa3XCAh9OTpUMVA9OwzhlQyhhS2ZUez00wne6l9TMH)YQk7s6lvNwFLSRNTPS7f1mAub2saATp6RzTe)occBdulPEN2rG2QzN2t02QfTkRSOH84Jgq9yBp2vb3E40LTCQDbIA)AxAyVxn9DTbY(Qcb4SOhSktviWRhQyAOAE2FY)mouJXHb)qBHFzXBR(aCz)AthzyUTrR0U7uxcyUr1xdM56T)6SW7NEuu1xA1NwT08aMJ73RdT)e7Ex09LXA5G6pMfiQzlOV0XjopuWUVqVK7)p]] )
 

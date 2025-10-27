@@ -1424,10 +1424,10 @@ spec:RegisterOptions( {
     
     potion = "jade_serpent",
     
-    package = "Restoration",
+    package = "奶萨Simc",
 } )
 
 -- Default pack for MoP Restoration Shaman
-spec:RegisterPack( "Restoration", 20250515, [[Hekili:T1vBVTTnu4FlXiPaQWKrdpvIbKmEbvJRLwwxP2rI1mzQiQ1GIugwwtyQsyBvHnYJP6LP56NHJUHX2Z)OnRXYQZl6R)UNB6QL(zhdkr9bQlG(tB8L4Wdpb3NNVh(GWdFOdpNFpdO8Hdm6Tw(acm2nDWZ5MjsXyJKCtj3cU5sIVOd8jkzPsMLIX65MuLY1jrwLkKWrZA3CluOKCvId8LHIyyIeLSr1WIJ1jPr7cYeKwrJIuWXRKtFDlYkLmCPFJr(4OsZQR]] )
+spec:RegisterPack( "奶萨Simc", 20250515, [[Hekili:T1vBVTTnu4FlXiPaQWKrdpvIbKmEbvJRLwwxP2rI1mzQiQ1GIugwwtyQsyBvHnYJP6LP56NHJUHX2Z)OnRXYQZl6R)UNB6QL(zhdkr9bQlG(tB8L4Wdpb3NNVh(GWdFOdpNFpdO8Hdm6Tw(acm2nDWZ5MjsXyJKCtj3cU5sIVOd8jkzPsMLIX65MuLY1jrwLkKWrZA3CluOKCvId8LHIyyIeLSr1WIJ1jPr7cYeKwrJIuWXRKtFDlYkLmCPFJr(4OsZQR]] )
 
 -- Register pack selector for Restoration

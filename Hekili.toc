@@ -1,10 +1,12 @@
 ## Interface: 50501
 ## Version: v5.5.1
 ## Title: Hekili
-## Author: Hekili, modified to mop by Smufrik
+## Title-zhCN: Hekili MoP黑科研修复版
+## Author: Hekili, modified to mop by Smufrik, 汉化 by 胡里胡涂, 修复 By EasyPlay
 ## X-Flavor: MoP
 ## IconTexture: Interface\AddOns\Hekili\Textures\LOGO-ORANGE.blp
 ## Notes: Priority helper based on SimulationCraft action lists.
+## Notes-zhCN: 基于 SimulationCraft 动作列表的输出技能助手。
 ## SavedVariables: HekiliDB
 ## OptionalDeps: AddOnSkins, ButtonForge, ConsolePort, ElvUI, LibDualSpec-1.0, Masque, WeakAuras
 ## X-Curse-Project-ID: 69254
@@ -67,6 +69,7 @@ MistsOfPandaria\WarriorFury.lua
 MistsOfPandaria\WarriorProtection.lua
 
 Targets.lua
+Options\Translation.lua
 Options\DevTools.lua
 Options\SnapshotUtil.lua
 Options\SnapshotWindow.lua

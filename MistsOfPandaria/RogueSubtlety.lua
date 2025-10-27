@@ -1651,27 +1651,27 @@ spec:RegisterOptions( {
 
   potion = "virmen_bite_potion",
 
-  package = "Subtlety",
+  package = "敏锐Simc",
 } )
 
 -- SUBTLETY SETTINGS
 spec:RegisterSetting( "use_shadow_dance", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 51713 ) ), -- Shadow Dance
-    desc = "If checked, Shadow Dance will be recommended based on the Subtlety Rogue priority. If unchecked, it will not be recommended automatically.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 51713 ) ), -- Shadow Dance
+    desc = "如果勾选，将根据敏锐Simc优先级推荐使用暗影之舞。未勾选，则不会自动推荐该技能。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "use_shadow_blades", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 121471 ) ), -- Shadow Blades
-    desc = "If checked, Shadow Blades will be recommended based on the Subtlety Rogue priority. If unchecked, it will not be recommended automatically.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 121471 ) ), -- Shadow Blades
+    desc = "如果勾选，将根据敏锐Simc优先级推荐使用暗影之刃。未勾选，则不会自动推荐该技能。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "dance_min_rupture", 10, {
-  name = "Minimum Rupture Time for Dance",
-  desc = "Minimum Rupture remaining (seconds) required before recommending Shadow Dance.",
+  name = "暗影之舞的最低割裂持续时间",
+  desc = "推荐使用暗影之舞前所需的割裂剩余持续时间（秒）。",
   type = "range",
   min = 0,
   max = 18,
@@ -1680,15 +1680,15 @@ spec:RegisterSetting( "dance_min_rupture", 10, {
 } )
 
 spec:RegisterSetting( "allow_shadowstep", true, {
-  name = strformat( "Allow %s", Hekili:GetSpellLinkWithTexture( 36554 ) ), -- Shadowstep
-  desc = "If checked, Shadowstep will be recommended by the cooldowns list when conditions are met.",
+  name = strformat( "允许使用%s", Hekili:GetSpellLinkWithTexture( 36554 ) ), -- Shadowstep
+  desc = "如果勾选，当条件满足时，插件将推荐使用暗影步。若未勾选，则不会自动推荐该技能。",
   type = "toggle",
   width = "full"
 } )
 
 spec:RegisterSetting( "energy_threshold", 75, {
-    name = strformat( "Energy Threshold for Cooldowns" ),
-    desc = "Minimum energy before using major cooldowns like Shadow Dance (50-100)",
+    name = strformat( "爆发能量阈值" ),
+    desc = "使用暗影之舞等主要爆发技能前所需的最低能量值（范围50-100）。",
     type = "range",
     min = 50,
     max = 100,
@@ -1697,20 +1697,20 @@ spec:RegisterSetting( "energy_threshold", 75, {
 } )
 
 spec:RegisterSetting( "auto_poison_apply", true, {
-    name = strformat( "Auto Apply Poisons" ),
-    desc = "If checked, the addon will recommend applying poisons when they're missing. If unchecked, poison application must be managed manually.",
+    name = strformat( "自动应用毒药" ),
+    desc = "如果勾选，当缺少毒药时，插件将推荐应用毒药。若未勾选，则必须手动管理毒药应用。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "use_tricks_of_the_trade", true, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( 57934 ) ), -- Tricks of the Trade
-    desc = "If checked, Tricks of the Trade will be recommended based on the Subtlety Rogue priority. If unchecked, it will not be recommended automatically.",
+    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 57934 ) ), -- Tricks of the Trade
+    desc = "如果勾选，将根据敏锐Simc优先级推荐使用嫁祸诀窍。未勾选，则不会自动推荐该技能。",
     type = "toggle",
     width = "full"
 } )
 
-spec:RegisterPack( "Subtlety", 2025100, [[Hekili:9Iv)RXnot4)wchSKWf87UoR30EKnq7XlxBHwkNl0FZ2AT1M1S2wgl5uwi4)2Vrs(djBjNnT5UFOLn6JN5XZ8mJgPGvbFlWpbXWbFXDPR3QLlFRJR7A3v3e4ZovId8lrXhrpa)OaLd)VF9owgMDIpXPmckHdaLuxfdtg4VRonJ9XIGDgq9M34DlS2sCmm8Mvb(hstsWY1IPXb(F7qkTjI)putuRDBIi7H)oMLskAIYsPmy69KQMOpGpMML6aePISpndm)V1e93KhQX)rtuhnBIU8ZKV2e5545S6QMOMpbl69ikobaga87KV7NMdqkw1WUe40eLJJpGksJ5uQa2Y3wT5dCQXy4QcAZNa4a8(AfoMKVdXAIENGOWmsgtDk7M733()2NHOhVM7w3slRslEiCxgHsj52wpHK0UCmkmh(2dRsJXHfW4zylBcvwMDkSKKsjfxdFmhqzBtWOKStxxqkAhiUkfwgWaZyuseUBZZvHZXjPmeFQRt3VLHYWfmhTXDWfODzGt2ieuggLXoyEYCu1rCsieIdbAZoOyIXt9mwjJ7RGWwyc8dom8PiCxtbJE)2vDHVpJslMg5aeoMgFuA(QhWmNyeLP6Y6Du81SRE)EhiCcrMAkZPcdl6PNA3jlnhhYiarW3TEPka1uCykdNFnnJW2cATeApA0dOeYpctqfXyN6sJO5odAmqIDeZwzhq1r3LHGSWFb74(6BhH)mCFD1jByRTACffxDecrNZQrvXOcUDRQaTfFh4cC1dNUBJgfafvjQQxSFHa2hHAc0daGlIjKmWcfDdbjbGAIE)MLlgYl6ayqVcQU)KubfyQiYegvtwvxek)RqE9UR5fE3IicjmF8hXHavZtXGi(g1ngJYYMUZokQjTNMCi9xAd391C3MftsDuPBjRUYqcM3IlViHa5cYfaX5yEW5PNuhSZeRVAXu5W9R0IfhW5q06aCQGsrHHb7CVTMvzcnlRm(GXvnd(XuAmgczg)Muj)ifv(UA6bBApnx4DEAcx4OokdTBS5UZBHutcXzpr1kUSzC00PpaZJRkgLdhfZ41SG8niLvDYEKV1BXfTfKXjoGcAHjLaWFdrnqjS0mpKPddzv3VDTNUhyR7y72NlP556mLnlPvwrrxOxUPtAyYFixYIlTu0fKJqzjl1YVAosbFELAbb4ReWEyYfACLpsprBTwcKgZPc4PDBvaVJ8)hmkuw4vmBUfoO7GCO7HqOcFjMYMMfSEX46qRxiY5gTZUeVXgy2mSXl(NlTQDZ7rfHK9Hhla2snKFzOEQWj)xCzlcoCqjp7H(X(5AtrJQBxAb4ZTi3OpKFLAE6e4mRgzCV0d1vPhXGaa6RvlzuzCBFcTN)UEzG)JWr5a69xFaUnYpqvf8KOa)pMxsQy8o49gDZaNMpf4l(L4An49O6mg8ZViUMtRzdEFGpOtHo4trWLC06TlWxIxGpV3VagqaR70uhFnrp9ut00kfnr31eX)W6Gx24i3a3mYaDRq0l4e7nUHM5SNlypEdADybgBTfJ11Q45zpJTZDMuP3saB8MNnU)NXgxoB2mFKEKThy7qtQCuU9NfL(Mx5O8gROitseFgBu0t6DZYH4TwH4IwFwFxSnrlAIS0jBt09CljwI9oAve2dtYzXQLJOb)M(WLpLlwVh4bqg1bSk51lydSBBt0nYK(q5luaf(fwECoFh4J7swBZ9hIlG4zs(nF(Qm206thkWjP6QbEOVBH9gxlyWEtrYtyHlBIGWPHUSLjag6ztwkQj6Q2q60meiGVAPAWqSFbbhx)qToQLdQgrZPNqnW0PNs1twL6I9lsWOX1qEExMEd8dap0uIa4xw5adHBG5EkjOIUyeiBVeXuae42LZl06ky2DsDapH3V)TpmDGN8DF4PF8xcsHwkVwuGF)dejiL8fI6peC0rxkOB4uSjcdJppKwzJHP7pPQpvrEpHr20EO)zAeBa4XRy(ZbEzPZmzPidbdlBrV2i0M)RtbNzBIz6gwlaYuzw5mT5Xw60xPmR(cMxKyix1wIP9sq)I5LNBLK(0slhf1HS2vpK6HHELNtwmruQlmgUAYlqYBWpaSD58IJ5RPBXR8VwP(Zv98skBoJAAUBUm33VsdAQn8RHJunm0RXC1iu0Zt6EQB)k026d(mXLCRxx(S2ZWig08tan54ZHEe3k6zyw1KQTx7zYfct4ANtZ(8qt6Ar2f7zD0KXxksys7VwuNuFMlLbTu1EBJN5wHAAEnRmVc16ZkP2S(0NwsTVVUNxQnc6oMh89jeR8dZQzhivb((517bPSyWG)5d]] )
+spec:RegisterPack( "敏锐Simc", 2025100, [[Hekili:9Iv)RXnot4)wchSKWf87UoR30EKnq7XlxBHwkNl0FZ2AT1M1S2wgl5uwi4)2Vrs(djBjNnT5UFOLn6JN5XZ8mJgPGvbFlWpbXWbFXDPR3QLlFRJR7A3v3e4ZovId8lrXhrpa)OaLd)VF9owgMDIpXPmckHdaLuxfdtg4VRonJ9XIGDgq9M34DlS2sCmm8Mvb(hstsWY1IPXb(F7qkTjI)putuRDBIi7H)oMLskAIYsPmy69KQMOpGpMML6aePISpndm)V1e93KhQX)rtuhnBIU8ZKV2e5545S6QMOMpbl69ikobaga87KV7NMdqkw1WUe40eLJJpGksJ5uQa2Y3wT5dCQXy4QcAZNa4a8(AfoMKVdXAIENGOWmsgtDk7M733()2NHOhVM7w3slRslEiCxgHsj52wpHK0UCmkmh(2dRsJXHfW4zylBcvwMDkSKKsjfxdFmhqzBtWOKStxxqkAhiUkfwgWaZyuseUBZZvHZXjPmeFQRt3VLHYWfmhTXDWfODzGt2ieuggLXoyEYCu1rCsieIdbAZoOyIXt9mwjJ7RGWwyc8dom8PiCxtbJE)2vDHVpJslMg5aeoMgFuA(QhWmNyeLP6Y6Du81SRE)EhiCcrMAkZPcdl6PNA3jlnhhYiarW3TEPka1uCykdNFnnJW2cATeApA0dOeYpctqfXyN6sJO5odAmqIDeZwzhq1r3LHGSWFb74(6BhH)mCFD1jByRTACffxDecrNZQrvXOcUDRQaTfFh4cC1dNUBJgfafvjQQxSFHa2hHAc0daGlIjKmWcfDdbjbGAIE)MLlgYl6ayqVcQU)KubfyQiYegvtwvxek)RqE9UR5fE3IicjmF8hXHavZtXGi(g1ngJYYMUZokQjTNMCi9xAd391C3MftsDuPBjRUYqcM3IlViHa5cYfaX5yEW5PNuhSZeRVAXu5W9R0IfhW5q06aCQGsrHHb7CVTMvzcnlRm(GXvnd(XuAmgczg)Muj)ifv(UA6bBApnx4DEAcx4OokdTBS5UZBHutcXzpr1kUSzC00PpaZJRkgLdhfZ41SG8niLvDYEKV1BXfTfKXjoGcAHjLaWFdrnqjS0mpKPddzv3VDTNUhyR7y72NlP556mLnlPvwrrxOxUPtAyYFixYIlTu0fKJqzjl1YVAosbFELAbb4ReWEyYfACLpsprBTwcKgZPc4PDBvaVJ8)hmkuw4vmBUfoO7GCO7HqOcFjMYMMfSEX46qRxiY5gTZUeVXgy2mSXl(NlTQDZ7rfHK9Hhla2snKFzOEQWj)xCzlcoCqjp7H(X(5AtrJQBxAb4ZTi3OpKFLAE6e4mRgzCV0d1vPhXGaa6RvlzuzCBFcTN)UEzG)JWr5a69xFaUnYpqvf8KOa)pMxsQy8o49gDZaNMpf4l(L4An49O6mg8ZViUMtRzdEFGpOtHo4trWLC06TlWxIxGpV3VagqaR70uhFnrp9ut00kfnr31eX)W6Gx24i3a3mYaDRq0l4e7nUHM5SNlypEdADybgBTfJ11Q45zpJTZDMuP3saB8MNnU)NXgxoB2mFKEKThy7qtQCuU9NfL(Mx5O8gROitseFgBu0t6DZYH4TwH4IwFwFxSnrlAIS0jBt09CljwI9oAve2dtYzXQLJOb)M(WLpLlwVh4bqg1bSk51lydSBBt0nYK(q5luaf(fwECoFh4J7swBZ9hIlG4zs(nF(Qm206thkWjP6QbEOVBH9gxlyWEtrYtyHlBIGWPHUSLjag6ztwkQj6Q2q60meiGVAPAWqSFbbhx)qToQLdQgrZPNqnW0PNs1twL6I9lsWOX1qEExMEd8dap0uIa4xw5adHBG5EkjOIUyeiBVeXuae42LZl06ky2DsDapH3V)TpmDGN8DF4PF8xcsHwkVwuGF)dejiL8fI6peC0rxkOB4uSjcdJppKwzJHP7pPQpvrEpHr20EO)zAeBa4XRy(ZbEzPZmzPidbdlBrV2i0M)RtbNzBIz6gwlaYuzw5mT5Xw60xPmR(cMxKyix1wIP9sq)I5LNBLK(0slhf1HS2vpK6HHELNtwmruQlmgUAYlqYBWpaSD58IJ5RPBXR8VwP(Zv98skBoJAAUBUm33VsdAQn8RHJunm0RXC1iu0Zt6EQB)k026d(mXLCRxx(S2ZWig08tan54ZHEe3k6zyw1KQTx7zYfct4ANtZ(8qt6Ar2f7zD0KXxksys7VwuNuFMlLbTu1EBJN5wHAAEnRmVc16ZkP2S(0NwsTVVUNxQnc6oMh89jeR8dZQzhivb((517bPSyWG)5d]] )
 
 
 

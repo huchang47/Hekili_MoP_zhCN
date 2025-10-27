@@ -41,7 +41,7 @@ local function EmbedBlizOptions()
 	open:SetPoint("CENTER", panel, "CENTER", 0, 0)
 	open:SetWidth(250)
 	open:SetHeight(25)
-	open:SetText("Open Hekili Options Panel")
+	open:SetText( "打开Hekili设置界面" )
 
 	open:SetScript("OnClick", function()
 		ns.StartConfiguration()
@@ -99,10 +99,10 @@ function Hekili:OnInitialize()
 		local m = p.toggles.mode.value
 		local color = "FFFFD100"
 		return format(
-			"|c%s%s|r %sCD|r %sInt|r %sDef|r",
+			"|c%s%s|r %s爆发|r %s打断|r %s防御|r",
 			color,
-			m == "single" and "ST"
-				or (m == "aoe" and "AOE" or (m == "dual" and "Dual" or (m == "reactive" and "React" or "Auto"))),
+			m == "single" and "单体"
+				or (m == "aoe" and "AOE" or (m == "dual" and "寿光县" or (m == "reactive" and "响应" or "自动"))),
 			p.toggles.cooldowns.value and "|cFF00FF00" or "|cFFFF0000",
 			p.toggles.interrupts.value and "|cFF00FF00" or "|cFFFF0000",
 			p.toggles.defensives.value and "|cFF00FF00" or "|cFFFF0000"
@@ -112,8 +112,8 @@ function Hekili:OnInitialize()
 	Hekili_OnAddonCompartmentEnter = function(addonName, button)
 		GameTooltip:SetOwner(AddonCompartmentFrame, "ANCHOR_RIGHT", 0)
 		GameTooltip:AddDoubleLine("Hekili", GetDataText())
-		GameTooltip:AddLine("|cFFFFFFFFLeft-click to make quick adjustments.|r")
-		GameTooltip:AddLine("|cFFFFFFFFRight-click to open the options interface.|r")
+	        GameTooltip:AddLine( "|cFFFFFFFF单击左键可进行快速调整。|r" )
+        	GameTooltip:AddLine( "|cFFFFFFFF单击右键单开选项界面。|r" )
 		GameTooltip:Show()
 	end
 
@@ -154,8 +154,8 @@ function Hekili:OnInitialize()
 				OnEnter = function(self)
 					GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0)
 					GameTooltip:AddDoubleLine("Hekili", ns.UI.Minimap.text)
-					GameTooltip:AddLine("|cFFFFFFFFLeft-click to make quick adjustments.|r")
-					GameTooltip:AddLine("|cFFFFFFFFRight-click to open the options interface.|r")
+			                GameTooltip:AddLine( "|cFFFFFFFF单击左键可进行快速调整。|r" )
+			                GameTooltip:AddLine( "|cFFFFFFFF单击右键单开选项界面。|r" )
 					GameTooltip:Show()
 				end,
 				OnLeave = Hekili_OnAddonCompartmentLeave,
@@ -274,9 +274,9 @@ function Hekili:OnEnable()
 
 	if self.BuiltFor > self.CurrentBuild then
 		self:Notify(
-			"|cFFFF0000WARNING|r: This version of Hekili is for a future version of WoW; you should reinstall for "
+			"|cFFFF0000警告|r: 当前版本的Hekili是为WOW的未来版本准备的。你应该重新安装 "
 				.. self.GameBuild
-				.. "."
+				.. "。"
 		)
 	end
 end
@@ -963,7 +963,7 @@ function Hekili:GetPredictionFromAPL(dispName, packName, listName, slot, action,
 					if not invalidActionWarnings[scriptID] then
 						-- Use safe defaults so format never sees nil for %s.
 						Hekili:Error(
-							"Priority '%s' uses action '%s' ( %s - %s ) that is not found in the abilities table.",
+							"优先级 '%s' 使用了动作 '%s'（%s - %s），但该动作未在技能表中找到。",
 							tostring(packName or "unknown"),
 							tostring(action or "unknown"),
 							tostring(listName or "unknown"),
@@ -1084,7 +1084,7 @@ function Hekili:GetPredictionFromAPL(dispName, packName, listName, slot, action,
 						if entryReplaced then
 							d = d
 								.. format(
-									"\nSubstituting %s for %s action; it is otherwise not included in the priority.",
+									"\n用 %s 替代 %s 操作；否则它不会包含在优先级中。",
 									tostring(action or "unknown"),
 									class.abilities[entry.action] and class.abilities[entry.action].name
 										or tostring(entry.action or "unknown")
@@ -2478,7 +2478,8 @@ function Hekili.Update()
 						-- Capture current resource state for next delta calculation
 						if i == 1 then
 							ns.lastSnapshotResources = SnapshotUtil.CaptureResourceState()
-						end							if state.channeling then
+						end
+						if state.channeling then
 								Hekili:Debug(
 									1,
 									"Currently channeling ( %s ) until ( %.2f ).\n",
@@ -2633,7 +2634,8 @@ function Hekili.Update()
 									overrideType or event.type,
 									overrideTime or t
 								)
-							end								if casting or channeling then
+							end
+								if casting or channeling then
 									state:ApplyCastingAuraFromQueue()
 									if debug then
 										Hekili:Debug(
@@ -2785,7 +2787,8 @@ function Hekili.Update()
 					ns.lastSnapshotResources2 = SnapshotUtil.CaptureResourceState()
 				end
 
-				ns.callHook("step")						if state.channeling then
+				ns.callHook("step")
+					if state.channeling then
 							Hekili:Debug(" - Channeling ( %s ) until ( %.2f ).", state.channel, state.channel_remains)
 						end
 					end
@@ -3090,7 +3093,7 @@ function Hekili.Update()
 							end
 
 							if resInfo then
-								resInfo = "Resources: " .. resInfo
+								resInfo = "资源：" .. resInfo
 							end
 						end
 
@@ -3108,11 +3111,11 @@ function Hekili.Update()
 							and state.this_action ~= "wait"
 						then
 							Hekili:Print(
-								"Unable to make recommendation for "
+								"无法为"
 									.. dispName
 									.. " #"
 									.. i
-									.. "; triggering auto-snapshot..."
+									.. "做出推荐；正在触发自动快照……"
 							)
 							hasSnapped = dispName
 							UI:SetThreadLocked(false)
@@ -3200,7 +3203,7 @@ function Hekili.Update()
 	end
 
 	if snaps then
-		Hekili:Print("Snapshots saved:  " .. snaps .. ".")
+		Hekili:Print("快照已保存：  " .. snaps .. ".")
 	end
 end
 
@@ -3233,7 +3236,7 @@ local usedCPU = {}
 function Hekili:DumpFrameInfo()
 	-- MoP: GetFrameCPUUsage not available, use fallback
 	if not GetFrameCPUUsage then
-		print("Frame CPU usage profiling not available in MoP")
+		print("MoP中无法使用框架CPU使用分析功能")
 		return
 	end
 
@@ -3261,12 +3264,12 @@ function Hekili:DumpFrameInfo()
 		return a.usage < b.usage
 	end)
 
-	print("Frame CPU Usage Data")
+	print("框架CPU使用数据")
 	for i, v in ipairs(usedCPU) do
 		if v.peak and type(v.peak) == "number" then
 			print(
 				format(
-					"%-40s %6.2fms (%6d calls, %6.2fms average, %6.2fms peak)",
+					"%-40s %6.2f毫秒 (%6d 次调用, %6.2f毫秒 平均, %6.2f毫秒 峰值)",
 					v.name,
 					v.usage,
 					v.calls,
@@ -3275,7 +3278,7 @@ function Hekili:DumpFrameInfo()
 				)
 			)
 		else
-			print(format("%-40s %6.2fms (%6d calls, %6.2fms average)", v.name, v.usage, v.calls, v.average))
+			print(format("%-40s %6.2f毫秒 (%6d 次调用, %6.2f毫秒 平均)", v.name, v.usage, v.calls, v.average))
 			if v.peak then
 				for k, info in pairs(v.peak) do
 					print(" - " .. k .. ": " .. info)
@@ -3292,9 +3295,9 @@ function Hekili:DumpCPUInfo()
 		total = total + v
 	end
 
-	print("CPU Usage Data")
+	print("CPU使用数据")
 	for k, v in orderedPairs(ns.cpuProfile) do
-		print(format("%-40s %6.2fms (%.2f%%)", k, v, v / total * 100))
+		print(format("%-40s %6.2f毫秒 (%.2f%%)", k, v, v / total * 100))
 	end
 end
 
