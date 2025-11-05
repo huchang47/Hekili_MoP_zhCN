@@ -1,19 +1,27 @@
-    -- HunterBeastMastery.lua
-    -- july 2025 by smufrik
+-- HunterBeastMastery.lua
+-- july 2025 by smufrik
 
 
-    if select(2, UnitClass('player')) ~= 'HUNTER' then return end
+if select(2, UnitClass('player')) ~= 'HUNTER' then return end
 
-    if not Hekili or not Hekili.NewSpecialization then return end
+if not Hekili or not Hekili.NewSpecialization then return end
 
-    local addon, ns = ...
-    local Hekili = _G[ addon ]
-    local class, state = Hekili.Class, Hekili.State
+local addon, ns = ...
+local Hekili = _G[ addon ]
+local class, state = Hekili.Class, Hekili.State
+-- Local aliases for core state helpers and tables (improves static checks and readability).
+local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
+local removeDebuffStack = state.removeDebuffStack
+local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance, state.interrupt
+local buff, debuff, cooldown, active_dot, pet, totem, action =state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
+local setCooldown = state.setCooldown
+local addStack, removeStack = state.addStack, state.removeStack
+local gain,rawGain, spend,rawSpend = state.gain, state.rawGain, state.spend, state.rawSpend
+local talent = state.talent
+local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+local PTR = ns.PTR
 
-    local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
-    local PTR = ns.PTR
-
-    local strformat = string.format
+local strformat = string.format
 
 local spec = Hekili:NewSpecialization( 253, true )
 
@@ -23,95 +31,95 @@ spec.name = "Beast Mastery"
 
 
 
-    -- Use MoP power type numbers instead of Enum
-    -- Focus = 2 in MoP Classic
-    spec:RegisterResource( 2, {
-        steady_shot = {
-            resource = "focus",
-            cast = function(x) return x > 0 and x or nil end,
-            aura = function(x) return x > 0 and "casting" or nil end,
+-- Use MoP power type numbers instead of Enum
+-- Focus = 2 in MoP Classic
+spec:RegisterResource( 2, {
+    steady_shot = {
+        resource = "focus",
+        cast = function(x) return x > 0 and x or nil end,
+        aura = function(x) return x > 0 and "casting" or nil end,
 
-            last = function()
-                return state.buff.casting.applied
-            end,
+        last = function()
+            return state.buff.casting.applied
+        end,
 
-            interval = function() return state.buff.casting.duration end,
-            value = 9,
-        },
+        interval = function() return state.buff.casting.duration end,
+        value = 9,
+    },
 
-        cobra_shot = {
-            resource = "focus",
-            cast = function(x) return x > 0 and x or nil end,
-            aura = function(x) return x > 0 and "casting" or nil end,
+    cobra_shot = {
+        resource = "focus",
+        cast = function(x) return x > 0 and x or nil end,
+        aura = function(x) return x > 0 and "casting" or nil end,
 
-            last = function()
-                return state.buff.casting.applied
-            end,
+        last = function()
+            return state.buff.casting.applied
+        end,
 
-            interval = function() return state.buff.casting.duration end,
-            value = 14,
-        },
+        interval = function() return state.buff.casting.duration end,
+        value = 14,
+    },
 
-        dire_beast = {
-            resource = "focus",
-            aura = "dire_beast",
+    dire_beast = {
+        resource = "focus",
+        aura = "dire_beast",
 
-            last = function()
-                local app = state.buff.dire_beast.applied
-                local t = state.query_time
+        last = function()
+            local app = state.buff.dire_beast.applied
+            local t = state.query_time
 
-                return app + floor( ( t - app ) / 2 ) * 2
-            end,
+            return app + floor( ( t - app ) / 2 ) * 2
+        end,
 
-            interval = 2,
-            value = 5,
-        },
+        interval = 2,
+        value = 5,
+    },
 
-        fervor = {
-            resource = "focus",
-            aura = "fervor",
+    fervor = {
+        resource = "focus",
+        aura = "fervor",
 
-            last = function()
-                return state.buff.fervor.applied
-            end,
+        last = function()
+            return state.buff.fervor.applied
+        end,
 
-            interval = 0.1,
-            value = 50,
-        },
-    } )
+        interval = 0.1,
+        value = 50,
+    },
+} )
 
-    -- Talents
-    spec:RegisterTalents( {
-        -- Tier 1 (Level 15)
-        posthaste = { 1, 1, 109215 }, -- Disengage also frees you from all movement impairing effects and increases your movement speed by 60% for 4 sec.
-        narrow_escape = { 1, 2, 109298 }, -- When Disengage is activated, you also activate a web trap which encases all targets within 8 yards in sticky webs, preventing movement for 8 sec. Damage caused may interrupt the effect.
-        crouching_tiger_hidden_chimera = { 1, 3, 118675 }, -- Reduces the cooldown of Disengage by 6 sec and Deterrence by 10 sec.
+-- Talents
+spec:RegisterTalents( {
+    -- Tier 1 (Level 15)
+    posthaste = { 1, 1, 109215 }, -- Disengage also frees you from all movement impairing effects and increases your movement speed by 60% for 4 sec.
+    narrow_escape = { 1, 2, 109298 }, -- When Disengage is activated, you also activate a web trap which encases all targets within 8 yards in sticky webs, preventing movement for 8 sec. Damage caused may interrupt the effect.
+    crouching_tiger_hidden_chimera = { 1, 3, 118675 }, -- Reduces the cooldown of Disengage by 6 sec and Deterrence by 10 sec.
 
-        -- Tier 2 (Level 30)
-        silencing_shot = { 2, 1, 34490 }, -- Interrupts spellcasting and prevents any spell in that school from being cast for 3 sec.
-        wyvern_sting = { 2, 2, 19386 }, -- A stinging shot that puts the target to sleep for 30 sec. Any damage will cancel the effect. When the target wakes up, they will be poisoned, taking Nature damage over 6 sec. Only one Sting per Hunter can be active on the target at a time.
-        binding_shot = { 2, 3, 109248 }, -- Fires a magical projectile, tethering the enemy and any other enemies within 5 yards, stunning them for 5 sec if they move more than 5 yards from the arrow.
+    -- Tier 2 (Level 30)
+    silencing_shot = { 2, 1, 34490 }, -- Interrupts spellcasting and prevents any spell in that school from being cast for 3 sec.
+    wyvern_sting = { 2, 2, 19386 }, -- A stinging shot that puts the target to sleep for 30 sec. Any damage will cancel the effect. When the target wakes up, they will be poisoned, taking Nature damage over 6 sec. Only one Sting per Hunter can be active on the target at a time.
+    binding_shot = { 2, 3, 109248 }, -- Fires a magical projectile, tethering the enemy and any other enemies within 5 yards, stunning them for 5 sec if they move more than 5 yards from the arrow.
 
-        -- Tier 3 (Level 45)
-        intimidation = { 3, 1, 19577 }, -- Commands your pet to intimidate the target, causing a high amount of threat and stunning the target for 3 sec.
-        spirit_bond = { 3, 2, 19579 }, -- While your pet is active, you and your pet regen 2% of total health every 10 sec.
-        iron_hawk = { 3, 3, 109260 }, -- Reduces all damage taken by 10%.
+    -- Tier 3 (Level 45)
+    intimidation = { 3, 1, 19577 }, -- Commands your pet to intimidate the target, causing a high amount of threat and stunning the target for 3 sec.
+    spirit_bond = { 3, 2, 19579 }, -- While your pet is active, you and your pet regen 2% of total health every 10 sec.
+    iron_hawk = { 3, 3, 109260 }, -- Reduces all damage taken by 10%.
 
-        -- Tier 4 (Level 60)
-        dire_beast = { 4, 1, 120679 }, -- Summons a powerful wild beast that attacks the target for 15 sec.
-        fervor = { 4, 2, 82726 }, -- Instantly restores 50 Focus to you and your pet, and increases Focus regeneration by 50% for you and your pet for 10 sec.
-        a_murder_of_crows = { 4, 3, 131894 }, -- Summons a flock of crows to attack your target over 30 sec. If the target dies while the crows are attacking, their cooldown is reset.
+    -- Tier 4 (Level 60)
+    dire_beast = { 4, 1, 120679 }, -- Summons a powerful wild beast that attacks the target for 15 sec.
+    fervor = { 4, 2, 82726 }, -- Instantly restores 50 Focus to you and your pet, and increases Focus regeneration by 50% for you and your pet for 10 sec.
+    a_murder_of_crows = { 4, 3, 131894 }, -- Summons a flock of crows to attack your target over 30 sec. If the target dies while the crows are attacking, their cooldown is reset.
 
-        -- Tier 5 (Level 75)
-        blink_strikes = { 5, 1, 130392 }, -- Your pet's Basic Attacks deal 50% increased damage and can be used from 30 yards away. Their range is increased to 40 yards while Dash or Stampede is active.
-        lynx_rush = { 5, 2, 120697 }, -- Commands your pet to rush the target, performing 9 attacks in 4 sec for 800% normal damage. Each hit deals bleed damage to the target over 8 sec. Bleeds stack and persist on the target.
-        thrill_of_the_hunt = { 5, 3, 34720 }, -- You have a 30% chance when you hit with Multi-Shot or Arcane Shot to make your next Steady Shot or Cobra Shot cost no Focus and deal 150% additional damage.
+    -- Tier 5 (Level 75)
+    blink_strikes = { 5, 1, 130392 }, -- Your pet's Basic Attacks deal 50% increased damage and can be used from 30 yards away. Their range is increased to 40 yards while Dash or Stampede is active.
+    lynx_rush = { 5, 2, 120697 }, -- Commands your pet to rush the target, performing 9 attacks in 4 sec for 800% normal damage. Each hit deals bleed damage to the target over 8 sec. Bleeds stack and persist on the target.
+    thrill_of_the_hunt = { 5, 3, 34720 }, -- You have a 30% chance when you hit with Multi-Shot or Arcane Shot to make your next Steady Shot or Cobra Shot cost no Focus and deal 150% additional damage.
 
-        -- Tier 6 (Level 90)
-        glaive_toss = { 6, 1, 117050 }, -- Throws a pair of glaives at your target, dealing Physical damage and reducing movement speed by 30% for 3 sec. The glaives return to you, also dealing damage to any enemies in their path.
-        powershot = { 6, 2, 109259 }, -- A powerful aimed shot that deals weapon damage to the target and up to 5 targets in the line of fire. Knocks all targets back, reduces your maximum Focus by 20 for 10 sec and refunds some Focus for each target hit.
-        barrage = { 6, 3, 120360 }, -- Rapidly fires a spray of shots for 3 sec, dealing Physical damage to all enemies in front of you. Usable while moving.
-    } )
+    -- Tier 6 (Level 90)
+    glaive_toss = { 6, 1, 117050 }, -- Throws a pair of glaives at your target, dealing Physical damage and reducing movement speed by 30% for 3 sec. The glaives return to you, also dealing damage to any enemies in their path.
+    powershot = { 6, 2, 109259 }, -- A powerful aimed shot that deals weapon damage to the target and up to 5 targets in the line of fire. Knocks all targets back, reduces your maximum Focus by 20 for 10 sec and refunds some Focus for each target hit.
+    barrage = { 6, 3, 120360 }, -- Rapidly fires a spray of shots for 3 sec, dealing Physical damage to all enemies in front of you. Usable while moving.
+} )
 
 -- Glyphs (Enhanced System - authentic MoP 5.4.8 glyph system)
 spec:RegisterGlyphs( {

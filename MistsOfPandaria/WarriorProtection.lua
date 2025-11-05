@@ -9,7 +9,15 @@ if playerClass ~= 'WARRIOR' then return end
 local addon, ns = ...
 local Hekili = _G[ addon ]
 local class, state = Hekili.Class, Hekili.State
-
+-- Local aliases for core state helpers and tables (improves static checks and readability).
+local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
+local removeDebuffStack = state.removeDebuffStack
+local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance, state.interrupt
+local buff, debuff, cooldown, active_dot, pet, totem, action =state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
+local setCooldown = state.setCooldown
+local addStack, removeStack = state.addStack, state.removeStack
+local gain,rawGain, spend,rawSpend = state.gain, state.rawGain, state.spend, state.rawSpend
+local talent = state.talent
 -- Safe stance initialization to avoid nil checks in stance-based logic (mirrors Fury/Arms pattern).
 do
     local st = rawget( Hekili, "State" )
@@ -43,8 +51,6 @@ if not removeStack then
         if b.stack == 0 then b.up = false end
     end
 end
-local applyBuff, removeBuff = state and state.applyBuff, state and state.removeBuff
-local applyDebuff, removeDebuff = state and state.applyDebuff, state and state.removeDebuff
 
 -- Aura scan helpers (fallback if not provided by ns):
 local FindUnitDebuffByID = ns.FindUnitDebuffByID
@@ -1188,12 +1194,6 @@ spec:RegisterAuras( {
         max_stack = 1,
     },
 
-    sudden_death = {
-        id = 52437,
-        duration = 10,
-        max_stack = 1,
-    },
-
     sweeping_strikes = {
         id = 12328,
         duration = 10,
@@ -1414,7 +1414,7 @@ spec:RegisterStateTable( "protection", {
         cooldown = 10,
         gcd = "spell",
 
-        spend = 20,
+        spend = 30,
         spendType = "rage",
 
         startsCombat = false,

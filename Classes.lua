@@ -3428,38 +3428,38 @@ all:RegisterAbilities( {
         end,
     },
 
-    -- weyrnstone = {
-    --     name = function () return ( GetItemInfo( 205146 ) ) or "治疗石" end,
-    --     listName = function ()
-    --         local _, link, _, _, _, _, _, _, _, tex = GetItemInfo( 205146 )
-    --         if link and tex then return "|T" .. tex .. ":0|t " .. link end
-    --         return "|cff00ccff[治疗石]|r"
-    --     end,
-    --     cast = 1.5,
-    --     gcd = "spell",
+    weyrnstone = {
+        name = function () return ( GetItemInfo( 205146 ) ) or "军营之石" end,
+        listName = function ()
+            local _, link, _, _, _, _, _, _, _, tex = GetItemInfo( 205146 )
+            if link and tex then return "|T" .. tex .. ":0|t " .. link end
+            return "|cff00ccff[军营之石]|r"
+        end,
+        cast = 1.5,
+        gcd = "spell",
 
-    --     item = 205146,
-    --     bagItem = true,
+        item = 205146,
+        bagItem = true,
 
-    --     startsCombat = false,
-    --     texture = 5199618,
+        startsCombat = false,
+        texture = 5199618,
 
-    --     usable = function ()
-    --         if GetItemCount( 205146 ) == 0 then return false, "requires weyrnstone in bags" end
-    --         if solo then return false, "must have an ally to teleport" end
-    --         return true
-    --     end,
+        usable = function ()
+            if GetItemCount( 205146 ) == 0 then return false, "需要背包中有军营之石" end
+            if solo then return false, "必须有一个队友才能使用" end
+            return true
+        end,
 
-    --     readyTime = function ()
-    --         local start, duration = SafeGetItemCooldown( 205146 )
-    --         return max( 0, start + duration - query_time )
-    --     end,
+        readyTime = function ()
+            local start, duration = SafeGetItemCooldown( 205146 )
+            return max( 0, start + duration - query_time )
+        end,
 
-    --     handler = function ()
-    --     end,
+        handler = function ()
+        end,
 
-    --     copy = { "use_weyrnstone", "active_weyrnstone" }
-    -- },
+        copy = { "use_weyrnstone", "active_weyrnstone" }
+    },
 
     cancel_buff = {
         name = "|cff00ccff[取消Buff]|r",
@@ -3617,24 +3617,24 @@ do
         unlisted = true
     } )
 
-    -- all:RegisterAbility( "heart_essence", {
-    --     name = function () return ( GetItemInfo( 158075 ) ) or "心能" end,
-    --     listName = function ()
-    --         local _, link, _, _, _, _, _, _, _, tex = GetItemInfo( 158075 )
-    --         if link and tex then return "|T" .. tex .. ":0|t " .. link end
-    --         return "|cff00ccff[心能]|r"
-    --     end,
-    --     cast = 0,
-    --     cooldown = 0,
-    --     gcd = "off",
+    all:RegisterAbility( "heart_essence", {
+        name = function () return ( GetItemInfo( 158075 ) ) or "心能" end,
+        listName = function ()
+            local _, link, _, _, _, _, _, _, _, tex = GetItemInfo( 158075 )
+            if link and tex then return "|T" .. tex .. ":0|t " .. link end
+            return "|cff00ccff[心能]|r"
+        end,
+        cast = 0,
+        cooldown = 0,
+        gcd = "off",
 
-    --     item = 158075,
-    --     essence = true,
+        item = 158075,
+        essence = true,
 
-    --     toggle = "essences",
+        toggle = "essences",
 
-    --     usable = function () return false, "你装备的心能效果在其他地方已被使用，或它不是主动技能。" end
-    -- } )
+        usable = function () return false, "你装备的心能效果在其他地方已被使用，或它不是主动技能。" end
+    } )
 end
 
 

@@ -17,7 +17,7 @@ ns.TargetDummies = ns.TargetDummies or {}
 Hekili = LibStub("AceAddon-3.0"):NewAddon( "Hekili", "AceConsole-3.0", "AceSerializer-3.0", "AceTimer-3.0" )
 
 -- MoP compatibility - simple version detection
-Hekili.Version = "v5.5.1-1.0.0m"
+Hekili.Version = "v5.5.2-1.0.0n"
 Hekili.Flavor = "MoP"
 
 local format = string.format
@@ -680,14 +680,14 @@ function Hekili:GetMoPSpecialization()
     if not class then
         return nil, nil
     end
+
     -- Use the proper mapping from Constants.lua
     local selectedSpec = GetSpecialization and GetSpecialization() or GetActiveTalentGroup and GetActiveTalentGroup() or 1
-
+    
     -- EasyPlay：当角色等级不足 10 级或未选择专精时，强制设定默认专精
     if not selectedSpec or selectedSpec == 0 or UnitLevel("player") < 10 then
         selectedSpec = 1
     end
-
     -- Use the fallback mapping from Constants.lua
     local fallbackMapping = {
         HUNTER = { [1] = 253, [2] = 254, [3] = 255 },       -- Beast Mastery, Marksmanship, Survival
@@ -702,7 +702,7 @@ function Hekili:GetMoPSpecialization()
         WARLOCK = { [1] = 265, [2] = 266, [3] = 267 },      -- Affliction, Demonology, Destruction
         WARRIOR = { [1] = 71, [2] = 72, [3] = 73 }          -- Arms, Fury, Protection
     }
-
+    
     local specID = fallbackMapping[class] and fallbackMapping[class][selectedSpec] or 0
 
     -- EasyPlay：若仍为 0，强制从 SpecData 读取首专精
@@ -720,6 +720,7 @@ function Hekili:GetMoPSpecialization()
 
     return specID, specName
 end
+
 -- Manual function to force spec detection and update
 function Hekili:ForceSpecDetection()
     local specID, specName = self:GetMoPSpecialization()

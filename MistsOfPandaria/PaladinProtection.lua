@@ -11,7 +11,15 @@ local Hekili = _G[ "Hekili" ]
 local class = Hekili.Class
 local state = Hekili.State
 local spec = Hekili:NewSpecialization( 66 )
-
+-- Local aliases for core state helpers and tables (improves static checks and readability).
+local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
+local removeDebuffStack = state.removeDebuffStack
+local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance, state.interrupt
+local buff, debuff, cooldown, active_dot, pet, totem, action =state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
+local setCooldown = state.setCooldown
+local addStack, removeStack = state.addStack, state.removeStack
+local gain,rawGain, spend,rawSpend = state.gain, state.rawGain, state.spend, state.rawSpend
+local talent = state.talent
 local strformat = string.format
 local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
 local function UA_GetPlayerAuraBySpellID(spellID)
@@ -26,6 +34,27 @@ local function UA_GetPlayerAuraBySpellID(spellID)
         if id == spellID then return name, _, count, _, duration, expires, caster end
     end
     return nil
+end
+
+-- MoP Seal detection system for Protection Paladin
+local function GetActiveSeal()
+    -- In MoP, check for active seal through stance/shapeshift detection
+    local numForms = GetNumShapeshiftForms()
+    for i = 1, numForms do
+        local _, active, castable, spellID = GetShapeshiftFormInfo(i)
+        if active then
+            if spellID == 31801 then -- Seal of Truth
+                return "seal_of_truth", spellID
+            elseif spellID == 20164 then -- Seal of Justice
+                return "seal_of_justice", spellID
+            elseif spellID == 20165 then -- Seal of Insight
+                return "seal_of_insight", spellID
+            elseif spellID == 20154 then -- Seal of Righteousness
+                return "seal_of_righteousness", spellID
+            end
+        end
+    end
+    return nil, nil
 end
 
 -- Planned seals within a single recommendation build (prevents duplicate seal spam in queue)
@@ -221,6 +250,14 @@ blessing_of_might = {
     max_stack = 1,
     texture = GetSpellTexture(19740),
 },
+
+    -- Alias aura that represents any blessing being active
+    blessing = {
+        alias = { "blessing_of_kings", "blessing_of_might" },
+        aliasMode = "first",
+        aliasType = "buff",
+    },
+
 -- Grand Crusader: Chance for free Avenger's Shield after Crusader Strike or Hammer of the Righteous
     grand_crusader = {
         id = 85416,
@@ -355,7 +392,7 @@ blessing_of_might = {
         tick_time = 1,
         max_stack = 1,
         generate = function( t )
-            -- Emulate a ground effect that we just cast — treat as up briefly for planning
+            -- Emulate a ground effect that we just cast b  treat as up briefly for planning
             local now = state.query_time or GetTime()
             t.name = GetSpellInfo(26573) or "Consecration"
             t.count = 1
@@ -731,6 +768,127 @@ blessing_of_might = {
             t.caster = "nobody"
         end
     },
+
+    -- Seals for Protection Paladin
+    seal_of_truth = {
+        id = 31801,
+        duration = 1800,
+        max_stack = 1,
+        texture = GetSpellTexture(31801),
+        generate = function( t )
+            local activeSeal, spellID = GetActiveSeal()
+
+            if activeSeal == "seal_of_truth" then
+                t.name = GetSpellInfo(31801) or "Seal of Truth"
+                t.count = 1
+                t.expires = GetTime() + 3600 -- Seals don't expire
+                t.applied = GetTime()
+                t.caster = "player"
+                t.up = true
+                t.down = false
+                t.remains = 3600
+                return
+            end
+
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+            t.up = false
+            t.down = true
+            t.remains = 0
+        end
+    },
+
+    seal_of_righteousness = {
+        id = 20154,
+        duration = 1800,
+        max_stack = 1,
+        texture = GetSpellTexture(20154),
+        generate = function( t )
+            local activeSeal, spellID = GetActiveSeal()
+
+            if activeSeal == "seal_of_righteousness" then
+                t.name = GetSpellInfo(20154) or "Seal of Righteousness"
+                t.count = 1
+                t.expires = GetTime() + 3600 -- Seals don't expire
+                t.applied = GetTime()
+                t.caster = "player"
+                t.up = true
+                t.down = false
+                t.remains = 3600
+                return
+            end
+
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+            t.up = false
+            t.down = true
+            t.remains = 0
+        end
+    },
+
+    seal_of_insight = {
+        id = 20165,
+        duration = 1800,
+        max_stack = 1,
+        texture = GetSpellTexture(20165),
+        generate = function( t )
+            local activeSeal, spellID = GetActiveSeal()
+
+            if activeSeal == "seal_of_insight" then
+                t.name = GetSpellInfo(20165) or "Seal of Insight"
+                t.count = 1
+                t.expires = GetTime() + 3600 -- Seals don't expire
+                t.applied = GetTime()
+                t.caster = "player"
+                t.up = true
+                t.down = false
+                t.remains = 3600
+                return
+            end
+
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+            t.up = false
+            t.down = true
+            t.remains = 0
+        end
+    },
+
+    seal_of_justice = {
+        id = 20164,
+        duration = 1800,
+        max_stack = 1,
+        texture = GetSpellTexture(20164),
+        generate = function( t )
+            local activeSeal, spellID = GetActiveSeal()
+
+            if activeSeal == "seal_of_justice" then
+                t.name = GetSpellInfo(20164) or "Seal of Justice"
+                t.count = 1
+                t.expires = GetTime() + 3600 -- Seals don't expire
+                t.applied = GetTime()
+                t.caster = "player"
+                t.up = true
+                t.down = false
+                t.remains = 3600
+                return
+            end
+
+            t.count = 0
+            t.expires = 0
+            t.applied = 0
+            t.caster = "nobody"
+            t.up = false
+            t.down = true
+            t.remains = 0
+        end
+    },
 } )
 
 -- Protection Paladin abilities
@@ -761,6 +919,7 @@ spec:RegisterAbilities( {
         end,
         handler = function() end
     },
+
 -- Core Protection abilities
     shield_of_the_righteous = {
         id = 53600,
@@ -1307,7 +1466,7 @@ spec:RegisterAbilities( {
         range = 10,
 
         usable = function()
-            -- Add any “don’t break CC / don’t use in single-target” guards here if you want.
+            -- Add any b donb t break CC / donb t use in single-targetb  guards here if you want.
             return true
         end,
 
@@ -1387,6 +1546,99 @@ spec:RegisterAbilities( {
         
         handler = function()
             applyBuff("sacred_shield")
+        end
+    },
+
+    -- Seal abilities for Protection Paladin
+    seal_of_truth = {
+        id = 31801,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        startsCombat = false,
+        texture = GetSpellTexture(31801),
+
+        usable = function()
+            if state.planned_seal and state.planned_seal.seal_of_truth then return false, "seal_of_truth already planned" end
+            return true
+        end,
+
+        handler = function()
+            removeBuff("seal_of_righteousness")
+            removeBuff("seal_of_justice")
+            removeBuff("seal_of_insight")
+            applyBuff("seal_of_truth")
+            if state.planned_seal then state.planned_seal.seal_of_truth = true end
+        end
+    },
+
+    seal_of_righteousness = {
+        id = 20154,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        startsCombat = false,
+        texture = GetSpellTexture(20154),
+
+        usable = function()
+            if state.planned_seal and state.planned_seal.seal_of_righteousness then return false, "seal_of_righteousness already planned" end
+            return true
+        end,
+
+        handler = function()
+            removeBuff("seal_of_truth")
+            removeBuff("seal_of_justice")
+            removeBuff("seal_of_insight")
+            applyBuff("seal_of_righteousness")
+            if state.planned_seal then state.planned_seal.seal_of_righteousness = true end
+        end
+    },
+
+    seal_of_insight = {
+        id = 20165,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        startsCombat = false,
+        texture = GetSpellTexture(20165),
+
+        usable = function()
+            if state.planned_seal and state.planned_seal.seal_of_insight then return false, "seal_of_insight already planned" end
+            return true
+        end,
+
+        handler = function()
+            removeBuff("seal_of_truth")
+            removeBuff("seal_of_righteousness")
+            removeBuff("seal_of_justice")
+            applyBuff("seal_of_insight")
+            if state.planned_seal then state.planned_seal.seal_of_insight = true end
+        end
+    },
+
+    seal_of_justice = {
+        id = 20164,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+
+        startsCombat = false,
+        texture = GetSpellTexture(20164),
+
+        usable = function()
+            if state.planned_seal and state.planned_seal.seal_of_justice then return false, "seal_of_justice already planned" end
+            return true
+        end,
+
+        handler = function()
+            removeBuff("seal_of_truth")
+            removeBuff("seal_of_righteousness")
+            removeBuff("seal_of_insight")
+            applyBuff("seal_of_justice")
+            if state.planned_seal then state.planned_seal.seal_of_justice = true end
         end
     },
 } )
@@ -1473,6 +1725,15 @@ spec:RegisterStateExpr("should_prioritize_damage", function()
     return state.settings.vengeance_optimization and state.vengeance:is_high_vengeance(state.settings.vengeance_stack_threshold)
 end)
 
+-- Seal management state expressions
+spec:RegisterStateExpr( "recommend_seals", function()
+    return state.settings and state.settings.recommend_seals or false
+end )
+
+spec:RegisterStateExpr( "seal_of_righteousness_threshold", function()
+    return ( state.settings and state.settings.seal_of_righteousness_threshold ) or 4
+end )
+
 -- Options
 spec:RegisterOptions( {
     enabled = true,
@@ -1487,7 +1748,7 @@ spec:RegisterOptions( {
     
     potion = "jade_serpent_potion",
     
-    package = "防骑Simc",
+    package = "i2i*Simc",
     
     holy_prism_heal = false,
     execution_sentence_heal = false,
@@ -1513,15 +1774,15 @@ end )
 -- Vengeance-based ability conditions (using RegisterStateExpr instead of RegisterVariable)
 
 spec:RegisterSetting( "vengeance_optimization", true, {
-    name = strformat( "优化%s", Hekili:GetSpellLinkWithTexture( 132365 ) ),
-    desc = "如果勾选，当复仇层数较高时，技能循环将优先选择伤害技能。",
+    name = strformat( "启用%s优化", Hekili:GetSpellLinkWithTexture( 132365 ) ),
+    desc = "启用基于复仇层数的伤害优化轮换。当复仇层数较高时，优先使用伤害技能。",
     type = "toggle",
     width = "full",
 } )
 
 spec:RegisterSetting( "vengeance_stack_threshold", 5, {
     name = "复仇层数阈值",
-    desc = "在复仇层数达到此阈值后，将优先推荐伤害技能而不是防御技能。",
+    desc = "当复仇层数达到此阈值时启用伤害优化轮换。建议设置为5-8层。",
     type = "range",
     min = 1,
     max = 10,
@@ -1529,6 +1790,23 @@ spec:RegisterSetting( "vengeance_stack_threshold", 5, {
     width = "full",
 } )
 
+-- Seal management settings
+spec:RegisterSetting("recommend_seals", true, {
+    name = "推荐圣印",
+    desc = "启用自动圣印推荐系统。根据敌人数量自动推荐合适的圣印。",
+    type = "toggle",
+    width = "full"
+} )
+
+spec:RegisterSetting("seal_of_righteousness_threshold", 4, {
+    name = "正义圣印阈值",
+    desc = "当敌人数量达到此值时推荐正义圣印，否则推荐真理圣印。" ..
+        "对于防护圣骑士，通常建议设置为3-4个敌人。",
+    type = "range", min = 1, max = 6, step = 1,
+    width = "full"
+} )
+
 -- Register default pack for MoP Protection Paladin
 spec:RegisterPack( "防骑Simc", 20250916, [[Hekili:fJ16UTTnu4NLIbeK0146lrzTdXbyRnTiDizfvfO)tI0s02SrwuGKkPbWGype7jCpj7qkllsQlUTBd7pX2IhEoF87CHFkrtI(yuykwsIUD64PbJF54Zhnz2zZMeefkFSGefwGtUdVc(soEd833ZzssIKYY1l9ygdNQDHGvYtGLdV(MxPqbN9ItFru4IsAM868OfTdX0GZcMgfIlLRz8OWFBng83AAAkPYCIijk82F)Jx9ZkuibNjuiWK0mIc9iekbjB5if66CbD1APcrH1tjlXLzWpwY4kubGtaHC2sAgGRFqHUH9EfQb(W3Xz4uk8L)6p(tfsdbDSkKGJpxUwH0OvHuVd27TWU(NGe17mU59CscBZcm8BSbeIrf1p6hN)8fzeHGMVkMTm(o4trCcw0JTFUmD1gsETNNp38XR3f56hz(YBj5eonrHKCA(De5UdaeG9UgCyPGetLKnINrxoFr5YLJW3tYxPHZdCSC9OYITBL0nKlMmENJ)aoHQjelVSiJXsJxwYF05PeGN435frmpbNtILmoV5GCd(ZAs7vVwOPElJDaJ9kRzzpgBwMW1yxIZa3nY(XJi5yGCt3fJxX4etwIazT7johGu69uaufn1jwlUQeZtP4CDccNNqH4uLO2ZzornL9q(rMhlwtjzP6TjxtI56sfcRuyzrR4AwZLUs1XZa70QJ6)fHSATEpP7GLHhVss454mf6nzWSbfQuadkuOJV6nkeNuKHtaUf9j2BpXnx(aJBa2Qmg)rRugPYFXl1URoND0Xga5UgNSbtZfxmTcTlG2eW3795iHeMAD50Jo2qofShi8lNpB7wNZDjVGjiqD9jN89JUHI)8GDevit(H90JzAdq66iEp8BD5ozdHVIKN4010tgudj7JvqFhRTBP5W8cDttkEde74jbJhVrC581WCmOJEd(lpD8Oz1GeYZs6sk0MG(KPjdjEeMCSYbu1ZDSigX(nUBsHd30AkIdxJPYNjijZtySmDL1OA)xNI)AItVB(YX9V2fZhpkWEcjggebLRhlkYO1ZU)f2vo1gjCijcnFXcyw6Den4QsJXGh2qjIlM5mAcVbsSDMbD3guComT4fyB25q2ytc9yInxCJz44klg55azqZYGz4Dvi8TNo)(txhD8HojN2Rdo5YQdP3vkWPkUQrR1Dk7UPzxZrcx3yewzkQS4ocPqxTa3)FQUq3PorymFNJDkHTEUBFI7s1N66SYhn7xJGfLsjee7Or(cjP0masOnkpHyp2Q1In3g24ImDTPiUQG1A3opVRn2uIBtxVLZkZtn9pUJ(tGpijGLWV1H5jsAsLUGw0FbNk24FHU5H14ik8Ei9b7Pwz5KZJcFaZZ1xuffE9Mcg3WztvOkNRqzuHums9UOqZ3mYFRenbF9wJC4AV)RrHjCqseNI1Az7CwgA7wqxfvF73fk0KXGKwtGIc3RNQsnlNwu9Cqw2EzAAnAdiplschmpe54RDcWAcAJ8l9ENP37(L2RbZ2FGvNzBLRMmpldgcl2c3S8NdJPDY59sXdiCRXH2RQD3pneM8f614MwAF0(6fdN9Bj0sHos3pEaXwnw1TGRgq1ROln4E5)lGRz9HveAxb5itvdDOT4a58o1wzI9X7cFN6)mnDtBWy36WuOlRTc8wJ0j45q73SQE4ULqPqG01tAoCoAd9k2(wudByL(h2Cqwz4tlCQc6dZ6a7ptPjW(KtWWKJETU1ywT9gDMk0tviqRzdS6PQ0Ju)6voBozZoeL2NgYgwT1m(gixlPWhJ9kC2GPZ8WeC)haS(KPyL3aXuFRNGEDRPhy8HS5I56KuGb2(d7BaIR0vtpOvE1tyMhxnOsBtC7)(b)4A6ETUzOBX2gN6FlHBoOhTK9Nko0o7IT71uBs3)gi3ByhqzEhfPA)5FPX3BT3)o1v1JGpmNC6GU7KQC)osB6yhbmUI69uWmDITTnQ89nR)jKdjK36k3UeZB6uSgm7yuRzkh89nma9Gd86x(FdqABJhAA92hMy7pyRvS78LhAcRZYgpg4KDCFZc)uu)ZjEIwrEsLs39tLSEVd)rs2VRIX1(tl6wIQ3RI4uuzwls3dgU)FABxVFrJU9U(p)Ux)F7lGS5ctyefqR9TNFU5xr)9d]] )
 
+spec:RegisterPack( "防骑(黑科研)", 20251105, [[Hekili:fN1)VTTXv8)wggGHDxJQKCKB2GLb2stZAgIrAvb6pmmkEM8K8vtrkCK0UgWGWRljwXiXZUndlijioFRlPzTXaDbEPojo)V0kkQ8t5FH9UJIK3rrk5eSHHeyBDF59(8(Y9EFE2kLu(uLA6ihSY8LlwUsPsfNPqXILE)khxPMZQTXk1AJ0wc1e(btul4RV6A)WRE0ot(QNTtWd2j42xDk2jw1WcPZKKTLlvdoLsTfCjgoFKPYcPeFfLAixNfTOk1(JXc5p5)174V9DuQTirxhhEjSTMsTEF)97(8R5FHobh8a)DpO7bB97XlrmiEQN16CXxV7lFS)9VsWL643z)UV4M)86FP3z8odtHfkvQqXkEQ(39w(BE7GBUBW2x0)RUCVV)ED)Xl1FJh5V5d97SrVRCxp1qH09Gl29Pxj4QpS)9(Z(x8FbN9v3BREx)jGvsTAqmaB7x6PgQz)nVbO8GVD)ExA9x)8l37A719PRhC497DZlfUEWpCyW3Clqg(DUy3d(NHFm46NpyRV1)X7h8SZ3RZ2WhH72FJNasdmV(h(1(BCqVB8eWSdEW6WUHgC46X(cMqEg8)n42kGi))Xx27w3S7lUT)E)ynslxdKdXY8KuudhaoGv1)b3d0dSBO88p8rbBTxVZVR)fEs)9zB177UB)xUf4L8VW30RZoDF23bl(XFmypV(5xVuXJxP80tFItuKRT(79V79x3U7H3O3M)n)TVsWM7dNbm(Up9r9)lVW)(7co4G784(VC7(35YX2qm6heGabDokwZQ1cihVZG0yi2Uq7OL(vvFVfmW22eZM1TAuFj47211q25C2p3vVzlSPZajxTk)BFaUbY1WjEj(pCASjMs08uDOeZLWoEQlIm1nafelAqGU246ehCl73L0O6cUnAuaTm2SjdoRqrolwWT9AR5qAHNTuXbc(tqAeKHTOuwWWYsVEdx6QsRIP2y6sP0iIQHmX1DSO0ed5SOp3I6PEYpW2tv6WsGrCNfTmwToFBmLHDhKbiUcIlxaBIaNR(aDCslk2tvh3aBAtwglza6KLjaOG0FhmFrXnB6IO6eKjlaHm1iGEcduX(mjTQBTI5e8LTxKGn0zxZzrCDkP5IoylxBHtmKE57j7U0z6JdB9qt9)fQmCVCT0bWI7hpLdMAIm8u)qdOyPNQRnu50tDYt9HEQuCBdKg4Bv)mRtpLCSCflkhynnSORkeYWHYREdM4IIztmjhqY7rXTqet7zlhI2fGNjGSJLzbBhOm(CLNysUZPT1ky6CvNET1KSBxABlBmKxp1uV9OBu6VALboQAwoFsS75Nw)QEQGtNPXLHpZs3XTW0MytnPxn5ebzqs0SQKNzT2AetOEb7rJoQfO76LQuSyl75QUigzaVOBH(I3PyHPJajeNDiniWZe1pJ)it1EvOYrtjqfv3rWXyhFXbvkK8ndvfrYxJioVRnwRQMLLblZQqK8JcXhf9K7LNRy(7nB1IfQiwHebfIG01jTBBqGAKnyXLFR1PKYn0OqqeE8v3gQLUeMbUWWyDqcTiy7zNwQ0eQfeyZmckFni5C0ULukw07mUZi6eY5iI(IZYlo2uWJ8EGZGyya1WZkr4npC(2hUMyYXzjhlxbm1CHgzQwkGvvp8H2q9ug0PzWJdnk7HrTWJQ62EjmUnlBbB04ySeDP8eB(XhiyPuyH1LFNiVvKvhfv(u(9ziybxhhqjIAd)fynxEbiB2Hm1WILTgAZKUHjIWGLBAxpmHv42sRN1ftsXfDxNMA5AQZF)ix6xd(gwJYPRXuZVWHOfYlyi3FBkXUv6g68fJWHsTLHWhChr62RGOMSgvaB6oB7V5U(79CGIhqjSmqxR3MRZyS15V3)opKtld4W3gRPm)mZOuZGy7yZhqiKff8JZxk6lok1I06Vd40ZHkCzOqk)5nfi5RutJcmOOeeBEawivC3WgNQt4Pk)03tD2QEQL474GGUaSqgdjGJJTgNZhKidPgygzl1QmICUyarZx(OHU4cpMa)YCrP0PYhTZb6VmFNbuzZa4Jb2tZCYc4nfGgUJH6ARb3MW4yml4RkMyIXSwdhHIsAhUoq(nMmmJj8iibZq0XtHijznGMBIsti5YUBf2DJ3kMPRO8GtntU28O4RY8KdAw3wZjmv5evsuN4LyA59hLDKM2BIygIjOi(sR)zkY00jgDmCisPCtzSettovo8HZYHmJq(qU8wzy(x))pmFuivNzWwW2snaaZIGNcJjTktwRCvn5auLjZA(dTYjqpBgUq1GOtbslHuAyvIPdF3Mn5up1P4)pN4PuI7BYCgjUljE8CNvP3EN1ODcHg7ysnhgpLZfpVHUs2EzZ1p86j899uFhpvGZVqtIStTtfco6tWWTS8RWpgU8jo7H6cKa5iQDPXyUdWWXu6A8apeay5rxuiUbKAFtTGCfl)ftXXDgwQdqwLd7k56khIhbKNKa7ueKt5Rg5epC9MFdRSyeiO4Cg6Hl009Ne9QCge6abcWXId9bIMJaXX02IiztUAs3CsouNZOd5hXh3nZkOM7rfJTPBijzwJAqSmElWOdMUBWBBk()DsFJ6lmEFYXgP4MkmfBGtRCjr(wPMHlfPRYLfpBYqDPp2rOCvgZTjqpiRz34pif4QjDOHkDn2Xl5anDnSH7GL70Ejaz4ZKcndnSjx35xiAuZkMOwPT5sCgPOJ8GKPdrJQYrUJhkf557PWEOul(xKE08tJ4r45y)A7J)LbREoKbsNyoOj4FagIaIA42ofGM9SooSbrztUnpCLFdBl(Wp8znGxZRA5szHu40FeqchCiqJBBoP8Wrv41Gzeif(Jfio4rw)bcIMemJ(JI(WO)P8Fc]] )

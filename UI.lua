@@ -2236,9 +2236,8 @@ if self.HasRecommendations then
         if UnitLevel("player") < 10 then
             currentSpec = 1
         end
-        
         local specID = currentSpec and GetSpecializationInfo( currentSpec )
-
+        
         local specEnabled = false
         if class.specs and class.specs[ specID ] then
             local specConfig = specID and rawget( profile.specs, specID )

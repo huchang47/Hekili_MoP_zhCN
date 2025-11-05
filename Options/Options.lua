@@ -1,7 +1,8 @@
 -- Options.lua
 -- Everything related to building/configuring options.
+
 local addon, ns = ...
-local Hekili = _G[addon]
+local Hekili = _G[ addon ]
 
 local class = Hekili.Class
 local scripts = Hekili.Scripts
@@ -12,19 +13,17 @@ local insert, remove, sort, wipe = table.insert, table.remove, table.sort, table
 local UnitBuff, UnitDebuff, SkeletonHandler = ns.UnitBuff, ns.UnitDebuff, ns.SkeletonHandler
 local callHook = ns.callHook
 local SpaceOut = ns.SpaceOut
-local formatKey, orderedPairs, tableCopy, GetItemInfo, RangeType = ns.formatKey, ns.orderedPairs, ns.tableCopy,
-    ns.CachedGetItemInfo, ns.RangeType
+local formatKey, orderedPairs, tableCopy, GetItemInfo, RangeType = ns.formatKey, ns.orderedPairs, ns.tableCopy, ns.CachedGetItemInfo, ns.RangeType
 
 -- Atlas/Textures
 local AtlasToString, GetAtlasFile, GetAtlasCoords = ns.AtlasToString, ns.GetAtlasFile, ns.GetAtlasCoords
 
 -- Options Functions
-local TableToString, StringToTable, SerializeActionPack, DeserializeActionPack, SerializeDisplay, DeserializeDisplay,
-    SerializeStyle, DeserializeStyle
+local TableToString, StringToTable, SerializeActionPack, DeserializeActionPack, SerializeDisplay, DeserializeDisplay, SerializeStyle, DeserializeStyle
 
-local ACD = LibStub("AceConfigDialog-3.0")
-local LDBIcon = LibStub("LibDBIcon-1.0", true)
-local LSM = LibStub("LibSharedMedia-3.0")
+local ACD = LibStub( "AceConfigDialog-3.0" )
+local LDBIcon = LibStub( "LibDBIcon-1.0", true )
+local LSM = LibStub( "LibSharedMedia-3.0" )
 local SF = SpellFlashCore
 
 local NewFeature = "|TInterface\\OptionsFrame\\UI-OptionsFrame-NewFeatureIcon:0|t"
@@ -36,7 +35,7 @@ local BlizzBlue = "|cFF00B4FF"
 local AtlasToString = function(atlas)
     return "＊ " -- Simple bullet point fallback
 end
-local Bullet = AtlasToString("characterupdate_arrow-bullet-point")
+local Bullet = AtlasToString( "characterupdate_arrow-bullet-point" )
 
 -- MoP: C_ClassColor not available, use RAID_CLASS_COLORS
 local ClassColor = RAID_CLASS_COLORS and class and class.file and RAID_CLASS_COLORS[class.file] or {

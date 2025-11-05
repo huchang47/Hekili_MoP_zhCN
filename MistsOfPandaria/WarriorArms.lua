@@ -12,7 +12,15 @@
     if not Hekili then return end
 
     local class, state = Hekili.Class, Hekili.State
-
+    -- Local aliases for core state helpers and tables (improves static checks and readability).
+    local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
+    local removeDebuffStack = state.removeDebuffStack
+    local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance, state.interrupt
+    local buff, debuff, cooldown, active_dot, pet, totem, action =state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
+    local setCooldown = state.setCooldown
+    local addStack, removeStack = state.addStack, state.removeStack
+    local gain,rawGain, spend,rawSpend = state.gain, state.rawGain, state.spend, state.rawSpend
+    local talent = state.talent
     -- Safe initialization without triggering emulation unknown-key warnings (use rawget instead of state.field lookups).
     do
         local st = rawget( Hekili, "State" )
@@ -33,11 +41,9 @@
     end
 
     -- Local aliases to core state helpers (mirrors DK/Shaman pattern) to avoid undefined global references.
-    local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
     local addStack, removeStack = state.addStack, state.removeStack
     local setCooldown = state.setCooldown
     local gain, spend = state.gain, state.spend
-    local interrupt = state.interrupt
 
     -- Provide lightweight fallbacks if engine helpers are missing in emulation/test harness.
     if not addStack then
@@ -1485,7 +1491,7 @@ spec:RegisterAbilities( {
         cooldown = 10,  -- MoP: 10-second cooldown, can always maintain if you have rage
         gcd = "spell",
 
-        spend = 20,  -- Rage cost to maintain
+        spend = 30,  -- Rage cost to maintain
         spendType = "rage",
 
         startsCombat = false,

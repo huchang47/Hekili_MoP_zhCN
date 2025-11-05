@@ -187,6 +187,9 @@ do
 		if state.runes and state.runes.reset then
 			state.runes.reset()
 		end
+		if state.death_runes and state.death_runes.reset then
+			state.death_runes.reset()
+		end
 	end)
 end
 
@@ -792,6 +795,22 @@ spec:RegisterResource(6, {
 		startsCombat = false,
 		
 		toggle = "cooldowns",
+
+		usable = function ()
+			-- Gate ERW to true starvation moments per APL: no Unholy+Death runes and sufficient RP deficit.
+			local rp = (state.runic_power and state.runic_power.current) or 0
+			local rpMax = (state.runic_power and state.runic_power.max) or 100
+			local rpDeficit = max(0, rpMax - rp)
+			local uh = (state.runes and state.runes.unholy and state.runes.unholy.count) or 0
+			local dr = (state.runes and state.runes.death and state.runes.death.count) or 0
+			local runeStarved = (uh + dr) == 0
+			local exec = false
+			if class and class.variables and type(class.variables.execute) == "function" then
+				exec = class.variables.execute() and true or false
+			end
+			local needed = exec and 40 or 60
+			return runeStarved and rpDeficit >= needed
+		end,
 		
 		handler = function ()
 			gain(6, "runes")
@@ -977,6 +996,30 @@ spec:RegisterGlyphs({
 
 -- Auras
 spec:RegisterAuras({
+	-- Army of the Dead channel window while ghouls are summoned.
+	-- https://wowhead.com/spell=42650
+	army_of_the_dead = {
+		id = 42650,
+		duration = 4,
+		max_stack = 1,
+		generate = function(t)
+			local name, _, count, _, duration, expires, caster = FindUnitBuffByID("player", 42650)
+
+			if name then
+				t.name = name
+				t.count = count or 1
+				t.expires = expires
+				t.applied = expires - duration
+				t.caster = caster
+				return
+			end
+
+			t.count = 0
+			t.expires = 0
+			t.applied = 0
+			t.caster = "nobody"
+		end,
+	},
 	-- Talent: Absorbing up to $w1 magic damage. Immune to harmful magic effects.
 	-- https://wowhead.com/spell=48707
 	antimagic_shell = {
@@ -1516,6 +1559,25 @@ spec:RegisterVariable("execute", function()
 	return hp <= threshold
 end)
 
+-- variable.dots_up: both diseases are ticking on the target.
+spec:RegisterVariable("dots_up", function()
+	return (debuff.blood_plague and debuff.blood_plague.up) and (debuff.frost_fever and debuff.frost_fever.up)
+end)
+
+-- variable.proc_window: window to stack/sync cooldowns with temporary procs and major buffs.
+spec:RegisterVariable("proc_window", function()
+	return (
+		(buff.unholy_strength and buff.unholy_strength.up) or
+		(buff.dark_transformation and buff.dark_transformation.up) or
+		(buff.bloodlust and buff.bloodlust.up) or
+		(buff.heroism and buff.heroism.up) or
+		(buff.time_warp and buff.time_warp.up) or
+		(buff.ancient_hysteria and buff.ancient_hysteria.up) or
+		(buff.blood_fury and buff.blood_fury.up) or
+		(buff.berserking and buff.berserking.up)
+	) and true or false
+end)
+
 -- variable.holy_moly: gate certain actions during execute if Soul Reaper will be ready within ~2 GCDs.
 -- Matches the SimC approximation: !(variable.execute & (cooldown.soul_reaper.remains <= gcd.max * 2))
 spec:RegisterVariable("holy_moly", function()
@@ -1861,6 +1923,22 @@ spec:RegisterAbilities({
 
 		startsCombat = false,
 		toggle = "cooldowns",
+
+		usable = function()
+			-- Mirror APL gating: only when no UH/Death runes and enough RP deficit
+			local rp = (state.runic_power and state.runic_power.current) or 0
+			local rpMax = (state.runic_power and state.runic_power.max) or 100
+			local rpDeficit = max(0, rpMax - rp)
+			local uh = (state.runes and state.runes.unholy and state.runes.unholy.count) or 0
+			local dr = (state.runes and state.runes.death and state.runes.death.count) or 0
+			local runeStarved = (uh + dr) == 0
+			local exec = false
+			if class and class.variables and type(class.variables.execute) == "function" then
+				exec = class.variables.execute() and true or false
+			end
+			local needed = exec and 40 or 60
+			return runeStarved and rpDeficit >= needed
+		end,
 
 		handler = function()
 			gain(6, "runes")
@@ -2569,6 +2647,7 @@ spec:RegisterAbilities({
 		gcd = "off",
 
 		startsCombat = false,
+		toggle = "cooldowns",
 
 		handler = function()
 			applyBuff("unholy_frenzy")
@@ -2682,7 +2761,70 @@ spec:RegisterAbilities({
 -- Legacy rune type expressions for SimC compatibility
 -- Death Rune tracking system for MoP (based on Cataclysm implementation)
 local death_rune_tracker = { 0, 0, 0, 0, 0, 0 }
+local rune_base_type = { 1, 1, 2, 2, 3, 3 }
+
+-- Keeps the internal death rune snapshot aligned with the live rune API for accurate snapshot displays.
+local function refreshDeathRuneTracker()
+	if not state.death_runes or not state.death_runes.state then
+		return 0
+	end
+
+	if not GetRuneCooldown or not GetRuneType then
+		for slot = 1, 6 do
+			death_rune_tracker[slot] = 0
+			if state.death_runes.state[slot] then
+				state.death_runes.state[slot].ready = false
+				state.death_runes.state[slot].type = rune_base_type[slot]
+			end
+		end
+		state.death_runes._count = 0
+		return 0
+	end
+
+	local readyDeathRunes = 0
+
+	for slot = 1, 6 do
+		local runeState = state.death_runes.state[slot]
+		if not runeState then
+			state.death_runes.state[slot] = {
+				slot = slot,
+				baseType = rune_base_type[slot],
+				type = rune_base_type[slot],
+				ready = false,
+				expiry = 0,
+				start = 0,
+				duration = 0,
+			}
+			runeState = state.death_runes.state[slot]
+		end
+
+		local start, duration, ready = GetRuneCooldown(slot)
+		local runeType = GetRuneType(slot) or runeState.type or rune_base_type[slot]
+		start = start or state.query_time
+		duration = duration or runeState.duration or (10 * state.haste)
+		local expiry = ready and state.query_time or (start + duration)
+
+		runeState.baseType = rune_base_type[slot]
+		runeState.type = runeType
+		runeState.ready = ready and true or false
+		runeState.expiry = expiry
+		runeState.start = start
+		runeState.duration = duration
+
+		if runeState.ready and runeState.type == 4 then
+			readyDeathRunes = readyDeathRunes + 1
+			death_rune_tracker[slot] = 1
+		else
+			death_rune_tracker[slot] = 0
+		end
+	end
+
+	state.death_runes._count = readyDeathRunes
+	return readyDeathRunes
+end
+
 spec:RegisterStateExpr("get_death_rune_tracker", function()
+	refreshDeathRuneTracker()
 	return death_rune_tracker
 end)
 
@@ -2693,17 +2835,17 @@ spec:RegisterStateTable(
 
 		reset = function()
 			for i = 1, 6 do
-				local start, duration, ready = GetRuneCooldown(i)
-				local type = GetRuneType(i)
-				local expiry = ready and 0 or start + duration
-				state.death_runes.state[i] = {
-					type = type,
-					start = start,
-					duration = duration,
-					ready = ready,
-					expiry = expiry,
-				}
+				state.death_runes.state[i] = state.death_runes.state[i] or {}
+				local runeState = state.death_runes.state[i]
+				runeState.slot = i
+				runeState.baseType = rune_base_type[i]
+				runeState.type = rune_base_type[i]
+				runeState.ready = false
+				runeState.expiry = 0
+				runeState.start = 0
+				runeState.duration = 0
 			end
+			refreshDeathRuneTracker()
 		end,
 
 		spend = function(neededRunes)
@@ -2741,10 +2883,11 @@ spec:RegisterStateTable(
 		end,
 
 		getActiveDeathRunes = function()
+			refreshDeathRuneTracker()
 			local activeRunes = {}
 			local state_array = state.death_runes.state
 			for i = 1, #state_array do
-				if state_array[i].type == 4 and state_array[i].expiry < state.query_time then
+				if state_array[i].type == 4 and state_array[i].ready then
 					table.insert(activeRunes, i)
 				end
 			end
@@ -2757,10 +2900,11 @@ spec:RegisterStateTable(
 		end,
 
 		getActiveRunes = function()
+			refreshDeathRuneTracker()
 			local activeRunes = {}
 			local state_array = state.death_runes.state
 			for i = 1, #state_array do
-				if state_array[i].expiry < state.query_time then
+				if state_array[i].ready then
 					table.insert(activeRunes, i)
 				end
 			end
@@ -2768,6 +2912,7 @@ spec:RegisterStateTable(
 		end,
 
 		getRunesForRequirement = function(neededRunes)
+			refreshDeathRuneTracker()
 			local bloodNeeded, frostNeeded, unholyNeeded = unpack(neededRunes)
 			-- for rune mapping, see the following in game...
 			-- /run for i=1,6 do local t=GetRuneType(i); local s,d,r=GetRuneCooldown(i); print(i,"type",t,"ready",r) end
@@ -2788,10 +2933,8 @@ spec:RegisterStateTable(
 					if needed == 0 then
 						break
 					end
-					if
-						state.death_runes.state[runeIndex].expiry < state.query_time
-						and state.death_runes.state[runeIndex].type ~= 4
-					then
+					local runeState = state.death_runes.state[runeIndex]
+					if runeState.ready and runeState.type ~= 4 then
 						table.insert(usedRunes, runeIndex)
 						needed = needed - 1
 					end
@@ -2809,7 +2952,8 @@ spec:RegisterStateTable(
 				if bloodNeeded == 0 and frostNeeded == 0 and unholyNeeded == 0 then
 					break
 				end
-				if state.death_runes.state[runeIndex].type == 4 and not usedDeathRunes[runeIndex] then
+				local runeState = state.death_runes.state[runeIndex]
+				if runeState.type == 4 and runeState.ready and not usedDeathRunes[runeIndex] then
 					if bloodNeeded > 0 then
 						table.insert(usedRunes, runeIndex)
 						bloodNeeded = bloodNeeded - 1
@@ -2829,14 +2973,7 @@ spec:RegisterStateTable(
 		}, {
 		__index = function(t, k)
 			local countDeathRunes = function()
-				local state_array = t.state
-				local count = 0
-				for i = 1, #state_array do
-					if state_array[i].type == 4 and state_array[i].expiry < state.query_time then
-						count = count + 1
-					end
-				end
-				return count
+				return refreshDeathRuneTracker() or 0
 			end
 			local runeMapping = {
 				blood = { 1, 2 },
@@ -2850,12 +2987,13 @@ spec:RegisterStateTable(
 			end
 
 			local countDRForType = function(type)
+				refreshDeathRuneTracker()
 				local state_array = t.state
 				local count = 0
 				local runes = getRuneSet(type)
 				if runes then
 					for _, rune in ipairs(runes) do
-						if state_array[rune].type == 4 and state_array[rune].expiry < state.query_time then
+						if state_array[rune].type == 4 and state_array[rune].ready then
 							count = count + 1
 						end
 					end
@@ -2866,11 +3004,13 @@ spec:RegisterStateTable(
 				if k == "state" then
 				return t.state
 			elseif k == "actual" then
+				refreshDeathRuneTracker()
 				return countDRForType("any")
 			elseif k == "current" then
+				refreshDeathRuneTracker()
 				return countDRForType("any")
-				elseif k == "count" then
-					return countDeathRunes()
+			elseif k == "count" then
+				return countDeathRunes()
 			elseif k == "current_frost" then
 				return countDRForType("frost")
 			elseif k == "current_blood" then
@@ -3063,20 +3203,20 @@ spec:RegisterStateExpr("rune", function()
 end)
 
 spec:RegisterStateExpr("rune_deficit", function()
-	local total = 0
-	if state.blood_runes and state.blood_runes.current then
-		total = total + state.blood_runes.current
+	if state.runes then
+		local ready = state.runes.count or state.runes.current or 0
+		return max(0, 6 - ready)
 	end
-	if state.frost_runes and state.frost_runes.current then
-		total = total + state.frost_runes.current
+
+	local ready = 0
+	for slot = 1, 6 do
+		local _, _, runeReady = GetRuneCooldown(slot)
+		if runeReady then
+			ready = ready + 1
+		end
 	end
-	if state.unholy_runes and state.unholy_runes.current then
-		total = total + state.unholy_runes.current
-	end
-	if state.death_runes and state.death_runes.count then
-		total = total + state.death_runes.count
-	end
-	return 6 - total
+
+	return max(0, 6 - ready)
 end)
 
 spec:RegisterStateExpr("rune_current", function()
@@ -3333,5 +3473,5 @@ spec:RegisterOptions( {
 	package = "邪恶Simc",
 } )
 
-spec:RegisterPack(	"邪恶Simc",	20251026,	[[Hekili:TR1wpUnUv4FlblGHD6avzp2ZKPy08qBXIUPOlwaV9vltltBlmYIg6sM1lm0V9EiPefjfjLSZKaST9HDtcf55gpNVZf6vtx9RRwUfvGx9ZZ8NTyQ)Sh8MD)SP3)WQLfNpHxT8ek6v0E4VKIoc)))D6bsYz6YNtiOT0JNtkZIGpTA5MY4KIFkD1gZ0CbS3t4iy5fZwT8q82Ty(EX5rRw(RhIZRwt)pu16AUwTMSd(3rfXK0Q1jX5fWN3rYQw)pWVgNe7TAjBrMyeNUpbhwGY2JlGf(zMUHtrBsWBx9xxTmklUaNfJandLGtl8oLG2xIdtW4OdE1BSA9OQ1FbbBd(xEBjf5HLNyloUAn8p92KqiBd5h1ldFefNcY0ZvRVVA9Ll89SlJKxeUd)fCM(wM0qRSYuCUxjZC6frktlQwhuT2Ntf(x3Irfhu)4Kvl5Md4kqs8xvaw1(0xoZc3KeV)qHzfofJ3gs16w2OCkkFU3kFCrgszXMmm6vkfMBLcFWGrUio6v4UTJINxKf)kMsVf9rp5lKoKlo6CybPKBeFOFLd)B4OYcmZWz6w8f4IQL6q0rsiO4NWzu6)yFxsCvVaDs5cAt5UD1Fk6a1d3lVacraMbUftLyN44uM9jRmZOCtjvJ7jLEFbhItXhJX58poJ7BkmeNiKKqiAmCpirKZjyf3tMZBikfCeWrOZu55PRxEKmKWYGIlDTd6TB6XmgDvp(hz(ew41oCoLqP7L5MD8eHfbOCCuibCZIqN4wl2nxEjfRdIiihbabGlYF7aAl5TW40DL5aZLVyNZ32yjBolw8i8)A0eGFNiVHZ4N4rFd3brK4eMgyhHGjjhizPHKDHVfNcldGFVL2sk1pYiNDGaj5caX2fhfxBJFW)9d)dFKXGq6EdFdIWGfPauGwVdvM0MdO5ahJbNXDzy8VJLLBdqNnNaLweFeTh0L8d4KeAATJSKHhWOeq0oI(Tp67DVVjyXgAeHssc5)JqAYkEkRqE60M71C3WIIR)YCCy028bs9iiaLElM7gK0uS(8wwa2xRCarWUrn1Pnq67hgPJsWOVGnHzoKtRwnaZT4ugoICCdYyXb8ID4o35HBaXNxxsw8joZ(7uFXQ1)ZuAAW)s1AEHqGR8)I8lvRx4TWB6eHRKLGgvNo7HpGthMvWWm)o5HbTihNgHD7WiOGV3cj35SJNPItXbmakdvV14wiSOO486pPkR2VGnZPte2FYS7TEHUlkJrOaLKNMey7GyIOKgosT7WFQNDCxz25bwiJDkbUj4mwHeoViSIeotrnJqagwbjldkbWDWAB23msuTyzSO1oEoaYx6VF29T5y3P3hPMmsZ6OvEagLbCT9WkFmHajx3rJLcboikPIUhEmRh1FamjHBJP(xuCJfSYNN0J2MxE8iGi0Wx3fDDcy0(dqjAECGQ2ITCKwEHQeOMsMRtIQ(zfwWpWhunEYLr2yi90eEAXcBpRMshL9AyrgknhUAoIQdZCuQ3nPIZB3LbgYknqvWnTR2wFakUpAlnDPTAt0lnuGGcfqMpSqZ8esrZbmvDydjHk6sFfxmDiu1Th5SfnCvqttfkQX4zFdy8SEQVZoBgzNlp4Baq3vzFg9T)kQ1tVgxve05(dOwW2cSmK8HaWg5q5bcY0SB6FlPe(JPS1QRPOP4ldjH6Ns1g56chprBbGdQjZHA7MPKt9ZbBnoZSIw7cUL5niPgYNDdmxEUhZ7F0iZLLK2Xhyivy)Ycd2QoPh0)goDpyXlL7hZeALYgyQssj0GOYYhWzK48JQlYIBEdLDsDzuAumKnp8WzwVKidmGvjI26I6k8Oj1ATjsP7nLcFGwL(B20H9rwC0iuilrLPCT9lyDAI9jFzoP0tTPuD9ZbhPxLYqnDEF1FOCFOxDKPSyVxI2mflsZEcZj1qY6P66NVIY2vXFukzZyYS(jTPkGEYxV4WAKojMBSKqJ516xg(IXQK1hMIIHSjzL9SHMvbErPYkIELjMsA2Vk4OCXXYvm2oFrJfCvT(JSj3PlKIQwRBsJ3T9qgB(70yKhqXk9mgzhnqZLuaSoHoep(CaLL0BlxPABKBQlD150S)gljNW5fXjnZdWExJ)35lE4yQe38W0)K(1C9S0T3d5aMDTHzH33S5nn7Al2jnMP6DARXk53LOVs4DOHrNJeJzlNcE4QZlTr4pmBOroyRfRodUFq2vNVjGr(paWRb)wa2AjMNZq0iSJrjsjb5Ra8(MqPD8uDCTDiV92)ho)Rbo)gG3EWc8MDO0BdE7rzFxjdSIFBhqWVdGt2FdY3Xi3)hbaCyyt0PWaD1s3z9pie40lHgMtbXekT7NoEIKvqDEFu736Hx1Nzn(UlMwx8puTEipct1NR(8pa79xAEUNQpZjAUN4fG(tb)5DjO8xVJ(SpbYV6J5nRQGM3J27ZCx8UaApeppZ38(1FBdXb89wy(eTVoJ5VZNrNkD42I)gjdcw(XeOjOMtc7x69qLxw7rpVJ)MNbAp5P8j0FeY7OTye0epL3)wfprev4fXH1ZBt(4Ap5h)0qUp65OR3(uJVemV3dYB6P7zdUV3JQ8(IuZCZfIqRHt2835hPwDUJCka687owBEbthYjRH7upzNbk(CW9lgc1QlXxLA2YBnYsoRHWir7B9WQ6ggEE(Llw6L455dHFs96RYrlde8Yfhd7Q(JYdcSEP2HawVG8aaRxYWW)KjyZG)AwtEOFdrtno9nd6SXX9brgo18HiakPivzS048Ej4j)HqToZstLI9nJSNdMcAu352m0acLXaDTSE2G0q1bRPfitbRhKGACczQetz4BVem9j)lx6u20ayL2mSuzIGGsrCxUmwSSIbD0yt3mpyqUMmzisMyWvQY0hgRtUrJDnKSNdQhq2hNnzImaUixKJC0b(M3FBWTsIm9hDZ8zfGax)zv)beqpVHxn7ffFv5JR8deqH7sxWJel2mJiJ0slqHsT2BMob6JgBtrLDpucEK(GX4bBibtMmqnWaQivl0Fh9rUqyx0YlH)6i9yZfJm406(NcWelISO9JRwsNpY5R8pAiVWplwYIRfu0duw9X7OpxDa7X5VE3BvI08w7UOJzNGzlUc6p79J(TfMBJEJmJrAMCgESBfAlW)62uzaa72zcIb(tgzeVyUVmWOsjVuTsAASmGr7ZyUtK3OXwRc8E7vbE)KRrNSl5kt5ss0noCSwzxupRDk3mplL7JbCoLFs70d)bRdsYkne)o2fN3zD76hxkhPrVPUg(x8TtnXWLKmVDgx1ilJQcWgDqATPnvNTtx2cMoAmh(RTJWzs5o6KkYH)I6yBSYq7eqFQmTKqAAmurUZuyCswvyFHQPuCEDP(DMDvZ6w7qySHmyk12)ORqm1jMqfpEVtD)jMBNgwW5mcv9G)1bniHSYgcW7kQGGKdfoqCG2jLkjagN28OBVJDb3Ah3mdY4Bo7(dtcdT7JBgg7tgi5qHV617WeaIbfZmPKr7vgWBW0HI(BMUQqLgi9qPuhmtR06QWq1UhUnWtdKtFeXTBbrUA0f9dlJJyTYGlx6pPpNCFxqz4S67deJSADZbRpOtVRpsv38Q)L35OozX8R1rUwa)AdF5K5BuSlN46V2eQSawA1YLhl3bmJ9ItR(pd]]
+spec:RegisterPack(	"邪恶Simc",	20251028,	[[Hekili:TVvBVnoUr4FlbhGH9UbQYoXz3ueVFOTOO3w0dhGV(vlZitBlezjb9sY5dg(3EhsQxiPgsX4KDlk2(H9LqroZWHKpZdNHz10v)2QLBiL0v)Ym)zZN6FJV3SzZVF2NxTS8ygD1Yms4tKDW)jHCa(7)DY(04JSMpgNs2WgErAvEi8PvlFSkkU8Ntw9iUmVd6BgneAE(Svl3hTzdv0xAr4QL)2(OIZRz)HCEDTwpVoDl8ZHLrPjNxhhvucFEBA(51)d6trXrERwYBKBgrj7IPbLK8D0sOHFHp3OjKhJPBw9xwTmmpQKMhrGzgjMMu6Lft2vrdIP0W9E1D886rNx)mb6g8tEBsllcQY4no(8A4h9EmonDtGyOE50dKOeWME486BoV(0jrF2MNwugSL(mnxVltAKvEvcTWRI7o9ctRskpVEX51(cPi(6gkPCp(hd2q3gfgbT)f4dZabVAPWpbRnsZRvLG7EihHWkcEmoA3(sCprcLUjG5o6uJYOy65gJ6XMysRkFmNsEIjHBnkHRq8(LrHpbl69M4fL5rprzYB(qYtELQN4IcpguMwjCI39o4elsizbVeLSj9f09zw8TFAyFR7sx2L)5Hfm93PHvLuB7CzBcNACRB9xL2IcygXbGjKrZzgX9d5CfR7LKmfh7JvB3w)PW9SZ9EfLaWrTc97ux7Wzkd(GjTzzQjM7mb(mnGMqperlAp8XM3TURS004aaKkyhysPhJPkZCUJjGKahdOHKJCdYmsLrdsYvcndtDPD9tnFGxipU7O)8t8r(rcd6AlTGjOKDYAZHJ9GKJcdsHtzHKmH7IV2vuXIbaacPhaGsqlIVnU5Z7jWM5GOKTvfG(LxDVTXIb5ML(cnVUzFoeBTqA1p)W0b4VWh1N8rwIctJI5ZpZGsCJCFAEsq6w2jpOz4W2ljDIs9JCXzgtsYU8uG3VZ32zVpAjCH0SIEGl5aE0JxGJEqJmOfy6ULuf3fYSzahaOKGT5u6FqLnyRbuA94KnptscbW(OqnqWWnfmBiHTlcaI60xiBaXbmNQW1giOCmyCMgbqskJoq2b(WI904ygjKdCQl7PKyWZCG87FW37gFSinDgrCCG4hcyuleemQTKM5qH9ylTt1QcAamDDu6HaUbB3tH9Wnyqq32PcW1AudKuQ9yj6Yge9nUj6Wyk5zkwafxgTk3n(UYSCAy6HhjOu5eutfhQkcEemFblY8OmHY(BSJcNx)pty7z(ZNxlOTchH(xP)651Z9M7nDs7ozdhwv3ZBgL7QA0Q69PGHxqHDYEiXZB(MDUoWUykNVOV3CPD35hoYSUY9mYFa17M9GToysur9NunDluxq1uwk)F5ldDBkTZOMligMJDd2bKJgnwtLrpi(2Q8Jos20SKGDn0CozpRlegbKNPmnbGlyVBAEoWuXrKHS80q34QvVZbWHt(JJ2xnhBNeYi1yIAEhnsmusoO1UbR8X4ua7El7OvaOHw6HS(ioc7X2paUKGnrS9xmyK58aZtgy2wuD4aaq0Ox7OvzGI2Thys6jWT64eAH4WCvlqLzGyo1ELno7hXaUs15jtjUXr6Pz8mgnBoQYSGK)uqzojPawAoqQpMzHd(fnfVTRxikKZqr1WX6v39wbjUlCdl6zZEiBC3WPKzICLoX)wOyGGCHlhQ1wboc3bcablYyKuleRaWUQ40YgzIDbGgTcCAtEIwo1nfBB7(S5nATvMye91u8SVbkE2a3iWQJ1KwUZhjAHt3eWH7sALpRobEvC5BLSlJ8D7yXHeslfaJkOsSsB6n7)fxb)ZuEBnCtRz4HeAByjv7DRzNMXobjGkL1qTddlK3WAWukt4ErJ5)Ot5n4Zirjhw5wszJypSTCW0zdDPmcj06WwHm1m4sR0KDGVUs(sOyOFkDGpdIRGBfR08EAEAuXb1g5hvEHKNP2mC1MiGDqW(J8lqtquaNzJw7T8uuBxhMJfbTZHjXTaJVGJUm7XxgW5jBoAckqGjJeyFydRxSL79L1KswgWIRoSgSelxkC40BhISJY6HovmSaFVxM2mfpstFcksRHO1d9nSEBVJGkSKc)q0GBdlAm6w37RZeTgaus5O8prJZnSn8mkLC9eiP4iBcEzo6i(uqWawEIOFdfSGOdpfSWnDSm5OUCUAGD3hevsqZiBPiZnVxFCaLaMY5fIlVlerVptp5ZNEZXrxT0l9qe6DvzztlfwS5XRhMTDbRxUYuUi33PTLAl6sftOoraIe84sD1COsiUuojh4Soq5KmZhT2sHa4XSfrrcXLT0lJ5erjvfpwFjhRv16BSLKrlkJIBY5K5mt8dwjr)XRAExEH0(S((666OzUODou1kSYGnuD5WkBLTkoA68OXRHlxvYl8YRoyw8nMHhdBt4DbdtfJ9sRDPwIp380OAWuPt6vypNC(JSvZqu9BgkS1j7CTc13m1wWoLSIBlP(mrK(gIPDrbVEtxl()hL79ik3facENbqWF8cKCzG73lFMuAJJY5rZzM9)2iZMXhEhXT(bb(3nKzwIAP5Smg18mczVjXxi5SBDb89)5dzP5LSJsFs7fc6D(R8KGTnIDzRF68Axkg85VE(R)e03FTPSZN)QqOfETvI(Jl(tBJjfpDnR8ZlKR(mENvNG49rRWWxhTDXvgQMmUa0RYktcSR(9GpC9w0r0vNy8VlsOVQCeoN)AAoCe7VhdijnJe6V07erUzPNZX1S7uUqb8IjE0lapQTvTBzllBTx6X1Ih6XcT35HQ1O(YleMuJUkgURTfcxXYRZ)V8W1ENdIrd0myJJ1E37R4llUDWbkU2D)XU4MbhQYJQGTe2Sy3oRHr28)RxIetNRtZwuqlVMNOIftDzK1aWQJSxboEyXnZDrA1HMuLMjkcJmqpWff1MabvvDLjDD60vVbTjLlhv9zOifNozjh71FuU4e1n1vyI6gKlkrDtifKqwGnfJOPn5cru3w)Iq4IlaTAaiod0YpahyS6sCXauctRQyPYl8Lf377I06LBFvjouo7FyXuyg1pHDUEorj)FVwvpZPzOAI(1oFZIp4KHIMXEvHPumGVSy69(No1JFNdQslN6QkPvGshfpDACBZko0rJXwzUdXUMmXflRnr6AGnJ1f3OX2sA)dlQty)hM5MELdVEbq7AXHXoSINmEy3T38(OkiF1qY35DXftu6oogwVvOym(B22GjYXzBPmyHM2cF8(35Vu4BO)inWhBlA9RFSQVMn24rESfFrb7qE4kVwnfTl5P7O41KmzuzPbCXKM0cNoWR0IQ2evEDsbmt6dO4tMqMNmXXzasuk2Sq)rDnYweV5D6Qf)yKow58riGi2FxAtmyYTxj9vBP3oYyOzM0h5YZnJJTnAm(fNpDsjc9T(gMdmwSWLYoCn7HqTG)SVSDqyK9NpMl6O5rEztn47MMn)vi)zVFYV7sEgDl4OE4Id5XwPi72aB9ZyXh7LnMf(tgHI6CRVm8QY9BytjPA8WHxnxsRENFhn2uHSE4MtNmuaRhUzc2eAHpFJQ(Cs0yqhe6eZtLExv2wYe7MmT3MXSKBYXNYQJdJt5xToEwkmMXwJYO93NU2XB9EuVtofjUbwGTDYpDzIsIcNRNjaiDK9qqRw2Z0MwAjxtVeDpYqsUbr7Bw0A5ZTMvqFBE0yryIUeCmtkgBVq2wMmQP80Ocnla9mA2jcPmzYm5EzW0Qyvdp2o1uUuzZ9J7h(AS9WN6r3KzK2f7xPxFY3Itun)JmdwKEG()cRzwgga2rHNVZ3z8DfAY8uCD5hWrqVAfPRWDTdOR0esgaAzRgD55JQvBD1TIdj(nxD)VBeY36Me3GUTVV5vkJ3iG8NrePRaXdUXgdkepIdIOKdOPuMNftFpdW1Pp1GbiQ0vNqVOcgL1RkkH26ZLfEarC6fqQRlK0x9zb9blVf)nLVBH4(UaCku13hut5P1fFi(U30s2Rf(Q)c7fjGxpkJ(wa9V8DcXq28FRhcRn83k0JqmFJWDecxVo6KQsOPvlxEOAlOmET0x9F(d]]
 )

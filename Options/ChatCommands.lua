@@ -93,7 +93,7 @@ function Hekili:CmdLine( input )
         recover  = function () self:HandleRecoverCommand() end,
         fix      = function () self:HandleFixCommand( args ) end,
         snapshot = function () 
-            self:Print("快照命令已调用")
+            print("快照命令已调用")
             self:MakeSnapshot() 
         end,
         skeleton = function () self:HandleSkeletonCommand( input ) end,
@@ -101,7 +101,7 @@ function Hekili:CmdLine( input )
             if ns.TestSpecDetection then
                 ns.TestSpecDetection()
             else
-                self:Print("专精测试函数不可用")
+                print("专精测试函数不可用")
             end
         end,
         testauras = function()
@@ -339,7 +339,7 @@ function Hekili:HandleSetCommand( args )
         local cycleValue = tonumber( subToggleOrState )
         if cycleValue and cycleValue >= 0 and cycleValue <= 20 and floor( cycleValue ) == cycleValue then
             profile.specs[ state.spec.id ].cycle_min = cycleValue
-            self:Print( format( "目标切换的最小存活时间已设置为 % d 秒。", cycleValue ) )
+            self:Print( format( "目标切换的最小存活时间已设置为 %d 秒。", cycleValue ) )
         elseif subToggleOrState == nil then
             -- Toggle cycle if no state is provided
             profile.specs[ state.spec.id ].cycle = not profile.specs[ state.spec.id ].cycle

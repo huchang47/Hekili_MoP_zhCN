@@ -12,7 +12,15 @@ if playerClass ~= 'SHAMAN' then return end
 local addon, ns = ...
 local Hekili = _G[ addon ]
 local class, state = Hekili.Class, Hekili.State
-
+-- Local aliases for core state helpers and tables (improves static checks and readability).
+local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
+local removeDebuffStack = state.removeDebuffStack
+local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance, state.interrupt
+local buff, debuff, cooldown, active_dot, pet, totem, action =state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
+local setCooldown = state.setCooldown
+local addStack, removeStack = state.addStack, state.removeStack
+local gain,rawGain, spend,rawSpend = state.gain, state.rawGain, state.spend, state.rawSpend
+local talent = state.talent
 local function getReferences()
     -- Legacy function for compatibility
     return class, state
