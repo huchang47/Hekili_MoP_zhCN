@@ -1120,11 +1120,7 @@ spec:RegisterAuras( {
             spendType = "focus",
 
             startsCombat = true,
-            toggle = "cooldowns",
-
-            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
-            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
-
+           
             handler = function ()
                 applyDebuff( "target", "a_murder_of_crows" )
             end,
@@ -1330,11 +1326,7 @@ spec:RegisterAuras( {
             gcd = "off",
             
             startsCombat = false,
-            toggle = "cooldowns",
-
-            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
-            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
-
+            
             handler = function ()
                 applyBuff( "fervor" )
             end,
@@ -1347,11 +1339,7 @@ spec:RegisterAuras( {
             gcd = "spell",
             
             startsCombat = true,
-            toggle = "cooldowns",
-
-            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
-            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
-
+           
             handler = function ()
                 applyBuff( "dire_beast" )
             end,

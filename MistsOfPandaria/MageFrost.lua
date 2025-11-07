@@ -455,11 +455,11 @@ end)
         
         -- Core Frost Procs and Mechanics
         brain_freeze = {
-            id = 44549,
+            id = 57761,
             duration = 15,
             max_stack = 1,
             generate = function( t )
-                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 44549 )
+                local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 57761 )
                 
                 if name then
                     t.name = name
@@ -1799,6 +1799,14 @@ end)
         step = 5,
         width = 1.5
     } )
+
+    spec:RegisterSetting( "frostfire_bolt_priority", true, {
+    name = "霜火之箭优先级",
+    desc = "如果勾选，当触发头脑冻结时优先使用霜火之箭",
+    type = "toggle",
+    width = "full",
+    default = true
+} )
 
     spec:RegisterSetting( "water_elemental_freeze", true, {
         name = "水元素冰冻",

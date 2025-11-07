@@ -1,27 +1,27 @@
--- HunterBeastMastery.lua
--- july 2025 by smufrik
+    -- HunterBeastMastery.lua
+    -- july 2025 by smufrik
 
 
-if select(2, UnitClass('player')) ~= 'HUNTER' then return end
+    if select(2, UnitClass('player')) ~= 'HUNTER' then return end
 
-if not Hekili or not Hekili.NewSpecialization then return end
+    if not Hekili or not Hekili.NewSpecialization then return end
 
-local addon, ns = ...
-local Hekili = _G[ addon ]
-local class, state = Hekili.Class, Hekili.State
--- Local aliases for core state helpers and tables (improves static checks and readability).
-local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
-local removeDebuffStack = state.removeDebuffStack
-local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance, state.interrupt
-local buff, debuff, cooldown, active_dot, pet, totem, action =state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
-local setCooldown = state.setCooldown
-local addStack, removeStack = state.addStack, state.removeStack
-local gain,rawGain, spend,rawSpend = state.gain, state.rawGain, state.spend, state.rawSpend
-local talent = state.talent
-local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
-local PTR = ns.PTR
+    local addon, ns = ...
+    local Hekili = _G[ addon ]
+    local class, state = Hekili.Class, Hekili.State
+    -- Local aliases for core state helpers and tables (improves static checks and readability).
+    local applyBuff, removeBuff, applyDebuff, removeDebuff = state.applyBuff, state.removeBuff, state.applyDebuff, state.removeDebuff
+    local removeDebuffStack = state.removeDebuffStack
+    local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance, state.interrupt
+    local buff, debuff, cooldown, active_dot, pet, totem, action =state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
+    local setCooldown = state.setCooldown
+    local addStack, removeStack = state.addStack, state.removeStack
+    local gain,rawGain, spend,rawSpend = state.gain, state.rawGain, state.spend, state.rawSpend
+    local talent = state.talent
+    local FindUnitBuffByID, FindUnitDebuffByID = ns.FindUnitBuffByID, ns.FindUnitDebuffByID
+    local PTR = ns.PTR
 
-local strformat = string.format
+    local strformat = string.format
 
 local spec = Hekili:NewSpecialization( 253, true )
 
@@ -31,95 +31,95 @@ spec.name = "Beast Mastery"
 
 
 
--- Use MoP power type numbers instead of Enum
--- Focus = 2 in MoP Classic
-spec:RegisterResource( 2, {
-    steady_shot = {
-        resource = "focus",
-        cast = function(x) return x > 0 and x or nil end,
-        aura = function(x) return x > 0 and "casting" or nil end,
+    -- Use MoP power type numbers instead of Enum
+    -- Focus = 2 in MoP Classic
+    spec:RegisterResource( 2, {
+        steady_shot = {
+            resource = "focus",
+            cast = function(x) return x > 0 and x or nil end,
+            aura = function(x) return x > 0 and "casting" or nil end,
 
-        last = function()
-            return state.buff.casting.applied
-        end,
+            last = function()
+                return state.buff.casting.applied
+            end,
 
-        interval = function() return state.buff.casting.duration end,
-        value = 9,
-    },
+            interval = function() return state.buff.casting.duration end,
+            value = 9,
+        },
 
-    cobra_shot = {
-        resource = "focus",
-        cast = function(x) return x > 0 and x or nil end,
-        aura = function(x) return x > 0 and "casting" or nil end,
+        cobra_shot = {
+            resource = "focus",
+            cast = function(x) return x > 0 and x or nil end,
+            aura = function(x) return x > 0 and "casting" or nil end,
 
-        last = function()
-            return state.buff.casting.applied
-        end,
+            last = function()
+                return state.buff.casting.applied
+            end,
 
-        interval = function() return state.buff.casting.duration end,
-        value = 14,
-    },
+            interval = function() return state.buff.casting.duration end,
+            value = 14,
+        },
 
-    dire_beast = {
-        resource = "focus",
-        aura = "dire_beast",
+        dire_beast = {
+            resource = "focus",
+            aura = "dire_beast",
 
-        last = function()
-            local app = state.buff.dire_beast.applied
-            local t = state.query_time
+            last = function()
+                local app = state.buff.dire_beast.applied
+                local t = state.query_time
 
-            return app + floor( ( t - app ) / 2 ) * 2
-        end,
+                return app + floor( ( t - app ) / 2 ) * 2
+            end,
 
-        interval = 2,
-        value = 5,
-    },
+            interval = 2,
+            value = 5,
+        },
 
-    fervor = {
-        resource = "focus",
-        aura = "fervor",
+        fervor = {
+            resource = "focus",
+            aura = "fervor",
 
-        last = function()
-            return state.buff.fervor.applied
-        end,
+            last = function()
+                return state.buff.fervor.applied
+            end,
 
-        interval = 0.1,
-        value = 50,
-    },
-} )
+            interval = 0.1,
+            value = 50,
+        },
+    } )
 
--- Talents
-spec:RegisterTalents( {
-    -- Tier 1 (Level 15)
-    posthaste = { 1, 1, 109215 }, -- Disengage also frees you from all movement impairing effects and increases your movement speed by 60% for 4 sec.
-    narrow_escape = { 1, 2, 109298 }, -- When Disengage is activated, you also activate a web trap which encases all targets within 8 yards in sticky webs, preventing movement for 8 sec. Damage caused may interrupt the effect.
-    crouching_tiger_hidden_chimera = { 1, 3, 118675 }, -- Reduces the cooldown of Disengage by 6 sec and Deterrence by 10 sec.
+    -- Talents
+    spec:RegisterTalents( {
+        -- Tier 1 (Level 15)
+        posthaste = { 1, 1, 109215 }, -- Disengage also frees you from all movement impairing effects and increases your movement speed by 60% for 4 sec.
+        narrow_escape = { 1, 2, 109298 }, -- When Disengage is activated, you also activate a web trap which encases all targets within 8 yards in sticky webs, preventing movement for 8 sec. Damage caused may interrupt the effect.
+        crouching_tiger_hidden_chimera = { 1, 3, 118675 }, -- Reduces the cooldown of Disengage by 6 sec and Deterrence by 10 sec.
 
-    -- Tier 2 (Level 30)
-    silencing_shot = { 2, 1, 34490 }, -- Interrupts spellcasting and prevents any spell in that school from being cast for 3 sec.
-    wyvern_sting = { 2, 2, 19386 }, -- A stinging shot that puts the target to sleep for 30 sec. Any damage will cancel the effect. When the target wakes up, they will be poisoned, taking Nature damage over 6 sec. Only one Sting per Hunter can be active on the target at a time.
-    binding_shot = { 2, 3, 109248 }, -- Fires a magical projectile, tethering the enemy and any other enemies within 5 yards, stunning them for 5 sec if they move more than 5 yards from the arrow.
+        -- Tier 2 (Level 30)
+        silencing_shot = { 2, 1, 34490 }, -- Interrupts spellcasting and prevents any spell in that school from being cast for 3 sec.
+        wyvern_sting = { 2, 2, 19386 }, -- A stinging shot that puts the target to sleep for 30 sec. Any damage will cancel the effect. When the target wakes up, they will be poisoned, taking Nature damage over 6 sec. Only one Sting per Hunter can be active on the target at a time.
+        binding_shot = { 2, 3, 109248 }, -- Fires a magical projectile, tethering the enemy and any other enemies within 5 yards, stunning them for 5 sec if they move more than 5 yards from the arrow.
 
-    -- Tier 3 (Level 45)
-    intimidation = { 3, 1, 19577 }, -- Commands your pet to intimidate the target, causing a high amount of threat and stunning the target for 3 sec.
-    spirit_bond = { 3, 2, 19579 }, -- While your pet is active, you and your pet regen 2% of total health every 10 sec.
-    iron_hawk = { 3, 3, 109260 }, -- Reduces all damage taken by 10%.
+        -- Tier 3 (Level 45)
+        intimidation = { 3, 1, 19577 }, -- Commands your pet to intimidate the target, causing a high amount of threat and stunning the target for 3 sec.
+        spirit_bond = { 3, 2, 19579 }, -- While your pet is active, you and your pet regen 2% of total health every 10 sec.
+        iron_hawk = { 3, 3, 109260 }, -- Reduces all damage taken by 10%.
 
-    -- Tier 4 (Level 60)
-    dire_beast = { 4, 1, 120679 }, -- Summons a powerful wild beast that attacks the target for 15 sec.
-    fervor = { 4, 2, 82726 }, -- Instantly restores 50 Focus to you and your pet, and increases Focus regeneration by 50% for you and your pet for 10 sec.
-    a_murder_of_crows = { 4, 3, 131894 }, -- Summons a flock of crows to attack your target over 30 sec. If the target dies while the crows are attacking, their cooldown is reset.
+        -- Tier 4 (Level 60)
+        dire_beast = { 4, 1, 120679 }, -- Summons a powerful wild beast that attacks the target for 15 sec.
+        fervor = { 4, 2, 82726 }, -- Instantly restores 50 Focus to you and your pet, and increases Focus regeneration by 50% for you and your pet for 10 sec.
+        a_murder_of_crows = { 4, 3, 131894 }, -- Summons a flock of crows to attack your target over 30 sec. If the target dies while the crows are attacking, their cooldown is reset.
 
-    -- Tier 5 (Level 75)
-    blink_strikes = { 5, 1, 130392 }, -- Your pet's Basic Attacks deal 50% increased damage and can be used from 30 yards away. Their range is increased to 40 yards while Dash or Stampede is active.
-    lynx_rush = { 5, 2, 120697 }, -- Commands your pet to rush the target, performing 9 attacks in 4 sec for 800% normal damage. Each hit deals bleed damage to the target over 8 sec. Bleeds stack and persist on the target.
-    thrill_of_the_hunt = { 5, 3, 34720 }, -- You have a 30% chance when you hit with Multi-Shot or Arcane Shot to make your next Steady Shot or Cobra Shot cost no Focus and deal 150% additional damage.
+        -- Tier 5 (Level 75)
+        blink_strikes = { 5, 1, 130392 }, -- Your pet's Basic Attacks deal 50% increased damage and can be used from 30 yards away. Their range is increased to 40 yards while Dash or Stampede is active.
+        lynx_rush = { 5, 2, 120697 }, -- Commands your pet to rush the target, performing 9 attacks in 4 sec for 800% normal damage. Each hit deals bleed damage to the target over 8 sec. Bleeds stack and persist on the target.
+        thrill_of_the_hunt = { 5, 3, 34720 }, -- You have a 30% chance when you hit with Multi-Shot or Arcane Shot to make your next Steady Shot or Cobra Shot cost no Focus and deal 150% additional damage.
 
-    -- Tier 6 (Level 90)
-    glaive_toss = { 6, 1, 117050 }, -- Throws a pair of glaives at your target, dealing Physical damage and reducing movement speed by 30% for 3 sec. The glaives return to you, also dealing damage to any enemies in their path.
-    powershot = { 6, 2, 109259 }, -- A powerful aimed shot that deals weapon damage to the target and up to 5 targets in the line of fire. Knocks all targets back, reduces your maximum Focus by 20 for 10 sec and refunds some Focus for each target hit.
-    barrage = { 6, 3, 120360 }, -- Rapidly fires a spray of shots for 3 sec, dealing Physical damage to all enemies in front of you. Usable while moving.
-} )
+        -- Tier 6 (Level 90)
+        glaive_toss = { 6, 1, 117050 }, -- Throws a pair of glaives at your target, dealing Physical damage and reducing movement speed by 30% for 3 sec. The glaives return to you, also dealing damage to any enemies in their path.
+        powershot = { 6, 2, 109259 }, -- A powerful aimed shot that deals weapon damage to the target and up to 5 targets in the line of fire. Knocks all targets back, reduces your maximum Focus by 20 for 10 sec and refunds some Focus for each target hit.
+        barrage = { 6, 3, 120360 }, -- Rapidly fires a spray of shots for 3 sec, dealing Physical damage to all enemies in front of you. Usable while moving.
+    } )
 
 -- Glyphs (Enhanced System - authentic MoP 5.4.8 glyph system)
 spec:RegisterGlyphs( {
@@ -758,7 +758,6 @@ end )
 
             talent = "a_murder_of_crows",
             startsCombat = true,
-            toggle = "cooldowns",
 
             handler = function ()
                 applyDebuff( "target", "a_murder_of_crows" )
@@ -1703,4 +1702,4 @@ end )
 
     spec:RegisterPack( "兽王Simc", 20251005, [[Hekili:DV1Etonos8pltrvHzwGCXotGfQKPQf44wOwyP2af)xSvsuM4ACSYzlZWC1u(Z(1TKFizlz7KzG9XFWJy3DRUL6N)uYcNfFAX81eoDXhCh5oXz0OjdDE6yx3FEXC(n7PlMVNS6kYLW)jISd(7xsjj8m)3d)nn(g813eYiRrXKWsJxbKSy(Y0Gq(BJwS0SSNa0UNUcE8KXlMVny9AQKwAYQfZ)02GKmF8pKm)8vpZNTb(8kEalkZpmiHdVEdloZ)xPxfegmCXCXdr1GTNgrJH)3heghnISmKUEXlxmxYpOE0eEaj076ycFRCzJd2lF3C6)nLgTI(Im)xkjlZ)liDz(p5Im)53er2Na6Z89XbrxMK)uoz3E6AQ8t)bzFW6m)3eeN)GFb2VsJxtJLMXRIzxNZ4Rf0KVNIp4)esc(k8OpXsYjzflIheLcplMXjsLeuxy3pGaB)u(qsOGLb4oYQuGTlML5pz0coSbBzhyljADcCkeY4fFaOESfQ5GPEfL7uWq5NbEoVDECRXJlYZeKNYdJqgBT3Mu0zQsoavpvJkACcn(kylVgvptLQ9m5)QrXpxtdR284b7G9nypEsLisYpkroF(bXzmES7TborrEDgzNzsinco282jCk8yB8wHUedlOUuKniri56U1nK8Aqh8wIovnfz17eYQUdsdzDPWH0Jd(JfcRURMJYMGc5c5x3LQs(NK5VMUmDZMHWbleYY9GOTOlhMUx5Wq9nc5v3DZqKqf7qMHqVvSD7ahCb3tSYTqr0YlaksDdDSIHsIxrIOEjBz4gjhLqmSNAiRZbPI2pp6LE0ie((98KlSbpqzHCY7aX1U9chXgm5veWKrX40UbRNAd)0wkjKV1B)kiz5uqrtOC0Xizikn8LWheeB(fq46Ok1au)1OAinR10n0OeupB1IKAWWsnyIIaPFBBqijwMIUvllicoXbvYBnzhSr6njrOC5cFh5Bz()eORdvohwtbEJXcts9DfJfUMDDusp94muEWs5Ww1ClHj3ElwNsQr1EDmDhjisAGowZwA3TTLvKtIVeSpmxm4G6ToGkpuChzoDU9ChDLrwS7DAM)DZ8DhL5Fwhj3TNH6GZT)0Uev4nrFZlonzRMzQ7YCNnANjAgD5AMN0uLppiSfY(3QdDUQVHg)vwSPeyOdW4NvTGskB3R(Okfz3L1OSk3tMc7jUkzdzlJjkLr4bGhXswuAc1ySDTo46iqPrlE2AiSQfVEf61JdEmkSz7ID0IP73X13vUbVJ9v9sxvrpj0OlfJ6uPGYAEXuiH9sIXYDLHZ4inCmyMVL6feZI82sU(QAJx8RPrG19IYE(ZNJkZ)Z7XjLax5FFfNTehvW5XOr4cXpVKKGVbh95lSVmpyhyHVN9ryWIp(BW0qSldwL5BikPuj0cuojpK2IcJEnDfTCxLVLnnX(vRHw9PJIZvpuPFBFilr0cduXr)KvFoetZoaN9ewhTeG8dIhM5CxaTObnL2msd5bLTN13UDQl0PAYSEtJ23VmPCU1sSdEGERcPKVs1tsnCImw7etuIbINvVPIZhzZUTnLOEw1ELs28(dU6I3yQPaSmeOARUbuEpjbj4rAFQ32R(LnQt1CeQnzuNvNxsIJHKr2w0Zh1NfnxilkguU3ojJlcLZpf0JJ0IHRfI16e3kgWZEEp80RnDZZvdyvQCwpOvSmIMl79Sk6XFcBEd0V9)7MHqlKRUkZhBAw5DLRGsqtPt4jw7AAqVQDP0NC1cTiVXFWOkrcQJELeHc1NzrT9yrMKdi50XKd6O6UYEV6AUqw9uShx3r3zGyFQLUZ0rKQf3pyyscK(R9tN(ukZw3ALZUQ3CXhPWrCLdpKKVa8W1Nz3x)(AYAdobAA3BXoFIt3Zv3dfTdzTmHg)FgHDvcUlQhsyAbFR0yHoaHiydvoJWxc2n2DS2UQ8dEioXArjcO8MklrGV0tc0DomYg8L00QxbIUgY09BD7knGWtS1SjAQRPjPmuMXUMPiRkWfmu3OxsWCc4wlnyXe71YjXEJ3gITMkY52tXJ9aYBfsxdvX6RW1tOZBfF3IzxgcZQWjc3Fbyo9CPkh9H3kYV9fEQX9CzRWwJBar4EjIAOoYnGeCVKJ201Cdicxifdxqs3(QntxbmGdRb8N5htwbKdF66a82KQF7sNs2Wf3qKiVZzcTZw07pQP1DSf8)dAC9p4C05luUwjuo2tm0LCQU4jSGC9uafK1emVAZ9hCjCgVpoGblmmUpzzqya4nQ5w9Jegs0y6zRJE9O1XF8qg7AVJZE0UQR9gmVhrC21w6LCuj19r(K44VDFJob(ex1oNT8pBKF)GR9PrZvX9SRHipW9Y6aWkEgLelKDlx47HIHUBlxbCphtxjvs1W4JTLhPgGiA(hVM9j127x0VzSWvZEG(DyAOX2MorfPdDl4nqui0tDZDXEHYIyrp4BkAqpVc3pm(UoZ5y7dDECaPigM8RGNn(AX3HMrph67z(1K4iCim87kd2KXU9SyE(3hMhk7F4Hq)gWisGZmSrMWWrCiPC2ojgZRGoAUKMmm7D)wqe8kNxK5)5OK09OGqcKQeinT9ZhcmiwXnSWq21IXUiPXeSNgk(fzjvGtDaWihjRqkydyy2eEbDrmH6MgPr961iXRjCYssc9fzVlZ)jaBQAa8S3zWMHg07Rb)NG(xbBQf1xTR0)cBhDFoKd8XFRTHYHF7Rv8pJqiJtSFFTfuj8)sy)4ZKG7IBgVDxH(6mUgsoGYI3(hBtqi0l5dY8TD9DV7bTEdE4R71L4H6ZdaI)ym9jYRCm7Dsnkzy5Tq(Oz)ll3T2Jd2mZ2DZn4KoUvU(SsflYj3ZRsfSNcPx1jQrQ1luAMg515vSF(Ec6JuGYsjhZSVUIZS2auTuiWIvGhlkKszmqhy1PZmHD6atp8Ir5RFjKPQlMkOP50DWqJQjVAaM8yeQKzsPjCOGPDM6uOsgW7SBHzaCsuYTpeX0zpn3BQrtDDUGLjX7MuJj(6MnbKJOrCKAi0YcYn(8kGdVyMB3CQbyytzmThIOaiqK7gykEXSjDlHsm9qr0eWWlQal8NgnCC3YthGVUPxTLj1GGJhWn11eKQhkPhJisnta)xVoQ15RajnRSE7TThbCH7OoLU79L0RamRxMAfUyTqU4CXk0xQIRbMxkLYSIh2Gtpwdx70Uejl5Awd5RPZ03NQqH6435DM0y9ZXMsRcIkrfWk1YI2eDkPUllb(7nkpCQH6cIFGcYIONjo9(BWVhIQgaKHYcVtLnh9QYI89qoUrgyZqCFNuveL3xcDnPULXEgTLIindVSOnNgVq1Fb9iUyIbI09LTs2rfCAqovyRPiGMGXzGtf8Huy1aQrfhVoMSdnuUen8z77yutE7oivz)QcxiRHRfk64j5PjBG(RA0Ve2xftxhhyPWMoB8ZuzQeXvf(AG87GQiJJmBQZeTSPLyXQSQnaZTW6pxlr4H6FGbhsmvvOVgGSLRurdS1qrvlh7b7FG9NuckkYrB4Pcn0MRdsCqvLYDXb)i84SYzonp75Q0OpVL6gtd0mlQ2uVwXCSN)QqfddeCuE5we0HFqArqhWHRJBHT)QgdFmSCEKdU2KkN3ZTEOj77q)fMe3rvY4yZaP2pNMwCOju0y(hz6tPJZBKxZGSrP33mf1qJZQIboLpx3FsOrQFngNnj)zn(6loD25wM2EqhgWKYy(ur7KFCljrPQOyq5(vaTGuZ5KuYBvs5rL2Sikf3L)JIEi9pDoenhITAkCZ18Oug4(rTnVWW6ZlyM323fQZYrKmRUi6mjFdooGeFyvTUftjsC5WnuXtbaeI418Fcgfu)6cygQiVe5brHPQFYDOEQEkOMevLNQFjDihDbDrP7IakqtXK6ix8OEHLzDw((GFi2uzaoK1llWjPqburp5rhjChTlK7vSp61sDhbcrUF9lS)TYCL(N6(OIV0hjkjeim0rQ6x4aUY47ubYBCDYTg5pqN1Pn4S9fYTSWtZFihtDgo52BpP57t3FMAJX6RNEchTF1eZCAlbuDlbkP0SNHlCASGhrw8bDUFFatg0TWA2bCdwg0spX6cZw24oDeu)kNts5BXVbrZ3LUjo4kX3vGf))p]] )
 
-    spec:RegisterPack( "兽王(黑科研)", 20251027, [[Hekili:DVXApUrrYFlbKw2Le85XoopqRxjsaoiIec4eXhoD2Ew727okJNXmZ4SSNIgfbjqsacHJ70HGiiCeUi4aIecfGnp4hZ5h79j(lCv198O7z6EMXExEDsOW6zQQ6QQUEx2n1AEQMn6Q7rAEIkLRutRCLdwQSwLdPDGMn82CaPzJb6DoJ(AWFyP3h(3Xx8(tV6BU4)9UV70B9UtVXFBjeInnT17IuY1EOthaQMnwDOHP3ZA1C1eK)aLQuT2b1oea7ash4X1Q2SX6gD7syWsC70SXKV6MJU37p(IxA6w3A8hV1OTU6ZqoJHPHF7JBFYOJE0p(1JV5Bp9YxA8LUZO7F9)Z5Fv)J5FSjF3DhFLBmARxxRmG9OF4nhF53EY38jtU(Lh99V30V5bt(h3z6hCHTFW7n(n2AY7CTP3ClaXMnmnC9CrrWEaXI4a)1jO6gIL(QMKUnpsZg6D8mSTarJ46zOB2AdhDV1zSSJXa27AqE5HeRoKh3V9ryG53(Lq48B)yR43UXMw6dCjWFmWXWAn3GN6P3FaPlH9PxuFGrx)2pTHtWdEcqSh60L4432UNF7J6yVraIpjfMJq0D9yp4pAQBCw4rNY2naKo2wEgwdHN5y7PZysGD9iog6WvhXRKUjfLf8B3ZUZqaTvQ73Uw5MEWLJcnW66wDDHBqtBVWpaqxvb0EGOEgINwicrFgWz)zJtLe4ubXPgIt0LHPTD3w9g6SjpDaOoGauehxIZzavEcOoipudSz)Fbioucomw55z0h0BGoUwmjCdUkrmp8mHPdET3QhCJI4QvwnY6Mel4ARvFQrrl7ET6GMeLcHoIKPaHs5KM1POCxGhATkAuLMKXVJsRKgiPO1AudYwEG9yiXsAQPXPe4aNs)KMuX0Fp(T7swDyVELGlwWL1Rf4TzTwPHd4Um4FdLEjn3K4jeJoeXXSvh7(9bdCk21uInLreIlamssbTkNGQ70r3I0YDDBur6HuWb0PsI6mtSO67JcXhPCH3DVpbXSV9zj9bcfjPXgwUeR1OjA4D)au0TjzRxqsahce2UVbjugJPC)HMEgrsOAnKySWKeDzbAMuVRwVjJ5QqpHf9Bhy2aEtT6ys0plPKdPVUHf780kvZV95oNF79ids0(APK6(9xwLCR2YxTNKCfbEm034P7SgOZWGzWnCRUgSyAALv5b2OZMaZ3IHNlELggnFhBYjLvtyiKi4YbY7Gxv3XbmivDO7VCro0aIeLRPWgjvPup(YH8kdmTDPcaKQqioN4RYoPfNaCWdxal9ebiomVpBh7vD0zVkPtBxspIfYsz76Uor3eIvoOJhZWQwzEPADdtDhwnlz65AybUIGbwRU69bDDRAUudXaI3x)v8B)O(TlxIlWuxcGRdwPgJFNE3xdQwmKzP)JhVGAbAnQgoT0szSqmYsNJkwEFdpIE3nvg6v2fGI45LdsHWN)PLlXdSrYu7hyN3J4CwBhzM54vs1dgZlmiZ(YyUsmRo(PuAjeLSIudsQgbcP3ccrd2ec5CuX3ssW2rhc0JKrBwsEGFIz91kY0gUpqE3Tesn8LWhOal)fG9lFSCIvxKnICU0HG77(YtQJtS5MtsazjwFcPWc7UO7s)8RmKyMiWDpRf6spCGGF7q8HcjbL4PgcUZqRwS)Uf2oiViDAldVNJCwI5Ip0at9njop0smRVYSwhBX6ooimIK0AcS6PXwaznAIImRLrWVzOdvCHMaWg60kJVeuXyVwcxGkyswBfP5QGwALKZtGRokqAw6aBl)2SgIl052X22SR9gwjQao2lfUXpqy6mPLklWUYIJjj9PAoJJwHSMRSSIfIc0qH0(Y4dLiP9UIOPkGWt7dqwhGfH(jZLtR2uG(y10Y6cCEO(YjjEhBqlfnNbzniwKJjShbOruODAQNbDKechvuJeYAtSiNsrlAOQWXgxxJS2jlKbvIKsYASSq0XZaISTQT1qxcRz5Ko3HurY0AKeoc0l9bva8A)2o6Dadu4tByGtUk5KSwuVNhDAu04klLVboYDQR(vrZZyNp5fzbUWQWLMmRjnPPUM4DDgq6yR0uppifHfcPk3mUWK2QhnuE0jEkyiDufci9yJenxEgJ1aJGbog2WbVjyYSQHPbyn62mDTLkNsvIwGNBDp0emvyYAsu02utwcc)1gTD(OjeOUy0DgZQPCAFv2rZLQYmpxkKHL19Es9c)0mROk8sqtbI2iNIE9NTTrU9DGNQ6WgbuXCtRxPLZq31fiKyjO7y7mCadlflYrNjLfZycXmwCG9gGNhyEPCucCwgratPDgZqEwhwB1ChPCUd8Glus8ynQQkosIH)iyF8K2NIVvIMfRbs80u7ONtRIyrOCPw5Bv8evvvbb)mJeLGNg8cHIQtRfl08QOhQAV(D48Kprv1HeegaKAcOE6yZ3iPWUXDGMz6VQU0gxJ4dCTGEy6cV1jTmCGkFwxFJZKmfeTVUhpA3xhh(xIdKl60dWTnck8NVJN9QyrkA7dJPvbCGpIUl(gS5MxY(LAyGL7CC7t63(jo5Zb97yVMrh)2sUqJycHRZWwzuWWbMRzoNKDk9vO0O6lVSgQsrMna14uX1jhv9sSpoz7qdDVJ6dRyR4qY(i5kJHZViBL8onQVQe2ZvjcZAgx1Hh(LS4Qmkl0RatVV45NYDE8)ANP3t1WaMbtAkZ1ZHy9x2SeCx35m(TrRBU3fDcIPU2FMZpH(YciDCg0XhuOhkFV75m3yUkQlvGkQZx5OU62D5vaR2PQyjgvBWVdk)q47QqgBvrOL)mVIYPtq5Fbo(5koArBrFUIQoFNVSo0PQ4ZcfFJaM(7R0g6ow4OPHMBwhNxs)b2oEyskOiJhHnkKhXVTd5Lhc(uqSjxBCAS6d9S7ZkjPdOOxJ4wY)ypNHf8knO(LtB5oCasieagpcutquEeab6j2Z200Ed6eI1h6OJJNHGF)FgslRXaq0dblKk4OIWWfEHWzztz3Hwcq3Tlcmu1K(Qq9rpU)X8B)yaA8Ca(1QsImRBtkQa)Ra)hVQCfSpVZ0VHLJ8Vhcwh0VRLHO6dlQu8)hUqsRNy3sfet8Fti)4Zyv(GkJNTFi)QvnXsNaMfIxp0BDCQsrFBp)tpLU7MN0uFZ)m2jPDpdtOOHh2VndGXx5dbyM(53zYLp)pDV3AY7F7rF)5N(GBo56xM98PFZdM(zF04)6Bn(sV(OT(3Spo9dUW0R(5J)67m9UxyYLUg8ra3TFJVfO2OTUAW3r0p8BhDV3F6Top8w23cv2ZJ(cQIe5UW)9g0VaQahn(F9Qt(ORp6(3y8T)bOlZHM0sQoQJEpp8BH6wV(236tHZbElJEJFWxm9Q3EYf(4Xx8B3(o4RM8L)ZT)XRo(k3y8f)Sjx6DhD3VeE4l8cG88t37d0kV)AvQw9qhQm902(2F3K35AJEWho5k)9Xx7TNEL7aWac)OV)l2(1U)4B(Xt(QpD6N81B)JxB7p5TIKHiUp4Bn7ddu6KoKhJ1GU)XyxiULI6zFV1)dk6eDFg9QRQt2f2to9WwKtk8q2ZU8Pe3VlL6XfQlfAXwGLddR53q95X1rxKWsQJWOU6ZLEHM1w2JicCyHlPhjsenwqCB7lxx2c1xq2dxPCW5hThD(dJFt6bWnZlXwGEj2S1(WDAvNrnQbf0K8YAHSKKntNpXeI)WwJms5SRxC56hiWAkv1M5EGr5WYhuPX9Zhn6YHrHyo5qOIneB85X7XDL6vYhtHUdttJLlajc3ylIDQv8Us9A5tHOLVIKi9(BxjE3TpA5svZNEIBInF45RyK3jWyUxDk)zcuTfsP9HnMuN2uwHUQfXlSFkLOEUZLThWkvkNl1RSBr94nBwirnEbMzao9Er5ok5jxQjAXLkt5S1wyX5vWfUTJgqc7mtSIYLRlQNIN(48R51QL68dgZIqgeEGcNgzghA6HAY4DwkWNpv6HfLKxG(ZAHLeDj6T3Vd(v0exaaZvMADYPCeZktJ3dX4klbnj(95cvOxErbSIm2nY3tQSe6Pj5LHL5K6f82lOfXk1KaKOTSsWMlNtj0jEiZCei9uPLGj3I84qvY69cVE1KjhcZdKwWNQVT9PXnFNuo9v8Ckv6UgYOvRfeMm1A659(z7NNt0fxypJylxV6b5rkAG5C4LAW9le7zmNrt1QjennAP5CNAQTUhk97xiq4SAFGohSLFZbFInNhDsHfWMyD3cXyNz7dS(KOzeJyK1KNHcAd4b2cR5PYoXaFoS4uIzamh8W8Wi2VfVIj1ANdZ2KmxrdSM)yxfjnemxw5ki0SFrQGqZWLRwLqz)OPA(Ouu)iZCUjEm3Ll9qG27G6lKrU5kLX8gbIVEobUywdOiG8VKHpzgopnBTxScLoE6quLK2Rk64e9Cr7j2Am5wXz9Abpl1QnxU((v0T9c5ia1I85hslN8KRR7YLvK2OCXsGgcQ8ysCXTIGCUcBg6LIA5xmSgY2l2a8MnXsnPM5cwuCnCV3S6xOuY(fKJB2AHKOmhbZssICdYNcJziWhMvlFYenjUGXneJt4aiO(Rb)YtdH(jdhZqm4rtEGMyk(3LgYN83c8br5Xj(NBgIrEJUiYCHokqz(KItUyVfAwMjr5NN5hIfvAGnzDKW5KeYa8tpzVZ54oYMi7QZ(Oqh1oCqim91ty)uC9v2EXk7n87kKlxabDB0qk(h1lEY474hKx1KGR0ZFbruxofMzFqvIs8K(3U8YALQDUZTN0VF4GL4lmw88ed4i8dfUUwwbGskjqkL01mSIwQdCoIIVqU67zOZG8jw6kGtHYczutSiXufnoxdHe)MkB()(d]] )
+    spec:RegisterPack( "兽王(黑科研)", 20251107, [[Hekili:DVXAVnXv2FlriffkuV(rmbwzhPcu2wKGLwZQ9dRwpZe7Rtgf7z8oZ4eYQOrOU8ieGuOLvGaubAHL2UTejekLMaHFmRFK(P(xyp37DECVZm3zg7eqDxjeGN586EUN3h7Q5QE2QvQRyHQE68zZxmxUStLj3KtwCYIvRyTuBu1kTvQnVYSW)rtPf839U4RhS2vN4x26MdE6nh8WBTFmel1uxPoMsM6DmQbqvTYmDuBA9XAvNji5Zdq1gvdEqXcvRmNA96ikuiZAvR0)hFC3xDNExCLbB(0EpyZUBU2hHMxTPQT8P0pJht7(MN17XxFWvwP3kB0913))C(pZ(K0N1DZlD4SaUD36jDF5v7V(xSZ9UC3xE(b37fdU13o4Ux4xU9Z(LV(o2N0(K9)PT6T6db4ZrG)NVAVRC9(p)r9V)v6(YVCWZ3U)T3aGFNT)YExEZ(F(ng84nb2uTstvtlt8rvVnsdza)Vtt0HinLzAIQx9OvRuZq1czOQaAq1wiB5PTLHdTsnlvDnqXGmTuvAkTOHI1C0JTHAB67QG(BDqA1q)EB5JsbZw(pJHZw(9bQuzjnL2MafR02qvBwtNNAP0QnQoI(PpvPTADB5tOA48GpauDDmQJmSL1BylFmd9fDq84eyoksX0I(G)qtf1fGhDwDthqQPRzPQ1bEMHULcriTGBUahy3J2CkA1nHR3M6wUFaGUGaOTGZW8iRCUi49zaNjJhN8bWjpgNIcWzMM661LA0Xyj2Rg8Bxajb3HTurWPD6Y2YfWK5qIidYWezmpO3tfzMctgxCBRt)xFYcqC4KnBk6tctNBzmMhzOW0aBri1aUSX4MlRyKvAI0SYOi1IyViP3qQg2AjJl0EKmeiekhJFaLY1bzqAgS9wys6)ocTcAIfIwZsSvLSatvxIzlpUTCd9ADCUhYXOeyaNq)GgL(0FmB56Oz60Org46g8XTKahrTzZ0PnZLb7Bi0lObRp9AJavAtG5(Odb0AkvtVvlWfHGDqtxFSjccxidqqcEqlWCqvmQPOHKmNthRiTWuWa0PXgMkfIO47JujhHccS3EFchZw6lGAbeY7K6ByzI0MLKbJ19Zch6TbsZeFSJv7mhsPjO2BxdIswceJIz9jo6CZP2uXqyKrFQOQbAtWArQUslqyKkAs8tDiElLZzl)E2YzZWCgRJaCnW5dOYRIEcsAKbJcQfNKr8B1PPLQ3DKyH3ZajoIf0Kr8vEuYzEcPNWw2XIhceivRjszbugdulfvnaUsGnqMI2YlVST8yrbj21y)P)alkldV7DQInqyAWZf2AzsYBSumMf0H4WZGnRuDvAuAiyCLAlbcVefat8TBePYgnVLiLjAckrXfdM8leJNrXWamFfX0jZMgM6qeV0KP2iHAm7FlGox7M6MKdaKLJlen)RIpFlZbyQJe9njN8hi22ryd3utFgdf6R4t3ts8sCETI2OZcPuFj2a3Sr9LmrwWXl(QnPxrnqglOBe1ne2ESWu(SKcPRRFCY2W7qeFeGirIZppFKQuhN2uQghsgs06wQqznZOR1XezgL62Lpo16MqM6qfdlQ0z)IHtm3po6xnD9M11xulWR9oq4woYgvH1jumE(3I8pVxwxfikC8MYGDvefLutbYWapxk3WKUc)jAAwjVC4G3e2cWmdMA4xcFGaC0VaooSjrqA1XIrGM3odcioK8dISHlebsM529u99hLQNd5pwdNRVtBlwZ(o4hkmBfh()jCBH0wsXhcABKGZzhdYbaQ(h3KxUS4xcIf20LtRs)GeU72QH6NOentf(Ls0Pa408BePQ4KQJbKMgmvxZwM26CQ4Bs2x47Wd5MmqGNhJ4gvO0yA1lSKXqlxrZmQ0xPIcKOXKgYK8nxIpdLGJyQyhTbGyBBmQCT5tj5XvLgFFLrKmnTeVMoOKyh9qmnz62ba0Mj0SmX8hFokMsw51ar8TFM264lKs263esuTLMksGdvXBifQD0urhUuFr1wAGCFSP2s2wnC4kaHwG2dW3w2qPgao8PfvXt7k40VMqPHfzcwK4oKWP5e59(UkvAoro)VJYLE6CJC8cMrIHPJ4adjrh)zIHtip6JwkqZFJSAcA)Zx6cpLkEJWpsDwW0QTHQoiNlbgIZO2ufCcOfQfxD2KM5cwtr(G9c71xT4Oj7UZBoHt5lV4sVtZWEepnRye4O6XnOEHDkM5tSl3HUtg(73ZsOsW71eBXT5sANtYOJ5CCmMVMYDTPkU7CgtvpEserXnf7iIT1xe88aZlH9HZyz4bmH2Xm15HDiT5Jzo0PCAbmHs8NjqbXXrg(HZYBsCC9ZYwJoHBID0tOPrCnOSLRZ2LAHK6OEKAtLWrm1FBoovEn2jGyd0k9lm0rfs7uQpDbXHcyia7GxdsaXE1J20IGBL2gqNsTMrjHwvDu4QgqjvZPS48CQB3UtuWR80cNiYAoKKpSSYGaycCFq3bAVvV3GhERbF3g9VY5)1xDT(3zD8so3(X9V)vOpFWZ3EWt(QEFX16TYL6U5)M(Xb39cdw7769SngS1f6VYnGpc4UZLFbqTUBUMZQoV3l6(Q7m4PNhElD1R0N7Tvwmr2c(ZLXBDvU3)6Z6)v3V7RFyV1)5kQT60KuP(XmG61WBsDZlTZt)gGjWBPeR32F)G1wV)fEqVl(ID2a)Q()WxVZBwR3QpS3fFs)vUz3T(b4HFYNahMF9v3nx2jlMVqHdFyiZ(oR)t9)8B0D771F1)zVBC9bRUbaaCS7(YVFN)XR794h0)h)Mbp6z78MBSZJUMN07j34T3Af3udgdNc7TYDj5A0kU5HLM5DiQM(a2UH6ENS(zlNo19tk4GSh9i28(n3Ul3RDSA6DBQtrv9iw)Uhw2I4OG)gPixRuS)G0NK)38LlzjAGkPBLNe5JiCnmqA)9LYa311M3wgNVH5DECGpB8KXodkYltXPJXG2NrUoKSdajHermTLKjfTLKSYrClc7X7pxStv6Y)l2GpnvujOgUd92SeoUVFicxA0HzeHi5BG43bgf0)hmJDNLHTa0cd(fSFnYwuXqdtNQvGIz6T6d6T(RGAiWFJUka1e0F1ZJllyLBVZJ(wYxqmG4DSMd3LO33JS)YhQyU0zAQS0FfxUNEd1MGMyF2Y)2QiRtUV3L1zH52UVul83WU9bu6mgO3NwfT9jP3TW1UBH1hO8VtqXuhuTrzrfJn(yjugwA4KltgBpMl(UpeQ77Lej08LUfnm0k1C1NNccJ4)LXZdJYI5l5cnUDt5reGzUUDyI4rJX59Ulvokh4XJ6HtN1H)ER3ILzSl4YbUHEnwC0lWWTpiES2LPuJyqbL4vkNRifXUPsMyrSijmLJphFPYhYXAkubcjYqVcYtg0iRckz0iRhcFigrjurhHXg)C)L8mD58jJjxTnHPrPuqc3L2GXo0(FMUCXKPG3(xWKi8YDM2FXoVx2mfsME8zGtgE2LUW6eOoYlhHLNavLWu6G4ThuMSQMuDvZJN7wpeI6YlhVhW0qtljr987vu3F5gP6O6VdJyaNCViCFbSKlu)ymPYe2z44tmQhCUBBVY7P8mWwkkvMxp5378OR5Zvme)DAsGldclqU9shdtd3sov2PPa)JHspmre5fiFz3Pjr3p527)b(U17xaa1vMyDYOC4ZktI3dX4YgbAr43NiuUE5PfW8rjUE(ErEwC90I4LUL5e6fS2lylIPlgbq82YcbBKCoJGo(JiHHaHNPseyYmODguJyA9UxV5I6CW1CjPGprFTudJBYoPm6l)USf6U6kOfk6eMm0A3y9(PlQJ5OZVJpkXkvUWuSi5nUhg8cn2PX99mgXOP5kYfn1BVzmCn0I3Cp9tYfiCyTpWoh09FXaFGLN5Xj3cydSllUySdT9bU(eVHqGXiUXyaf06id0TdXsLDJb(iyXjethyM6iSWW3VfRIj0UHCZ2emxrfCn)(Ukr0qWizLlGqd)fPacnexU5Y7E2pwOMpY41pYqNBIfZ94sp4O9UO(IOi3iLYyuJaXwphNumSbu4q(Dz4tQHZjOdTLwO0PchIktK9QIDC8EoV9uOb0xU44cgmFPYtkOB7Xt4au0ZNVdPCYZmNIjtwrsJYPlbQlOrhtIjULhKJuytxVuSw(tDRHuEIkG3CtCPMeZColkMgUpqC9lKjy)crJB8AHGOmcbZcsIedYhcJHiWhoRwYKXBsCoJBWhh3bqq8xD(rN5c9XDhZGp4EtEGKyY)3rgwozVfydIYIJ)ppmmgjn6cpZfYOaJYNKFYfhivZYmikVDMFiUOsvCtwh1DojUca70toWioUJ4jYE6SpsfR2LdcHQV(a9pKPVs5jYFa3nDBYeqqrhBi5)JIdZz87yhKxHGGl0ZFCEulfcZ4zuEVepH)T)vkxMIlV8yHFFN27NTWyE(XhWH7hAx5CXfak4jbsPeUMHPZfIHJqu8XtuFpeDgKmXcxbCiugpMAI5jMOOXjAiWTNvRQv)Vd]] )

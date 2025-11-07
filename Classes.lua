@@ -4064,8 +4064,25 @@ function Hekili:SpecializationChanged()
 
     local specs = {}
 
-    -- MoP Classic: Use the detected spec directly
-    insert( specs, 1, currentID )
+    -- 将当前职业的所有专精ID加入列表（当前专精置顶，其余专精随后），以便合并所有专精的默认包。
+    do
+        local classId = select( 3, UnitClass( "player" ) )
+        local num = (ns.GetNumSpecializationsForClassID and ns.GetNumSpecializationsForClassID( classId )) or (GetNumSpecializations and GetNumSpecializations()) or 3
+        -- 先插入当前专精到首位。
+        insert( specs, 1, currentID )
+        -- 再枚举其余专精并加入。
+        for i = 1, num do
+            local sid
+            if ns.GetSpecializationInfoForClassID then
+                sid = select( 1, ns.GetSpecializationInfoForClassID( classId, i ) )
+            elseif GetSpecializationInfo then
+                sid = GetSpecializationInfo( i )
+            end
+            if sid and sid ~= currentID then
+                insert( specs, sid )
+            end
+        end
+    end
 
     state.spec.id = currentID
     state.spec.name = currentName or "Unknown"
@@ -4112,11 +4129,7 @@ function Hekili:SpecializationChanged()
     end
 
     state.spec[ state.spec.key ] = true
-    --EasyPlay 自动加载本职业所有专精的默认配置，而不局限于当前使用的专精。
-    for i = 1, 4 do
-        local id, _, _, _, _, _ = GetSpecializationInfo( i )
-        insert( specs, id )
-    end
+
 
     insert( specs, 0 )
 

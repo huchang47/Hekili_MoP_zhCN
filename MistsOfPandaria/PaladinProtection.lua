@@ -392,7 +392,7 @@ blessing_of_might = {
         tick_time = 1,
         max_stack = 1,
         generate = function( t )
-            -- Emulate a ground effect that we just cast b  treat as up briefly for planning
+            -- Emulate a ground effect that we just cast — treat as up briefly for planning
             local now = state.query_time or GetTime()
             t.name = GetSpellInfo(26573) or "Consecration"
             t.count = 1
@@ -919,7 +919,6 @@ spec:RegisterAbilities( {
         end,
         handler = function() end
     },
-
 -- Core Protection abilities
     shield_of_the_righteous = {
         id = 53600,
@@ -1466,7 +1465,7 @@ spec:RegisterAbilities( {
         range = 10,
 
         usable = function()
-            -- Add any b donb t break CC / donb t use in single-targetb  guards here if you want.
+            -- Add any “don’t break CC / don’t use in single-target” guards here if you want.
             return true
         end,
 
@@ -1748,7 +1747,7 @@ spec:RegisterOptions( {
     
     potion = "jade_serpent_potion",
     
-    package = "i2i*Simc",
+    package = "Protection",
     
     holy_prism_heal = false,
     execution_sentence_heal = false,

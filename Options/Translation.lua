@@ -17,7 +17,11 @@ local insert, remove, sort, wipe = table.insert, table.remove, table.sort, table
 
 -- 获取游戏API函数
 local GetSpellInfo = ns.GetUnpackedSpellInfo
-local GetSpellDescription = C_Spell.GetSpellDescription
+local GetSpellDescription = ( C_Spell and C_Spell.GetSpellDescription ) or function() return "" end
+local GetSpellLink = ( C_Spell and C_Spell.GetSpellLink ) or function( spellID )
+    local name = GetSpellInfo( spellID )
+    return name or tostring( spellID )
+end
 
 -- 判断字符串是否包含中文
 -- @param str 要检查的字符串
@@ -63,6 +67,12 @@ local function getTalentSpellID(talentName)
         return talentCache[talentName]
     end
     
+    -- 兼容性：当现代天赋API不可用时，直接返回nil
+    if not ( C_ClassTalents and C_ClassTalents.GetActiveConfigID and C_Traits and C_Traits.GetConfigInfo ) then
+        talentCache[talentName] = nil
+        return nil, "天赋查询不支持此客户端"
+    end
+
     -- 获取当前天赋配置
     local configID = C_ClassTalents.GetActiveConfigID()
     if not configID then 
@@ -99,8 +109,8 @@ local function getTalentSpellID(talentName)
                 if entryInfo and entryInfo.definitionID then
                     local defInfo = C_Traits.GetDefinitionInfo(entryInfo.definitionID)
                     if defInfo and defInfo.spellID then
-                        local spellInfo = C_Spell.GetSpellInfo(defInfo.spellID)
-                        if spellInfo and spellInfo.name == talentName then
+                        local name = GetSpellInfo(defInfo.spellID)
+                        if name and name == talentName then
                             -- 存入缓存
                             talentCache[talentName] = defInfo.spellID
                             return defInfo.spellID
@@ -148,7 +158,7 @@ local function transSpell(input)
         if ability then
             local result = ability.name
             spellCache[input] = result
-            print(format("查询到的技能：%s", C_Spell.GetSpellLink(ability.id)))
+            print(format("查询到的技能：%s", GetSpellLink(ability.id)))
             return result
         end
 
@@ -157,18 +167,18 @@ local function transSpell(input)
         if aura then
             local result = aura.name
             spellCache[input] = result
-            print(format("查询到的光环：%s", C_Spell.GetSpellLink(aura.id)))
+            print(format("查询到的光环：%s", GetSpellLink(aura.id)))
             return result
         end
 
         -- 检查是否是天赋
         local talent = Hekili.Class.talents[input]
         if talent then
-            local spellInfo = C_Spell.GetSpellInfo(talent[2])
-            if spellInfo then
-                local result = spellInfo.name
+            local name = GetSpellInfo( talent[2] )
+            if name then
+                local result = name
                 spellCache[input] = result
-                print(format("查询到的天赋：%s", C_Spell.GetSpellLink(spellInfo.spellID)))
+                print(format("查询到的天赋：%s", GetSpellLink(talent[2])))
                 return result
             end
         end
@@ -180,7 +190,7 @@ local function transSpell(input)
             if ability.name == input then
                 local result = (type(key) == "number" or isChinese(key)) and ability.key or key
                 spellCache[input] = result
-                print(format("查询到的技能：%s", C_Spell.GetSpellLink(ability.itemSpellID or ability.id)))
+                print(format("查询到的技能：%s", GetSpellLink(ability.itemSpellID or ability.id)))
                 return result
             end
         end
@@ -189,7 +199,7 @@ local function transSpell(input)
         for key, ability in pairs(Hekili.Class.auras) do
             if ability.name == input and not isChinese(key) then
                 spellCache[input] = key
-                print(format("查询到的光环：%s", C_Spell.GetSpellLink(ability.id)))
+                print(format("查询到的光环：%s", GetSpellLink(ability.id)))
                 return key
             end
         end
@@ -200,7 +210,7 @@ local function transSpell(input)
             for key, ability in pairs(Hekili.Class.talents) do
                 if ability[2] == spellid and not isChinese(key) then
                     spellCache[input] = key
-                    print(format("查询到的天赋：%s", C_Spell.GetSpellLink(ability[2])))
+                    print(format("查询到的天赋：%s", GetSpellLink(ability[2])))
                     return key
                 end
             end
@@ -311,10 +321,10 @@ local function updateExportWindow()
     -- 提取talents中的中英文名称，过滤数字key和中文key
     for key, talent in pairs(Hekili.Class.talents) do
         if type(key) ~= 'number' and not isChinese(key) then
-            local spellInfo = C_Spell.GetSpellInfo(talent[2])
-            if spellInfo then
+            local name = GetSpellInfo(talent[2])
+            if name then
                 local enName = key
-                local zhName = spellInfo.name
+                local zhName = name
                 jsonData.keywords[enName] = zhName
             end
         end

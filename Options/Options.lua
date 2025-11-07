@@ -6837,8 +6837,18 @@ do
                                     order = 2,
                                     values = function()
                                         local v = {}
+                                        -- 允许导出的列表仅包含本职业的所有专精（排除隐藏）。
+                                        local allowed = {}
+                                        do
+                                            local count = GetNumSpecializations()
+                                            for i = 1, count do
+                                                local sid = GetSpecializationInfo(i)
+                                                if sid then allowed[sid] = true end
+                                            end
+                                        end
+
                                         for k, pack in pairs(Hekili.DB.profile.packs) do
-                                            if pack.spec and class and class.specs and class.specs[pack.spec] then
+                                            if pack.spec and not pack.hidden and allowed[pack.spec] then
                                                 v[k] = k
                                             end
                                         end
@@ -6882,9 +6892,19 @@ do
         wipe(packs.plugins.packages)
         wipe(packs.plugins.links)
 
+        -- 构建本职业所有专精的ID集合。
+        local allowedSpecs = {}
+        do
+            local count = GetNumSpecializations()
+            for i = 1, count do
+                local sid = GetSpecializationInfo(i)
+                if sid then allowedSpecs[sid] = true end
+            end
+        end
+
         local count = 0
         for pack, data in orderedPairs(self.DB.profile.packs) do
-            if data.spec and class and class.specs and class.specs[data.spec] and not data.hidden then
+            if data.spec and allowedSpecs[data.spec] and not data.hidden then
                 packs.plugins.links.packButtons = packs.plugins.links.packButtons or {
                     type = "header",
                     name = "已安装的配置",

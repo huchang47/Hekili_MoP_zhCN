@@ -654,6 +654,12 @@ spec:RegisterAuras( {
                 -- Alias for consistency with SimC
                 return t.tick_dmg
             end,
+            last_snapshot_contains_tigers_fury = function( t )
+                if not t.up then return false end
+                local snap = get_bleed_snapshot_record( t.unit )
+                if not snap then return false end
+                return snap.rake_has_tf or false
+            end,
         },
     },
     regrowth = {
@@ -694,6 +700,12 @@ spec:RegisterAuras( {
                 -- Alias for consistency with SimC
                 return t.tick_dmg
             end,
+            last_snapshot_contains_tigers_fury = function( t )
+                if not t.up then return false end
+                local snap = get_bleed_snapshot_record( t.unit )
+                if not snap then return false end
+                return snap.rip_has_tf or false
+            end,
         },
     },
     shadowmeld = {
@@ -718,13 +730,21 @@ spec:RegisterAuras( {
         tick_time = 3,
         mechanic = "bleed",
         max_stack = 1,
-        copy = {77758},
+        -- Cat-form Thrash only; bear-form Thrash tracked separately as 'thrash_bear'.
     },
 
     thrash_cat = {
         id = 106830,
         duration = 15,
         tick_time = 3,
+        mechanic = "bleed",
+        max_stack = 1,
+    },
+    -- Bear-form Thrash (separate aura so we can gate bear exit reliably).
+    thrash_bear = {
+        id = 77758,
+        duration = 16,
+        tick_time = 2,
         mechanic = "bleed",
         max_stack = 1,
     },
@@ -803,6 +823,21 @@ spec:RegisterAuras( {
     bear_form_weaving = {
         duration = 3600,
         max_stack = 1,
+    },
+
+    -- Racial ability auras
+    blood_fury = {
+        id = 20572,
+        duration = 15,
+        max_stack = 1,
+        type = "Magic",
+    },
+
+    berserking = {
+        id = 26297,
+        duration = 10,
+        max_stack = 1,
+        type = "Magic",
     },
 } )
 
@@ -938,9 +973,9 @@ spec:RegisterStateTable( "druid", setmetatable( {},{
     end
 } ) )
 
--- MoP: Bleeding only considers Rake, Rip, and Thrash (no Thrash Bear for Feral).
+-- MoP: Bleeding considers Rake, Rip, Thrash (Cat), and Thrash (Bear) for gating decisions.
 spec:RegisterStateExpr( "bleeding", function ()
-    return debuff.rake.up or debuff.rip.up or debuff.thrash.up
+    return debuff.rake.up or debuff.rip.up or debuff.thrash.up or ( debuff.thrash_bear and debuff.thrash_bear.up )
 end )
 
 -- MoP: Effective stealth is only Prowl or Incarnation (no Shadowmeld for snapshotting in MoP).
@@ -1546,6 +1581,125 @@ spec:RegisterStateExpr( "shred_position_ok", function ()
     return false
 end )
 
+-- Missing state expressions for APL functionality
+spec:RegisterStateExpr( "combo_points_for_rip", function ()
+    return combo_points.current >= 5
+end )
+
+spec:RegisterStateExpr( "rake_stronger", function ()
+    if not debuff.rake.up then return true end
+    -- Check if new Rake would be stronger (TF buff active)
+    return buff.tigers_fury.up and not debuff.rake.last_snapshot_contains_tigers_fury
+end )
+
+spec:RegisterStateExpr( "rip_stronger", function ()
+    if not debuff.rip.up then return true end
+    -- Check if new Rip would be stronger (TF buff active)
+    return buff.tigers_fury.up and not debuff.rip.last_snapshot_contains_tigers_fury
+end )
+
+spec:RegisterStateExpr( "delay_rip_for_tf", function ()
+    -- Don't delay if TF is on cooldown or already up
+    if cooldown.tigers_fury.remains > 3 or buff.tigers_fury.up then return false end
+    -- Delay if TF is coming up soon
+    return cooldown.tigers_fury.remains < 1.5
+end )
+
+spec:RegisterStateExpr( "delay_rake_for_tf", function ()
+    -- Don't delay if TF is on cooldown or already up
+    if cooldown.tigers_fury.remains > 3 or buff.tigers_fury.up then return false end
+    -- Delay if TF is coming up soon
+    return cooldown.tigers_fury.remains < 1.5
+end )
+
+spec:RegisterStateExpr( "clip_rip_with_snapshot", function ()
+    -- Allow clipping Rip if we have a better snapshot (Dream of Cenarius, etc)
+    return buff.dream_of_cenarius_damage.up and (rip_damage_increase_pct > 0.001)
+end )
+
+spec:RegisterStateExpr( "clip_rake_with_snapshot", function ()
+    -- Allow clipping Rake if we have a better snapshot
+    return buff.dream_of_cenarius_damage.up and (rake_damage_increase_pct > 0.001)
+end )
+
+spec:RegisterStateExpr( "disable_shred_when_solo", function ()
+    return getSetting( "disable_shred_when_solo", false )
+end )
+
+spec:RegisterStateExpr( "should_wrath_weave", function ()
+    -- Check if we should wrath weave (Heart of the Wild active)
+    return buff.heart_of_the_wild.up and getSetting( "wrath_weaving_enabled", false )
+end )
+
+-- Removed simplistic bear weave expression (energy.current > 80). Advanced logic defined later at bottom of file.
+-- This placeholder prevents duplicate registration from creating conflicting behavior.
+-- See the later spec:RegisterStateExpr("should_bear_weave") near bearweave_trigger_ok for actual conditions.
+
+
+spec:RegisterStateExpr( "berserk_clip_for_hotw", function ()
+    -- Allow Berserk clipping for Heart of the Wild alignment
+    if not talent.heart_of_the_wild.enabled then return false end
+    return cooldown.heart_of_the_wild.remains < 5 and buff.berserk.remains < 5
+end )
+
+-- Setting-based state expressions
+spec:RegisterStateExpr( "maintain_ff", function ()
+    return getSetting( "maintain_ff", false )
+end )
+
+spec:RegisterStateExpr( "opt_bear_weave", function ()
+    return getSetting( "opt_bear_weave", true )
+end )
+
+spec:RegisterStateExpr( "opt_wrath_weave", function ()
+    return getSetting( "opt_wrath_weave", false )
+end )
+
+spec:RegisterStateExpr( "opt_snek_weave", function ()
+    return getSetting( "opt_snek_weave", false )
+end )
+
+spec:RegisterStateExpr( "opt_use_ns", function ()
+    return getSetting( "opt_use_ns", true )
+end )
+
+spec:RegisterStateExpr( "opt_melee_weave", function ()
+    return getSetting( "opt_melee_weave", false )
+end )
+
+spec:RegisterStateExpr( "use_trees", function ()
+    return getSetting( "use_trees", true )
+end )
+
+spec:RegisterStateExpr( "use_hotw", function ()
+    return getSetting( "use_hotw", true )
+end )
+
+-- Damage increase calculations for snapshot comparisons
+spec:RegisterStateExpr( "rake_damage_increase_pct", function ()
+    if not debuff.rake.up then return 1.0 end
+    local current_tf = debuff.rake.last_snapshot_contains_tigers_fury and 1.15 or 1.0
+    local new_tf = buff.tigers_fury.up and 1.15 or 1.0
+    return (new_tf - current_tf) / current_tf
+end )
+
+spec:RegisterStateExpr( "rip_damage_increase_pct", function ()
+    if not debuff.rip.up then return 1.0 end
+    local current_tf = debuff.rip.last_snapshot_contains_tigers_fury and 1.15 or 1.0
+    local new_tf = buff.tigers_fury.up and 1.15 or 1.0
+    return (new_tf - current_tf) / current_tf
+end )
+
+-- Tiger's Fury prediction (based on WoWSims)
+spec:RegisterStateFunction( "tf_expected_before", function( seconds )
+    if seconds == nil then seconds = 0 end
+    if buff.tigers_fury.up then return true end
+    if cooldown.tigers_fury.remains > seconds then return false end
+    
+    -- Simple prediction: TF is expected if it's off cooldown or will be within the window
+    return cooldown.tigers_fury.remains <= seconds
+end )
+
 
 -- MoP Tier Sets
 
@@ -2017,6 +2171,19 @@ spec:RegisterAbilities( {
         spendType = "energy",
         startsCombat = true,
         form = "cat_form",
+        -- Prevent unnecessary reapplications: only recommend when we're refreshing or have a stronger snapshot.
+        usable = function ()
+            -- If Rake is already up, only allow if it's time to refresh or our new snapshot would be stronger.
+            if debuff.rake.up then
+                -- Allow early clip if the calculated refresh time is now or sooner.
+                if rake_refresh_time <= 0 then return true end
+                -- Allow explicit snapshot clipping (e.g., DoC snapshot logic).
+                if clip_rake_with_snapshot then return true end
+                -- Otherwise, block the reapplication.
+                return false, "rake not ready to refresh"
+            end
+            return true
+        end,
 
         handler = function ()
             applyDebuff( "target", "rake" )
@@ -2198,10 +2365,11 @@ spec:RegisterAbilities( {
         startsCombat = true,
         form = "cat_form",
         handler = function ()
-            applyDebuff( "target", "thrash" )
+            -- Apply the cat-specific Thrash aura so dot.thrash_cat.* tracking works.
+            applyDebuff( "target", "thrash_cat" )
             applyDebuff( "target", "weakened_blows" )
             gain( 1, "combo_points" )
-            store_bleed_snapshot( "thrash" )
+            store_bleed_snapshot( "thrash_cat" )
         end,
     },
     thrash_bear = {
@@ -2215,10 +2383,12 @@ spec:RegisterAbilities( {
         startsCombat = true,
         form = "bear_form",
         handler = function ()
-            applyDebuff( "target", "thrash" )
+            applyDebuff( "target", "thrash_bear" )
             applyDebuff( "target", "weakened_blows" )
-            gain( 1, "combo_points" )
-            store_bleed_snapshot( "thrash" )
+            -- Snapshot the bear Thrash separately for weave timing logic.
+            store_bleed_snapshot( "thrash_bear" )
+            state.last_bear_thrash_time = query_time
+            state.bear_thrash_casted = true
         end,
     },
     -- Tiger's Fury: Instantly restores 60 Energy and increases damage done by 15% for 6 sec.
@@ -2353,8 +2523,45 @@ spec:RegisterAbilities( {
         gcd = "off",
         school = "physical",
         startsCombat = false,
+        known = function()
+            return isSpellKnown( 58984 )
+        end,
         handler = function ()
             applyBuff( "shadowmeld" )
+        end,
+    },
+
+    -- Blood Fury: Orc racial ability
+    blood_fury = {
+        id = 20572,
+        cast = 0,
+        cooldown = 120,
+        gcd = "off",
+        school = "physical",
+        toggle = "cooldowns",
+        startsCombat = false,
+        known = function()
+            return IsSpellKnown( 20572, false )
+        end,
+        handler = function ()
+            applyBuff( "blood_fury" )
+        end,
+    },
+
+    -- Berserking: Troll racial ability
+    berserking = {
+        id = 26297,
+        cast = 0,
+        cooldown = 180,
+        gcd = "off",
+        school = "physical",
+        toggle = "cooldowns",
+        startsCombat = false,
+        known = function()
+            return IsSpellKnown( 26297, false )
+        end,
+        handler = function ()
+            applyBuff( "berserking" )
         end,
     },
 
@@ -2377,10 +2584,10 @@ spec:RegisterAbilities( {
     mangle_bear = {
         id = 33878,
         cast = 0,
-        cooldown = 0,
-        gcd = "totem",
+        cooldown = 6,
+        gcd = "spell",
         school = "physical",
-        spend = 20,
+        spend = -5, -- generates rage in Bear
         spendType = "rage",
         startsCombat = true,
         form = "bear_form",
@@ -2408,9 +2615,9 @@ spec:RegisterAbilities( {
         id = 33745,
         cast = 0,
         cooldown = 0,
-        gcd = "totem",
+        gcd = "spell",
         school = "physical",
-        spend = 15,
+        spend = 0,
         spendType = "rage",
         startsCombat = true,
         form = "bear_form",
@@ -2442,39 +2649,38 @@ spec:RegisterAuras( {
 
 -- Settings for advanced techniques
 spec:RegisterSetting( "bear_weaving_enabled", false, {
-    name = "Enable Bear-Weaving",
-    desc = "If checked, Bear-Weaving will be recommended when appropriate. This involves shifting to Bear Form to pool energy and deal damage.",
+    name = "启用熊舞",
+    desc = "如果勾选，将在适当的时机切换到熊形态。这涉及切换到熊形态以汇集能量并造成伤害。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "wrath_weaving_enabled", false, {
-    name = "Enable Wrath-Weaving", 
-    desc = "If checked, Wrath-Weaving will be recommended during Heart of the Wild when not in combat forms.",
+    name = "启用鸟舞", 
+    desc = "如果勾选，将在野性之心激活且未处于战斗中时，切换到枭兽形态使用愤怒造成伤害。",
+    type = "toggle",
+    width = "full"
+} )
+
+-- Consolidated: Use base flags; variables in APL map to these via state expressions below.
+spec:RegisterSetting( "opt_snek_weave", true, {
+    name = "启用蛇舞",
+    desc = "利用 掠食者的迅捷/自然迅捷 来进行 愈合 的快照机制。",
     type = "toggle",
     width = "full"
 } )
 
 -- SimC-style toggles for parity with Feral_SimC_APL.simc
 spec:RegisterSetting( "maintain_ff", true, {
-    name = "Maintain Faerie Fire",
-    desc = "If checked, maintain Faerie Fire (armor) on the target.",
-    type = "toggle",
-    width = "full"
-} )
-
--- Consolidated: Use base flags; variables in APL map to these via state expressions below.
-
-spec:RegisterSetting( "opt_snek_weave", true, {
-    name = "Enable Snek-Weave ",
-    desc = "Use Predatory Swiftness/Nature's Swiftness for Regrowth snapshots.",
+    name = "保持精灵之火",
+    desc = "如果勾选，将在目标身上维持精灵之火（护甲）效果。",
     type = "toggle",
     width = "full"
 } )
 
 spec:RegisterSetting( "opt_use_ns", false, {
-    name = "Use Nature's Swiftness ",
-    desc = "Use Nature's Swiftness to enable snapshot Regrowths.",
+    name = "使用自然迅捷",
+    desc = "使用 自然迅捷 来实现快速的 愈合。",
     type = "toggle",
     width = "full"
 } )
@@ -2497,52 +2703,52 @@ spec:RegisterOptions( {
 
     potion = "tempered_potion",
 
-    package = "Feral"
+    package = "野性Simc"
 } )
 
 -- Solo/positioning toggle
 spec:RegisterSetting( "disable_shred_when_solo", false, {
     type = "toggle",
-    name = "Disable Shred when Solo",
-    desc = "If checked, Shred will not be recommended when not in a group/raid and on single targets.",
+    name = "单人时禁用撕碎",
+    desc = "如果勾选，在单人游戏时，将不会推荐撕碎。",
     width = "full",
 } )
 
 -- Feature toggles
 spec:RegisterSetting( "use_trees", true, {
     type = "toggle",
-    name = "Use Force of Nature",
-    desc = "If checked, Force of Nature will be used on cooldown.",
+    name = "使用自然之力",
+    desc = "如果勾选，自然之力将在满足条件时推荐使用。",
     width = "full",
 } )
 
 spec:RegisterSetting( "use_hotw", false, {
     type = "toggle",
-    name = "Use Heart of the Wild",
-    desc = "If checked, Heart of the Wild will be used on cooldown.",
+    name = "使用野性之魂",
+    desc = "如果勾选，野性之魂将在满足条件时推荐使用。",
     width = "full",
 } )
 
 spec:RegisterSetting( "pool", 1, {
-    name = "Energy Pooling",
-    desc = "Controls how aggressively the rotation pools energy for optimal timing.\n0 = No pooling (cast immediately)\n1 = Light pooling (pool for major abilities)\n2 = Heavy pooling (optimal rotation timing)",
+    name = "积蓄能量",
+    desc = "控制循环中为优化时机，而积蓄能量的基金程度。\n0 = 不积蓄(立即施法)\n1 = 轻度积蓄(保证主要技能)\n2 = 重度积蓄(最优时机)",
     type = "select",
-    values = { [0] = "No Pooling", [1] = "Light Pooling", [2] = "Heavy Pooling" },
+    values = { [0] = "不积蓄", [1] = "轻度积蓄", [2] = "重度积蓄" },
     width = "full",
 } )
 
 -- Use Healing Touch (WoWSims parity)
 spec:RegisterSetting( "use_healing_touch", true, {
-    name = "Use Healing Touch (DoC)",
-    desc = "Enable Healing Touch usage for Dream of Cenarius snapshotting logic.",
+    name = "使用治疗之触",
+    desc = "如果勾选，治疗之触将在满足条件时推荐使用。",
     type = "toggle",
     width = "full",
 } )
 
 
 spec:RegisterSetting( "rip_duration", 9, {
-    name = strformat( "%s Duration", Hekili:GetSpellLinkWithTexture( spec.abilities.rip.id ) ),
-    desc = strformat( "If set above |cFFFFD1000|r, %s will not be recommended if the target will die within the specified timeframe.",
+    name = strformat( "%s 持续时间", Hekili:GetSpellLinkWithTexture( spec.abilities.rip.id ) ),
+    desc = strformat( "如果设置为 |cFFFFD1000|r 以上，%s将在目标死亡前指定时间内不被推荐。",
         Hekili:GetSpellLinkWithTexture( spec.abilities.rip.id ) ),
     type = "range",
     min = 0,
@@ -2552,8 +2758,8 @@ spec:RegisterSetting( "rip_duration", 9, {
 } )
 
 spec:RegisterSetting( "regrowth", true, {
-    name = strformat( "Filler %s", Hekili:GetSpellLinkWithTexture( spec.abilities.regrowth.id ) ),
-    desc = strformat( "If checked, %s may be recommended as a filler when higher priority abilities are not available. This is generally only at very low energy.",
+    name = strformat( "填充%s", Hekili:GetSpellLinkWithTexture( spec.abilities.regrowth.id ) ),
+    desc = strformat( "如果勾选，%s 可能在较高优先级技能不可用时被推荐作为填充技能。这通常只在非常低的能量下才会发生。",
         Hekili:GetSpellLinkWithTexture( spec.abilities.regrowth.id ) ),
     type = "toggle",
     width = "full",
@@ -2561,8 +2767,8 @@ spec:RegisterSetting( "regrowth", true, {
 
 -- Enable/disable Ferocious Bite in rotation (mapped to user's setting key)
 spec:RegisterSetting( "ferociousbite_enabled", true, {
-    name = "Enable Ferocious Bite",
-    desc = "If checked, Ferocious Bite can be recommended when conditions are met.",
+    name = "启用凶猛撕咬",
+    desc = "如果勾选，凶猛撕咬将在满足条件时推荐使用。",
     type = "toggle",
     width = "full",
 } )
@@ -2589,16 +2795,16 @@ spec:RegisterStateExpr( "filler_regrowth", function()
 end )
 
 spec:RegisterSetting( "solo_prowl", false, {
-    name = strformat( "Allow %s in Combat When Solo", Hekili:GetSpellLinkWithTexture( spec.abilities.prowl.id ) ),
-    desc = strformat( "If checked, %s can be recommended in combat when you are solo. This is off by default because it may drop combat outside of a group/encounter.",
+    name = strformat( "允许单人时使用%s", Hekili:GetSpellLinkWithTexture( spec.abilities.prowl.id ) ),
+    desc = strformat( "如果勾选，%s 可以在单人游戏时推荐使用。默认关闭，因为它可能会导致脱离战斗。",
         Hekili:GetSpellLinkWithTexture( spec.abilities.prowl.id ) ),
     type = "toggle",
     width = "full",
 } )
 
 spec:RegisterSetting( "allow_shadowmeld", nil, {
-    name = strformat( "Use %s", Hekili:GetSpellLinkWithTexture( spec.auras.shadowmeld.id ) ),
-    desc = strformat( "If checked, %s can be recommended for Night Elf players if its conditions for use are met. Only recommended in boss fights or groups to avoid resetting combat.",
+    name = strformat( "使用 %s", Hekili:GetSpellLinkWithTexture( spec.auras.shadowmeld.id ) ),
+    desc = strformat( "如果勾选，当暗夜精灵角色满足 %s 的使用条件时，将可能推荐使用该技能。建议仅在首领战或队伍中使用，避免脱离战斗。",
         Hekili:GetSpellLinkWithTexture( spec.auras.shadowmeld.id ) ),
     type = "toggle",
     width = "full",
@@ -2609,8 +2815,8 @@ spec:RegisterSetting( "allow_shadowmeld", nil, {
 } )
 
 spec:RegisterSetting( "lazy_swipe", false, {
-    name = strformat( "Minimize %s in AOE", Hekili:GetSpellLinkWithTexture( spec.abilities.shred.id ) ),
-    desc = "If checked, Shred will be minimized in multi-target situations. This is a DPS loss but can be easier to execute.",
+    name = strformat( "在AOE中最少使用%s", Hekili:GetSpellLinkWithTexture( spec.abilities.shred.id ) ),
+    desc = "如果勾选，在多目标情况下，%s将被尽可能少的使用。这会损失DPS，但执行起来更简单。",
     type = "toggle",
     width = "full"
 } )
@@ -2759,12 +2965,11 @@ spec:RegisterStateFunction( "predict_bleed_value", function( kind, cp, unit )
         local points = max( cp, 1 )
         local tick = RIP_BASE_TICK + RIP_CP_BASE * points + RIP_AP_COEFF * points * ap
         return tick * mastery_bonus * multiplier * RIP_DAMAGE_MULT
-    elseif kind == "thrash" then
+    elseif kind == "thrash" or kind == "thrash_cat" or kind == "thrash_bear" then
         return ( THRASH_BASE_TICK + THRASH_AP_COEFF * ap ) * mastery_bonus * multiplier
     end
 
-    local points = max( cp or 1, 1 )
-    return ap * points * mastery_bonus * multiplier
+    return 0
 end )
 
 spec:RegisterStateFunction( "store_bleed_snapshot", function( kind, cp, unit )
@@ -2776,29 +2981,33 @@ spec:RegisterStateFunction( "store_bleed_snapshot", function( kind, cp, unit )
     local mult = current_bleed_multiplier()
     local ap = resolve_attack_power()
     local now = query_time or state.now or 0
+    local tf_active = buff.tigers_fury.up
 
     if kind == "rake" then
         snap.rake_mult = mult
         snap.rake_value = value
         snap.rake_ap = ap
         snap.rake_time = now
+        snap.rake_has_tf = tf_active
     elseif kind == "rip" then
         snap.rip_mult = mult
         snap.rip_value = value
         snap.rip_ap = ap
         snap.rip_cp = cp or combo_points.current or 0
         snap.rip_time = now
-    elseif kind == "thrash" then
+        snap.rip_has_tf = tf_active
+    elseif kind == "thrash" or kind == "thrash_cat" then
         snap.thrash_mult = mult
         snap.thrash_value = value
         snap.thrash_ap = ap
         snap.thrash_time = now
-    else
-        local prefix = string.lower( tostring( kind ) )
-        snap[ prefix .. "_mult" ] = mult
-        snap[ prefix .. "_value" ] = value
-        snap[ prefix .. "_ap" ] = ap
-        snap[ prefix .. "_time" ] = now
+        snap.thrash_has_tf = tf_active
+    elseif kind == "thrash_bear" then
+        snap.thrash_bear_mult = mult
+        snap.thrash_bear_value = value
+        snap.thrash_bear_ap = ap
+        snap.thrash_bear_time = now
+        snap.thrash_bear_has_tf = tf_active
     end
 end )
 
@@ -2811,12 +3020,13 @@ spec:RegisterStateFunction( "get_bleed_snapshot_value", function( kind, unit )
         return snap.rake_value or 0
     elseif kind == "rip" then
         return snap.rip_value or 0
-    elseif kind == "thrash" then
+    elseif kind == "thrash" or kind == "thrash_cat" then
         return snap.thrash_value or 0
+    elseif kind == "thrash_bear" then
+        return snap.thrash_bear_value or 0
     end
 
-    local prefix = string.lower( tostring( kind ) )
-    return snap[ prefix .. "_value" ] or 0
+    return 0
 end )
 
 spec:RegisterStateExpr( "rake_stronger", function()
@@ -2906,32 +3116,30 @@ do
 end
 
 spec:RegisterStateExpr( "bearweave_trigger_ok", function()
+    -- Enter Bear if energy is low, no urgent bleed refresh, TF not imminent, and Thrash needed.
     if not buff.cat_form.up then return false end
     if active_enemies > 1 then return false end
-    if energy.current >= 15 then return false end
-    if debuff.rake.remains < 8 or debuff.rip.remains < 8 then return false end
-    if cooldown.tigers_fury.remains < 7 then return false end
-    if buff.berserk.up then return false end
-
-    if buff.predatory_swiftness.up and buff.predatory_swiftness.remains >= 5 then return true end
-    if buff.predatory_swiftness.down and rake_damage_increase_pct <= 0.05 then return true end
-
-    return false
+    if energy.current > 60 then return false end
+    if buff.berserk.up or buff.incarnation_king_of_the_jungle.up then return false end
+    if cooldown.tigers_fury.remains < 3 and not buff.tigers_fury.up then return false end
+    local urgent_bleed = ( debuff.rake.up and debuff.rake.remains < 4 ) or ( debuff.rip.up and debuff.rip.remains < 5 and combo_points.current == 5 )
+    if urgent_bleed then return false end
+    local need_thrash = not debuff.thrash_bear.up or debuff.thrash_bear.remains < 4
+    return need_thrash and ( cooldown.thrash_bear and cooldown.thrash_bear.ready )
 end )
 
 spec:RegisterStateExpr( "should_bear_weave", function()
     if not opt_bear_weave then return false end
-    if query_time <= ( action.cat_form.lastCast + gcd.max ) then return false end
-    local thrash_cd = cooldown.thrash_bear
-    if not thrash_cd or not thrash_cd.ready then return false end
-    
-    local urgent_refresh = ( (debuff.rip.remains > 0 and debuff.rip.remains <= 3)
-        or (debuff.rake.remains > 0 and debuff.rake.remains <= 3)
-        or (buff.savage_roar.up and buff.savage_roar.remains <= 4)
-        or cooldown.tigers_fury.remains <= 2 )
-    if urgent_refresh then return false end
-    
-    return energy.current <= 35 and not buff.berserk.up and not buff.incarnation_king_of_the_jungle.up and target.time_to_die > 10
+    if buff.bear_form.up then return true end
+    if not buff.cat_form.up then return false end
+    if query_time <= ( ( action.cat_form.lastCast or -math.huge ) + gcd.max ) then return false end
+    if buff.berserk.up or buff.incarnation_king_of_the_jungle.up then return false end
+    if energy.current > 60 then return false end
+    if cooldown.tigers_fury.remains < 3 and not buff.tigers_fury.up then return false end
+    if ( debuff.rake.up and debuff.rake.remains < 4 ) or ( debuff.rip.up and debuff.rip.remains < 5 and combo_points.current == 5 ) then return false end
+    local thrashReady = cooldown.thrash_bear and cooldown.thrash_bear.ready
+    local needThrash = not debuff.thrash_bear.up or debuff.thrash_bear.remains < 4
+    return thrashReady and needThrash
 end )
 
 spec:RegisterStateExpr( "should_wrath_weave", function()
@@ -2969,12 +3177,20 @@ spec:RegisterStateExpr( "bear_thrash_pending", function()
 
     local lastBear = action.bear_form and action.bear_form.lastCast or -math.huge
     if lastBear <= 0 then
-        return debuff.thrash.down
+        return debuff.thrash_bear.down
     end
 
     local lastThrash = action.thrash_bear and action.thrash_bear.lastCast or -math.huge
 
     return lastThrash < lastBear
+end )
+
+-- Used to gate cat_form recommendation until Thrash has landed and at least 1 GCD has passed.
+spec:RegisterStateExpr( "bear_thrash_done", function()
+    if buff.bear_form.down then return false end
+    if not debuff.thrash_bear.up then return false end
+    local lastThrash = action.thrash_bear and action.thrash_bear.lastCast or -math.huge
+    return ( query_time - lastThrash ) >= gcd.max * 0.8
 end )
 
 spec:RegisterStateFunction( "tf_expected_before", function( future_time )
@@ -3128,4 +3344,6 @@ spec:RegisterStateExpr( "should_bite", function()
     return rip_ok and roar_ok
 end )
 
-spec:RegisterPack( "野性Simc", 20251026, [[Hekili:DV1EVnoUr8plbhGHnYg)kpU29IxG9ES9UfDrrrZE4Ck2)ZwYY02crw0vIkUbiqF27mKus8LEy3Cff9pUBte5mCgY5XVziZIjlECX81(mYIhMoE6Ttgp9UHtVEY13mDXC2lhilMFWp4j)TWpe7Vh()FIK4hHF9LiQ)AK6uAwsamYI5RYcJy)w8IvMSeM0bsWIhMm(6fZ3fUEnrmjsAWI5pUlmn3d)p)Cp5QL7r3a)EalKgN7ffMYGH3qtY9(vYtHrHdxmN)rC9PhiXKe4NEGRmKy)vrK1l(XfZf0Vy(gFssiz5MWeIyrtcpig5RCAZ9sj)ZmsCaSU93MfUMSEW7Z9(0NY9U6d5E)H)teXp94NU8hjjPKKNGjE)SRhN7H0V9LbIXXnG1WeK0fEaM2JaxoggVMEuoPh3L4NUtFKfZbzIbsP)I5p7d)dOcd37hgZG)B5gyVOxU3AYQSnBgQOndbAJxWGnAuZlu3eqEv3hGXV2yNPA1eY)WGSKesml37(z5ExpUIzSWTGcTCtwYliJUPwgXLnLzpm7qfxwj21qoCBTCiGUFfD5bkO1PkcuU3TC1NVasgbmN)TlGTryJjmfz3Y0DjK1lpUJeVmLgr5ZaLGNjlb1CFiboya1BsU3GkrJteky39Miy8tKsMV3pEliyb(mCf((tCf(WmTLOUnxWAg5(F58oAyCZrPiYa3XF5HF(Rp4YDIcuLsyvKwyPI)uug8ptmCVEKaw3Gd8HecqyUhJE4QiYZKiW7kDhnb(ev6bYGtnWf3pkc0wiiao5CpqQwsbMT3p6DOVgUAWzkoPJe)NjPCHyPi0KI)sPpXPk(vCdw2LRiWVYxixorNbdtJjpvXqtNP2z4ytgEmXNTRIJMoxTZXj3QYs2MLROXzPU8hkyraS9Vu8llXGWIqXfmGFI7YyVtKRCElSg5NPNxS9)bdsuWEbmxIxN7XzeqFmMQ6niyRthnMFYwcByGFklmERsmMNYaLEf4Nj0k0UQuPmCe5JPh9U(fKlJbrajY1uZ1g3nHKM7BodGm8fydGZTiYA)IuBdxt2egektnmbs596RIOUu2qmvZWecU5LkZDigNpy4b9XMkglGsJW9sTqsMtCGwqAvnP(uqxiduASHW1NeavHEKv1SC79ZIk9FmcE74aP(ufL2t6HpuZtySrJ7ur(baSkM5wzLOumbH5tAJEeQzS19iMhIk0vcRu8CiH0kuai)ZL5ELQvraIAs81OXAXXtQ)ZWHXYeQFsXMqn5)Y9uoJuiRzdAvMHB1ltclTPlSlrPTDlv47ltzj04TykQbfqowtI8Fb5kN7SnfFpic(e(5JHqq50y)dqsoMvI66nGv9QmKW6C0WbAqgXrDjK43Rtkr4JncuRwNmP8lIKzObYpAQddQbjsd(y9DGfexLokwftVrmxdu2kFZqyEQ4)QhHz1x103MaFwp8Wwc1FHMJJl3elVATjDtlwX)zSvZ0HsCwGzhBINioCtibGs8t(Wo0xfSgQYJY8XjacplXpons(BybSFJ(T5H7t54yLeum9pYx2b1b(YmkANqpjal5i2yNOUiTCQRyuDIdi62MJCOLEub7k)0fcdLfTwdsB3wxofNFE5(LlT6aLg26zSh0rzIJAOrFEtJ5pONYVrU7tjU8P7eTPYc9(4x)L3ghdGrokXd2xLUYyNuuQEd3zUenvK1Wn4)RQHRthbwL5u571aWUDqHmqbVPry2A5VOMcrIQo9fmLoea9qcKtifI36V2ej4pP6RxxSggq)te2KILS83BicJCotnOzA5wvXexfrPRLGu1WwRbbxMZJxmvJiWli4avU9BwEJoubzHAWjazjJUCDirMq7UI(C(CyYEsC6YvaFwk5AJUZm)iiP9WW4a)KyEi(HY51EhCuiQ5u1o4ImsLqbxYr3Ha(aiDhT2hrM)xBpgzgy9WsiebkFPIbmnGSKUbmHzzq1WfSOCnmMaUwtg3Tfdfw11Ah4ZYqwX2HWuJwRTvAI)RcNPZDbTy2wCw4)TNgtrCsVjXd)IGzVNhuCdIk)aSFWbbOguedHag2dAoG1PhbSTEeD6HaT4OwiqwzxFCS75SDGRYsIFp2gVWTXvTdaS2al7DSOxuJIwv3)PwyPcQqhvowgWsTAzTqm34iqKRyvkIu9HomdqvecR4Zo6z)PwTaVYffo2wxH7exaZxAqintOnItBOkb)SOZ0zrnbVU1b)MLY9(5KSqWpV)xO)(Gse0xXTvq))p(7)9CV58RCck(fDVW7TbSM2XyhsF)OrBHQAZwne0UrhPhtbIhTNEyegpB0EOojsYOSWrRXvz0gCjh5FicS9EGYiPaFUk37lHjju8wCGGe5E8(gYma0lDEX(xJsp8L(OF7i0Zye3HBegylof0HSu(mbjApA9dkggziKcNeaWVH8LCUSm8CV4mShL4THHXma5)qKSUdSH4RqTMUklLHc2vBbdoGb)Ti6kCVtEYuCxzczdhyfzhiVCDQFGFSGp0Njjj8lJd(9xkGWHs8FaqgaEKq3dsauVcmzY)chovQRW8WcotVADcGHnEW7kPgzDe9i2W1xkxcYBkepJGKVX49mJy2CW0tVf(gXpBeC5P3oFKhcdptol)QdStDJR7jreIBHwDihbUAN)Laou5C1hDegRB8uacsNL8V5ahKEkCEGc9BGgm7)zH)vHXEJ1cQGmeqzYBMZKPAvbiV4Ax4KQNTnvfbivyqD34yky5EFaGKkaiDn)3l5HJeSM0Izzzg3(CzkB9Sz13U2tm7TPh3PKZfTxGkNpRMNZRY9)2TmVQTLyB8uADwU3ndvstR36unaoPhdpiAcOd4no2beirQVnfOkEx5nxy0rpPyf8sqe48YlYkf3SDeltfNsll3nw3rGwB9TBnzU33pC652TEhcpROhtny5iMGUnZ3WVjBZbiizjCGa)kwdIapbhGX34EHNFtYe3je27TgeprrzPlbZHnSyitU5Ddv1qgm)EjCKF9Xr)bzBc9iBN7xPsvULIIZKfXToH4VhJweaItsywAvrCdQ8fGywR9z0KxQKSQoCxeAWs4vd840XPbXRwoQ0ZpxsLr3)GkjJGJZLmAwWUMJWPjmvz4BEtqE3fUIWCJYTILipCewbF5Rp81F6Jp6YqWvjQT02ojixaC3teYbSnEDT7Nf1tFw47S64Mb(IZR72gjlHrbSPiEw1NP2r)Kyex7I5)2(d0egASo5oJxI2W8pJ5APBcrH(7G9Lox5YN)U)ukEbzRS(f8h)VFjmYv9)OQy(mNlVXLYGS8KRM5hAPAM8plShsVC2OcR33HMzZuQT5DCRz1Vupz61TiP04MkAKyL0bkuRM7OrYRIjPqTsGQgjwyKOqOmCBJeP4sRqPYxRN8Y6cKew1TYgjbX9RqbVZGctUsiVLmyyjsAGvMGEFx4MzxuhCy3SOatS7rva4wXBJhjHtcf4AfQOdaWs1RSx)vmPSLBatWndGM9VdBy)m(1kGsrZxNqxyvX1fCcZDQ75wDxb1mE5Te4E8w2Nq114wcE9v7Bi4(ztVZn)vAFpYR6VjGEU6FFtQuPOPtZRV6Ut3ozLrF5rw(SvN(71Cx(DZzRMPBXBuQ61wt9713QQOAuWbst6AFAFvYj)JO2x9a(0KoL4Y9Q5T(zZSQ3XN4Cw91(jfTUGJUIXymwGVwOr1e1QyQ963g26b9AevDVlQh9RPqPbWTwbQw(bhH1dT1ElOahR1cvLgQEvl7qpDCY3p7MX4bsXIWVZ5zJuEILwJveJU0LZ8Le1kbQpuGE91Fsn3pBY4xFTVzjZ3p76xF1O(vioZRV20BKeMWGbwId(egRsFyi89uF(JFa)dxWM8Yh7O1yfV(qRZMk4j9S3bC9Wgb9L7L09cJRegoAgqA4)RLOOG1PNDnYfoN2pasfdr0dxz7gxctRQRV9sR(60Z(Yi15zhYV3Z1LX8HXgmcmsePMTBesV(QVSr32uQVMXb9UWSVi9UWDhrmfcW8fLI(AVur5kAAAR96eRwZQxLyXIA9EenpxkBWvD(NIDaLNEOqK0F2HGqnW80bFYyCfYcdqRldojNNCZUDaOT9R5TS1dfGQMCnBIPmv9Y9mpVlnfV12SRNT86YASuFDfH6I(USCSSylh8gNh8NQYZDolBWALa7tjV9(KsMQzq5UpR3FZWBnPRSDQMdW9l06D4SjiR1v37NDxpRnmhld6Q3bMDtpNbdmpd)(Htpf)DbgR)mEUJk4iR6hZLMLRvCkklxBCDuz2WhLAWpnscCuIuhiJ)i2ojkoVCxNYkGPGBkpDFRN6O09wn3DTNtUxtWK1248dyQ(tHlPfwEN47NrbMUGql7jNTxzC3OZUZkDKqREQmwQED9vWuTmINxZLU6Jq5qDaKHdQucT6yuz8thJ0ANhSOad456Z2qAusI6Ga9hKsJ0kmM62n5wUs1AEkUTwEDFH7j3pzA7KOy1lLM)x5V34QnwHAD5BuHYLCt)4U8ZTLkFSdAAUvioiOeHtxaobi6ojOkwR25HvZ1wwJUcn36OQnyBCYM0ub2QL3S9p0WB2UAPbozf)ZUn4JBMaNrON0onwbzTOPREMN9nIvTGYlFREGjYLWbbDPb5t6(kzREVL)Ly)do)lXUs6e)fK3bJIjTstB2fnqwtMgnqwJ57RHod8QtU1bfUpOeP1680vVeZ5(zm4GBX857Z2KYVrZf)7]] )
+spec:RegisterPack( "野性Simc", 20251106, [[Hekili:TZXAVnoUXFlbfW1g7cx)ijBlq8cC9EG7wGMTOE7xTSIeDSAKLcKKtAkm0V9o8LeFmKsYXB7xoSytIP4mCMHZBsRnZ38TnRJdRiBUFXSf3mF(SBNUyX8LZMVzD1Bpt2S(5WONcFe(JSWdWp)fsrykD03sZdJPqxMFSicEYM1pCmjT63Y28agkH)TzD4XQ95fBwV(WXDfjpTz9(K4ychcsz0M1FBFsz9w6)dR3kw66T57GphvLKNvVnnPScE8U8I6T)k5PK0KPa5uKVljfic(Sk)WQ)0lHfjHpKs(iLUxDimjRc(FWUDF8LW0JAJu)fxGL)CvWdKWIGxjHVqeqQpOFGFTiSAVf0kJ6h8YmYtwq3oOFGpwscYkvaKpGFGoqsjeRLuzu3GtrFvbHixYMp7hK95vVQab9JUbioPK(HGY9fK4Gx3tYckZtZfW74PUrh9PbGYZRPcm0oq9xAaB6ZfKO8dpewbi4qyXtb57cQ2dcKK04pMSB1vpCC3UPMpz6XNR)YFOE7FVipQE7pvqcpWvL)rsgqfhbT4hiGEmOGZXE92XFB(T)6e8fEpjmnj7XGQ8Jr7Bx1ykEPlBKaRWYoQkmLKvH8m43aZhJVcrHvba9COf5YrO4emv4ZC1mCWldFbSwdkYdlAXGYGm5bgG8naaKXYDNPT7dNoPSWtgXXk7joXhvnkPIC4JLP5vR2hMfx2NjwvKK9ePA(aM7chmuoDmUk2ljfhizLbpaahWFGQQvuEEAC(RmDtV0T7jAt3Do3f4Z9H0884GDhlEJUBWK0vjpskkzJPjV1adMbP4jq5CqG1HuQbxc0d450PQWIhjva6pa(wYdIti3TAXT44pjlkSiluIlHnHYOsRHr9MKfKId280jXZdIstEMA4i8Mbob(NLGz(VKdrk5(aUpS6i1YNgstUc1BFnPAF92VrX6FeCp8laEHPar6(RCeZddQ4ewJ62rrp1CpJHCkv2yq14mw6BWyYnYIX4mM(gXeCcaCrvuz6CuJeOYdjfynBdAqUCuS7q0or1uIfrNkgcjfjKGDjgIaLi(JIjSLqzQSLzKPxpBSx(0X00Ghcl3ZvQy6JrHLvG6pc4TiGg2gGNlUldkFnzxvgPSur30P)6rnmrBC8rsj)uluoTGqj3YvZe(lTNb4qhX)8iU6vajJCiHuc2wwSKdfKgIr9bcY4UvlNyjhScN1PmySMqOnlOtNqKotqzVXJfHpiqcQ5fVPlqO(VHOo5WgnOxFSOaON7UzYPtJDleppPXKjE00ecOIKNB8ZyjucIdpamMlQE1n9z3DP9MlSObfKDaBUpG6K9o1G9scl8jYztz3D2ugSQDsAv7ladZaaUErG6R6NxDnI2ECoeUPbTcNrgd2SZE90BS10b9LNjxqAs1PcToewCjOCezQBAwdTfQmAC5(8JPXkdr9QgwW(ti4qYJGUAq(ttA9Si4r6SaMmm(nRvwzgkbSfudLFUcm2ErfrFSewQOQvZTWLA(N2iASjI02gyKyvsenlKjJgBRhV80jevOLIqBQQJn7M3mzeSnu84BsL3pVA5nwu9HWJP4uCbDlTf0zIDYuyoIag8GomreOoSl4XO4Pu8zzpGSQzpcv64wU3jgsdJGA5RiNj4xWnlBXc1h6v9wFf2zT2UxGUDVW3291AztWQrh4t2VTmRuQGFKGmXkQFAjnLbLGaSQCQ2rjhGpHafGuK8VJGGjbCvTpp)grSb10F8fTONLEH6n(ZZ6cZIOqQaZY(cgN7Be(dHtrKyh2H5gDvmjn8nk8m8uTZCbfrx4ih(Ge7i()9GE6SrXVEiIH5EFP3W22yhtXEGrug6sAg(albUbsagR3osrEus(rEXA01uANsRDJCa0IjzrV1fz7fnDbmRbpS9pntLMkv6sMZZrdXEa85JOun(bY(KS4aE2(I1qPqYaQJmzLm)RJupZT0IAbNndwwbP)cZowzO9HWoXbskFmrfkhsECF1BS6n0gom5G6NPlYZHrjvHuwwAZ384NpM(cuPZ)HswtgDvBM0o6yMH7)vZhDfu30Jf5AL(vw1gisO(5lLpehAwHc79(UiWCmzxcW13TA(mAedPdPgTx)o85A9mNmQjN)7kadrb47t52L8(OLNc(85NWGIlc24Cna8YFWcR1I7WCIbDh9gOkk2DbM9cYh81Yida9SkbDUB(qZYbjh8qE2XYbLeaFvmYcWmuWsrMwQ2cCF)2Jlnhw6iTbVfWk4zT4socVafmzchlbaKneJmsxD7ilJxmSb5V0dKD9i0mCm9N8PPl8LaJyBqwVNwFEbbfK4yYHW0pyEkeYTCXzqmRTHH)d2ws9wQDz92gFgIdkOEB(ZuvPjUwMcg4nzIO6ZXfirHPPb8hfqpQnLJpRLSmAqj4epf(vsMKGQ3gMbez8XcWxu92I8kM3pxR5318J7d710dZHbgT(EkbFH7C1WiI3x9j9zfK1yoO(kW3HARiCGCfyjH6cByyPuZe8qEwEe78z6XH8oRFWzF(U9eqRt2DMkPwrYIZZ(qBv2ipQh18HaLITgYtf2uipPZJ0YccQNzSHTlOuj7BeaSluWjSnq72sVvRrvE)dF9NT2LSVYaZ8daQE08UHXsvWcMbXl)TVE)x)XF4BU9LZ1kXaOpxhG59FLCqGF7NV)N(699qEpVty6sK7bmVwUoGZiq98BqGaxuW1M790vKCBwdjUxcpU960Sz9Rqbfq8XYnR)TdpNxurtjaOg9ljZ06VSzD5ZKOn3pF2YnRzdYUXovWpVND1FerO28x3SoQamVaUDZ6X1BBcbxV90P6TwHHR3(z(koPE7O6TwbKBhvjOS865SzTIxOnvaJ5KuUsGfd)AuSJ5fGrwZ6yXvWfDXx6CXXsjKHBqaP26lUmYS9x1BVBfJyMGspSbb2ZmBYw6egJsFx7BFsRjzc6WSrzdJqABCMcLadsjLB6Ium6QeNGWt9NtvlDrvk6knGsjHBDscCmO34h1DRV)02NCsB053MhdOLcOFH7DJ3df7I4(Zojo0231bJRhuMI))sFW)GX68z(u50C7qLDub0a0dKG4Wvcir5E48y4qPc1EdPqdD2Fi85Q)aTA2ugwTxrcfdS(fP)iEpJ0gdVVrAtrT3rszXvmoVRUiXMQPUpivNlXHSNsA6TmKW28DhIcFh7o2gwhXJm75yh6KT93KrsUdvbYd9MsYTjNpJlmVslSHMz7c1nw7MWWN01TM)Q98q1v1VRM()h1u3zqG1ergsD0iXU8p2oD2c7o1a7gL6jNPvDNZKwNy3qnfwZyj)js(9L9DBkQFRS6aRTxOloFrRNONSLE5hsdnR2Himiqo6APEQ7lCrlD20nfmENFNkOeTzgrQnHrQpBE48w5mWg0BUX44ESnUTYAr9W)L8)yxPpV0BoTl7JJZMIu076op((YBA5DP2H)KUXzC1R6HaZZ6kMJyJq7IFG6kccRTunG0Xu)jJJtIDH1M7tspsZEGixEvt8NK8fxLYw2ldzC1zzOY0ervtx4vnTVX3NGQlcUK(HV(ZyEKYbVyLKQwOKoMO)v6r4xZyJfq7PGWHn3jmMlKUX2CvSP77dZzXzGW2wHHze2kC07zcV1gc0O26eMWtDG3Vqu2cimjyB5YVW(gtr)knb6l8bhY55yzvOMEfMOUxsgEaBpYv1UYGq8N5P(8)KolH4pSxYKMt(XVtVUoHhPhhhNZdNvroRhdBEpekfz(DF668Fy0M9za1Z1LbH)(hCMPdz7TVVYczqk3TCWmCelGCpXEyoENh6fWLvCNoSTlVjr2lvkuvg18fDE1)vYQx2dvS7VER1eshwTcQ3zxRyJB8fPHBM75cXJ17klATRe(7HW88Sp9kHg3Y14FNce7wUBwHiTIXDTh9(fUEArqRCx7BLrpQaWZnz3dRVsRpn9rZJXcUu8C05DLaYD1j93bVC3fMxC09E1Sl6Qz89IBWCrETxJ7ZQL00RKJ7Ms3rzgxoEqPCF5TZH7OMhFR)L7pKaRYyN0MLWp01lqcO25Dp8e5TqOk5FwzYBHrTm5bi5haAd)3gmvuNJYY51tp(bcQS9IC4EO53QTExRonr2MgtX0CJZQixfIwej(SupxZawh5UZQZZrty5FZDkA9clwN(sfTkGDHhtpt9w1coVK1HAycCHlk10EWVPIzmL(HFfRdVvaBQ01pSZZDXeZIrr862pSQCvqmrT6Jq0M7g)nF7KvXC7Gi629dN0VJWMOKngs1dDJrhhFG6c4Akyfu09c2(wqqDnugTc5qYADToKUK086lWFSqP7xK31fTRS5dXSYLZvpHt9Uom4xCgyuk27hdwK7UQzaZ7Hn6nZtQ5LvbVamKiDEteDGH38EHmAYBr5LAclFndAu5WYevYWF5AOeitQSz65OzxK(UQaOU08k5hq8d0ehw8cRqcqZNrSZnGzHbmlWSKhsO5k1EaHO67NdDPv7JdD17oFCyhvUOxuOsMmnVpp8RS4hje5B3dFAasbSv781VCg2V)oeTv4wFBBEZqY971J2kbCXBka5pbkN1EJ(APWoxseT0M0U0FrCG151l27ne0YAAFpnP4wCh(RhKo7fH1U(e0yFoid2RlffQW5Rien6qV9Wo3v0Qd1cZCFb0M)5XlG6jqJXdVVZ5w77PcLiq8W0UOMhNjRppqX2FqXZV80kAxWUBLERdj9lPP7yHCDlJUTQTdz(vosVPx4NjMeh(UNN9OJwgrmD7j1zxmynXqrSO1bdxN6aVip3Yi6U1TCDe7B0JyfX0hC5)Lwcyhl31wItMPH8sTAF1KQ3(PPlKPgyFpvXipMB6grFtRwuOyMzg)6pJzP1DsXAhA47UwYl(zA2vVvgEbJZVrfLQha5zDKxIoX4rxAyvoi(wa4ZTP)JLu0ASlZ2NrPON1bLAYI8)T5)c]] )
+
+spec:RegisterPack( "野性(黑科研)", 20251107, [[Hekili:TZX2koYX1VLHaksSltKgnA2ey0a(kjl4DnrBEvT6PvPrDMwDl6U1mzcIMfhCYAtIjpLlqatEi4qEiH8siS4L8X4DwB)xKtDP7UUCQQBPDmjp4hS9OQQZL6uN7vxE6GPpz6K5(5KPp6O(hnAWG(p4WJgoy0XhpDs(nRjtNS2p4s)lG)i2Ff8V)6F1N8QN(ztcxfqN6MOe)5uuKLSjnaME6KZ3egL)JINEUoENoXFt(YK0PtEh)SBwh5FZ0jldNpNWxljdW4x9F(JV8F)3E1h)0V6x8Ix(5)HB)WN9Lp)Z(6p838LV4VF7N(8x(8pHc67NM8Q)5hD7V(39LF0ZU9z)Rx(I)0x80pa4M0KfHrap4hKhMeNDVXFVR8td9ppICFkVpELFyCo8pElwC)R8J2OmsXdTbwY6CVZj(PExt8VIiGuDq3aFDQF(sdOLg1n4zXKlnGUEq3aVjJ4fNjbiFa3aTIerigKuAu7GtrFEkHusYQF7gKLj5xlbb9N2byEyg9hEzltjZ9UEjj2lljkraVLzTJo6SEGYZ1rcmupqXdRa7W1PKGKvN7NdiyLF6LEjl8YxccKWO53pCX4doFZIfhQpZHBwx8WVtXmqNnOy2BNs8xvmlzrXS3IedCXMSIzNtwKKskMXXEXSUpzWj)WE4eEjXpkm(cV8KnblRP6CkEPKnqGvGSDY9JiX5iZb)xyZphNcb(5Ea)SQg5LJW2kyGK5Ff4GWlnXpTgkPbTcixOdG0T8e5WAz)2TGDjFPJ73RdhRSzSIpQQtyoz19ZIsYhV0pEEwBwyEAy8LK8b7WApYYgkHogxT6QW0vK4mVZbG94tiRofKKenp5AM(Ot(2(cn57gx7r4R98OKK5El2KEd90GjPZdVGKMXgtrERagScs6LGc5obwdsPkCjqpGNTBZ9tVGKdOFf4pjXBEi50XhDco(dJd8tJ9lXLWoqA0slGoTMLfSILT52TI59cIcxtnweEWad)FsgyA)UjqWrUD)J8Z3qT2PoMkMfc27Gbn4ECgq6zxhMVSy2C)vGPd9xXa9HP6(EjVFXSL(WFgNaokwsfgz9eowiliPa4zWXqjgEcL9(UWYFxGbb6cZ)MIDa)xXqORIzK45CMAr4flZpeFRVGY7u)hXmoNkcQSwR8Ux6SrBXvc6U4sT2Ckp4KE4mg4lmnx3lScRrpek5mJvRXBLSbf7wop7jB)YsDGkE8jPHeVfHAIgPul6mNWiH0szKPJD3RLyp7YnrrEN7NTKRjZepb(z5WHnc41iGMFaw8IMck0P2vSAAgB3QmbpnIEDq813PljMKEXnhgSjnfi2PJpg8F3TRWbobYkmj9gVSRdxKdA(SyvwNlLqffzGXEVTBDIdH6exXltzkbBgeb6acHh)aOBxbpYc0abEsaXE2zJh1jfo3bllatl9OQJNcXG2Un1)sIXW9654GuCoyWvT6SarI3bJHb(T0Waz)leHJ7lIHIjHqphP7HRiEWP5Qqc9iO59ji2Q8rASV84o2OO2YUOfCXqdMa7SYKXGtU9MZoDV5me9fdwlFzkyF7bW1kguLQNn(ytY2DEc4eTcTcFAAdwzzD8HJ6zWuGYXAYDipj7BIw3elMku(uzQMkQ61fw1H(NS)cIZeEbe(Wl5YALDX2HUiy)4p)gdIiTcP8keeMFebBbXH(zJpAuNda3lxjJ57NbKoiF8adKVYFtuBW6W(2CaXigiux4DrW8dP4ZqRcHQXxa13yFl1igI8diq1NK9eC5semb)a2VeYV1qkg08sKo9z19cyH9Fno6LQkUt2YKnrZrlu(WmA0rP8jyvrKVGAKb0B7wkps(zbG3npE0OZgms4NwosVlpATS0gupgN1Vjml8uIh)zi3egwJKTl9x1HdHGrGBpq1mjgecMHG6CWCsK)nEPIeyYxOZacpICkb)qMu0FwrRHIaFTGy0LHsneNCkwd7SxRHoJ6AssDxuMbZ2zgqJEqA4jbHjB4fZqPPqbMvBdzfOfsIdUPj22jAAcywtpyNQkQ6vzh1KmNUqlPeHKMdK6mzjuKIhpXubnKk0YJwByzs3)0nu)w18ICbzvdMLdzScREU0ql9HtIvKi(yIKPxrlz5gwQXkd7hUs(3uIS2pim3NULlTzRME9MORGKY)5u2QxNdQt(1sxK0CooEqNdGu8Vinbax7Oq4MwO(5kTcehsgbkA95Ui375KfHWUgkFQ)2Th0fZ)HHVS6mcq9c8Tka7McW3mvgMX7ZuseKxjVP7sUiyJZ1aWtXglSunU9tiA8DWnGQO40f2S3H7doT0IGRx44Wr3RICqW9ZtI3KTtbX5urlkUEOGHIwaiBlW99BoEP5WqlH9DwmOypRexYs4fiPCD4ybSroq0YxB8jDmmEXWgK)rlq2X47tqMP7s5bhEKRCoeNeLLvO0kuqwb5(fUYp6E6nNV8ux0A((19u7hZovkBKwLBdr)ZlMLSMQn1ZgzszGxLmISBhBGe4hf5XNYlkmlx6wL2nqQ6I1UbgT0Sw13GDRho7gt86L2EBOqzHn2kjSBz(qvdv1jX6Yq2XDfODI6zy3WsMIA9QK4Ka21c0I7tSF7GZ8QeBjGgxIyFzwnhktlj(E1L2Hmvlkfcbkjh8iZk8IJmtJ3KIbeuhEyd7QoRriayM)TvyRG2ULETwJS8(nE87yCkzE709DdaQE0GMHXqvWaMDAV8Ep(rp(TEJNy3)ixRedG2CZZdApLSWGp5DE0B)4h1c59GgHPjrUdWCA5AboTGFdgHabUOGRn36Llj5MobYhodMw(d34AipDi75SPtE1Z(T3(XF6T)Jp)2p8V8YN)lhmQ6Z142N97)Q)8F9lE6hu8WPtOOoJ9DHKd)7hX(kterNM(MtNeKcMwWoD6KUfZQ6AtXSTBlMfO35MIzNvmd27Z6vmRtXmJ0)QhvkPRYVcKPtK8annh2uwzLdeyrZNgf7yEaySv)giUeUOeFOvIBHcJlMnKrcqoj3riUOslfSIzNcR)i(CYDhsr0jNzkDqyBRN1wn)dJr57JDD(P0)ijgtkbuoNnuWzY9sQLSwDFLK4nyqkZnYkZzwlTaXcUwRxp18Uzc5v7aC2vsDRcukVDIvEJU(6un4h1hzxu86WX2yUhyL5qBCvdBC14Mu8)9Bd(3zS(dCPlQ4CGk6OYNDqnOee7MJC)qouAPCHCtrK4HgBmc(AvNqPsfPHLBsIqVaRrjQtXBwIYy4nmrzjYnnPuwCaBN3u7tylvx1hKQdkXrzZuuuBziHE2pO)o6a9u2bwdrn0B2wdQK1n2JXsoJTP2noUj5G(CH5bkE1X8HBR7d8fDCd(A)w10)NPMApjdSUNXqQLoO1K7X6LZiS9emm7qOJmBg3CMnkTGCk1uycBl5oDVVz3(2f7QF5mnL0w1hDdFFrZ4VLBl1ce40b5gS5IER3IDnRu1sdSTh)EPP8LEopYDcHrl57JwKRXOsDz9772iDb2GoZETTeDy)MC7k4hLReh1Ae8Spu2N8Mi3jQIZInH1QBAVfjAUJiV8s4DNMioMpGRwPDl714UuTMR)cf1JP(MaQ8zK8AOk1IP)fuV50j9zJ5rlruyDZTyXugBgBdKXMQHcM21EGW6oBGPlulCulbMxTQanYvcZeEYd86lelRO3T3kJaOYf9Cf7XyqFUeqAd8b3L(HJjQBLKH7DFVLRLT82THutT2Um1fln4Mh(hPj3kXPDYOuK52K0wJVz8MzZVBjDzq4UQmxrz6wrA5jQs7s1dsBLfLo(SxiNUloMt(wID)e065AfSz5CRtEFT2pdZb))T3T(6iuwNcXmSzmoyKnxr6gKT6mG3JrmBLwbUHNwQ(aYbzjYKZ17UpJsLRcLYeoDqREp1IkUGeQUNKZNs5BJLF2IMwApZludWQc80RFSUNryZwxazjoC13t3LxAhsP8SvBoQ9C3S2GlOi4dhzKVQOYCBk1S(g6qespmpHRczwATGIyQl2ScO9qTbYDSlzw1jQzRckM9GdpQmJqZU4IXLSWlvNaLxhVmJZRLJFRn7NNvdxxQ(c3DNRn5l8oW7QsUJ5vE3k3)1U0ezwRiW25Bvy((AKmuMzK9sOYphlVmHFhTLOBEWffi31AnIe)Uuxx1Gsb52tIXrNvvnzCM3rRWIrVJZltZQ9fZVl53vMcxo9TilEuGUjvPYbYRgTgT6t2o9nSNekBh0uk21ew5XdPvYXo)EwDhg7axbdLQM1rqI9667SANzVef5QpKEPWSOQvVy1YwOv10rEdjfVEvjlk6iUcEWEmOa3fLKx(deZRkhcIxeAjav)gXysdMJ0G5OPi5MVl(iO1oxv0NJ86W3H6k4TzhARSwx7WgAyK6lwuYLA1dM1TYIBKu98zX0aAVS2SDrQ3)L5RQuCldN42vT9hoBDEF22Bsa52tocwe1TI9emndQHOLI4kV()nei5cCb(Jvvj7zuoBxeYdorPEBnAI1iNVHESW3LVuyQu3XDXPi2zVeAjPU1hIRICxTwjR6dkYwdmZ9cnNSWFt0EMkRCFbUlBxGwwX3X9oqpf576ojOLWSRuPnCo2oSZBBNoMfJI4TSDyv6Zlth1YtH4vSz8x5IrgZ1dI4eSD4K72tfLSXq881mgTCHNYeW2sWS5BMG1PijtdPrZrUd96m)2LgiXADRZ8TBk33xJ2lxhsejb06VeaLwgDCvgIDR98H)62RrVJxjF1hpqVQM80ewRINH9QWv7Wd691XjHZpxMo8pgn5NbnNr7xXOgVtA5fyTrt2QuXz9rTsfa9i2AHevBZMFe(sxT(bof8ouMOBA9giH)LJvlGmicwCfTKYC8GVBJWO1SFz7Tq7JOfnN6DwJFHIVg7LtVJ3lw0YL2mT7tASPDJoBDwvlgr5R99BlK(QIS)1f2WDAF3ThKQHVQDMS4bIVxCxfF6(gpf9aDVsWZ4(G0sWyVUdw9qE0GERjb0aZdz)C6)9p]] )

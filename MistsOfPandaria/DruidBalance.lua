@@ -1446,13 +1446,8 @@ do
         else return "none" end
     end )
     
-    -- Track combo points for cat form usage
-    spec:RegisterStateExpr( "combo_points", function ()
-        if buff.cat_form.up then
-            return state.combo_points.current or 0
-        end
-        return 0
-    end )
+    -- Note: Do not redefine "combo_points" here to avoid recursion with core resource.
+    -- If needed, use a differently named expr (e.g., "current_combo_points").
     
     -- Handle shapeshifting
     spec:RegisterStateFunction( "shift", function( form )

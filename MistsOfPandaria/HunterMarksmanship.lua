@@ -1232,7 +1232,6 @@ spec:RegisterAuras( {
             spendType = "focus",
 
             startsCombat = true,
-            toggle = "cooldowns",
 
             handler = function ()
                 applyDebuff( "target", "a_murder_of_crows" )
@@ -1433,7 +1432,6 @@ spec:RegisterAuras( {
         gcd = "off",
         
             startsCombat = false,
-            toggle = "cooldowns",
         
         handler = function ()
                 applyBuff( "fervor" )
@@ -1447,7 +1445,6 @@ spec:RegisterAuras( {
             gcd = "spell",
             
             startsCombat = true,
-            toggle = "cooldowns",
 
             handler = function ()
                 applyBuff( "dire_beast" )
