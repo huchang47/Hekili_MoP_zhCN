@@ -337,19 +337,11 @@ spec:RegisterAuras( {
     },
 
     -- Prowl (for stealth mechanics)
-    prowl_base = {
+    prowl = {
         id = 5215,
         duration = 3600,
         max_stack = 1,
         multiplier = 1.6,
-    },
-    
-    prowl = {
-        alias = { "prowl_base" },
-        aliasMode = "first", 
-        aliasType = "buff",
-        duration = 3600,
-        max_stack = 1
     },
 
     -- Generic buffs
@@ -1973,7 +1965,7 @@ spec:RegisterAbilities( {
         usable = function() return not buff.bear_form.up end,
 
         handler = function ()
-            applyBuff( "prowl_base" )
+            applyBuff( "prowl" )
         end,
     },
 

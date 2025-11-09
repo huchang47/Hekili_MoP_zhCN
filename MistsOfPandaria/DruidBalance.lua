@@ -52,16 +52,27 @@ local function UA_GetPlayerAuraBySpellID(spellID)
 end
 
 -- Combat Log Event Frame for advanced Balance Druid tracking
+ns.wildMushroomGUIDs = ns.wildMushroomGUIDs or {}
+local MUSHROOM_SPELL_ID = 88747      -- 野性蘑菇
+local MUSHROOM_NAME = "野性蘑菇" 
+local MUSHROOM_DETONATE_SPELL_ID = 88751 -- 蘑菇引爆
+
+function ns:GetWildMushroomCount()
+    local n = 0
+    for k, v in pairs(ns.wildMushroomGUIDs) do n = n+1 end
+    return n
+end
+
 local balance_combat_log_frame = CreateFrame("Frame")
 balance_combat_log_frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 balance_combat_log_frame:SetScript("OnEvent", function(self, event, ...)
-    local timestamp, eventType, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags = CombatLogGetCurrentEventInfo()
-    
+    local timestamp, eventType, hideCaster, sourceGUID, sourceName, sourceFlags,
+        sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellID = CombatLogGetCurrentEventInfo()
+
     if sourceGUID ~= UnitGUID("player") then return end
-    
+
     -- Eclipse tracking for Solar/Lunar transitions
     if eventType == "SPELL_CAST_SUCCESS" then
-        local spellID = select(12, CombatLogGetCurrentEventInfo())
         -- Track Wrath casts (Solar Eclipse building)
         if spellID == 5176 then -- Wrath
             ns.wrath_casts = (ns.wrath_casts or 0) + 1
@@ -76,10 +87,9 @@ balance_combat_log_frame:SetScript("OnEvent", function(self, event, ...)
             ns.last_starsurge_cast = GetTime()
         end
     end
-    
+
     -- Shooting Stars proc tracking
     if eventType == "SPELL_DAMAGE" or eventType == "SPELL_PERIODIC_DAMAGE" then
-        local spellID = select(12, CombatLogGetCurrentEventInfo())
         -- Track DoT ticks that can proc Shooting Stars
         if spellID == 8921 or spellID == 93402 then -- Moonfire, Sunfire
             if UA_GetPlayerAuraBySpellID(93400) then -- Shooting Stars proc
@@ -87,10 +97,9 @@ balance_combat_log_frame:SetScript("OnEvent", function(self, event, ...)
             end
         end
     end
-    
+
     -- Nature's Grace proc tracking
     if eventType == "SPELL_CAST_SUCCESS" then
-        local spellID = select(12, CombatLogGetCurrentEventInfo())
         -- Track spells that can proc Nature's Grace
         if spellID == 2912 or spellID == 5176 or spellID == 78674 then -- Starfire, Wrath, Starsurge
             if UA_GetPlayerAuraBySpellID(16886) then -- Nature's Grace
@@ -98,16 +107,29 @@ balance_combat_log_frame:SetScript("OnEvent", function(self, event, ...)
             end
         end
     end
-    
+
     -- Force of Nature treant summoning
     if eventType == "SPELL_CAST_SUCCESS" then
-        local spellID = select(12, CombatLogGetCurrentEventInfo())
         if spellID == 106737 then -- Force of Nature
             ns.treants_summoned_time = GetTime()
         end
     end
+    -- 蘑菇追踪 
+    if eventType == "SPELL_SUMMON" and spellID == MUSHROOM_SPELL_ID and destName == MUSHROOM_NAME then
+        ns.wildMushroomGUIDs[destGUID] = true
+    end
+    if eventType == "UNIT_DIED" then
+        if ns.wildMushroomGUIDs[destGUID] then
+            ns.wildMushroomGUIDs[destGUID] = nil
+        end
+    end
+    if eventType == "SPELL_CAST_SUCCESS" and spellID == MUSHROOM_DETONATE_SPELL_ID then
+        wipe(ns.wildMushroomGUIDs)
+    end
 end)
-
+spec:RegisterStateExpr("wild_mushroom_count", function()
+    return ns:GetWildMushroomCount()
+end)
 -- Enhanced resource systems for Balance Druid
 spec:RegisterResource( 0, { -- Mana = 0 in MoP
     innervate = {
@@ -767,28 +789,7 @@ spec:RegisterAuras( {
             t16_4pc.caster = "nobody"
         end,
     },
-    
-    -- Enhanced form tracking with state validation
-    prowl = {
-        id = 5215,
-        duration = 3600,
-        max_stack = 1,
-        generate = function ()
-            local prowl = buff.prowl
-            if IsStealthed() and GetShapeshiftForm() == 3 then -- Cat Form and stealthed
-                prowl.count = 1
-                prowl.applied = combat
-                prowl.expires = combat + 3600
-                prowl.caster = "player"
-                return
-            end
-            
-            prowl.count = 0
-            prowl.applied = 0
-            prowl.expires = 0
-            prowl.caster = "nobody"
-        end,
-    },
+
     
     -- Enhanced utility tracking
     wild_growth = {
@@ -989,7 +990,7 @@ spec:RegisterAbilities( {    starfire = {
         
         startsCombat = true,
         texture = 136006,
-          handler = function ()
+        handler = function ()
             -- Remove Nature's Swiftness if used
             if buff.natures_swiftness.up then
                 removeBuff("natures_swiftness")
@@ -1034,28 +1035,29 @@ spec:RegisterAbilities( {    starfire = {
                     eclipse.wrath_counter = 0
                 end
             end
-              -- Nature's Grace trigger (increased haste)
+            -- Nature's Grace trigger (increased haste)
             if not buff.natures_grace.up and (buff.solar_eclipse.up or eclipse.toward_solar()) then
                 applyBuff("natures_grace")
             end
-              eclipse.last_spell = "wrath"
+            eclipse.last_spell = "wrath"
         end,
-    },
-    
+    },    
+
     solar_beam = {
         id = 78675,
         cast = 0,
-        cooldown = 60,
+        cooldown = 0,
         gcd = "off",
         
         startsCombat = true,
         texture = 252188,
-        
+        interrupt = true,
         toggle = "interrupts",
         debuff = "casting",
         readyTime = state.timeToInterrupt,
         
         handler = function()
+            interrupt()
             applyDebuff( "target", "solar_beam" )
         end,
     },
@@ -1115,18 +1117,17 @@ spec:RegisterAbilities( {    starfire = {
         id = 88747,
         cast = 0,
         cooldown = 0,
-        gcd = "spell",
+        gcd = "totem",
         
         spend = 0.11,
         spendType = "mana",
         
         startsCombat = false,
-        texture = 134228,
+        texture = 464341,
         
         handler = function ()
-            if buff.wild_mushroom.stack < 3 then
-                addStack("wild_mushroom")
-            end
+            applyBuff("wild_mushroom")
+            buff.wild_mushroom.stack = (buff.wild_mushroom.stack or 0) + 1
         end,
     },
     
@@ -1134,15 +1135,16 @@ spec:RegisterAbilities( {    starfire = {
         id = 88751,
         cast = 0,
         cooldown = 10,
-        gcd = "spell",
+        gcd = "off",
         
         startsCombat = true,
-        texture = 134206,
+        texture = 464342,
         
         usable = function () return buff.wild_mushroom.up end,
         
         handler = function ()
             removeBuff("wild_mushroom")
+            buff.wild_mushroom.stack = 0
         end,
     },
     
@@ -1623,8 +1625,22 @@ spec:RegisterHook( "runHandler", function( action )
     -- Clamp eclipse power to valid range
     state.eclipse.power = math.max(-100, math.min(100, state.eclipse.power))
 end )
+spec:RegisterOptions( {
+    enabled = true,
 
+    aoe = 3,
+    cycle = false,
+
+    nameplates = false,
+    nameplateRange = 40,
+    rangeFilter = false,
+
+    damage = true,
+    damageExpiration = 3,
+
+    potion = "tempered_potion",
+    package = "平衡Simc",
+} )
 -- Register default pack for MoP Balance Druid with authentic Eclipse rotation
-spec:RegisterPack( "平衡Simc", 20250812, [[Hekili:nJvBVTTTt8plbfWnbRXtw2jnTZoVOTd4FdwlkGtXEXqLfTeTn)BjrpsQ45Ha9zFhPEIuHu2bODyVOfou397EK3D8cgfCFW8yKah8zFp)R8UzK)qVrEJVACWCXHD4G57qrBrRHFKHsH)FjkbLfPo)qcffl5NtZzYJGVMtseFmlyPDqhb0Udhf85rE(bZ3qIJXL0I5rbZVFdHxek)hQiSsSfH0vWFhji0SIWecxaFEfLve()WBjjKHbZvhQmd8kuEIa(5NvMfodTmbhh8UG5rmIaZiOG5NveUmF1QHPuA2ws2caR0H57cMxkJG56FiqawGeQ6pY3MNKSyjIVrhEGQXof4gmkrSz4Uirr40IWjEfHdkcfOeCMyidNH3JsgwZzJGQ(Ge6jNk0J90ScY6nIf0vlYzCAKeMRovyUsdMLi2wo4nKaC9PcW1xPBh))8haMu)faYRDcsLhjMHrPsfpcOIrY51(gLBRo69eQweJsH0fisQOtr0oggscPSdl47jRezyo3islvBs26fcAE0gPYDJtLtHxeobZfeuYcGV1zPs1vhVLyghZaV1AjyV5ywk4uYzy(IhiRjjgw55vgGDbwe(4JkpreLMet3NzLogofrYGllx0QGgsuQJJ8oMssYIqSYW3)kQOM8ukO7lY4OeYooEbCrHT(qr4SIqpJCKJfUS8DLi9pMpbQmeHLjFL(ZNTF50Ck3kVqB4B6ixLY6UUJsn2tsIxKMZ3WO00HCbuuTSurlQgKOW0Dbh3yoZnMlIXcAMSBGeC3LHKm)GkEMsWshGeZ2BZCAcITOkQBEpoNXirOSsb4Um1reqsEMdbG4cgeK4IQwcJCxfRuv3qPczLfW5W4qifasRhI8WC26s11DnNUj43wNG39dtb7W37u8uMI2DfQNibxIw6cV0u6UDJgs33DPNZTihLyUXH9R(41YllLxWSdW1o5(MswP7eKuYFJJHlAqapJtQc)w1F3vMob3WkuIQaSV7InnfcMQYsRSlRbyxH(oqOvkHNNTIuwcX3DjKEuHUMNR4VBvqoNvJo4UKJTlTtoLCDJQc(pVYotoL05Uvf8Dx5Xsc50zDVtfTbLjh4f(WOJKkB2xypdjuZV47UUKnC6tdU8ikX0UkHkRUmCc16GrVIOPlrwhgxoTpJSRKVpWYjXVTi8D1VRO35WX9mZD9OYnaaZUk7wk2GxiBi1Hw3zeFVMeTNjnDNQCQtVOxms5Y3dZnbYGlFhfedjP7GQyvVv6Lvpn6LfHm8FMdHjWi40uGouUGMcnNHdkd)8Hf39BKm4tJGWYxZ457KijjOu2aC6XMx2q)yN0x9AMwsN4gAJhU0YX19aE7tmAPFKBT3IRvJp3wHXunAC42ySphKgRx5K1MYxAu72hOxlsJHx7KHM0hnQV5zr9BEou779SO2DSRU5PgX(UjUSlNgTUdU1TJ0i2DC1sWX3DO0EWX3D0uvqxJY(dJ1AT6A)kAscDpuhqEZMHG(z7Xm48CUKpcWJqswnaYDNil4iQPlJQQzKNzqDCSKy4X0OLio(Tf3PAqy5Eu1xmAAwDMLxJx9fZXLRpuVXE1zgxNGZUZsLUMop)yR11tbSoTDoLsyg3b(psC8UY1XTJrxrsWL7LlLW5kDQYiQC6RLtfqIaPWizBXcWTgwe(rrjtQacaASuZfBqWX4hWSdsSjuOX3bPkgLKhlh)ctavLvRA)XxHGpGeoL)Txb22gs0gDQrzhALALvJ)RDjKiIiPfxDNqTq)fyGFwTyUVecip4BsqJ1pYxtYqanrZIQGuutQYBOoklpDjUm1lHkGO6htRJ6(MHnzoi0wpxSHYcMppnFfJSvobLYVhm)ffHDMrQ4Uxah(L6e9I7kHJpSj3)NM9Z6PT2PyvcIV1XNO0yhW2j72ovgZ78kYQzhBKQbNDSHPSlOMlosHCwFBE5UsV2hkheQbToEQwy6SFyDgAxcS(PvZ4irODFOtN4nW(QEn0aJzE6GWypDsRxiBhIUYZuvANiQdHxFLoH)aItd6z1R1bH3xTamUHL1S9uPI0BOSLjJnAQzaw3T6GZ7b1hF8StzVCxOlDTLvQjBlRm97UKTqNudmFL2mVb9FLOfVoRwuZACSSZJyrNIbD7yVlQZi(DzPKWpv1AhQKF(NOFb63GL9PjrMgVXyanjlwwl50XozRzy8(4F24A97tqndYLqXM1yJAhndckHrEC7MeUD24b23wJg)6Jg2depzBlvQ1VwnEu49nRRc0vugCvSSlUwrl9kLo3sPtomZSU1BG5btN57DCRTheN2fXBNDznKp16Da55DG4YBEIEE51Ex84JDj86Nq3nqUz4l02jyDZ9whDhTq(QKgFBVQC5RsK0wDty6yqLS69S5tBy6IUDXCcBx1XMF1oS9MGp54H8JLGp5etWF)HizNkJ7ZYxjzjSpDwB0SCm)zJSeZ9U4jrWk3xxkFkExAbWPExOwetW)a]] )
-
+spec:RegisterPack( "平衡Simc", 20251004, [[Hekili:vJ1)Rrssv8)wYTWSzqVypZKKlRKz)HBxfDXepywz)TP7A6PMmfP7UgQU7ngj0SQOESOWDGGGkiRWDCCSQ)G)YDh3I)XyYA8N8FbFVQ7UMU6UQPNztwbzjHSD9(E9EFQ37nU34hpE0uscD8X9D6VxVEo3BN(97nWzW4rjNVGoE0cI)PKtG)iIec)(QV8VF9lEXiwOpE05bCYuueX8uHpC84rtszbjF)OXt0KRJZUarlO(JpUNt)XJMZMoLMtenge1JNZIZ8WFizEfQmZJpd()(jmEuMxaloboEgxK599ONYcy7mEK8JsxGoJKgKa)5X9k)vY4r5mJMxar4oHschpIgrMeqNo(9bcoUpYSIQttdcCNqINxJQbivl)YiFblHkyeWpOKGK57SWpjZ7WmVDDY86K5LqcOrj7iOr0Zib7uYPsrfhGIE31v075SK)jeXPXNYIqbSNvbuyftfGB7YN56dujyPXL2J0u3kZBs6SzgOkDHKa5Pleu4YKlo3n(m2SKiAmE(sdcTvw0jUj8u)5OvTVvRskpFAanoHrcCb(ojkeTtuFxCrM32zEu)a2IyQ7c(zu46((dZ8oWzP1eKcMOBbrs(6U0usb(aDfgNNAjylY)(pkgsO858GP8ZIGePZMtHSkceCXmQikb(nKMM59dqPN59DIOItoViHlK8JzHPHG(HBUzSe0fFV3exSYDivetfWL4jOWo4gkSaoFQ7SuX5OWU3ntyeHpjIc3Lcipv6Q9CSkXn8QAPwmyfsv1RT8zwKprerqPOLjVDHkVTZT6SmTrt3cAiHHzssrSpKeQLhwHuPF1Vn)cOnvqJDFk7ewWg7zscQOtx)58yAewrtbFQrzIM2KgODqUcdeQe8POaZ5vZeTh7mCIwKd0RYOQPbPzzhG8mwWu3W045cop01NNgLuiY1j)tN7P0eEe(CfQs7qQgvjaopyJ1Our2rjrEEk1fqBcz0Ii1URtKEvPaQ4(Hyq6Gkp8LqeZib55b2X12qJQYZdPcbdbvKkWowNjfmO8zQeMpIwUo6lonAgRi)Xoy4TL2c5CL66BhPul6JI3nHfsv4s2Vx1yCGeNPvEwvv3Hk)u7t7RHpugc1Fe9iG8e4NmVhYFmW37IYygGJmhEqLLmhpPxU3b)Mx8Wj7NaUz6c0DLXi7q8RtmkVxUnlgzKhdNSzXiTlE74756zoNNGTiH1AXGIaHOxagNkoPE8Eu53H4xm2foQj7a13O32m96Igs9G9mzWOfzhJUvmPcRWOLBtD2XNT7MBNxvVIwiW8L2FOFWE6zwRHV1kD1WLR3jHcD2qdTJkolZBAQqIxv2(AU7x2NRppAkd5dNWsaFoKkB3QV9NG2ERPuPPxMMR61O(3xA)W7bDRNVbz(WD6oGxGGcQhl32YDLQzMM1S4rBTIoHmvAAd)QimnAEEcN06IZbXY8oQAHDl95B2dA2Oj44oAtC10)6ALxe6XrRqzkyEftgdh(osR4DAM20me8asm0ZcmKlMZJSRYuwmh(O0LBzAeZ3mg6TUUlByWTv1x(QDzPvO7YNjijYXp7FpT56vrIL(eM9pcgR1NhoHO2BqvNwlQ9qrkB63oZ79jbKiFQ8LVFi(Ig8220IHepI)bWy67SlsLk6(e(tgXcJlongMImahKgQcJibNhZI1ZzHEoCbHfwnMVLQAR8uS9JYLxuXIvcIiofrxsMtDXMo1ewXvrDAkezRdb8MVnHvSTGnShFedzfTvB)5H8iz5OpMxLrJtbbCUFampmbE)jjE8XoQfCON3P05ez2fKF9uygFKGk7a7m4vaW3bPE9F5tV6JF()5R)9x93(6R(fFYDlwH1DV6d)Dx)Ip7F)hF21F6p9YV4zx(v)HR)vF(vp)ZU8F8xF9V9l)Np7NL9O)1lFz)376x8RbMV(vV81)M)mKz(aEeOUezE3cQGua2JyD31yX3fxSTwn3HoD2Yy5D3guoCFNonQkhouQHU3nVZV)hP0cDUtEq5GnnOuxT1169lTV6osd77(wcksnOhuERR0cDcbLSh96p8JU65)P8CSl)QFz)l)Ip)1p)zx)ZFvEEMmFcYKttMZfqdNHPZeStrOr(mwaazEhOx)nb87r3zZW)qB8oapFqjwC2JYlRI3rbp)ng(TQc)zMIzbK4tTCeNp1IyRbdAMknaRVjB2W2adlU)mUuvJAqded1GKFD0V8EuYBK6Wb))HCAGMArDiaAzMWdZbcvuw72hTgJpjwLHLRYV6xl27okHLBx)WDD6yEH9vzTCL714DpNQeDBMN0rEI5fVxgPEGAD2yv3T6gUR6wQvQRsem3)Dt0PdC6ygitl0Q2eElYxJj1gVBJjp4FvyuF72TXCfgnqbY9A6XvLuLzbRKKyyO0oBFReT7SQXAb22VR29H2QHRyGgxqDlMO8WvpJSMURTb4kA3Y2NT4Xg(QYF7nOS(5jiIV3rfaAXvneZRhEnqcb53EgWMdVAtM5oYraEj7DZ7qvdgSy9aOkWVUCDN3F4URk0TgRR4WH9oqd8RCjVBGY0S18noAI7bD2QyFSTlMYj)FZKtE4CeqraaM(48ak0BcJddrCUeM9gVduloTkSQ27juHB(ksr6GUwPXEfaW2sjSFxBbp72t9(xnzpnOXWxTzpYWC9vFwpTwEMQ0X06vTYXgdBUIvJcjv7TAtB1OFDAymQKWYv7PEB)MSSpBOcM98T3Y(JsxCXQFozWEL5aT45TstfGMUDldlkF97YccWnfnAbniiUwP5ATEpBz(vIjvxEjacBUwR4zUMJ1TYLvwKN3Y(4ACV10gTpi5nE66HflwudKq2S(YkV32dZoSytFDnfkK7zz8)n]] )
 

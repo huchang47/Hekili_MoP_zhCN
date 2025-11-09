@@ -1,4 +1,4 @@
-    -- HunterSurvival.lua
+-- HunterSurvival.lua
     -- july 2025 by smufrik
 
 -- Early return if not a Hunter
@@ -187,11 +187,6 @@ spec:RegisterAuras( {
                 t.caster = "nobody"
             end,
         },
-        cobra_shot = {
-            id = 19386,
-        duration = 6,
-        max_stack = 1
-    },
 
         disengage = {
             id = 781,
@@ -217,11 +212,6 @@ spec:RegisterAuras( {
         rapid_fire = {
             id = 3045,
         duration = 15,
-        max_stack = 1
-    },
-        steady_focus = {
-        id = 109259,
-        duration = 10,
         max_stack = 1
     },
 
@@ -380,11 +370,6 @@ spec:RegisterAuras( {
         },
 
         -- Tier 3 Talent Auras (Active abilities only)
-        exhilaration = {
-            id = 109260,
-            duration = 0,
-            max_stack = 1
-        },
 
         -- Tier 4 Talent Auras (Active abilities only)
         fervor = {
@@ -923,20 +908,6 @@ spec:RegisterAuras( {
             end,
         },
 
-        call_pet = {
-            id = 883,
-            cast = 0,
-            cooldown = 0,
-            gcd = "spell",
-
-            startsCombat = false,
-
-            usable = function() return not pet.alive, "no pet currently active" end,
-
-            handler = function ()
-                -- spec:summonPet( "hunter_pet" ) handled by the system
-            end,
-        },
 
         call_pet_1 = {
             id = 883,

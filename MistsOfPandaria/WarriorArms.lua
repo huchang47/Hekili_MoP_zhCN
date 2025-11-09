@@ -18,6 +18,7 @@
     local summonPet, dismissPet, setDistance, interrupt = state.summonPet, state.dismissPet, state.setDistance, state.interrupt
     local buff, debuff, cooldown, active_dot, pet, totem, action =state.buff, state.debuff, state.cooldown, state.active_dot, state.pet, state.totem, state.action
     local setCooldown = state.setCooldown
+    local movement = state.movement
     local addStack, removeStack = state.addStack, state.removeStack
     local gain,rawGain, spend,rawSpend = state.gain, state.rawGain, state.spend, state.rawSpend
     local talent = state.talent
@@ -41,8 +42,6 @@
     end
 
     -- Local aliases to core state helpers (mirrors DK/Shaman pattern) to avoid undefined global references.
-    local addStack, removeStack = state.addStack, state.removeStack
-    local setCooldown = state.setCooldown
     local gain, spend = state.gain, state.spend
 
     -- Provide lightweight fallbacks if engine helpers are missing in emulation/test harness.
@@ -68,9 +67,6 @@
                 state.cooldown[name].expires = state.query_time + (value or 0)
             end
         end
-    end
-    if not interrupt then
-        interrupt = function() end
     end
 
     -- (Removed direct state.* initialization above in favor of rawget block.)
@@ -341,21 +337,6 @@ spec:RegisterResource( 1, {
         end,
     },
 
-    -- Deadly Calm rage efficiency (effectively rage generation)
-    deadly_calm = {
-        aura = "deadly_calm",
-        last = function ()
-            local app = state.buff.deadly_calm.applied
-            local t = state.query_time
-            return app + floor( ( t - app ) / 1 ) * 1
-        end,
-        interval = 1,
-        value = function()
-            -- Abilities cost no rage during Deadly Calm (effective rage generation)
-            return state.buff.deadly_calm.up and 15 or 0
-        end,
-    },
-
     -- Charge rage generation (MoP: Juggernaut talent gives 15 rage per charge)
     charge_rage = {
         last = function ()
@@ -474,8 +455,8 @@ spec:RegisterTalents( {
     warbringer                 = { 1, 3, 103828 }, -- Charge also roots the target for 4 sec, and Hamstring generates more Rage.
 
     -- Tier 2 (Level 30) - Healing/Survival
-    second_wind                = { 2, 1, 29838 },  -- While below 35% health, you regenerate 3% of your maximum health every 1 sec.
-    enraged_regeneration       = { 2, 2, 55694 },  -- Instantly heals you for 10% of your total health and regenerates an additional 10% over 5 sec.
+    enraged_regeneration       = { 2, 1, 55694 },  -- Instantly heals you for 10% of your total health and regenerates an additional 10% over 5 sec.   --修改by风雪
+    second_wind                = { 2, 2, 29838 },  -- While below 35% health, you regenerate 3% of your maximum health every 1 sec.                    --修改by风雪
     impending_victory          = { 2, 3, 103840 }, -- Instantly attack the target causing damage and healing you for 10% of your maximum health.
 
     -- Tier 3 (Level 45) - Utility
@@ -570,7 +551,8 @@ spec:RegisterAuras( {
         id = 469,
         duration = 3600,
         max_stack = 1,
-    },    colossus_smash = {
+    },    
+    colossus_smash = {
         id = 86346,
         duration = 6,
         max_stack = 1,
@@ -592,11 +574,6 @@ spec:RegisterAuras( {
             t.caster = "nobody"
         end
     },
-    mortal_wounds = {
-        id = 12294,
-        duration = 10,
-        max_stack = 1,
-    },
     sudden_death = {
         id = 52437,
         duration = 10,
@@ -611,17 +588,12 @@ spec:RegisterAuras( {
         id = 12328,
         duration = 10,
         max_stack = 1,
-    },    overpower = {
+    },
+    overpower = {
         id = 7384,
         duration = 5,  -- WoW Sims: 5 second window to use Overpower after dodge
         max_stack = 1,
     },
-    -- 注释掉没有还出错的致命平静
-    --[[ deadly_calm = {
-        id = 85730,
-        duration = 10,
-        max_stack = 1,
-    }, ]]--
     enrage = {
         id = 12880,
         duration = 8,
@@ -749,7 +721,8 @@ spec:RegisterAuras( {
         id = 5246,
         duration = 8,
         max_stack = 1,
-    },    charge_root = {
+    },
+    charge_root = {
         id = 105771,
         duration = function()
             if talent.warbringer.enabled then
@@ -896,16 +869,6 @@ spec:RegisterAuras( {
         max_stack = 5,
     },
 
-    -- Casting buff for spell reflection
-    casting = {
-        duration = function () return haste end,
-        max_stack = 1,
-        generate = function ()
-            -- This is handled by the game's casting system
-            return nil
-        end,
-    },
-
     taste_for_blood = {
         id = 60503,
         duration = 9,
@@ -1002,19 +965,19 @@ spec:RegisterAuras( {
     battle_stance = {
         id = 2457,
         duration = 3600,
-    max_stack = 1
+        max_stack = 1
     },
 
     defensive_stance = {
         id = 71,
         duration = 3600,
-    max_stack = 1
+        max_stack = 1
     },
 
     berserker_stance = {
         id = 2458,
         duration = 3600,
-    max_stack = 1
+        max_stack = 1
     },
 
     berserker_rage = {
@@ -1039,29 +1002,6 @@ spec:RegisterAuras( {
             t.caster = "nobody"
         end
     },
-    -- 注释掉没有还出错的致命平静
-    --[[ deadly_calm = {
-        id = 85730,
-        duration = 10,
-        max_stack = 1,
-        generate = function( t )
-            local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitBuffByID( "player", 85730 )
-
-            if name then
-                t.name = name
-                t.count = count or 1
-                t.expires = expirationTime
-                t.applied = expirationTime - duration
-                t.caster = caster
-                return
-            end
-
-            t.count = 0
-            t.expires = 0
-            t.applied = 0
-            t.caster = "nobody"
-        end
-    },]]--
 
     avatar = {
         id = 107574,
@@ -1254,7 +1194,7 @@ spec:RegisterAuras( {
 -- MoP Stance System - Abilities no longer require specific stances
 spec:RegisterAbilities( {
     -- Core rotational abilities
-       mortal_strike = {
+    mortal_strike = {  --致死打击
         id = 12294,
         cast = 0,
         cooldown = 6,  -- MoP: 6 second cooldown
@@ -1286,7 +1226,8 @@ spec:RegisterAbilities( {
             end
         end,
     },
-      overpower = {
+
+    overpower = {
         id = 7384,
         cast = 0,
         cooldown = 0,
@@ -1318,15 +1259,12 @@ spec:RegisterAbilities( {
             end
         end,
     },
-      colossus_smash = {
+
+    colossus_smash = { --巨人打击
         id = 86346,
         cast = 0,
         cooldown = 20,
         gcd = "spell",
-
-        spend = 20,  -- MoP: 20 rage cost
-        spendType = "rage",
-
         startsCombat = true,
         texture = 464973,
 
@@ -1344,27 +1282,26 @@ spec:RegisterAbilities( {
         end,
     },
 
+    execute = {
+        id = 5308,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
+        spend = 30,
+        spendType = "rage",
+        startsCombat = true,
+        texture = 135358,
+        -- If hit on health less than 20% grant buff Sudden_death
+        handler = function()
+            applyBuff("sudden_execute")
+        end,
+    },
 
-        execute = {
-            id = 5308,
-            cast = 0,
-            cooldown = 0,
-            gcd = "spell",
-            spend = 30,
-            spendType = "rage",
-            startsCombat = true,
-            texture = 135358,
-            -- If hit on health less than 20% grant buff Sudden_death
-            handler = function()
-                applyBuff("sudden_execute")
-            end,
-        },
-
-        slam = {
-            id = 1464,
-            cast = 0,  -- MoP: Slam is now instant cast
-            cooldown = 0,
-            gcd = "spell",
+    slam = {
+        id = 1464,
+        cast = 0,  -- MoP: Slam is now instant cast
+        cooldown = 0,
+        gcd = "spell",
 
         spend = 25,  -- MoP: 25 rage cost
         spendType = "rage",
@@ -1390,7 +1327,8 @@ spec:RegisterAbilities( {
             end
         end,
     },
-      rend = {
+
+    rend = {
         id = 772,
         cast = 0,
         cooldown = 0,
@@ -1416,16 +1354,13 @@ spec:RegisterAbilities( {
     },
 
     -- Defensive / utility
-    battle_shout = {
+    battle_shout = {  --战斗怒吼
         id = 6673,
         cast = 0,
-        cooldown = 0,
+        cooldown = 60,
         gcd = "spell",
 
-        spend = function()
-            -- MoP: Battle Shout generates rage when used
-            return -10
-        end,
+        spend = 0,
         spendType = "rage",
 
         startsCombat = false,
@@ -1436,7 +1371,7 @@ spec:RegisterAbilities( {
             applyBuff( "battle_shout", 300 ) -- 5 minute duration in MoP
 
             -- MoP: Battle Shout generates rage
-            gain( 10, "rage" )
+            gain( 20, "rage" )
 
             -- Glyph of Battle: Additional health bonus
             if glyph.battle and glyph.battle.enabled then
@@ -1485,7 +1420,8 @@ spec:RegisterAbilities( {
             end
         end,
     },
-      sweeping_strikes = {
+
+    sweeping_strikes = {
         id = 12328,
         cast = 0,
         cooldown = 10,  -- MoP: 10-second cooldown, can always maintain if you have rage
@@ -1504,10 +1440,10 @@ spec:RegisterAbilities( {
         end,
     },
 
-       charge = {
-         id = 1250619,
+    charge = {
+        id = 1250619,
         cast = 0,
-    cooldown = state.talent.juggernaut and state.talent.juggernaut.enabled and 12 or 20,
+        cooldown = state.talent.juggernaut and state.talent.juggernaut.enabled and 12 or 20,
         gcd = "off",
         spend = function()
             local yards = movement.distance or 0
@@ -1539,25 +1475,6 @@ spec:RegisterAbilities( {
             applyDebuff( "target", "hamstring" )
         end,
     },
-        -- 注释掉没有还出错的致命平静
-      --[[ deadly_calm = {
-        id = 85730,
-        cast = 0,
-        cooldown = 60,
-        gcd = "off",
-
-        spend = 0,
-        spendType = "rage",
-
-        toggle = "cooldowns",
-
-        startsCombat = false,
-        texture = 464593,
-
-        handler = function()
-            applyBuff( "deadly_calm" )
-        end,
-    },]]--
 
     berserker_rage = {
         id = 18499,
@@ -1864,8 +1781,8 @@ spec:RegisterAbilities( {
     disrupting_shout = {
         id = 102060,
         cast = 0,
-    -- Use static 15s; handler manually syncs pummel to avoid recursive cooldown lookups.
-    cooldown = 15,
+        -- Use static 15s; handler manually syncs pummel to avoid recursive cooldown lookups.
+        cooldown = 15,
         gcd = "spell",
 
         spend = 0,
@@ -1885,8 +1802,8 @@ spec:RegisterAbilities( {
     pummel = {
         id = 6552,
         cast = 0,
-    -- Static 15s; handler syncs disrupting_shout.
-    cooldown = 15,
+        -- Static 15s; handler syncs disrupting_shout.
+        cooldown = 15,
         gcd = "off",
 
         spend = 0,
@@ -1907,28 +1824,20 @@ spec:RegisterAbilities( {
     },
 
     -- MoP-specific abilities
-    thunder_clap = {
+    thunder_clap = {      --雷霆一击
         id = 6343,
         cast = 0,
         cooldown = 6,
         gcd = "spell",
 
-        spend = function()
-            if glyph.wind_and_thunder and glyph.wind_and_thunder.enabled then return 10 end
-            return 20
-        end,
+        spend = 10,
         spendType = "rage",
 
         startsCombat = true,
         texture = 136105,
 
         handler = function()
-            -- MoP: With Blood and Thunder talent, applies Deep Wounds to all targets hit
-            if talent.blood_and_thunder and talent.blood_and_thunder.enabled then
-                applyDebuff( "target", "deep_wounds" )
-            end
-
-            -- Base Thunder Clap slow effect
+            applyDebuff( "target", "deep_wounds" )
             applyDebuff( "target", "thunder_clap_slow" )
         end,
     },
@@ -1988,8 +1897,8 @@ spec:RegisterAbilities( {
 
         startsCombat = false,
         texture = 132349,
-
-    usable = function() return state.current_stance ~= "battle" end,
+        
+        usable = function() return state.current_stance ~= "battle" end,
 
         handler = function()
             -- Remove other stances
@@ -2018,8 +1927,8 @@ spec:RegisterAbilities( {
 
         startsCombat = false,
         texture = 132341,
-
-    usable = function() return state.current_stance ~= "defensive" end,
+        
+        usable = function() return state.current_stance ~= "defensive" end,
 
         handler = function()
             -- Remove other stances
@@ -2047,8 +1956,8 @@ spec:RegisterAbilities( {
 
         startsCombat = false,
         texture = 132275,
-
-    usable = function() return state.current_stance ~= "berserker" end,
+        
+        usable = function() return state.current_stance ~= "berserker" end,
 
         handler = function()
             -- Remove other stances
@@ -2071,7 +1980,7 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-    spend = 30,
+        spend = 30,
         spendType = "rage",
         startsCombat = true,
         texture = 132369,
@@ -2094,14 +2003,12 @@ spec:RegisterAbilities( {
         end,
     },
 
-    heroic_strike = {
+    heroic_strike = { --英勇打击
         id = 78,
         cast = 0,
         cooldown = 0,
         gcd = "off",
         spend = function()
-            -- MoP: 30 rage baseline, free during Deadly Calm.
-            if buff.deadly_calm and buff.deadly_calm.up then return 0 end
             return 30
         end,
         spendType = "rage",
@@ -2289,7 +2196,7 @@ spec:RegisterRanges( "mortal_strike", "charge", "heroic_throw", "heroic_strike" 
 spec:RegisterOptions( {
     enabled = true,
 
-    aoe = 3,
+    aoe = 2,
 
     gcd = 1645,
 
@@ -2301,7 +2208,7 @@ spec:RegisterOptions( {
 
     potion = "golemblood",
 
-    package = "武器Simc",
+    package = "武器(黑科研)",
 } )
 
 local NewFeature = "|TInterface\\OptionsFrame\\UI-OptionsFrame-NewFeatureIcon:0|t"
@@ -2455,6 +2362,8 @@ spec:RegisterStateExpr( "tank", function()
 end )
 
 spec:RegisterPack( "武器Simc", 20251017, [[Hekili:LR12UnUrs7NLzgSc2jt0QJJ9giBGXtcWMb)5aIC2CNiPPAzX1uKcKuwJxiWN9)QQUjzZ(ajLT8KfyVysSizxv1vxDvF1HfdxC7I5l9Yyl(LrdgnD4GHx0F4hgnE04fZZEAlBX8TE(p4Dp8hrEBG)7ht2KIp8PWyVL4ItJ3L4dVyX872feM9trlUZmfhbF7wM)IF5IHlMVoy5sg)tzP(lMF76G0Cx8FE5UcwM7gVc(TFwqCuUByqAg86vXj5U)t2dbHb9xmNEijfbr3hYCY8sUNLbp4xOnglY7Uq2Yf3SyE8w4JGxnNtVfZF0ljaFl(xH7G)xwWgGLFxU7s2D7wTQVFCyCA6UuN0nEPR77TDByaBPJxgxMtc2Yj0)sqOcHdOdim5UNLgSzxOxg9J)mEp8t4tiMvUKZj5WHRA9tDc9sZC2LcICgO(o6Taj3)7GiVuhVeFViMZ2K4VeWs7NMb6uzMTI5LTML4qVifz34JMDjWHu)LSvb(bz5UZYDhnvMfSOLWE3b)kK(tuOFbzRRNvuUFs8YC354BPZN1b3VMLcCCBsqCsq2t5U7xZatKLX7r6bpIbsksjthKjSnEbrPKapS)uu0MAr0sy(paNsPrW)0eS4qKFaDqRZpnhSurleFpU56zIt8Vp39xHF(hP)X()a(KOL5U3eghV8o633NeVB75TlZ72M72dnE4Na9Lnv4BeCB8bLTrfvZ8czrz99E0dUH0x8jejF28RujXjkY)lAJ)3r7CWW7elcL0fLIlTkfVCgL(WUWqN78IIy0o(FyXWjlji6bwgSY0W4m5FFkKMAgI3YjnyhUpiBnAjIc2WbnlzJonssTD3iIXQoERDg5SAxYtkBGF3ZpWluw(pfIgkkQoqpbKTA7Wsszjpao4iwP68u5ZahTKBW678FmkHcZrHnWaRGBJhdGaG3uSQC3FNhie(RFG5Tme819jVWn1CzqBfwe3Bm4sI2eN109QdhYD9foWAY944C3ZPTNQVBTB2ljHZXhKTUF3MV7V(QC3pmOsLjrkI32CoVjobyoealj4bvn7ptVdcAqVKIAG7Qm4F5UfV8pJ3fTmvEZ8Msbwq890NuQZm(szf2esIv9dxiXXpYs2gVhCDOelzoA8hbNgYX0az(xlwapiZTRUb)Gy)oBktVkdSHzoGrMdDhKJfGR35xzv9Bx6TllozJZDXHQqEMJVamtH3iIP9dWzjkI)ESxI5BYcdLkA2j7es(S7rVW6J4UtsChdUjzSvTsIv2CONg6Trvjaps(8A5UecQhbfa1jiofUrENpVQUrmAk3Kt(oc9jTEV9AH7Vr2cbW(cZFxM6vM57qe5KBg8W7hl(if)mP0N5Se)kGNanRm0uENKFesESfzW21cjRFYYFJxeOm2ah4AsvdM4J56X2(Sr1vU1CUyq3QgAPrVpRccdXDNzpxi5Sf(WMQHhvWScHBXaA9lgq02UV7kBRPdum1XfQ6410cVCQK6voiG8LmipJ4a)sp1q4uN4vRCU3FjMNgYk7ixFJG2a6UmibV01X7YQFBbD7kj(YFirBY7MIOKTojEVmhXpfuXR82fAm9rjxouAIWwxIN(RX8onLZMSRkm10(fx)blrWBb)gufH2UBZgwOPSXQi0gWOyd51ds(1lYNrMLtLYAzxKd)VDW8J5zjlYjRyXMsittwxZ8cHBYB9fz3nOB8OW)IHeRQybU4hzoSi2Mam1zE0OorFVyMPSD6YsRxMadPSuEI6b48TrfWoHfLcIFk3UzlKNy8gWWZKLJr7Y63M5q)(tVemwcGe83()eyc)zEnpWYG8BqifexkGSBA)j9V8Ci8RhHlfd7wwEHBJVf(2ewiwecVeiS0nbZfK8SpgcoLUL27PN3HlznBqxSiyRdoIOu9RD70grR0Xkl0KzFxa7bB3T7WTg)JX6WKeVPuPOF5vKGqwLP6RDbJ(V2I8uDw09IW0oAgdLyXw1F6sjwANHDiZTg9g91P(iTwFMVk1hXEvAE5msT(iQi37Y15)QYDJaPAd)VzmZcqYvzb0zTzfcQXdKqq98qxRMPWWbeYpR1aYAYmuAlsWUlsPHPNmqh3DyAmYi1ken74R6aq9QDlqXlhycUCwJL)rw7RFgNzOEoDf0Cdvk5udAwRWiTgpVZGMZ4GS(F(OIP7zSTe(e6uqna1CXRl8vP6pIFTvHgcCv2IhExOhWdSijkm7MYxK7UlLoeL6XWhJ)rSXc0Nu1PH53w)Hu7gsbOJF8xR(CGIFpsswrDBe6NCxUcIx9r0S56RWuame1QGo1cBzcH)4IAtEMuaL6NhYFOKFeWl558BnNP(CjSMgnaqd)ZfvY0wXeTQ2LuHKQxXLyHMR4X3uePn39Bb9)deU0B4XdF2AUzL1NWwIzvrjQGqixcq54YcdqBPpLTgImcNg(HEBv0f3YFvU7NG3jsrH2WcZnX7TbSXb(ihb5RTFXq3XyQXSTfbMZc8FGuO2mKAm5TxtWSwpH(qtaE(AcZvfdZxByUA4o(RbNBdymE5CsfORgyJIpuUaZ1p3RxYCWJSbfLTcBB9kH1grDmiU5HbkIUPboZqenRxkMyeu0X7RjHTkHv)2QjDWeUHKIZe9o0ylmGFiZ7rv1ZNOhwesLakBxdzuji5i2mAaTwg1rvUmqBdGrFMP6PbF3S5Mo)S3OMoUlUCQgsxBaInup80Tm0MHG0P1jhvzXCMwMo(gBmfbT2R0fBG2ZArRljnBWpvlBYk6UFDqsi2xrIUTxiVgZwa)J(B8(cbTF8GMq4HG0AIMcCkLqFKZ6rprePIT2yD5vWej6wwqKFmoowol92a7aNP8M4i(yA)8n5Ud6lF9zzaZ5UNaKkGCSpoXycjw57uZ8DIf(or6w06aw4sN9EHT0aafoo2mhhBBNwXrk6g2dHLMYiXkdL1vjG0(eYv)KNmHVUzR3rh1z0q5ZigeqZlm4)uR6X29IQQZKifFYjw6KWUheUeA(TmHUSHdazNu4Ra76iMj4GwPXfsq4FmWhUx8KtYoLMvl)c(LJY250ClReTEsUFrdhP5zfcZ1sj)nrOlLIEw2gm7gVukOfO(tHWpY51uxcLuRbrWYFKfzCqc1qnzzgdAr6LM2HcdzffKXUgI1XaI5GFhnWRdUC0fGVxVKiW0eW0)tB2cWRqr4cLHzTF(NXEhfVkaRJX7kgbOJTpqF(DV0wbL)zGiV7D0xZBKvUl(7pZf30(Ln46BV6Vl7H(9bRU6ng9ZBCPQn8PA5g6HupleMlMn1WhZmVgayKZyHQMnSCVJQqq7uqr59pk6KPDXYUAG874nTLEN9E8kVaLou(ESSuxvCvgPJwlEVEARRxanrsmQCXmB0GwxVxmT26UPV(QrTUWA9uTMotPhQ8pVkEEPQForHc7rHUhE(lAYQRScQjGGCvKGhxEKZY79XBVkLL9EIu0j931wvm7kBQxKR6mQLAx2vwinV11PpHDtmN2Zai9FM0Uh9OvBxoQRDqZOglLYmSmkfcrNhJ63ADoQFBXGuBxcLR)ID5d86ym7F0nHnkZR7b)ANHQR070XPYQBiXmTkPCc5NCnoEE6m6iwFaLTZsm3piy(M3Jdw8vftn9ZJ5hfpg984bTb1gG5wocPHG(5XpR0TCAKFE0L2hVGXrUvjtma0O0rYM04k37mBY7HdTmSJZg3aNLASM0fgddQS9Rm8MEaPsYvqhrNPTlwA4qEJL2wF4qtTSE2KcpOh7WdBx0klerJgr0Jn2GwcTajuDDaHBW5tjACPdpDG9wp7AWUOQMQY2f6vATbAZ3KDFaGByFcePr1TOXBtpCOWASxl3kUU4cT5r61USibH0snY6z65IRIcMAFQD7OHxt2xJpCOrZVEnpaVLAgZtOBhV0w62V(m42XThEko7IbTBrWpUN2WxwRIOVxQUPxnSIaxovOZQpObn4XUlj4rMLZM0UWr5mxI0VCGz(T1u6wNbzM83oxjBtHz4RhsDBm4fHr3iMAdS8uGv2azpDaCRO5Rh02kE8AdQTItNi4SplqavsXPk8FH7wTrqZetLCS3sCMXdeElooF)fbNgoyqTGJTmqzgpM6AarUliIJ6uPZrugXf9zxAKmskUc9ttYSUl7QV504Sw6IZX5Mw4aMg8NZqGAIYHMQ691l(v0ZRjI)Y96QnhwQmuTXJv6ltTKKt0MN3Q3QmWvVvyR)26JC1BRM5Qp)UxYyxPUJQAFwn)MQJtupCvYLZBCVZoZYGxHVSGDNF4Wzf)TOqSwgTQZ57St3ysDA2PZaSGzgkdk3jM8qsjCRvFaPkkDr3g4jvrwESgudRzAiO69glJ)K(XxB4m4cWZaJHM(7d2rDWzYPdXbNEVEOnkmKEDrAiC1CAqzOnCqQ8P7zXAZgQ5P(rLFA4wS5(uZqAI5ltIj6PT7oQs)KEwMUNQcI0246ODBHwGoZarVN9Gekh7ceaw1kfOwSTW2H7y7CS(SVOs)wGD0I8EPM82HAeOQfhRsJAGZ015A4X4RQCCwmzwmTNo(mX1(UJtc)p48g8DJhORTpCW8kfbuKMMLsWw)SOnEkiSk6Ux1Pd25D(TykIvzx)goY4QKAgPYcU043x29CCjeEKEVbB9Epn(nW467AT46M0ySWa)qvxbRRSQAxi60tzYCqXrk8(hg0tFwsUUAos(gCoFSqAPPVrHQt1P6efQoXcrRgWgfAowNMJvLul0uEIBuOQ1nN(0Yy6o0Ow1EdTXatZqJ6w22ALgzgnTKLLipimkR5cbep9HOzx264KfZNVz3kWlhn5gl())]] )
+
+spec:RegisterPack( "武器(黑科研)", 20251109, [[Hekili:LRv3UXnUv4NLEtHDl6G5hpXolscqC2CXw0nzrKt3lk6iXrIJhvtjkqs5jUyHEekWc0Bw0BkqbAlkqFc6Zt7I8w0dp6pkkYzM41Rrb6f7gpsKN)558DouRMT6QvbjefD1BMpD(YzZM(0jZMpB6INUkqDxbDvqbj(gY1WFKtYG)))5F(x)3F3F)Kp(V(2V)V9TF)F(pEQEf3X4KenLK8srmSQvbRltzQViF1ABYdlQGgV6nNpBvW20KeA9AOY4vb)MoY(B)4F5p8X)0)yvalvQKiPtZVMrdveX1uf8G3GIonNSMrtwD5QaEbSi4vbKyvkpFvWTerQ(T6)Ivc)JknJwf9lQIsORl3SzsmNXLYszOmJi3oHuuWsPjHevT8islQj0VUHqYQOnCrveqhqyQIorMMvYik8hFnFh8tyjiZ62YPOCewB8ILHmIufwkbrwb2KpzvaL7FxAorgseXKCAyHG)HuQCIuboktMTHsuBPIq8fsn7w8jZob45NKq3KgNQQIEwv08LMSGMNa6EOEvA6FMf9Bj7q7SLX9vnVSkkq)w0)Sn96TujWXcrkxKQURkA3wAo444700dEefKunLC5if0msAoqXNxfnvlylBJxudKVdrNYIQOFAvKw9AuE83XCotlitY4cfHbgyr6n0EU(mFbynRWWWSvhnRLWN4X0jOX3arrYC4)gz4QfdGJCW08QGQimcoMOFpeD2er(zvrVf(57LVF37HLKNufDjJZtwJ)(AbVS40J2w0gHmXmugv5zA14Cl1ONQGHIMRMqULaNGN0SeKK3B(1zKQjQM)xCi(Vg1C4GXdSi0rxTu8uVsXpCgjVPKXcxtYZPOgpBQNihiOm)gQc2QKXvM)(HqCgejEvnPHaXDPQT6qruYStqBjzZFyKKbA3CKX2Pvh4Kc3ukUZsbEhjoLWmL)hcrtlk2PCFaiBV6qfsQ4gidmYkFzFBwgujaZtpuZFDED2nSU2lf66xNCBkbsr0URQO3HRqVGpNssyqY4xryzdYzGQcnVUCbKtcvIt23bRV5BmsK6l)nOVlQIofvVLEup(TurbFhCAWk9yG2DMd03SmcuC5TTBOoV5vBUuVaE8r7CWxPaVcnemBHyuvD53QOxaLCQdc9LrxQ4ISW1CMnkJa9ladp8MM00Foyp1I474eH7yZMSA908OsRHY3btvNGCpuWpY819QOXorwzNvUZuWiz2gb4rM(RKsbIUcRUPTjAOb1LKpA)vDeo6zwwh41)KNmDyjDFrIVO9aTDU9wDH(bACPY(4vqPgGlEWr78ED7ISo5iXLfMOxfWtGM9bAwVZ4KbIG0x6FFhlmI(Xi)msoymYah(iPApH4lQTJhAzZpk8sT2252fmgi4FjUzaLiUBiJvkJP1UwfEaXrY5RmGpttDEo3gKomGNJakN7pVEFS1YPwH66n6llnGuNNg3k(oP3fa2BOoqiFZMWRJt0iA1u0oXOLxeaLOG(MKB5LQ(CZD6Zzt3ZH6A42DfsmOeYzFP4A0f1wbF3Wel6E3MKaT0rYJPON)IvAAboInKsMZ(6m2p2)gcQ3beAB39y(2OJq8kKtP(CwpHkkZYOmxTj1tOmi0jdZnAQclnGRxMhw)3H6gxRBFTPzP2n7QtPrY6wkHbN3lIBA7A6XXJ2Sqn984Mf6nFlnKMtZs190wxZ6OOpHV)UvS3QFM(CekJbPh2FVJEj684eaaSpbeIJO5sGtY64QcObkEge56kYYzG9WCc1qI(AIqxrcqi9v)QgSsFPEUeacInvrFfuysJxdq8SCYztU4uOiobXRPlE3nxGR4xbRvqz6PhqeqXTltdAi5jVKbP2Uc1D5aKv)KMSSdogxxc3FaF7MavhsNH9O3Ur80UpI2BJT2ORJfUt8o08bQBrPw1QxSEakcEwNrz8H7gGZQ(q5FSN0Z)ZoDMEFXXp9KdJjYebXSjlDLmQ708rm7HdZWJOJM9MT6XzWb2z0gX)hLbh4ht(pCgzp4aFGYDdKTb5Ap08Jw46XVSyQbQX7hKxB47ZMIWX8bk3BdgyRegqHBBZGogG(rQCnZgSdxvJKnA8mhpg75MklqXlM6ccRQzqlTJ30tw5Ejq5yajUqBUy64yc1ENOX(r(6D(e3BKVJgjWbRAAd91l2wvnuN)VV2JChLwGOaqVJDzGGMx32vM0LpWMgnOx8oUkgb4HEGgwm7YUxufvkrNOXiUFj)165AJlPFq3bxn8H40ULaaTx(2(Ldu8Z0KK2oJLg7tvuTbQE2x6WMx8CnqCh1gAPZGIdUWzVODYyNyK2EO)WCHg5xGKNNwNr4e7NBGOZzaGoW)0M5O5BmAEn7gMq00BLQS1Y1(4lBRNvf9Zb7)ni6VlRR6CVTCpRBwc(ApQV4rFHAZX1zw9Rja0xtmQTL5jG3iMrkouBtl2BJk)ycCZRD6j7R4(JjKo)3cYJdKU9u69Xet3ORb5bW66fuN3R(WCKSd97dhYmKx0HHY3OG9EKyekH9okV6SUTftgHrYrbeVr)N5dbulcKpjCsdswU24KnJsU1gI8RWh2w4bHz6xXCk7gPRCxZC0LkCKwktyQoqMDpB7ye4x3HdJ5N)BP9i1ch4b9bN0XeELfuDcEe4ZHNNVTW5UVfx(t3dO)yIbomM)HZkF9HQtTCuRy90D32ubtFtziDp8qL2lMA8gaZiFabaVy6(WbPHYSpA2unVdGG58Pgdx3yWF7DgYwihAU)N08yU(B6jmHKbAq4Y6RLOzXO(8ZQIMoX84tsknC9DHaYTq5oUWjSDV8DPB(EMh(AKwtUnLYsc3ryhyy1wCCHBoUWNM2ZrS6JEE3jUWT7LHM2kbiT3P5AS4oxOq3F078pjF0mtFefYVtyP)(btY0FwuBBMbPQVD7Kqb9Aq4e4hzJl0F7XbyMKs)kiUoN6cUMxACUbq3BtJHZf3fkkTU(vZxuF4O7QhSpASEyX(XxpZS5JYScL5oW4NDFpp9vp7UYg)bVyJATD2iHYpMO)hkHgM10Cy73sZD(1OncvJNBn)asVX933giBzGAU3ltOeOxaYFl1RZ4tHChrKdHMaM7ViRaqIOfHZBNwEve(XpoP6xQVhd(MuD3(6CFaqW3M3(PygKMfdIqPAlhG218ztQ53Q)7p]] )
 
 -- Removed duplicate stance aura synthesis block; stance handled by early SyncStance logic.
 
