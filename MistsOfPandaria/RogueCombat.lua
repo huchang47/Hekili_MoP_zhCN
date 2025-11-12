@@ -125,11 +125,6 @@ spec:RegisterResource( 3, { -- Energy with Combat-specific enhancements
     blade_flurry_efficiency = function ()
         return state.buff.blade_flurry.up and 1.05 or 1.0 -- 5% energy efficiency during Blade Flurry
     end,
-    
-    -- Glyph of Energy enhanced regeneration
-    glyph_energy_bonus = function ()
-        return state.glyph.energy.enabled and 1.05 or 1.0 -- 5% energy regen bonus if glyphed
-    end,
 } )
 
 -- Combo Points resource registration with Combat-specific mechanics
@@ -205,6 +200,9 @@ spec:RegisterResource( 4, { -- Combo Points = 4 in MoP
     end,
 } )
 
+-- 套装
+spec:RegisterGear( "tier13", 78794, 78833, 78759, 78774, 78803, 78699, 78738, 78664, 78679, 78708,77025, 77027, 77023, 77024, 77026 ) --T13黑牙织战
+
 -- Talents
 spec:RegisterTalents( {
     -- Tier 1 (Level 15)
@@ -213,7 +211,7 @@ spec:RegisterTalents( {
     shadow_focus = { 1, 3, 108209 }, -- Reduces energy cost of abilities while stealthed.
     
     -- Tier 2 (Level 30) 
-    deadly_throw = { 2, 1, 48673 }, -- Throws a blade that damages and slows target movement.
+    deadly_throw =       { 2, 1, 26679 }, -- Throw a dagger that slows the target
     nerve_strike = { 2, 2, 108210 }, -- Reduces damage done by targets affected by Kidney Shot or Cheap Shot.
     combat_readiness = { 2, 3, 74001 }, -- Defensive cooldown that reduces damage taken with consecutive hits.
     
@@ -223,7 +221,7 @@ spec:RegisterTalents( {
     elusiveness = { 3, 3, 79008 }, -- Reduces damage taken when Feint is active.
     
     -- Tier 4 (Level 60)
-    preparation = { 4, 1, 14185 }, -- Resets the cooldown of several rogue abilities.
+    cloak_and_dagger = { 4, 1, 138106 }, -- Ambush, Garrote, and Cheap Shot have 40 yard range and will cause you to teleport behind your target
     shadowstep = { 4, 2, 36554 }, -- Teleport behind target and increases damage of next ability.
     burst_of_speed = { 4, 3, 108212 }, -- Increases movement speed and removes movement impairing effects.
     
@@ -238,83 +236,60 @@ spec:RegisterTalents( {
     anticipation = { 6, 3, 114015 }, -- Can store extra combo points beyond the normal limit.
 } )
 
--- Glyphs (Enhanced System - authentic MoP 5.4.8 glyph system)
 spec:RegisterGlyphs( {
-    -- Major glyphs - Combat Rogue
-    [54825] = "adrenaline_rush",      -- Adrenaline Rush now also increases your movement speed by 50%
-    [54760] = "killing_spree",        -- Killing Spree now has a 50% chance to not trigger a cooldown
-    [54821] = "blade_flurry",         -- Blade Flurry now affects 2 additional targets
-    [54832] = "slice_and_dice",       -- Slice and Dice now lasts 50% longer
-    [54743] = "eviscerate",           -- Eviscerate now has a 50% chance to not consume combo points
-    [54829] = "sinister_strike",      -- Sinister Strike now has a 50% chance to not trigger a cooldown
-    [54754] = "backstab",             -- Backstab now has a 50% chance to not trigger a cooldown
-    [54755] = "hemorrhage",           -- Hemorrhage now has a 50% chance to not trigger a cooldown
-    [116218] = "shadowstep",          -- Shadowstep now has a 50% chance to not trigger a cooldown
-    [125390] = "sprint",              -- Sprint now also increases your attack speed by 20%
-    [125391] = "evasion",             -- Evasion now also increases your dodge chance by 20%
-    [125392] = "feint",               -- Feint now also reduces damage taken by 20%
-    [125393] = "stealth",             -- Stealth now also increases your movement speed by 30%
-    [125394] = "vanish",              -- Vanish now also grants immunity to movement impairing effects
-    [125395] = "cloak_of_shadows",    -- Cloak of Shadows now also removes all harmful effects
-    
-    -- Major glyphs - Utility/Defensive
-    [94388] = "sap",                 -- Sap now affects all enemies within 5 yards
-    [59219] = "blind",               -- Blind now affects all enemies within 5 yards
-    [114235] = "gouge",              -- Gouge now affects all enemies within 5 yards
-    [125396] = "kick",               -- Kick now has a 50% chance to not trigger a cooldown
-    [125397] = "kidney_shot",        -- Kidney Shot now has a 50% chance to not trigger a cooldown
-    [125398] = "cheap_shot",         -- Cheap Shot now has a 50% chance to not trigger a cooldown
-    [125399] = "garrote",            -- Garrote now has a 50% chance to not trigger a cooldown
-    [125400] = "rupture",            -- Rupture now has a 50% chance to not trigger a cooldown
-    [125401] = "expose_armor",       -- Expose Armor now has a 50% chance to not trigger a cooldown
-    [54828] = "pick_pocket",         -- Pick Pocket now has a 100% chance to succeed
-    
-    -- Major glyphs - Defensive/Survivability
-    [125402] = "evasion",            -- Evasion now also increases your dodge chance by 20%
-    [125403] = "feint",              -- Feint now also reduces damage taken by 20%
-    [125404] = "stealth",            -- Stealth now also increases your movement speed by 30%
-    [125405] = "vanish",             -- Vanish now also grants immunity to movement impairing effects
-    [125406] = "cloak_of_shadows",   -- Cloak of Shadows now also removes all harmful effects
-    [125407] = "shadow_dance",       -- Shadow Dance now also increases your movement speed by 50%
-    [125408] = "shadow_blades",      -- Shadow Blades now also increases your attack speed by 20%
-    [125409] = "preparation",        -- Preparation now also resets all cooldowns
-    [125410] = "shadowstep",         -- Shadowstep now also increases your movement speed by 50%
-    [125411] = "shadow_walk",        -- Shadow Walk now also increases your movement speed by 50%
-    
-    -- Major glyphs - Control/CC
-    [125412] = "sap",                -- Sap now affects all enemies within 5 yards
-    [125413] = "blind",              -- Blind now affects all enemies within 5 yards
-    [125414] = "gouge",              -- Gouge now affects all enemies within 5 yards
-    [125415] = "kidney_shot",        -- Kidney Shot now affects all enemies within 5 yards
-    [125416] = "cheap_shot",         -- Cheap Shot now affects all enemies within 5 yards
-    [125417] = "garrote",            -- Garrote now affects all enemies within 5 yards
-    
-    -- Minor glyphs - Visual/Convenience
-    [57856] = "stealth",             -- Your stealth has enhanced visual effects
-    [57862] = "vanish",              -- Your vanish has enhanced visual effects
-    [57863] = "shadowstep",          -- Your shadowstep has enhanced visual effects
-    [57855] = "pick_pocket",         -- Your pick pocket has enhanced visual effects
-    [57861] = "lock_picking",        -- Your lock picking has enhanced visual effects
-    [57857] = "distract",            -- Your distract has enhanced visual effects
-    [57858] = "detect_traps",        -- Your detect traps has enhanced visual effects
-    [57860] = "safe_fall",           -- Your safe fall has enhanced visual effects
-    [121840] = "blur",               -- Your abilities create a blur effect
-    [125418] = "shadow_walk",        -- Your movement leaves shadowy footprints
-    [125419] = "floating",           -- Your spells cause you to hover slightly above the ground
-    [125420] = "glow",               -- Your abilities cause you to glow with shadow energy
+    --大型雕文
+    [56813] = "ambush", --伏击雕文
+    [63269] = "cloak_of_shadows", --暗影斗篷雕文
+    [56811] = "sprint", --疾跑雕文
+    [146629] = "redirect", --转嫁雕文
+    [56799] = "evasion", --闪避雕文
+    [63249] = "vendetta", --仇杀雕文
+    [56804] = "feint", --佯攻雕文
+    [56801] = "cheap_shot", --偷袭雕文
+    [56809] = "gouge", --凿击雕文
+    [146628] = "sharpened_knives", --削铁如泥雕文
+    [56818] = "blade_flurry", --剑刃乱舞雕文
+    [56806] = "recuperate", --复原雕文
+    [146631] = "hemorrhaging_veins", --动脉出血雕文
+    [146625] = "recovery", --恢复雕文
+    [56808] = "shadow_walk", --暗遁雕文
+    [56810] = "shiv", --毒刃雕文 你的毒刃技能的冷却时间缩短3秒
+    [89758] = "vanish", --消失雕文
+    [63253] = "stealth", --潜行雕文
+    [56819] = "smoke_bomb", --烟雾弹雕文
+    [56803] = "expose_armor", --破甲雕文
+    [56805] = "kick", --脚踢雕文
+    [63254] = "deadly_momentum", --致命冲动雕文
+    [91299] = "blind", --致盲雕文
+    [56812] = "garrote", --锁喉雕文
+    -- 小型雕文
+    [63268] = "disguise", --伪装雕文
+    [125044] = "detection", --侦测雕文
+    [56807] = "hemorrhage", --出血雕文
+    [63256] = "tricks_of_the_trade", --嫁祸诀窍雕文
+    [58033] = "safe_fall", --安全降落雕文
+    [58027] = "pick_lock", --开锁雕文
+    [146961] = "improved_distraction", --强化扰乱雕文
+    [58032] = "distract", --扰乱雕文
+    [58017] = "pick_pocket", --搜索雕文
+    [63252] = "killing_spree", --杀戮盛筵雕文
+    [58039] = "blurred_speed", --水上漂雕文
+    [146960] = "the_headhunter", --猎头煞星雕文
+    [58038] = "poisons", --药膏雕文
+    [56800] = "decoy", --诱饵雕文
 } )
 
 -- Auras
 spec:RegisterAuras( {
     -- Core Combat Rogue buffs
-    slice_and_dice = {
+    slice_and_dice = { --切割
         id = 5171,
-        duration = function() return 6 + (6 * combo_points.current) + (talent.improved_slice_and_dice.enabled and 6 or 0) end, -- MoP Classic: 6s base + 6s per combo point + talent bonus
+        duration = function() return 6 + (6 * (combo_points.current or 0)) end,
         max_stack = 1
     },
-    adrenaline_rush = {
+    adrenaline_rush = { --冲动
         id = 13750,
-        duration = 15,
+        duration = function() return 15 + ((set_bonus.tier13_4pc == 1 and 3) or 0) end,
         max_stack = 1
     },
     killing_spree = {
@@ -337,7 +312,7 @@ spec:RegisterAuras( {
         duration = 8,
         max_stack = 1
     },
-    evasion = {
+    evasion = { --闪避
         id = 5277,
         duration = 10,
         max_stack = 1
@@ -348,7 +323,12 @@ spec:RegisterAuras( {
         max_stack = 1
     },
     stealth = {
-        id = 115191,
+        -- Stealth: Primary spell ID in MoP Classic is 1784. Some data sources (or client tooltips) may surface
+        -- an alternate stealth aura ID (115191). Include both so the engine recognizes the buff regardless
+        -- of which variant is applied. This resolves buff.stealth.up returning false when the player uses
+        -- the 1784 Stealth ability.
+        id = 1784,
+        copy = { 115191 },
         duration = 3600,
         max_stack = 1
     },
@@ -359,9 +339,9 @@ spec:RegisterAuras( {
         duration = 24,
         max_stack = 1
     },
-    rupture = {
+    rupture = { --割裂
         id = 1943,
-        duration = function() return 8 + (4 * combo_points.current) end, -- MoP Classic: 8s base + 4s per combo point
+        duration = function() return 4 + (4 * combo_points.current) end, 
         tick_time = 2,
         max_stack = 1
     },
@@ -526,11 +506,6 @@ spec:RegisterAuras( {
         id = 113952,
         duration = 20,
         max_stack = 5
-    },
-    vendetta = {
-        id = 79140,
-        duration = 20,
-        max_stack = 1
     },
     master_of_subtlety = {
         id = 31665,
@@ -847,20 +822,16 @@ end)
 -- Function to calculate duration of Slice and Dice based on combo points
 spec:RegisterStateFunction("slice_and_dice_duration", function(cp)
     if not cp or cp == 0 then return 0 end
-    -- Base duration: 12 seconds + 6 seconds per combo point
-    local duration = 12 + (cp * 6)
-    -- Add 6 seconds if the improved slice and dice talent is enabled
-    if talent.improved_slice_and_dice and talent.improved_slice_and_dice.enabled then
-        duration = duration + 6
-    end
+    -- Base duration: 6 seconds + 6 seconds per combo point
+    local duration = 6 + (cp * 6)
     return duration
 end)
 
 -- Helper function to calculate rupture duration based on combo points
 spec:RegisterStateFunction("rupture_duration", function(cp)
     if not cp or cp == 0 then return 0 end
-    -- Base duration is 8 seconds + 4 seconds per combo point
-    return 8 + (cp * 4)
+    -- Base duration is 4 seconds + 4 seconds per combo point
+    return 4 + (cp * 4)
 end)
 
 -- Helper function to detect if we're stealthed or have stealth-like buffs
@@ -1057,14 +1028,13 @@ spec:RegisterAbilities( {
     },
     
     -- Finishing move that causes damage over time. Lasts longer per combo point.
-    rupture = {
+    rupture = { --割裂
         id = 1943,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
         school = "physical",
-
-        spend = 25,
+        spend = function () return 25 * (( talent.shadow_focus.enabled and (buff.stealth.up or buff.vanish.up)) and 0.25 or 1 ) end,
         spendType = "energy",
         
         startsCombat = true,
@@ -1074,8 +1044,8 @@ spec:RegisterAbilities( {
         handler = function ()
             local cp = combo_points.current
             
-            -- MoP Classic: 8 seconds base + 4 seconds per combo point
-            applyDebuff("target", "rupture", 8 + (4 * cp))
+            -- MoP Classic: 4 seconds base + 4 seconds per combo point
+            applyDebuff("target", "rupture", 4 + (4 * cp))
             
             -- Apply Restless Blades cooldown reduction
             local cdr = restless_blades_cdr(cp)
@@ -1100,7 +1070,7 @@ spec:RegisterAbilities( {
     },
     
     -- Finishing move that increases attack speed by 40%. Lasts longer per combo point.
-    slice_and_dice = {
+    slice_and_dice = { --切割
         id = 5171,
         cast = 0,
         cooldown = 0,
@@ -1205,14 +1175,13 @@ spec:RegisterAbilities( {
     },
     
     -- For the next 12 sec, your successful melee attacks have a 100% chance to grant you an extra combo point.
-    shadow_blades = {
+    shadow_blades = { --暗影之刃
         id = 121471,
         cast = 0,
         cooldown = 180,
         gcd = "off",
         school = "shadow",
         
-        toggle = "cooldowns",
         startsCombat = false,
 
         handler = function ()
@@ -1293,10 +1262,10 @@ spec:RegisterAbilities( {
     },
     
     -- Increases your dodge chance by 50% for 10 sec.
-    evasion = {
+    evasion = { --闪避
         id = 5277,
         cast = 0,
-        cooldown = 180,
+        cooldown = 120,
         gcd = "off",
         school = "physical",
         
@@ -1338,14 +1307,13 @@ spec:RegisterAbilities( {
     },
     
     -- Instantly enter stealth, but breaks when damaged. For 3 sec after you vanish, damage and harmful effects received will not break stealth.
-    vanish = {
+    vanish = { --消失
         id = 1856,
         cast = 0,
         cooldown = 120,
         gcd = "off",
         school = "physical",
-        
-        toggle = "cooldowns",
+      
         startsCombat = false,
 
         handler = function ()
@@ -1367,14 +1335,14 @@ spec:RegisterAbilities( {
     },
     
     -- Strikes an enemy, dealing Physical damage and incapacitating the target for 4 sec. Must be facing the target. Any damage caused will revive the target. Awards 1 combo point.
-    gouge = {
+    gouge = { --凿击
         id = 1776,
         cast = 0,
         cooldown = 10,
         gcd = "spell",
         school = "physical",
 
-        spend = 45,
+        spend = function() return talent.dirty_tricks.enabled and 0 or 45 end,
         spendType = "energy",
         
         startsCombat = true,
@@ -1386,7 +1354,7 @@ spec:RegisterAbilities( {
     },
     
     -- Blinds the target, causing it to wander disoriented for 1 min. Any damage caused will remove the effect.
-    blind = {
+    blind = { --致盲
         id = 2094,
         cast = 0,
         cooldown = 90,
@@ -1396,7 +1364,6 @@ spec:RegisterAbilities( {
         spend = function() return talent.dirty_tricks.enabled and 0 or 15 end,
         spendType = "energy",
         
-        toggle = "cooldowns",
         startsCombat = true,
 
         handler = function ()
@@ -1405,7 +1372,7 @@ spec:RegisterAbilities( {
     },
     
     -- Finishing move that stuns the target. Lasts longer per combo point.
-    kidney_shot = {
+    kidney_shot = { --肾击
         id = 408,
         cast = 0,
         cooldown = 20,
@@ -1415,7 +1382,6 @@ spec:RegisterAbilities( {
         spend = 25,
         spendType = "energy",
         
-        toggle = "cooldowns",
         startsCombat = true,
         
         usable = function() return combo_points.current > 0, "requires combo points" end,
@@ -1452,14 +1418,13 @@ spec:RegisterAbilities( {
     },
     
     -- Creates a cloud of dense smoke in a 10-yard radius around the Rogue for 5 sec. Enemies are unable to target into or out of the smoke cloud.
-    smoke_bomb = {
+    smoke_bomb = { --烟雾弹
         id = 76577,
         cast = 0,
         cooldown = 180,
         gcd = "spell",
         school = "physical",
         
-        toggle = "cooldowns",
         startsCombat = false,
 
         handler = function ()
@@ -1484,15 +1449,16 @@ spec:RegisterAbilities( {
         end,
     },
     
-    -- Disarm the enemy's weapon for 10 sec.
-    dismantle = {
+    -- Disarm the enemy's weapon for 18 sec.
+    dismantle = { --拆卸
         id = 51722,
         cast = 0,
         cooldown = 60,
         gcd = "spell",
         school = "physical",
         
-        toggle = "cooldowns",
+        toggle = "interrupts",
+
         startsCombat = true,
 
         handler = function ()
@@ -1721,22 +1687,20 @@ spec:RegisterAbilities( {
         end,
     },
     
-    -- Talent: You become shrouded in a veil of shadows for 3 min, reducing your threat in combat. Increases your movement speed by 70% and allows the use of stealth abilities for 3 sec.
-    preparation = {
+    preparation = { --伺机待发
         id = 14185,
         cast = 0,
         cooldown = 300,
-        gcd = "off",
+        gcd = "spell",
         school = "physical",
         
-        talent = "preparation",
-        toggle = "cooldowns",
         startsCombat = false,
-
-        handler = function ()
-            setCooldown("vanish", 0)
-            setCooldown("sprint", 0)
-            setCooldown("evasion", 0)
+        
+        handler = function()
+            setCooldown("vanish", 0) --消失
+            setCooldown("sprint", 0) --疾跑
+            setCooldown("evasion", 0) --闪避
+            setCooldown("dismantle", 0) --拆卸
         end,
     },
     
@@ -1857,14 +1821,14 @@ spec:RegisterAbilities( {
     },
     
     -- Immobilizes the target in place for 1 min and deals damage over time. Only affects Humanoids and Beasts. Only usable while stealthed.
-    sap = {
+    sap = { --闷棍
         id = 6770,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
         school = "physical",
 
-        spend = function() return talent.dirty_tricks.enabled and 0 or 35 end,
+        spend = 35,
         spendType = "energy",
         
         startsCombat = false,
@@ -1963,7 +1927,7 @@ spec:RegisterOptions( {
 
     potion = "virmen_bite_potion", -- MoP-era agility potion
 
-    package = "战斗Simc"
+    package = "战斗(黑科研)"
 } )
 
 spec:RegisterSetting( "use_killing_spree", true, {
@@ -2033,3 +1997,5 @@ spec:RegisterSetting( "use_tricks_of_the_trade", true, {
 } )
 
 spec:RegisterPack( "战斗Simc", 20251009, [[Hekili:fNvBVTnos4FlgfqjbBQxlzl3TlSdW1E42DdUDrXPE3hLeTeTTG1BhfvkcGH(TFZqQxOKPKtslWv0TRTi5mpZmpCEXY109RUoHeo19VSwyzBUyXhNBzTCT9sxh(Z5uxNCsWjYb4dPKe4F)CwYochF8ZXzKq84fzLSayjxNDLrX8)i1DNgzATAPLRdPKFmJ564KuUNfDY15yuyivEcArGRZxpgvu5J)hPYVw3v(z7HVhWJYsR8JJk4WY7Zyv()o9uuC0CxhXdrWSpknQ4iLbF(VeghnLSlMg6(jxNaweNYIiGPffCQWJrtirGe3u5Bv5Bu5ZjSdu(CEuc1JN5fgbQ(HTWQRflFReepr9OP0KiArZrpFUYFwL)UY97NVlMes92hxYyppVmVY)oWQfq31HvMZlzuPTYIYLp9RMR)9kF0XMv5)LSOuEL))O2mkC5GxCu7yiCqW(bbwdZ4ZH9LuKL6XPj50c0U6z1OH1HTbBg17suVnRtFkQiGYWWQcwW95Ca0pSqMwNEZ53ts9Y27DkfaCbgWsPEbHUo2VaVXV1OGIRz8RM2FDzCxj4qFIsayDWRGdut6fEGcmMacQz9HUHq6EszmFAMxnhjllmUecjmkiDjbsh5dq4QfDiipt8)BmXMhFcSQ(OrcCTaOHN(ebzycgkqxcYYIdZ(wAZJLUi0Pw5VwfbmAobcf1Wy1eE6ea)qezH06e6S4ibuIN4ksbO6o5EKKgcb3I4mEZxaXB)Js8chU3(s2ZOyx)dtSWfuk7eWzqX(HrflsFp8SiCQ6mjSaskgSzmAQ4g3VmnVzisuajjeKbrCRIvwhxhLvH38vWbqNtpr5Mn()2Vdi6J))erwdqKfIiZfJcjnjOfPVfu8XtqlX1Oz3nEbz2vxtBcTpHBaYRl2bOPsE275zhoelYZyAQEFMKSdCydUrBovwnK1c3unx0uNkaZF6LJPpL2XYwJKtIb22CskKmmkxCvEETyfNwDbVGJy0QveDUknrFm)XO6F13V(xj0F7FLkQtG1GzFwqzrpbQLn2cwL7MwluTWgXwUdCZ7lpq7j0MJH8Rp27CZUoIM9AK(AP0viBYC0APz)hXsv(FlId)7FtXvw5xuMNNXe5zmhV(GI)WEHAnMyzTrOcGKYETC)aF0wP4PkvrC(XtURaHL2VOeXdIUc5pEwEPWIJcOEqLgiduaTRGxxhDTS8X3PPTs6byhr8cVdqtW05fCO3vrPetZ6kSQ3ie9Q0lO2xlAdUo4wWliaj5Vl(Omm)jHMVbe7VH6gAFoLtp0vL2C8kt10Wec7efkqMX8cPe(XEKXlVoJwvBxMd7Bs0Mj81Ew3qfiG1WQDAm52o)(5MoIbECECexhfxTr7up5N9WjduT4lYmz)9MzsgkLxRVQdbHJNCuQU2MrNXWcTVatz2vGC7fNqkn3d4SrhoYBRd32Yx)RvD07AUlUx9wEnjE8kc1nxo(Pxo0N0o(g2J7Wc9VaxsBItzEt9EazUF9RP24lWmEFFU)OXpUO14a5WXndamOT9(1ZhwoVnpahipWfe14S01kxaZ7nzd(x5k903jNiP(lvSdsKXLENNGwLXLB(jbw668nclfUwuGd9JjTsWQt1d2FtR38MkFg9)wgXqgDrgwzbBEkbgefEaWMsb208Qh)NqYFGq9Rv()706kD4gKOceijpp(zmmcd5EdS)Qh)JKMnTAWVUaSmyh50aaUyd75SS9qIvxN3v5)VYous)v5eQeaU3(NzFbOkZTNBcvPRE8Dy(4cuQO4CIs(CL)xJW8wMRXFWcwwuqLFTery8o4eFPXAHeAcGuu9OerfZB9e)02FEFmP4094pmZwOqmMIbMSPa8kJTFySN6TtjEji3LHrNuC(t6ihs1tDFmLFKeVfI1HXpRF)s6T(1QjT6xCix6(O9BVwbj9APhL7fjgPF)pf)oadD5T2ekjDdSF(8LdXSz1cvbGZK3tGDdoJsDw)zWngz(7hw3tOLfup4(yY94urBfJjlmwafBxC(S(mWkNVBm4x3XAhZ9vDS(J3IhvMDEZugvZSNTU(HAOwXxoDP2GYwRRRlRFK6civxBGV(rKU5gryClUu3iOpS1YyMUHpV785bBDJLH2n2lIigSubKVGXfupVKC2qcEWCHXTQvh3Seq1eDKyORrGnlrBzKXjhi)vVf5V6o4pg3E7edLzm6iIg1uwRf31P7lhAREBpS9JI9nBkDn76sz9I7URFYeLHVuUiz3JC3Z91gKS7ra6BIkIAP9O3OBzlVL5p6bWlstpX8vBSAPf6x302yS5U2AAAOsCEy7QE(Z3qHNbmXTMgt1Q)DkETx1imQOCqBU3JDDUTTPteZ9GK9B5YX2vgZUIHCfa10XUOQ2e6VMEnyuKZNNEmeWrBE(SoOdXu95nGQP63)YRBm98U13gxVqh0riR75nfUTFFVbnFuHqm272OR3MwyGTWP(EtUV(1MS1gb4WAfR0lHHXwzQHUxeYgl9NBW77ycBO9Tv1jOgAHWtlERxxQwJllIcf8wBCrLTZN1xeuR6g8IS05O(GX1E9yqXCTcx5TGHJ14()(]] )
+
+spec:RegisterPack( "战斗(黑科研)", 20251111, [[Hekili:9I1xRYnru8pl3x0EbD7MDVzBlulyvAvFOiU95mz2Kj7oSztcZmzBVqjuuuk9bXcIvWhurel9fFXhkA9tJ92)8TWZzM8Njzt27TuXYLE3BYmNZVZ)(DoN1ZX7MEZdPkM3nMmEIRd8VroxC8KPt9MRooJ5npJgSMUe(qcDd8)p)EF)Z)UhEUx9xp4f)2dEXp9ThIN444uAikjzAUiaoL38f58y1hN4TyxX7mD8KlbNnJfapE2yV5R4HHmZzzYa86XCPsQXglIMhRGpEdnwzj0fXSqVR6npqWvmbNIklkA0I400W4CPAKGrduf(35of(kQyjtnsX3WiQusiNv4F5c)JaLcNHNMaWpv)BfGfubvpEnpyTT6G3p1galSbWbf(AmSLMWLRgLNv4)wf(bPPXHP3kP6Xc2gkprw4FLc)z2iqWYOcAfmoQJDMMbolMQ58BPGsH3IFkoh(Ldkn4PetmIMLjsVnHLWelpgnB3mfky3xBbx9Gr9jYc)Zx4BEcyAlzjf(VBHVZKrU2Gzd92Kk3FjoM9AJJAp5AECmpzjrc(mwJdf0Bnu7QqlSSwsccj8esAcJeXXGctGi6cDqufqwrtcL2bAuWf(VxH)yt(LoQlxrbWrwetH0xi4dwtCQQ62G4V4GzUNr5vHhDoojkxCmk2l9FMyzcjtSgCSOyDgpOCnrBDjKDcmveqtqhUqWs0HyNUfRvhvj4jRzkNDkF7IolGtdbXsH4oJiYllVgS4gm6jJRIa1AdH0K9dPj)VcPjAinDqpnupOG4HCenhKJgcKO4CH4yn1Y50)GwWwgwvUHZqEfut63xrizFrnip0GZEU8LRU7Gx8q7eXMxRTKUKwwwIIrJvRyHJOXXw5mBwaoo9DDhKxvdLqgldkAL8LRuvuR1jIGf7o2M5alQ1sD2Gs1uDaKWoJRCMbPBwKsYs5jkJRyATFsrJHK6r0efpGNPzPhvkw9TTFbjyfMaulIgVDpjuiH2G6)O3C9FKjOv9tDwtPalbtuAqUSLa7nbVgSwuatgBBHvInFb4MJYxYAj0QRHPOxQ19o40r0bVosF24UjRwjfDj67LAZDSL3QPqCBkpK0QbejmxG)bvCAoUsZ9GZU8o0EueRZOnJtRHcKB72C)wPD67pCNdl3Wu3ZuZJogSEqQH7Gu3MU3EXMQs397n3VQhEkX3qvBBZ74rNmuZfzmpGrGbbGEb4KX4aUcEM5L30z2hv4phpcwhd5YFO(J3IRwv4Fv4jC1BdfZxhgMgEmqoWwwoN4o9QAPNMjJmS6TiHg(K2M)cT2LKLOUhjvWAa6jkCCkNT1MWcR7q6gTROBtTEm5RJPzuyEHZFTA3VmlMRQS933IuRXzkYtiMptWfeSDc7qG6(MsGAmjd7tykUvXwg1uhc9WxZGM8b4it6sveoLdzUSY20oJH7lEWPGS6sVD6)HVPEI42fMnrZYqfE2(nWYy2W9NkB1o8TN2ILANGJLpXEw7jDxdzxYNRyyX73dyiu7)D2By5QxlWoV4SHv74NY(p7zf0k5frbYKiY6eyIkjknG0ii0BURT1130Ah1B5XhGGUW)truBvSiRxsTFQFt20gQyndwsivqczu1Qw56TltWfeAmIUxCNvEBPTEljAL(n1YF35G1R5wttIjiGKREFRfVvwjq7jiCgOAB7yR4EKND2uCa7(IcnjwzQCrxL)zMNw4NMedP3Ghgy9V55dIz0TiD)kC35REnGHh0rAu07avDzz4rXtkyrcMeifPkebaDoY8il7yy4lLaQHQugAwMDqk8J5rmBl7CL8ygWOPVKeJPvAz1dP09CgAoDguFB4O37y2alpup54olCu5mhojRVsMlOfgIq4CBKqjSITjJjv9zrnrMohENmq2wUmaRZ2n5dg7cRBOnFluvxQ87oQ1f2tfko(x)Bdv(497no1nP2BZMbUDNn50g8TOIeCgv8R77Bo5()4j)(tp5l)1N9NF1rp7jp(53)UV8l(7tU3dF5p)O)5UFEXNGoO0iES(79dwxDfWvo)v)Yx)QF4Xp7jp6L)Xt1c17Fd]] )

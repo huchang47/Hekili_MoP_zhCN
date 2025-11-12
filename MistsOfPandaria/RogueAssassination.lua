@@ -126,12 +126,7 @@ spec:RegisterResource( 3, { -- Energy with enhanced regeneration mechanics
     -- Improved energy regeneration during Vendetta
     vendetta_energy_efficiency = function ()
         return state.debuff.vendetta.up and 1.15 or 1.0 -- 15% energy efficiency during Vendetta
-    end,
-    
-    -- Lethality talent affects energy efficiency
-    lethality_efficiency = function ()
-        return state.talent.lethality.enabled and 1.03 or 1.0 -- 3% energy efficiency from Lethality
-    end,
+    end, 
 } )
 
 -- Enhanced combo point mechanics for Assassination
@@ -222,17 +217,20 @@ spec:RegisterResource( 4, { -- Combo Points = 4 in MoP
     end,
 } )
 
--- Talents for MoP Assassination Rogue
+-- 套装
+spec:RegisterGear( "tier13", 78794, 78833, 78759, 78774, 78803, 78699, 78738, 78664, 78679, 78708,77025, 77027, 77023, 77024, 77026 ) --T13黑牙织战
+
+-- 天赋
 spec:RegisterTalents({
     -- Tier 1 (Level 15)
-    shadow_focus =        { 1, 1, 108209 }, -- Abilities cost 30% less Energy while Stealth or Shadow Clone is active
-    improved_recuperate = { 1, 2, 108210 }, -- Recuperate restores 5% additional health and 30% more healing per stack of Recuperate
-    lethality =           { 1, 3, 108211 }, -- Critical strike damage bonus increased by 10%
+    nightstalker = { 1, 1, 14062 }, -- Increases damage done while stealthed.
+    subterfuge = { 1, 2, 108208 }, -- Allows abilities to be used for 3 seconds after leaving stealth.
+    shadow_focus = { 1, 3, 108209 }, -- Reduces energy cost of abilities while stealthed.
     
     -- Tier 2 (Level 30)
-    deadly_throw =       { 2, 1, 26679 }, -- Throw a dagger that slows the target
-    nerve_strike =       { 2, 2, 108215 }, -- Your successful melee attacks reduce the target's damage by 50% for 6 sec
-    combat_readiness =   { 2, 3, 74001 }, -- Each melee or ranged attack against you increases your dodge by 2%
+    deadly_throw = { 2, 1, 26679 }, -- Throw a dagger that slows the target
+    nerve_strike = { 2, 2, 108210 }, -- Reduces damage done by targets affected by Kidney Shot or Cheap Shot.
+    combat_readiness = { 2, 3, 74001 }, -- Each melee or ranged attack against you increases your dodge by 2%
     
     -- Tier 3 (Level 45)
     cheat_death = { 3, 1, 31230 }, -- Fatal damage instead reduces you to 7% of maximum health
@@ -246,14 +244,58 @@ spec:RegisterTalents({
     
     -- Tier 5 (Level 75)
     internal_bleeding = { 5, 1, 154953 }, -- Kidney Shot also causes the target to bleed
-    dirty_deeds = { 5, 2, 108216 }, -- Cheap Shot and Kidney Shot have 20% increased critical strike chance
-    paralytic_poison = { 5, 3, 108215 }, -- Coats weapons with poison that reduces target's movement speed
+    paralytic_poison = { 5, 2, 108215 }, -- Coats weapons with poison that reduces target's movement speed
+    dirty_tricks = { 5, 3, 108216 }, -- Reduces cost of Blind and Sap.
     
     -- Tier 6 (Level 90) - Correct MoP Classic talents
     shuriken_toss = { 6, 1, 114014 }, -- Throw a shuriken at target
     marked_for_death = { 6, 2, 137619 }, -- Instantly generates 5 combo points
     anticipation = { 6, 3, 114015 }, -- Allows combo points to exceed 5, up to 10
 })
+
+-- 雕文
+spec:RegisterGlyphs( {
+    --大型雕文
+    [56813] = "ambush", --伏击雕文
+    [63269] = "cloak_of_shadows", --暗影斗篷雕文
+    [56811] = "sprint", --疾跑雕文
+    [146629] = "redirect", --转嫁雕文
+    [56799] = "evasion", --闪避雕文
+    [63249] = "vendetta", --仇杀雕文
+    [56804] = "feint", --佯攻雕文
+    [56801] = "cheap_shot", --偷袭雕文
+    [56809] = "gouge", --凿击雕文
+    [146628] = "sharpened_knives", --削铁如泥雕文
+    [56818] = "blade_flurry", --剑刃乱舞雕文
+    [56806] = "recuperate", --复原雕文
+    [146631] = "hemorrhaging_veins", --动脉出血雕文
+    [146625] = "recovery", --恢复雕文
+    [56808] = "shadow_walk", --暗遁雕文
+    [56810] = "shiv", --毒刃雕文 你的毒刃技能的冷却时间缩短3秒
+    [89758] = "vanish", --消失雕文
+    [63253] = "stealth", --潜行雕文
+    [56819] = "smoke_bomb", --烟雾弹雕文
+    [56803] = "expose_armor", --破甲雕文
+    [56805] = "kick", --脚踢雕文
+    [63254] = "deadly_momentum", --致命冲动雕文
+    [91299] = "blind", --致盲雕文
+    [56812] = "garrote", --锁喉雕文
+    -- 小型雕文
+    [63268] = "disguise", --伪装雕文
+    [125044] = "detection", --侦测雕文
+    [56807] = "hemorrhage", --出血雕文
+    [63256] = "tricks_of_the_trade", --嫁祸诀窍雕文
+    [58033] = "safe_fall", --安全降落雕文
+    [58027] = "pick_lock", --开锁雕文
+    [146961] = "improved_distraction", --强化扰乱雕文
+    [58032] = "distract", --扰乱雕文
+    [58017] = "pick_pocket", --搜索雕文
+    [63252] = "killing_spree", --杀戮盛筵雕文
+    [58039] = "blurred_speed", --水上漂雕文
+    [146960] = "the_headhunter", --猎头煞星雕文
+    [58038] = "poisons", --药膏雕文
+    [56800] = "decoy", --诱饵雕文
+} )
 
 -- Auras for Assassination Rogue
 spec:RegisterAuras({
@@ -337,9 +379,9 @@ spec:RegisterAuras({
     },
     
     -- Bleed effects
-    rupture = {
+    rupture = { --割裂
         id = 1943,
-        duration = function() return 8 + (4 * (combo_points.current or 0)) end, -- MoP Classic: 8s base + 4s per combo point
+        duration = function() return 4 + (4 * (combo_points.current or 0)) end,
         tick_time = 2, -- Ticks every 2 seconds
         max_stack = 1
     },
@@ -351,14 +393,14 @@ spec:RegisterAuras({
     },
     
     -- Buffs
-    slice_and_dice = {
+    slice_and_dice = { --切割
         id = 5171,
-        duration = function() return 6 + (6 * (combo_points.current or 0)) end, -- MoP Classic: 6s base + 6s per combo point
+        duration = function() return 6 + (6 * (combo_points.current or 0)) end,
         max_stack = 1
     },
     stealth = {
         id = 1784,
-        duration = 10,
+        duration = 3600,
         max_stack = 1
     },
     vanish = {
@@ -371,19 +413,12 @@ spec:RegisterAuras({
     duration = 60, -- Correct 1 minute duration for MoP
     max_stack = 1
 },
-    vendetta = {
+    vendetta = { --仇杀
         id = 79140,
-        duration = 30,
+        duration = function() return 20 + ((set_bonus.tier13_4pc == 1 and 9) or 0) end,
         max_stack = 1
     },
-    
-    -- Vendetta debuff tracking for target (different from player buff)
-    vendetta_target = {
-        id = 79140,
-        duration = 30,
-        max_stack = 1
-    },
-    
+
     -- Revealing Strike (Combat spec debuff on target, referenced in imported rotations)
     revealing_strike = {
         id = 84617,
@@ -404,12 +439,6 @@ spec:RegisterAuras({
     venom_rush = {
         id = 152152,
         duration = 30,
-        max_stack = 1
-    },
-    -- shadow_clone removed - not available in MoP Classic
-    envenom = {
-        id = 32645,
-        duration = function() return combo_points.current or 0 end,
         max_stack = 1
     },
     
@@ -439,9 +468,9 @@ spec:RegisterAuras({
     },
     
     -- Utility
-    evasion = {
+    evasion = { --闪避
         id = 5277,
-        duration = 15,
+        duration = 10,
         max_stack = 1
     },
     feint = {
@@ -486,12 +515,6 @@ spec:RegisterAuras({
         duration = 3,
         max_stack = 1
     },
-    dirty_deeds = {
-        id = 108216,
-        duration = 6,
-        max_stack = 1
-    },
-    
     -- MoP Trinket auras
     vial_of_shadows = {
         id = 79734, -- Vial of Shadows proc aura
@@ -529,14 +552,14 @@ jade_serpent_potion = {
     },
     
     -- Blindside - Proc buff that allows Dispatch usage
-    blindside = {
+    blindside = { --盲点
         id = 121153, -- MoP Blindside proc ID
         duration = 10,
         max_stack = 1
     },
     
     -- Shadow Blades - Major DPS cooldown buff
-    shadow_blades = {
+    shadow_blades = { --暗影之刃
         id = 121471,
         duration = 12,
         max_stack = 1
@@ -654,7 +677,7 @@ end)
 -- Abilities for Assassination Rogue
 spec:RegisterAbilities({
     -- Basic attacks
-    mutilate = {
+    mutilate = { --毁伤
         id = 1329,
         cast = 0,
         cooldown = 0,
@@ -662,14 +685,11 @@ spec:RegisterAbilities({
         school = "physical",
         
         spend = function() 
-            -- MoP: Mutilate costs 55 energy base
             local cost = 55
-            
             -- Shadow Focus reduces cost while stealthed
             if talent.shadow_focus.enabled and (buff.stealth.up or buff.vanish.up) then
                 cost = cost * 0.25 -- 75% cost reduction in stealth
             end
-            
             return cost
         end,
         spendType = "energy",
@@ -711,71 +731,8 @@ spec:RegisterAbilities({
         end,
     },
     
-    sinister_strike = {
-        id = 1752,
-        cast = 0,
-        cooldown = 0,
-        gcd = "spell",
-        
-        spend = 45,
-        spendType = "energy",
-        
-        startsCombat = true,
-        
-        handler = function()
-            gain(1, "combo_points")
-        end,
-    },
-    
-    backstab = {
-        id = 53,
-        cast = 0,
-        cooldown = 0,
-        gcd = "spell",
-        school = "physical",
-        
-        spend = function() 
-            local cost = 60 -- MoP: Backstab costs 60 energy
-            
-            -- Shadow Focus reduces cost while stealthed
-            if talent.shadow_focus.enabled and (buff.stealth.up or buff.vanish.up) then
-                cost = cost * 0.25 -- 75% cost reduction in stealth
-            end
-            
-            return cost
-        end,
-        spendType = "energy",
-        
-        startsCombat = true,
-        
-        usable = function() return behind_target, "must be behind target" end,
-        
-        handler = function()
-            -- Backstab generates 1 combo point
-            gain(1, "combo_points")
-            
-            -- Seal Fate proc chance on crit (50% chance for extra combo point)
-            if (state.crit_chance or 0) > math.random() then
-                -- state.last_ability_crit removed for Hekili compatibility
-                if math.random() <= 0.5 then
-                    gain(1, "combo_points")
-                end
-            else
-                -- state.last_ability_crit removed for Hekili compatibility
-            end
-            
-            -- Apply poisons
-            if buff.deadly_poison.up then
-                applyDebuff("target", "deadly_poison_dot", 12, min(5, debuff.deadly_poison_dot.stack + 1))
-            end
-            
-            -- Track last ability for Seal Fate
-            -- state.last_ability removed for Hekili compatibility
-        end,
-    },
-    
     -- Dispatch - Assassination finisher that can be used with 1+ combo points or on low health targets
-    dispatch = {
+    dispatch = { --斩击
         id = 111240, -- MoP Dispatch spell ID
         cast = 0,
         cooldown = 0,
@@ -784,20 +741,20 @@ spec:RegisterAbilities({
         
         spend = function() 
             local cost = 30 -- MoP: Dispatch costs 30 energy
-            
+            --触发盲点，不消耗能量
+            if buff.blindside.up then cost = 0 end
             -- Shadow Focus reduces cost while stealthed
             if talent.shadow_focus.enabled and (buff.stealth.up or buff.vanish.up) then
                 cost = cost * 0.25
-            end
-            
+            end            
             return cost
         end,
         spendType = "energy",
         
         startsCombat = true,
         
-                usable = function()
-            return (combo_points.current or 0) > 0 or target.health.pct < 35, "requires combo points or target below 35% health"
+        usable = function()
+            return buff.blindside.up or target.health.pct < 35, "requires blindside or target below 35% health" --触发盲点或生命值低于35%
         end,
         
         handler = function()
@@ -831,7 +788,7 @@ spec:RegisterAbilities({
     },
     
     -- Fan of Knives - AoE combo point generator
-    fan_of_knives = {
+    fan_of_knives = { --刀扇
         id = 51723,
         cast = 0,
         cooldown = 0,
@@ -867,14 +824,14 @@ spec:RegisterAbilities({
         end,
     },
     
-    -- Finishers
-    envenom = {
+    -- Finishers 终结技
+    envenom = { --毒伤
         id = 32645,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
         
-        spend = 35,
+        spend = function () return 35 * (( talent.shadow_focus.enabled and (buff.stealth.up or buff.vanish.up)) and 0.25 or 1 ) end,
         spendType = "energy",
         
         startsCombat = true,
@@ -883,8 +840,7 @@ spec:RegisterAbilities({
         
         handler = function()
             local cp = combo_points.current or 0
-            -- Envenom duration = combo points spent
-            applyBuff("envenom", cp)
+            applyBuff("slice_and_dice", 36) --穷追猛砍，毒伤续五星切割
             spend(cp, "combo_points")
             
             -- Track for Relentless Strikes
@@ -892,13 +848,12 @@ spec:RegisterAbilities({
         end,
     },
     
-    rupture = {
+    rupture = { --割裂
         id = 1943,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
-        
-        spend = 25,
+        spend = function () return 25 * (( talent.shadow_focus.enabled and (buff.stealth.up or buff.vanish.up)) and 0.25 or 1 ) end,
         spendType = "energy",
         
         startsCombat = true,
@@ -907,8 +862,7 @@ spec:RegisterAbilities({
         
         handler = function()
             local cp = combo_points.current or 0
-            -- MoP Classic: 8 seconds base + 4 seconds per combo point
-            applyDebuff("target", "rupture", 8 + (4 * cp))
+            applyDebuff("target", "rupture", 4 + (4 * cp))
             spend(cp, "combo_points")
             
             -- Track for Relentless Strikes
@@ -916,7 +870,7 @@ spec:RegisterAbilities({
         end,
     },
     
-    slice_and_dice = {
+    slice_and_dice = { --切割
         id = 5171,
         cast = 0,
         cooldown = 0,
@@ -941,66 +895,66 @@ spec:RegisterAbilities({
     },
 
 -- Add missing finishing moves for Assassination
-eviscerate = {
-    id = 2098,
-    cast = 0,
-    cooldown = 0,
-    gcd = "spell",
+    eviscerate = { --刺骨
+        id = 2098,
+        cast = 0,
+        cooldown = 0,
+        gcd = "spell",
     
-    spend = 35,
-    spendType = "energy",
+        spend = 35,
+        spendType = "energy",
     
-    startsCombat = true,
+        startsCombat = true,
     
-    usable = function() return (combo_points.current or 0) > 0 end,
+        usable = function() return (combo_points.current or 0) > 0 end,
     
-    handler = function()
-        local cp = combo_points.current or 0
-        -- Eviscerate: Damage scales with combo points
-        spend(cp, "combo_points")
+        handler = function()
+            local cp = combo_points.current or 0
+            -- Eviscerate: Damage scales with combo points
+            spend(cp, "combo_points")
         
-        -- Track for Relentless Strikes
-        state.last_finisher_cp = cp
-    end,
-},
+            -- Track for Relentless Strikes
+            state.last_finisher_cp = cp
+        end,
+    },
 
-kidney_shot = {
-    id = 408,
-    cast = 0,
-    cooldown = 20,
-    gcd = "spell",
+    kidney_shot = { --肾击
+        id = 408,
+        cast = 0,
+        cooldown = 20,
+        gcd = "spell",
     
-    spend = 25,
-    spendType = "energy",
+        spend = 25,
+        spendType = "energy",
     
-    startsCombat = true,
+        startsCombat = true,
     
-    usable = function() return (combo_points.current or 0) > 0 end,
+        usable = function() return (combo_points.current or 0) > 0 end,
     
-    handler = function()
-        local cp = combo_points.current or 0
-        -- MoP Classic: 1 second base + 1 second per combo point (max 6 seconds)
-        applyDebuff("target", "kidney_shot", 1 + cp)
-        spend(cp, "combo_points")
+        handler = function()
+            local cp = combo_points.current or 0
+            -- MoP Classic: 1 second base + 1 second per combo point (max 6 seconds)
+            applyDebuff("target", "kidney_shot", 1 + cp)
+            spend(cp, "combo_points")
         
-        -- Track for Relentless Strikes
-        state.last_finisher_cp = cp
+            -- Track for Relentless Strikes
+            state.last_finisher_cp = cp
         
-        -- Apply talent effects
-        if talent.nerve_strike.enabled then
-            applyDebuff("target", "nerve_strike", 6)
-        end
-        if talent.internal_bleeding.enabled then
-            applyDebuff("target", "internal_bleeding", 6)
-        end
-    end,
-},
+            -- Apply talent effects
+            if talent.nerve_strike.enabled then
+                applyDebuff("target", "nerve_strike", 6)
+            end
+            if talent.internal_bleeding.enabled then
+                applyDebuff("target", "internal_bleeding", 6)
+            end
+        end,
+    },
 
 -- Stealth abilities
-    stealth = {
+    stealth = { --潜行
         id = 1784,
         cast = 0,
-        cooldown = 10,
+        cooldown = 6,
         gcd = "off",
         school = "physical",
         
@@ -1018,10 +972,10 @@ kidney_shot = {
         end,
     },
     
-    vanish = {
+    vanish = { --消失
         id = 1856,
         cast = 0,
-        cooldown = 90,
+        cooldown = 120,
         gcd = "off",
         school = "physical",
         
@@ -1033,7 +987,7 @@ kidney_shot = {
             
             -- Vanish breaks target lock and resets threat
             if target.exists then
-                setCooldown("vanish", 90)
+                setCooldown("vanish", 120)
             end
             
             -- Master of Subtlety (if talented)
@@ -1049,7 +1003,7 @@ kidney_shot = {
     },
     
     -- Cheap Shot - stealth opener that stuns
-    cheap_shot = {
+    cheap_shot = { --偷袭
         id = 1833,
         cast = 0,
         cooldown = 0,
@@ -1062,11 +1016,6 @@ kidney_shot = {
             -- Shadow Focus reduces cost while stealthed
             if talent.shadow_focus.enabled then
                 cost = cost * 0.25 -- 75% cost reduction in stealth
-            end
-            
-            -- Dirty Tricks reduces cost to 0
-            if talent.dirty_tricks.enabled then
-                cost = 0
             end
             
             return cost
@@ -1090,13 +1039,8 @@ kidney_shot = {
             -- Nerve Strike talent
             if talent.nerve_strike.enabled then
                 applyDebuff("target", "nerve_strike", 6)
-            end
-            
-            -- Dirty Deeds talent (increased crit chance)
-            if talent.dirty_deeds.enabled then
-                applyBuff("dirty_deeds", 6)
-            end
-            
+            end         
+
             -- Remove stealth (unless Subterfuge)
             if not talent.subterfuge.enabled then
                 removeBuff("stealth")
@@ -1114,7 +1058,7 @@ kidney_shot = {
     },
     
     -- Opening abilities
-    garrote = {
+    garrote = { --锁喉
         id = 703,
         cast = 0,
         cooldown = 0,
@@ -1134,7 +1078,7 @@ kidney_shot = {
         end,
     },
     
-    ambush = {
+    ambush = { --伏击
         id = 8676,
         cast = 0,
         cooldown = 0,
@@ -1191,10 +1135,10 @@ kidney_shot = {
     },
     
     -- Utility
-    kick = {
+    kick = { --脚踢
         id = 1766,
         cast = 0,
-        cooldown = 10,
+        cooldown = 15,
         gcd = "off",
         
         toggle = "interrupts",
@@ -1210,10 +1154,10 @@ kidney_shot = {
         end,
     },
     
-    evasion = {
+    evasion = { --闪避
         id = 5277,
         cast = 0,
-        cooldown = 90,
+        cooldown = 120,
         gcd = "off",
         
         startsCombat = false,
@@ -1224,7 +1168,7 @@ kidney_shot = {
         end,
     },
     
-    feint = {
+    feint = { --佯攻
         id = 1966,
         cast = 0,
         cooldown = 10,
@@ -1254,26 +1198,18 @@ kidney_shot = {
     },
     
     -- Baseline Abilities (not talents)
-    vendetta = {
+    vendetta = { --仇杀
         id = 79140,
         cast = 0,
         cooldown = 120,
         gcd = "off",
         
-        -- Vendetta is baseline Assassination ability in MoP Classic, not a talent
         toggle = "cooldowns",
         
         startsCombat = true,
         
         handler = function()
-            -- Vendetta: Marks target for death with significant damage bonus
-            applyDebuff("target", "vendetta_target", 30) -- 30 second duration
-            
-            -- Vendetta also provides energy efficiency buff to the player
-            applyBuff("vendetta", 30) -- Player buff for enhanced energy regeneration
-            
-            -- Note: Vendetta is a baseline ability in MoP Classic Assassination
-            -- No talent requirements
+            applyDebuff("target", "vendetta")
         end,
     },
     
@@ -1551,7 +1487,7 @@ kidney_shot = {
     },
     
     -- Shadow Blades - Major DPS cooldown
-    shadow_blades = {
+    shadow_blades = { --暗影之刃
         id = 121471, -- MoP Shadow Blades spell ID
         cast = 0,
         cooldown = 180, -- 3 minute cooldown
@@ -1567,24 +1503,25 @@ kidney_shot = {
     },
     
     -- Cloak of Shadows - Defensive cooldown
-    cloak_of_shadows = {
+    cloak_of_shadows = { --暗影斗篷
         id = 31224,
         cast = 0,
-        cooldown = 120, -- 2 minute cooldown in MoP
+        cooldown = 60,
         gcd = "off",
         school = "physical",
         
         startsCombat = false,
+        toggle = "defensives",
         
         handler = function()
-            applyBuff("cloak_of_shadows", 5) -- 5 second duration
+            applyBuff("cloak_of_shadows", 5)
             -- Removes all magical debuffs
             removeDebuff("player", "magic")
         end,
     },
     
     -- Marked for Death - Combo point generator
-    marked_for_death = {
+    marked_for_death = { --死亡标记
         id = 137619, -- MoP Marked for Death spell ID
         cast = 0,
         cooldown = 60, -- 1 minute cooldown
@@ -1599,25 +1536,37 @@ kidney_shot = {
             gain(5, "combo_points") -- Instantly grants 5 combo points
         end,
     },
+
+    -- Disarm the enemy's weapon for 18 sec.
+    dismantle = { --拆卸
+        id = 51722,
+        cast = 0,
+        cooldown = 60,
+        gcd = "spell",
+        school = "physical",
+        
+        toggle = "cooldowns",
+        startsCombat = true,
+
+        handler = function ()
+            applyDebuff("target", "dismantle")
+        end,
+    },
     
-    -- Preparation - Resets cooldowns
-    preparation = {
+    preparation = { --伺机待发
         id = 14185,
         cast = 0,
-        cooldown = 300, -- 5 minute cooldown in MoP
-        gcd = "off",
+        cooldown = 300,
+        gcd = "spell",
         school = "physical",
         
         startsCombat = false,
         
         handler = function()
-            -- Reset specific cooldowns
-            setCooldown("vanish", 0)
-            setCooldown("sprint", 0)
-            setCooldown("evasion", 0)
-            setCooldown("kidney_shot", 0)
-            setCooldown("blind", 0)
-            setCooldown("dismantle", 0)
+            setCooldown("vanish", 0) --消失
+            setCooldown("sprint", 0) --疾跑
+            setCooldown("evasion", 0) --闪避
+            setCooldown("dismantle", 0) --拆卸
         end,
     },
 })
@@ -1653,7 +1602,7 @@ spec:RegisterOptions({
     damage = true,
     damageExpiration = 8,
     potion = "virmen_bite_potion",
-    package = "刺杀Simc"
+    package = "刺杀(黑科研)"
 })
 spec:RegisterSetting( "use_vendetta", true, {
     name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 79140 ) ), -- Vendetta
@@ -1696,3 +1645,5 @@ spec:RegisterSetting( "use_tricks_of_the_trade", true, {
 } )
 -- Pack (rotation logic would go here)
 spec:RegisterPack("刺杀Simc", 20251009, [[Hekili:TEvBVTTnq4FlbfWDdlWtwYolEW2aTfRRnyTOyk7RsIwIYMWsIAKuTiab63(okA9gnLSDw(qBsep(ChVxEU78M59ONBesG9(QTL9IzwwlNA7yz5y75kEkh75MJcpG2b)sgkf(FEuuex(1NsOOi5T50cwiCIN72csI4ZzEBpfs7flTCazZXHWNxS0ZDpjkcRKfZd9CFCpHxgi)hQm4OsldOXWFhki0SYGecxahhtzLbFcFGKqM65w9XQhbogvKiGF9RvpkCgABcoY79EUHmIaZiiPfghpDBcLgLuWftzya7YGNFUmqGy7WIPcsk2xq9JiGYxvgm3YZvPF4ntR(PaEasfu)5dKWdDvhCUJMbul6EuM05PzpFhNfHfc00I8rTfBWw4jurnoGIMpGIems2bSy2RGUAGcu3IXvN9RN6SLQ7UXJJDaV1uQcU(XfSNKi8BVeeWmoMDGKTtIW9dIaodZ29uL5FxNSeeleLjFCmgotiHy5aEn(Eue9h(BtqqfGQmGrYvN94S7(uzWhO0eqei3pfLb1dPseVS0zWbxgSPY0atyM14ocEcje7dzvqejexfTMugerbmlYffmmeXcRCjnwFTVRcE9kUAHsleKejvq)xNRaJse7HY7CPx8uZrDUmSir3EqJxQNVJ9bqsjyGByZ6YaNw1ZkY8v)UVKNqXw4RiYquCf461QTGhst3s9ZPKmXrOx0cDikjzqSJjze(E4HjvWq1OJIWoPFbbjrEYui3CgwAniJ0BkEAEou5SdYMOConvpF6VP7kW)EzW74CeNtYqkk1F6l0VbpRPlMo7NldkdEpIJJGWcCKlj9dLbpsWaB7S7KmUmkjeOMz0ysc(eAWJSJJte26CVPmqpu3wyO(MjcUwaeOeOAyAkIDadf8uMFegbavlCBoOMeMiYEbW2VKrfMK5ugcqdCftv8VJ(hNR4KHtrKmUI3SQo90ev7MWZfMzpVcitLtQtUrXgaqKYH8vbonhZfNYkOjW45a9nJv9QVIrz(0y)dzGbzSv3fwNIZaIkAQk(0wvnsu6K8ftXP)Sgj(vK8yiybgR14XQJDm3RktYLe8GNYPZtmIWZrIW9J7S1jZ5(QePo5r1D0G2glTmJ)Lgf6hmBAduffAyh))vQ8XJWC6avV(fmd4WmnnJeT7hqlZ62AQkuCnfiYeBLA1TgNXTgJA9sJKdwpncjQb)BLfEUOJJ56wiN5hiwgq0WL7japlsAoLjoUlWBpo6)Bldy4)TGWKvAqpqqouHGMcjEWhcHHM3H5tlF4VizWrZSG2H)tgVixcLucLQb8QhT5TTcpBqHRZTLcx(GbRdAkCDw28b11rNYGQQHF76uO9GkSU0V1t4CfYo8d5SoTAoIR7HCrEoLOlUerlF4ZP1NVqBru4yiBTqSh6M4(r6oyzwEmIXrYP1uJi5(MYGlBWRhEZ1m7L0WEdCJVvpviaFLPXlFqzJ8Pntm(lR)14ee)WTYXexRnLOz5vJYz(SJZMDljE9nAdWz(c6ndL38C9jnR5E8gxemk30xQOj19qnVtjsMwK65NpLqD1CRUaix9V7FxWX(ahy6TYDzxxTLEd6D210iY2wdJu9o4VMGz)cbRDbBta0tYMfPpNK93zwkTAuKv3zvvAm82WDrP3(0JevHN2M769MQnRMlDY(WtmSlCLPPTkBxuRj5Ar90sfqmTLuVvUa4AOPH8AYV3oq(M1oDVO(cKQBwZCkVE3(WBwV48xUPbsvTtTJhwkPTKeSmJfJJ0BFL9K(wIToCARnCQTpFIURy(KBgzJeDf0BDcD4xTqx8J9am6d74yA3cOfGgx4lJ7RNNATLzCRB1QWtB)Gvolo)TgABaiuPk92SCaD3nRw3j2X10mDElk1zMVMPpDW84ZPYN0)fDkN2M13RH5SZHzV4YIj9uHJzvyeYXsTUgXTNmMlZPASzV)7]])
+
+spec:RegisterPack("刺杀(黑科研)", 20251111, [[Hekili:nFvWoUTnq0VLCPB7fdl71B2TyBaAcABYIICrBVkjAPrweMIuHKkblqarp2RbixlqV1)H2VN2G(x0HKs2YALKTlqa6cS2sKdEVzM3mdPJcIUpkmJOHOxVy(Ivb4FZcUE(8LbrH6hQGOWks6wYg8boPe)8V(L)4V)1F(l)N)8dF63)WN(Tp(vwlEGjizwKuIAzkAvu46Akt)kE06EWphnQcsX3xDtuybnld8gbQ0OW7lOktI9FIjPHztIihFpvtfCtcJQ0425cPj5LWwkJolk0TOlsGCsntJp(AxKbCYAgKf98OWujvdskX6A55ZwZeImwTsptci2MK3)EtIMi3a6zAAjeRfXzuK8BnjxIoTNFmyfUV1yayjOD5T00TDPd3F5Ooqg4CH3c8mqRjZQRMK(fDOVGWZuykKj0TVGuD5NdQ0skFlOdAzB37iHR(ms4IEeUWs4vNbH7r0jYX51YhSy80)Byasfi3s5BSyC9OyaCqU5bxqDvNGIitjCBilLaxBH4MPlm7woIjltYZoeqvbjt8U41mc2Y47BK0k)E3hC1lnjVqiyOjyZsjHJnqLneJ9EtYSIrtHySMcvNuWPCFHjjtGTi1v6AjGQxQlrSZzAZyo4pshNsdeMU4GKBzTMYSJhomoc9MID(v20Qd9f9qVfcznp2)CSDmqxATl)wigHOKc4qJN9nMKL(PfX(Pzeb4aVFVAl4PegBm0tfLRfXvckx3G9QdWoNYPQIgVVFh64e0bHn2GNGLorw9lSscwoj7hV1BO0HZF6NW275pXKmQI0S20dW0egwtnRKi3cy)LqgNbeeOwJ3RV9Sy6HvNmShwP6ZowP84J97vJlHscLR8JICL7pwvxmkVd189TIVB6K)Jj4shXdvS635j(MqeIsfwMOHYkqPFCZypdMwcp0nU1v82cuoHhlYJ3Yrh6iNVmytqloahNpik96Z(I5jvPJudmGgHCoFIkUHePFO1xutRvn3uGIhZsZG(NLv47EQSJRXe4YorEgvvr0PhPnQ)OvvSVESt5y7Pk4Ha3mFy8pvX5qnE3KxN4SBw1)d6G((gF5iAZijSHUNH1hUEeFlO7jjoP4C6BS17EA77nlN2BgK1tvjhTnBI7LnGQ48WJPPlhUDwBp7xQSR35M9VJi54ijL9I8yKslResDZL1VO5U5xysKWBQPsBZSsyVHdPwlkXArCHu8oTBa1mZD)iLJBfm)Rnj)exvxzHYAH3Bq8AV7Xf7noyuJBl3TgBUBaVdp(488SlhLRM80OuTBs45r4IrjSDAW(mXYZW2XdKJM0AhBCEbYjL58MU6um1C3RkB3FvVFPiUT9ItICkZ9Zsr3Qapck0vch9Vp]])

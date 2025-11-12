@@ -554,7 +554,7 @@ spec:RegisterAuras( {
     },    
     colossus_smash = {
         id = 86346,
-        duration = 6,
+        duration = 6.5,
         max_stack = 1,
         generate = function( t )
             local name, icon, count, debuffType, duration, expirationTime, caster = FindUnitDebuffByID( "target", 86346 )

@@ -1805,7 +1805,6 @@ end)
     desc = "如果勾选，当触发头脑冻结时优先使用霜火之箭",
     type = "toggle",
     width = "full",
-    default = true
 } )
 
     spec:RegisterSetting( "water_elemental_freeze", true, {
