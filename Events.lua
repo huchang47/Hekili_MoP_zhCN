@@ -1419,21 +1419,25 @@ function state:AddToHistory( spellID, destGUID )
     player.casttime = now
 
     if ability then
-        local history = self.prev.history
-        insert( history, 1, key )
-        history[6] = nil
+--        local history = self.prev.history
+--        insert( history, 1, key )
+--        history[6] = nil
 
         if ability.gcd ~= "off" then
             history = self.prev_gcd.history
             player.lastgcd = key
             player.lastgcdtime = now
+            insert( history, 1, key ) --新增by风雪20251115  
+            history[6] = nil --新增by风雪20251115
         else
             history = self.prev_off_gcd.history
             player.lastoffgcd = key
             player.lastoffgcdtime = now
+            insert( history, 1, key ) --新增by风雪20251115
+            history[6] = nil --新增by风雪20251115
         end
-        insert( history, 1, key )
-        history[6] = nil
+--        insert( history, 1, key )
+--        history[6] = nil
 
         ability.realCast = now
         ability.realUnit = destGUID

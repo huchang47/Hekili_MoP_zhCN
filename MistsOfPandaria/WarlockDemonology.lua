@@ -1203,7 +1203,9 @@ spec:RegisterAbilities( {
         spend = 1,
         spendType = "soul_shards",
         startsCombat = false,
+
         toggle = "cooldowns",
+
         handler = function()
             applyBuff("metamorphosis")
             applyBuff("demonic_fury")
@@ -1276,7 +1278,9 @@ spec:RegisterAbilities( {
         gcd = "off",
         school = "shadow",
         startsCombat = false,
+
         toggle = "cooldowns",
+
         handler = function()
             applyBuff("dark_soul_knowledge")
             if set_bonus.tier15_2pc > 0 then
@@ -1314,7 +1318,6 @@ spec:RegisterAbilities( {
         gcd = "spell",
         school = "shadow",
         startsCombat = false,
-        toggle = "cooldowns",
         handler = function()
             -- Simplified: no separate pet modeling, assume immediate damage gain.
         end,
@@ -1328,7 +1331,6 @@ spec:RegisterAbilities( {
         gcd = "spell",
         school = "shadow",
         startsCombat = true,
-        toggle = "cooldowns",
         handler = function() end,
     },
 
@@ -1373,7 +1375,6 @@ spec:RegisterAbilities( {
         spend = 1,
         spendType = "soul_shards",
         startsCombat = false,
-        toggle = "cooldowns",
         handler = function()
             -- Placeholder aura to reflect active guardian if needed
         end,
@@ -1568,7 +1569,6 @@ spec:RegisterAbilities( {
         spend = 1,
         spendType = "soul_shards",
         startsCombat = false,
-        toggle = "cooldowns",
         handler = function()
             applyBuff( "doomguard" ) -- placeholder aura to reflect active guardian.
         end,

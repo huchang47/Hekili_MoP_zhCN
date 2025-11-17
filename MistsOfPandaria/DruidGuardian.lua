@@ -1202,7 +1202,9 @@ spec:RegisterAbilities( {
         gcd = "off",
 
         defensive = true,
+
         toggle = "defensives",
+        
 
         startsCombat = false,
         texture = 136097,
@@ -1221,7 +1223,9 @@ spec:RegisterAbilities( {
         gcd = "off",
 
         defensive = true,
+
         toggle = "defensives",
+        
 
         startsCombat = false,
         texture = 236169,
@@ -1243,7 +1247,9 @@ spec:RegisterAbilities( {
         gcd = "off",
 
         defensive = true,
+
         toggle = "defensives",
+        
 
         startsCombat = false,
         texture = 132091,
@@ -1262,7 +1268,9 @@ spec:RegisterAbilities( {
         gcd = "off",
 
         defensive = true,
+
         toggle = "defensives",
+        
 
         startsCombat = false,
         texture = 132091,
@@ -1303,6 +1311,7 @@ spec:RegisterAbilities( {
         gcd = "off",
 
         toggle = "cooldowns",
+        
 
         startsCombat = false,
         texture = 236149,
@@ -1457,6 +1466,8 @@ spec:RegisterAbilities( {
         gcd = "off",
 
         talent = "incarnation",
+
+        toggle = "cooldowns",
 
         startsCombat = false,
         texture = 571586,
@@ -1621,6 +1632,7 @@ spec:RegisterAbilities( {
         gcd = "off",
 
         toggle = "interrupts",
+        
 
         startsCombat = true,
         texture = 132091,

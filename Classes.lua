@@ -1531,7 +1531,13 @@ local all = Hekili:NewSpecialization( 0, "All", "Interface\\Addons\\Hekili\\Text
 ------------------------------
 
 all:RegisterAuras({
-
+-- 新增by风雪20251115
+    weakened_armor = { --破甲
+        id = 113746,
+        duration = 30,
+        max_stack = 3,
+    },
+--新增结束
     -- Can be used in GCD calculation.
     shadowform = {
         id = 15473,
@@ -2946,6 +2952,7 @@ do
         {
             name = "兔妖之啮",
             item = 76089,
+            texture = 609897,
             duration = 25
         },
         {
@@ -3560,6 +3567,10 @@ all:RegisterAbility( "hands", {
 
     -- Copy all runtime behavior (cooldown, usable, item, handler, etc.).
     copy = "synapse_springs",
+
+    -- Explicitly classify as a cooldown so global CD toggle always gates it,
+    -- even if copy semantics change.
+    toggle = "cooldowns",
 
     -- Ensure the correct texture is always shown from the equipped gloves.
     item = function() return (tinker and tinker.hand and tinker.hand.item) or 0 end,
@@ -4318,6 +4329,13 @@ if spec then
 
     state.GUID = UnitGUID( "player" )
     state.player.unit = UnitGUID( "player" )
+
+    -- 新增by风雪20251115
+    -- 上一个技能prev函数功能初始化
+    state.prev = setmetatable({}, {
+        __index = function(t, k) return state.player and state.player.lastcast == k end
+    })
+    -- 新增结束
 
     ns.callHook( "specializationChanged" )
 

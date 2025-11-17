@@ -28,124 +28,65 @@ spec.role = "DAMAGER"
 spec.primaryStat = 2 -- Agility
 
 -- Ensure state is properly initialized
-if not state then 
+if not state then
     state = Hekili.State 
 end
 
--- MoP-compatible power type registration with enhanced energy mechanics
--- Use MoP power type numbers instead of Enum
--- Energy = 3, ComboPoints = 4 in MoP Classic
-spec:RegisterResource( 3, { -- Energy with enhanced regeneration mechanics
-    -- Adrenaline Rush energy bonus (if talented from Combat spec via Preparation)
-    adrenaline_rush = {
-        aura = "adrenaline_rush",
-        last = function ()
-            local app = state.buff.adrenaline_rush.applied
-            local t = state.query_time
-            return app + floor( ( t - app ) / 1 ) * 1
-        end,
+--资源
+spec:RegisterResource( 3 ) -- Energy
+spec:RegisterResource( 4 ) -- ComboPoints 
+
+--[[
+-- 在状态初始化部分添加
+state.last_finisher_cp = 0  -- 初始化为0，表示没有使用过终结技
+
+-- 能量资源
+spec:RegisterResource( 3,
+{
+    -- 基础能量恢复
+    base_regen = {
+        last = function () return state.query_time end,
         interval = 1,
         value = function()
-            -- Adrenaline Rush doubles energy regeneration
-            return state.buff.adrenaline_rush.up and 10 or 0 -- Additional 10 energy per second
+            local base = 10 -- MoP基础能量恢复10点/秒
+            local haste = state.haste or 0
+            local haste_bonus = 1.0 + (haste / 100) -- 急速百分比转换为乘数
+            return base * haste_bonus
         end,
     },
-    
-    -- Shadow Focus talent energy reduction mechanics
-    shadow_focus = {
-        aura = "stealth",
-        last = function ()
-            return state.buff.stealth.applied or state.buff.vanish.applied or 0
-        end,
-        interval = 1,
-        value = function()
-            -- Shadow Focus reduces energy costs while stealthed
-            return (state.buff.stealth.up or state.buff.vanish.up) and 3 or 0 -- +3 energy per second while stealthed
-        end,
-    },
-    
-    -- Vendetta energy efficiency (Assassination signature)
-    vendetta_energy = {
-        aura = "vendetta",
-        last = function ()
-            local app = state.buff.vendetta.applied
-            local t = state.query_time
-            return app + floor( ( t - app ) / 1 ) * 1
-        end,
-        interval = 1,
-        value = function()
-            -- Enhanced energy efficiency during Vendetta
-            return state.buff.vendetta.up and 2 or 0 -- +2 energy per second during Vendetta
-        end,
-    },
-    
-    -- Relentless Strikes energy return (Assassination signature talent)
+
+    -- 无情打击能量返还
     relentless_strikes_energy = {
         last = function ()
             return state.query_time
         end,
         interval = 1,
         value = function()
-            -- Relentless Strikes: 20% chance per combo point spent to generate 25 energy
-            if state.talent.relentless_strikes.enabled and state.last_finisher_cp then
-                local energy_chance = state.last_finisher_cp * 0.04 -- 4% chance per combo point for energy return
+            if state.last_finisher_cp then
+                local energy_chance = state.last_finisher_cp * 0.2 -- 20% 每个连击点20%概率返还25能量
                 return math.random() < energy_chance and 25 or 0
             end
             return 0
         end,
     },
-    
-    -- Overkill energy bonus (from stealth/vanish)
-    overkill_energy = {
-        aura = "overkill",
-        last = function ()
-            return state.buff.overkill.applied or 0
-        end,
-        interval = 1,
-        value = function()
-            -- Overkill: Stealth abilities grant enhanced energy regeneration
-            return state.buff.overkill.up and 5 or 0 -- +5 energy per second for 20 seconds
-        end,
-    },
-}, {
-    -- Enhanced base energy regeneration for Assassination with MoP mechanics
-    base_regen = function ()
-        local base = 10 -- Base energy regeneration in MoP (10 energy per second)
-        
-        -- Haste scaling for energy regeneration (minor in MoP)
-        local haste_bonus = 1.0 + ((state.stat.haste_rating or 0) / 42500) -- Approximate haste scaling
-        
-        -- Assassination gets enhanced energy efficiency from poisons
-        local poison_bonus = 1.0
-        if state.buff.deadly_poison.up then poison_bonus = poison_bonus + 0.02 end -- 2% bonus
-        if state.buff.instant_poison.up then poison_bonus = poison_bonus + 0.02 end -- 2% bonus
-        
-        return base * haste_bonus * poison_bonus
-    end,
-    
-    -- Improved energy regeneration during Vendetta
-    vendetta_energy_efficiency = function ()
-        return state.debuff.vendetta.up and 1.15 or 1.0 -- 15% energy efficiency during Vendetta
-    end, 
 } )
 
--- Enhanced combo point mechanics for Assassination
-spec:RegisterResource( 4, { -- Combo Points = 4 in MoP
-    -- Seal Fate combo point generation (Assassination mastery)
-    seal_fate = {
+-- 连击点
+spec:RegisterResource( 4,
+{
+    seal_fate = { --封印命运
         last = function ()
             return state.query_time -- Continuous tracking
         end,
         interval = 1,
         value = function()
-            -- Seal Fate: Critical strikes with abilities that generate combo points have a 50% chance to generate an extra combo point
-            -- Completely rewritten to avoid state variable issues - use a simple random proc system
-            -- This simulates the Seal Fate proc without relying on problematic state variables
-            return math.random() <= 0.05 and 1 or 0 -- 5% chance per second (simplified proc system)
+            -- 基于简单的角色暴击率预测by风雪
+            local critChance = (GetCritChance() or 0) / 100 -- 将百分比转换为小数形式
+            return math.random() <= critChance and 1 or 0 -- 暴击后100%增加一个连击点数
         end,
     },
-    
-    -- Anticipation combo point storage (Level 90 talent)
+
+    --预感(可能有问题，后期再修改)
     anticipation_storage = {
         aura = "anticipation",
         last = function ()
@@ -160,62 +101,12 @@ spec:RegisterResource( 4, { -- Combo Points = 4 in MoP
             return 0
         end,
     },
-    
-    -- Honor Among Thieves combo point generation (raid setting)
-    honor_among_thieves = {
-        last = function ()
-            return state.query_time
-        end,
-        interval = 1, -- HAT proc chance roughly every second in raid with many crits
-        value = function()
-            if state.talent.honor_among_thieves.enabled and state.group_members > 1 then
-                -- HAT generates 1 combo point when party/raid members crit (1% chance per member's crit)
-                local proc_chance = state.group_members >= 5 and 0.15 or 0.05 -- Higher chance in full groups
-                return math.random() <= proc_chance and 1 or 0
-            end
-            return 0
-        end,
-    },
-    
-    -- Relentless Strikes combo point efficiency 
-    relentless_strikes_retention = {
-        last = function ()
-            return state.query_time
-        end,
-        interval = 1,
-        value = function()
-            -- Relentless Strikes: 20% chance per combo point to generate 25 energy and not consume the combo point
-            if state.talent.relentless_strikes.enabled and state.last_finisher_cp then
-                local retention_chance = state.last_finisher_cp * 0.04 -- 4% chance per combo point to retain 1 CP
-                return math.random() < retention_chance and 1 or 0
-            end
-            return 0
-        end,
-    },
-}, {
-    -- Base combo point mechanics for Assassination
+},nil,{ --最大连击点
     max_combo_points = function ()
-        return 5 -- Maximum 5 combo points in MoP
-    end,
-    
-    -- Enhanced combo point generation for Assassination
-    assassination_efficiency = function ()
-        -- Assassination gets enhanced combo point generation from poisons and crits
-        local efficiency = 1.0
-        
-        -- Seal Fate mastery increases crit-based combo point generation
-        if state.mastery_rating > 0 then
-            efficiency = efficiency + (state.mastery_rating * 0.01) -- Roughly 1% per mastery rating
-        end
-        
-        return efficiency
-    end,
-    
-    -- Vendetta damage bonus affects effective combo point value
-    vendetta_bonus = function ()
-        return state.debuff.vendetta.up and 1.3 or 1.0 -- 30% damage bonus affects CP efficiency
+        return 5
     end,
 } )
+]]
 
 -- 套装
 spec:RegisterGear( "tier13", 78794, 78833, 78759, 78774, 78803, 78699, 78738, 78664, 78679, 78708,77025, 77027, 77023, 77024, 77026 ) --T13黑牙织战
@@ -297,7 +188,7 @@ spec:RegisterGlyphs( {
     [56800] = "decoy", --诱饵雕文
 } )
 
--- Auras for Assassination Rogue
+-- 刺杀贼光环
 spec:RegisterAuras({
     -- Weapon Poison Buffs (applied to weapons)
     deadly_poison = {
@@ -305,8 +196,8 @@ spec:RegisterAuras({
         duration = 3600, -- 1 hour duration
         max_stack = 1
     },
-    instant_poison = {
-        id = 8680,
+    instant_poison = { --致伤药膏
+        id = 8679,
         duration = 3600, -- 1 hour duration
         max_stack = 1
     },
@@ -337,16 +228,15 @@ spec:RegisterAuras({
     },
     
     -- Poison Debuffs on targets (MoP mechanics)
-    deadly_poison_dot = {
+    deadly_poison_dot = { --致命毒药dot
         id = 2818,
-        duration = 12, -- MoP: 12 second duration
-        tick_time = 3, -- Ticks every 3 seconds
-        max_stack = 5, -- Can stack up to 5 times
+        duration = 12, 
+        tick_time = 3, 
         copy = "deadly_poison_debuff"
     },
-    instant_poison_debuff = {
-        id = 8681, -- Instant poison application effect
-        duration = 8, -- Brief duration for tracking
+    instant_poison_debuff = { --致伤药膏dot
+        id = 8680,
+        duration = 15,
         max_stack = 1
     },
     wound_poison_debuff = {
@@ -530,14 +420,14 @@ spec:RegisterAuras({
     },
     
     -- Anticipation (Level 90 talent)
-    anticipation = {
+    anticipation = { --预感
         id = 114015,
         duration = 3600,
         max_stack = 5
     },
     
     -- Virmen's Bite (MoP agility potion, formerly called Jade Serpent Potion)
-jade_serpent_potion = {
+    jade_serpent_potion = {
     id = 105697, -- Correct MoP agility potion buff ID
     duration = 25,
     max_stack = 1,
@@ -550,10 +440,10 @@ jade_serpent_potion = {
         duration = 6,
         max_stack = 1
     },
-    
-    -- Blindside - Proc buff that allows Dispatch usage
-    blindside = { --盲点
-        id = 121153, -- MoP Blindside proc ID
+
+    --盲点
+    blindside = { 
+        id = 121153, 
         duration = 10,
         max_stack = 1
     },
@@ -674,7 +564,7 @@ spec:RegisterHook("reset_precast", function()
     end
 end)
 
--- Abilities for Assassination Rogue
+-- 刺杀贼技能
 spec:RegisterAbilities({
     -- Basic attacks
     mutilate = { --毁伤
@@ -684,7 +574,7 @@ spec:RegisterAbilities({
         gcd = "spell",
         school = "physical",
         
-        spend = function() 
+        spend = function()
             local cost = 55
             -- Shadow Focus reduces cost while stealthed
             if talent.shadow_focus.enabled and (buff.stealth.up or buff.vanish.up) then
@@ -696,94 +586,40 @@ spec:RegisterAbilities({
         
         startsCombat = true,
         
-        usable = function() return target.distance <= 5, "target too far away" end,
-        
         handler = function()
-            -- Mutilate always generates 2 combo points
             gain(2, "combo_points")
-            
-            -- Seal Fate proc chance on crit (50% chance for extra combo point)
-            if (state.crit_chance or 0) > math.random() then
-                -- state.last_ability_crit removed for Hekili compatibility
-                if math.random() <= 0.5 then
-                    gain(1, "combo_points")
-                end
-            else
-                -- state.last_ability_crit removed for Hekili compatibility
-            end
-            
-            -- Apply/refresh poisons
-            if buff.deadly_poison.up then
-                applyDebuff("target", "deadly_poison_dot", 12, min(5, debuff.deadly_poison_dot.stack + 1))
-            end
-            if buff.instant_poison.up then
-                -- Instant poison does immediate damage
-                applyDebuff("target", "instant_poison_dot", 8)
-            end
-            
-            -- Blindside proc chance (MoP: 30% chance on poison application)
-            if (buff.deadly_poison.up or buff.instant_poison.up) and math.random() <= 0.30 then
-                applyBuff("blindside", 10) -- 10 second duration
-            end
-            
-            -- Track last ability for Seal Fate
-            -- state.last_ability removed for Hekili compatibility
         end,
     },
     
     -- Dispatch - Assassination finisher that can be used with 1+ combo points or on low health targets
     dispatch = { --斩击
-        id = 111240, -- MoP Dispatch spell ID
-        cast = 0,
+        id = 111240, 
         cooldown = 0,
         gcd = "spell",
         school = "physical",
         
-        spend = function() 
-            local cost = 30 -- MoP: Dispatch costs 30 energy
+        spend = function()
+            local cost = 30
             --触发盲点，不消耗能量
             if buff.blindside.up then cost = 0 end
-            -- Shadow Focus reduces cost while stealthed
+            -- 暗影集中天赋下，潜行消耗能量为25%
             if talent.shadow_focus.enabled and (buff.stealth.up or buff.vanish.up) then
                 cost = cost * 0.25
-            end            
+            end
             return cost
         end,
         spendType = "energy",
-        
         startsCombat = true,
         
         usable = function()
-            return buff.blindside.up or target.health.pct < 35, "requires blindside or target below 35% health" --触发盲点或生命值低于35%
+            --触发盲点或生命值低于35%
+            return buff.blindside.up or target.health.pct < 35, "requires blindside or target below 35% health" 
         end,
         
         handler = function()
-            local cp = combo_points.current or 0
-            
-            -- Dispatch can be used as a combo point generator when target is below 35% health
-            if target.health.pct < 35 and cp == 0 then
-                gain(1, "combo_points")
-                
-                -- Seal Fate proc chance on crit
-                if (state.crit_chance or 0) > math.random() then
-                    -- state.last_ability_crit removed for Hekili compatibility
-                    if math.random() <= 0.5 then
-                        gain(1, "combo_points")
-                    end
-                else
-                    -- state.last_ability_crit removed for Hekili compatibility
-                end
-                
-                -- state.last_ability removed for Hekili compatibility
-            else
-                -- Used as finisher - consume combo points
-                spend(cp, "combo_points")
-                
-                -- Apply poisons on finisher
-                if buff.deadly_poison.up then
-                    applyDebuff("target", "deadly_poison_dot", 12, min(5, debuff.deadly_poison_dot.stack + 1))
-                end
-            end
+            gain(1, "combo_points")
+            -- 移除盲点buff
+            removeBuff("blindside")
         end,
     },
     
@@ -795,7 +631,7 @@ spec:RegisterAbilities({
         gcd = "spell",
         school = "physical",
         
-        spend = function() 
+        spend = function()
             local cost = 35 -- MoP: Fan of Knives costs 35 energy
             
             -- Shadow Focus reduces cost while stealthed
@@ -840,11 +676,12 @@ spec:RegisterAbilities({
         
         handler = function()
             local cp = combo_points.current or 0
+            
             applyBuff("slice_and_dice", 36) --穷追猛砍，毒伤续五星切割
             spend(cp, "combo_points")
             
             -- Track for Relentless Strikes
-            state.last_finisher_cp = cp
+--            state.last_finisher_cp = cp
         end,
     },
     
@@ -866,7 +703,7 @@ spec:RegisterAbilities({
             spend(cp, "combo_points")
             
             -- Track for Relentless Strikes
-            state.last_finisher_cp = cp
+--            state.last_finisher_cp = cp
         end,
     },
     
@@ -890,7 +727,7 @@ spec:RegisterAbilities({
             spend(cp, "combo_points")
             
             -- Track for Relentless Strikes
-            state.last_finisher_cp = cp
+--            state.last_finisher_cp = cp
         end,
     },
 
@@ -914,7 +751,7 @@ spec:RegisterAbilities({
             spend(cp, "combo_points")
         
             -- Track for Relentless Strikes
-            state.last_finisher_cp = cp
+--            state.last_finisher_cp = cp
         end,
     },
 
@@ -938,7 +775,7 @@ spec:RegisterAbilities({
             spend(cp, "combo_points")
         
             -- Track for Relentless Strikes
-            state.last_finisher_cp = cp
+--            state.last_finisher_cp = cp
         
             -- Apply talent effects
             if talent.nerve_strike.enabled then
@@ -960,7 +797,7 @@ spec:RegisterAbilities({
         
         startsCombat = false,
         
-        usable = function() return not combat, "cannot stealth in combat" end,
+        usable = function() return not incombat, "cannot stealth in combat" end,
         
         handler = function()
             applyBuff("stealth", 3600) -- Long duration until broken
@@ -1229,7 +1066,7 @@ spec:RegisterAbilities({
     },
     
     -- Poison Application Abilities
-    deadly_poison = {
+    deadly_poison = { --致命药膏
         id = 2823,
         cast = 3,
         cooldown = 0,
@@ -1245,8 +1082,8 @@ spec:RegisterAbilities({
         end,
     },
     
-    instant_poison = {
-        id = 8680,
+    instant_poison = { --致伤药膏
+        id = 8679,
         cast = 3,
         cooldown = 0,
         gcd = "spell",
@@ -1352,7 +1189,7 @@ spec:RegisterAbilities({
         
         startsCombat = false,
         
-        usable = function() return not combat and not buff.jade_serpent_potion.up end,
+        usable = function() return not incombat and not buff.jade_serpent_potion.up end,
         
         handler = function()
             applyBuff("jade_serpent_potion", 25)
@@ -1522,18 +1359,15 @@ spec:RegisterAbilities({
     
     -- Marked for Death - Combo point generator
     marked_for_death = { --死亡标记
-        id = 137619, -- MoP Marked for Death spell ID
+        id = 137619,
         cast = 0,
-        cooldown = 60, -- 1 minute cooldown
+        cooldown = 60,
         gcd = "off",
         school = "physical",
-        
+
         startsCombat = false,
-        
-        usable = function() return combo_points.current == 0, "only usable at 0 combo points" end,
-        
         handler = function()
-            gain(5, "combo_points") -- Instantly grants 5 combo points
+            gain(5, "combo_points")
         end,
     },
 
@@ -1604,46 +1438,7 @@ spec:RegisterOptions({
     potion = "virmen_bite_potion",
     package = "刺杀(黑科研)"
 })
-spec:RegisterSetting( "use_vendetta", true, {
-    name = strformat( "使用%s", Hekili:GetSpellLinkWithTexture( 79140 ) ), -- Vendetta
-    desc = "如果勾选，将根据刺杀Simc优先级推荐使用仇杀。若未勾选，则不会推荐该技能。",
-    type = "toggle",
-    width = "full"
-} )
 
-spec:RegisterSetting( "envenom_stack_threshold", 4, {
-    name = strformat( "毒伤层数阈值" ),
-    desc = "向目标推荐使用毒伤而非割裂所需的最低致命毒药层数（范围1-5）。",
-    type = "range",
-    min = 1,
-    max = 5,
-    step = 1,
-    width = 1.5
-} )
-
--- Shadow Clone setting removed - not available in MoP Classic
-
-spec:RegisterSetting( "mutilate_poison_management", true, {
-    name = strformat( "优化%s毒药施加", Hekili:GetSpellLinkWithTexture( 1329 ) ), -- Mutilate
-    desc = "如果勾选，插件会优化毁伤的使用，以有效维护目标的致命毒药。",
-    type = "toggle",
-    width = "full"
-} )
-
-spec:RegisterSetting( "allow_shadowstep", true, {
-    name = strformat( "允许使用%s", Hekili:GetSpellLinkWithTexture( 36554 ) ), -- Shadowstep
-    desc = "如果勾选，可能会为了机动性和位置而推荐使用暗影步。不勾选，仅会为了伤害而推荐使用暗影步。",
-    type = "toggle",
-    width = "full"
-} )
-
-spec:RegisterSetting( "use_tricks_of_the_trade", true, {
-    name = strformat( "使用 %s", Hekili:GetSpellLinkWithTexture( 57934 ) ), -- Tricks of the Trade
-    desc = "如果勾选该选项，嫁祸诀窍将会根据刺杀Simc的逻辑进行推荐；如果未勾选，则不会自动推荐该技能 。",
-    type = "toggle",
-    width = "full"
-} )
+spec:RegisterPack("刺杀(黑科研)", 20251116, [[Hekili:1EvZUoonu4NLzdxytvs)J5IgMfWgMRqZMCzfIK4MCAJvDSd2oZOknYAwYkKgj2HqcjwGepcWZdm6(wWX2nTjTjP3osZM2e7t((o)8Doojom((4OCIgIF50GPlcddxozAWSBNgghP3vbXrvKSTKn4fCsj(7)(t)9)9BV9tF4FE37)Z39(F)x(mRf7ycsUfjLOwMHwfhTQMY0VGhV6e4NJgvbz49lUnoQGMNdEJavwC0by)(h(JF(HF9V(H4igvPvoVewtQzA8Yxg28Jooc4Kvmip(RIJYKuniPe0wXR5XrKmnvWTpjjNTlPsqv4TAKBlE9(GRQxVEYkMqKZQv6jsaXWK(M3ys1e5gqprtlHeTijNcM0NzsNhCKNkH7FKGzwcAwElnBBB6W9N32bw1XZbNl8kGNdAnzsD1O0pTf9feEUctVmHU5gKQfFmOslP8TGoSHTd3JeU8JiHtpHWPwc)8bRMNt4reDf5K11YDwmE6hggGubYTu(glg3oigahKB25cQLTckImJWTHSucCTfIWGXvMT1Jy2YK(8UiQkiO0pzfJG9t(MkjTYV39Hl)gt6xlemB3HjTKWX(6YgMdhNzfJMbjOOclpzGR09jM0Cb2JuxPRLaw(YCzIdottkZb)fA5uAGW0fDYUL1AkZo7OBCe5n1KkQS5vh6ZU0aH(IbjusOCLxR5cNmr5kHDobxJl)8VexVvUTZt7OD(jbvJPYAEI)6e74R2oID5xbjONxsH9KmZpLlXpHLi8GVyaWZim2qOFEaSOd2RPCQQyFsB5JMGwiSXMZjOKn2kBIQKGLtYJBSC7m(YGGlnH(K5QDhHoBqb1tmPdQP2V2zZG7aGMWWUIjLe5wahriKjO)Ha1y8rf6jwC282pmyptPP9QI9z3(r)8s)CNMUpbNFNN47FrikXSEIgkRaL(8(4tmy8dq76gpZjaBaAnHNiwNSLJoKA8AyVc5gCaooAru6tmhfKxr6bXly8Y4Pr4bLkvvr0zfJ7(7prRWlaRSZSDn6l6z6Mlko0yoAqylnQeFxKl5oZvi778tlDpT9ej3q6XRDxCi5yddpnz0xXsBpuqQSR369bFnrYrbhEE19fONtlResmHHLdt6n7FRVBmPs4hRPsi3KQe2J(i1ArjMaXfYW32zdOMyU7BPCCRWGVWK(DCvDLfkRfEVbXR5qPBoAC4Gg3uJSgBURhVd7kVopB(GCTppnivh05xhHthKWgL8XmXSRW2HdKlM0A06xxG8OYCEtx8ym1C3lkB2FXrtCFUbUT9OnXAkZ9XmOBvGdyI8FuItih))d]])
 -- Pack (rotation logic would go here)
-spec:RegisterPack("刺杀Simc", 20251009, [[Hekili:TEvBVTTnq4FlbfWDdlWtwYolEW2aTfRRnyTOyk7RsIwIYMWsIAKuTiab63(okA9gnLSDw(qBsep(ChVxEU78M59ONBesG9(QTL9IzwwlNA7yz5y75kEkh75MJcpG2b)sgkf(FEuuex(1NsOOi5T50cwiCIN72csI4ZzEBpfs7flTCazZXHWNxS0ZDpjkcRKfZd9CFCpHxgi)hQm4OsldOXWFhki0SYGecxahhtzLbFcFGKqM65w9XQhbogvKiGF9RvpkCgABcoY79EUHmIaZiiPfghpDBcLgLuWftzya7YGNFUmqGy7WIPcsk2xq9JiGYxvgm3YZvPF4ntR(PaEasfu)5dKWdDvhCUJMbul6EuM05PzpFhNfHfc00I8rTfBWw4jurnoGIMpGIems2bSy2RGUAGcu3IXvN9RN6SLQ7UXJJDaV1uQcU(XfSNKi8BVeeWmoMDGKTtIW9dIaodZ29uL5FxNSeeleLjFCmgotiHy5aEn(Eue9h(BtqqfGQmGrYvN94S7(uzWhO0eqei3pfLb1dPseVS0zWbxgSPY0atyM14ocEcje7dzvqejexfTMugerbmlYffmmeXcRCjnwFTVRcE9kUAHsleKejvq)xNRaJse7HY7CPx8uZrDUmSir3EqJxQNVJ9bqsjyGByZ6YaNw1ZkY8v)UVKNqXw4RiYquCf461QTGhst3s9ZPKmXrOx0cDikjzqSJjze(E4HjvWq1OJIWoPFbbjrEYui3CgwAniJ0BkEAEou5SdYMOConvpF6VP7kW)EzW74CeNtYqkk1F6l0VbpRPlMo7NldkdEpIJJGWcCKlj9dLbpsWaB7S7KmUmkjeOMz0ysc(eAWJSJJte26CVPmqpu3wyO(MjcUwaeOeOAyAkIDadf8uMFegbavlCBoOMeMiYEbW2VKrfMK5ugcqdCftv8VJ(hNR4KHtrKmUI3SQo90ev7MWZfMzpVcitLtQtUrXgaqKYH8vbonhZfNYkOjW45a9nJv9QVIrz(0y)dzGbzSv3fwNIZaIkAQk(0wvnsu6K8ftXP)Sgj(vK8yiybgR14XQJDm3RktYLe8GNYPZtmIWZrIW9J7S1jZ5(QePo5r1D0G2glTmJ)Lgf6hmBAduffAyh))vQ8XJWC6avV(fmd4WmnnJeT7hqlZ62AQkuCnfiYeBLA1TgNXTgJA9sJKdwpncjQb)BLfEUOJJ56wiN5hiwgq0WL7japlsAoLjoUlWBpo6)Bldy4)TGWKvAqpqqouHGMcjEWhcHHM3H5tlF4VizWrZSG2H)tgVixcLucLQb8QhT5TTcpBqHRZTLcx(GbRdAkCDw28b11rNYGQQHF76uO9GkSU0V1t4CfYo8d5SoTAoIR7HCrEoLOlUerlF4ZP1NVqBru4yiBTqSh6M4(r6oyzwEmIXrYP1uJi5(MYGlBWRhEZ1m7L0WEdCJVvpviaFLPXlFqzJ8Pntm(lR)14ee)WTYXexRnLOz5vJYz(SJZMDljE9nAdWz(c6ndL38C9jnR5E8gxemk30xQOj19qnVtjsMwK65NpLqD1CRUaix9V7FxWX(ahy6TYDzxxTLEd6D210iY2wdJu9o4VMGz)cbRDbBta0tYMfPpNK93zwkTAuKv3zvvAm82WDrP3(0JevHN2M769MQnRMlDY(WtmSlCLPPTkBxuRj5Ar90sfqmTLuVvUa4AOPH8AYV3oq(M1oDVO(cKQBwZCkVE3(WBwV48xUPbsvTtTJhwkPTKeSmJfJJ0BFL9K(wIToCARnCQTpFIURy(KBgzJeDf0BDcD4xTqx8J9am6d74yA3cOfGgx4lJ7RNNATLzCRB1QWtB)Gvolo)TgABaiuPk92SCaD3nRw3j2X10mDElk1zMVMPpDW84ZPYN0)fDkN2M13RH5SZHzV4YIj9uHJzvyeYXsTUgXTNmMlZPASzV)7]])
-
-spec:RegisterPack("刺杀(黑科研)", 20251111, [[Hekili:nFvWoUTnq0VLCPB7fdl71B2TyBaAcABYIICrBVkjAPrweMIuHKkblqarp2RbixlqV1)H2VN2G(x0HKs2YALKTlqa6cS2sKdEVzM3mdPJcIUpkmJOHOxVy(Ivb4FZcUE(8LbrH6hQGOWks6wYg8boPe)8V(L)4V)1F(l)N)8dF63)WN(Tp(vwlEGjizwKuIAzkAvu46Akt)kE06EWphnQcsX3xDtuybnld8gbQ0OW7lOktI9FIjPHztIihFpvtfCtcJQ0425cPj5LWwkJolk0TOlsGCsntJp(AxKbCYAgKf98OWujvdskX6A55ZwZeImwTsptci2MK3)EtIMi3a6zAAjeRfXzuK8BnjxIoTNFmyfUV1yayjOD5T00TDPd3F5Ooqg4CH3c8mqRjZQRMK(fDOVGWZuykKj0TVGuD5NdQ0skFlOdAzB37iHR(ms4IEeUWs4vNbH7r0jYX51YhSy80)Byasfi3s5BSyC9OyaCqU5bxqDvNGIitjCBilLaxBH4MPlm7woIjltYZoeqvbjt8U41mc2Y47BK0k)E3hC1lnjVqiyOjyZsjHJnqLneJ9EtYSIrtHySMcvNuWPCFHjjtGTi1v6AjGQxQlrSZzAZyo4pshNsdeMU4GKBzTMYSJhomoc9MID(v20Qd9f9qVfcznp2)CSDmqxATl)wigHOKc4qJN9nMKL(PfX(Pzeb4aVFVAl4PegBm0tfLRfXvckx3G9QdWoNYPQIgVVFh64e0bHn2GNGLorw9lSscwoj7hV1BO0HZF6NW275pXKmQI0S20dW0egwtnRKi3cy)LqgNbeeOwJ3RV9Sy6HvNmShwP6ZowP84J97vJlHscLR8JICL7pwvxmkVd189TIVB6K)Jj4shXdvS635j(MqeIsfwMOHYkqPFCZypdMwcp0nU1v82cuoHhlYJ3Yrh6iNVmytqloahNpik96Z(I5jvPJudmGgHCoFIkUHePFO1xutRvn3uGIhZsZG(NLv47EQSJRXe4YorEgvvr0PhPnQ)OvvSVESt5y7Pk4Ha3mFy8pvX5qnE3KxN4SBw1)d6G((gF5iAZijSHUNH1hUEeFlO7jjoP4C6BS17EA77nlN2BgK1tvjhTnBI7LnGQ48WJPPlhUDwBp7xQSR35M9VJi54ijL9I8yKslResDZL1VO5U5xysKWBQPsBZSsyVHdPwlkXArCHu8oTBa1mZD)iLJBfm)Rnj)exvxzHYAH3Bq8AV7Xf7noyuJBl3TgBUBaVdp(488SlhLRM80OuTBs45r4IrjSDAW(mXYZW2XdKJM0AhBCEbYjL58MU6um1C3RkB3FvVFPiUT9ItICkZ9Zsr3Qapck0vch9Vp]])
+spec:RegisterPack("刺杀Simc", 20251116, [[Hekili:9IvBVTnos4FlbfW1gxoF(nL2UNTbA71B7gS7II19UpAlgjABcljQJIkDdqG(TFZqQ3fPSDUG7dnnrC4ZmC4mpZWz70TFF7gFIKU93NnzMZ0PtVB8S5ZMp5DB3iFkMUDtmX7e5a8lrKq4NKKeq6ejUWtbCIpcqcpv4blUDZdPSa5VeT9bZO6aYgt9Gp78HTBoY89PAzPjEB389JSKmx8FKm3C9M5Y3d)TNKXJYCdyjsy59CrM7xPNybSXB3O(O6Cq3tsdKWV(7QZfnI8qa1F7N2UXtWKubJGw4(9JFiGZ9dstKJfua7m3NFoZvsehOYXswiDNKVZNbkFzM7IjWPwPF4mZv)VeoaOck(8jM3P6QdwFEldOq0JKi)Ko2tsaZJUdwc0QhDCACM7Gm3HzU(C54deHGlPGH5DIfDqBS4cI0yzQO1ck8EKg5tLsIcPrGtpGll0nyClSyCsbl6evoTJ91aVE8vZNuORsOa150V6M96PUzO6UR)7(AGxzkQaID7tfpHi8UxccurcvG3dicV3kc0iQ4WtkZ)UArweHhjcpCcbnsIq8blETKJeF(p29qabYA0PocwSETVp9UVM5(zopaebYxcjrqouiGyM73e09ubMyXeQOLnkGYC)KcPm3FWKhZC)35hoiXdeoIsGFs)tQxQKEBMBIKfea5Jbb4oXuYp9RAjj7Li63njzC9J7W8isdr4wdJhve9BoyyO14bV8dE1Ee0qclkrby(MosjbYJJJX0EmgYrPWrOlF6K(V4V8dr11vHPOW)m0snoQdWZt4d8DXCweY6bgRJ6ZncHuF5MCF1dbmifN5xsHCWZVYhSkZTwe3JKiwYrLznZsOwykCDJ04nJY2ivUq4EpgnLUUj96y6bIEBQWkPr98iDhasidJaxdw48k1lsJ2P)9DihVMPFxEDiovbEBQSkWB68qODQG2dIGTI9Eg6zGdgQaBKx9IWb0VqGK5TyQ8MybfTgIXst6YSjXysjKvZts4HTZR)d(Hu6pL5(rO6BsclIOlho834FdowJDgpfcHHCrsc1xNwUHf(5m3VZWCYP3HvlfCMhK9l47zb0oLWYRS1FrSkNBraxTR6kck93mvOPcajjayLghseNOaXlxSZNsaGkeUkgSLeMkO8cGTzQS(AcJPmCbzzlMyE)i)lNJ0OmBeYENzilhduNvE9CHr2luazkDArb)assbqeMaXRsAym0dxxYQwc0Fmqx2PkG2tI2X3V7ueyqgB54cZtPraNipuF)uLv1ZTuN4ft3t)CbsjxrWJHllKrv95E6IZyjUAC2nzlTFRJf7uU5P1Vs70Cy1swljLVN(VDTvTScgFwsmr6DMe92wsYoDgqTeGI6zRZC)WeZ4BpJVvDpv)8MXWEFHTIKXQq1A1qfuqIaJNfRiE7jGyPoLBu521xX1BzZsX98nAO4BVnKEt9UEuv0rxG)t2cXQi8f0yIqDE0zxLv9(FJc8FMdZzFKZRar4vNduVpWgnpIk79wmIP17irbx)zo11B1HCvXPCObseNY4LBU2iU1LrCJ6)0z8uy7LGXqmfKOw8W(g3ZFdwdEjqa7WrzaeO9afOkbT8fnxnycCOw0JCMp(EbI4rLJxEKIpN4pbEKF(Z)Jm30OaAcy))H2yW1O(WFdVsb07XXNPeHLgHn67bELf9tIytb2HZqfQlMGzDzSW5YlMBup2zdS1zG5Zr5YkZixbn0)0Ii2skA01mPiw7M(43S(MKlie3qXN1nl(uVXaG86hereeMLGdrcILyHXCHmFqrVnFUqVfdU(pPmbQeOjBqosQKhcCSWh8osIoawF29)klcwA6eOF7)vusAmcfkHw1aEfpt7TvcpZQWf04OWz3BW6GUoVolBHvDL7uSQQYgOUofo3QclkV(2lW46kRZvi7DVChCrHTR7qB34Q5LpNT1r03DjIQod754mwuuNKubbYh)bfPjtvpXd7FsXOwSF8XNycNSqUiUYbKg1qAFFuyFIK8a8wXFc8yU)vm7wZCd(VFjSWYCAn2vWWG0Vu5rO)7nq3j7fStyBe63tU5nav(f9k17FZ18qv0MEZButVs)eAaELvLKDV28sgx(86)YQ)2(asYPBX3uVQ1tQnlV(DVMxlVTPBz7xDtR(OmVH2VCa355EuHzn3OKWfbJ2n9BQoRB7HkpNisMga(Zp3TTHLlMuhaCg31)BioChu2j8wCaSRuJwUe9opeAWqd9P98Zg6q75NBpjSr21AXqMlvCTTz8inFYzbB2leSQjiBcGgswoP4ZjzZHcJsRRdVe62btJ6zCV3)MxJj((3VWj(w3OB0maAZdnhty86F0GHD99dn48ToQ3bD6Dy5CNrncIk2I94vJ2wdiup1Y093G69GT0zq5n2GB60o0GAJNDL(kT1SvRRZIcDvMDx6iqSwtn9wCIKRGMmWTHFVAcrRxnV(gBprt9olQEIBV(rB9kNZV5Ygou8tfbSFK)LkApWYms41tRXlNnOPLmRnCTMJvxBFXG2UIfdUPNrK1wbnMVvB4x60w88cSg9H1CmvJLQcGsx4lR(sdp1QjdSWpBiCFG9AE1TPCsDLPa5NlNQ9JT461F0wcvdal69tF46MlF(DzBKtqCJoBC9hMCEumnyjlxl1smBehSAUI8Y6BDAYvSAXiqCJpOQJGMnKAZ0r10IXjdz4ETwiy54BQ0qbdWRzAAnmZVPug8Lg5mOBfH1REFl1n9CQZWRIxUA2GHnszCG7KBU07qGgz0iZgNUI8)xgDIXZDJj6yGiQwHkd(L1lmcQDETxdqMzKTQ4MA(1b2cJwe8ztd)ayXgMtvSYzYOIuM2zLgQO3BOsh6S1ZDuZVy7)9p]])

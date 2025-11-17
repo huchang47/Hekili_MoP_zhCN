@@ -1176,7 +1176,7 @@ spec:RegisterAbilities( {    starfire = {
         
         startsCombat = false,
         texture = 136060,
-        
+
         toggle = "cooldowns",
         
         handler = function ()
@@ -1193,6 +1193,7 @@ spec:RegisterAbilities( {    starfire = {
         gcd = "off",
         
         talent = "incarnation",
+
         toggle = "cooldowns",
         
         startsCombat = false,
@@ -1213,6 +1214,7 @@ spec:RegisterAbilities( {    starfire = {
         school = "physical",
 
         startsCombat = true,
+
         toggle = "interrupts",
 
         handler = function ()
@@ -1230,6 +1232,7 @@ spec:RegisterAbilities( {    starfire = {
 
         talent = "renewal",
         startsCombat = false,
+        
         toggle = "defensives",
 
         handler = function ()
@@ -1246,6 +1249,7 @@ spec:RegisterAbilities( {    starfire = {
         school = "nature",
 
         startsCombat = false,
+
         toggle = "defensives",
 
         handler = function ()
@@ -1286,6 +1290,7 @@ spec:RegisterAbilities( {    starfire = {
 
         talent = "natures_vigil",
         startsCombat = false,
+
         toggle = "cooldowns",
 
         handler = function ()
@@ -1303,6 +1308,8 @@ spec:RegisterAbilities( {    starfire = {
 
         talent = "force_of_nature",
         startsCombat = true,
+
+        toggle = "cooldowns",
 
         handler = function ()
             -- Summons treants
@@ -1392,7 +1399,7 @@ spec:RegisterAbilities( {    starfire = {
         school = "nature",
 
         startsCombat = false,
-        toggle = "cooldowns",
+        
 
         handler = function ()
             applyBuff("natures_swiftness")
@@ -1426,7 +1433,7 @@ spec:RegisterAbilities( {    starfire = {
         school = "nature",
 
         talent = "incarnation",
-        toggle = "cooldowns",
+        
 
         startsCombat = false,
 

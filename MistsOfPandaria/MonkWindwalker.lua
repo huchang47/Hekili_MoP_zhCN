@@ -242,7 +242,6 @@ local function RegisterWindwalkerSpec()
             cooldown = 0,
             gcd = "off",
             startsCombat = false,
-
             toggle = "cooldowns",
 
             handler = function()
@@ -262,11 +261,10 @@ local function RegisterWindwalkerSpec()
             cooldown = 90,
             gcd = "spell",
             startsCombat = true,
+            toggle = "cooldowns",
 
             spend = 3,
             spendType = "chi",
-
-            toggle = "cooldowns",
 
             handler = function()
                 removeBuff("death_note")
@@ -391,6 +389,7 @@ local function RegisterWindwalkerSpec()
             cooldown = 60,
             gcd = "off",
             startsCombat = false,
+            toggle = "cooldowns",
 
             handler = function()
                 applyBuff("energizing_brew", 6)
@@ -477,7 +476,6 @@ local function RegisterWindwalkerSpec()
             startsCombat = true,
 
             talent = "invoke_xuen",
-            toggle = "cooldowns",
 
             handler = function() end
         },
@@ -487,9 +485,9 @@ local function RegisterWindwalkerSpec()
             cooldown = 90,
             gcd = "off",
             startsCombat = false,
+            toggle = "defensives",
 
             talent = "dampen_harm",
-            toggle = "defensives",
 
             handler = function()
                 applyBuff("dampen_harm", 10)
@@ -501,9 +499,9 @@ local function RegisterWindwalkerSpec()
             cooldown = 90,
             gcd = "off",
             startsCombat = false,
+            toggle = "defensives",
 
             talent = "diffuse_magic",
-            toggle = "defensives",
 
             handler = function()
                 applyBuff("diffuse_magic", 6)
@@ -515,7 +513,6 @@ local function RegisterWindwalkerSpec()
             cooldown = 10,
             gcd = "off",
             startsCombat = true,
-
             toggle = "interrupts",
 
             debuff = "casting",

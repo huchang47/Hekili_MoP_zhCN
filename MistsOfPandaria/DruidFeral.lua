@@ -132,12 +132,12 @@ spec:RegisterHook( "reset_precast", function()
         current_cp = UnitPower("player", 4) or 0 -- ComboPoints = power type 4
     end
     
-    local cat_form_up = "nej"
+    local cat_form_up = "no"
 
     -- Hantera form-buffen
     if current_form == 3 then -- Cat Form
         applyBuff( "cat_form" )
-        cat_form_up = "JA"
+        cat_form_up = "yes"
     else
         removeBuff( "cat_form" )
     end
@@ -200,39 +200,45 @@ spec:RegisterHook( "reset", function()
     end
 end )
 
--- Talents - MoP compatible talent structure
 spec:RegisterTalents( {
     -- Tier 1 (Level 15) - Mobility
-    feline_swiftness               = { 1, 1, 131768 }, -- Increases movement speed by 15%.
-    displacer_beast                = { 1, 2, 102280 }, -- Teleports you forward and shifts you into Cat Form, removing all snares.
-    wild_charge                    = { 1, 3, 102401 }, -- Grants a movement ability based on your form.
+    feline_swiftness               = { 1, 1, 131768 }, -- 豹之迅捷Increases movement speed by 15%.
+    displacer_beast                = { 1, 2, 102280 }, -- 野性位移Teleports you forward and shifts you into Cat Form, removing all snares.
+    wild_charge                    = { 1, 3, 102401 }, -- 野性冲锋Grants a movement ability based on your form.
 
     -- Tier 2 (Level 30) - Healing/Utility
-    yseras_gift                    = { 2, 1, 145108 }, -- Heals you for 5% of your maximum health every 5 seconds.
-    renewal                        = { 2, 2, 108238 }, -- Instantly heals you for 30% of your maximum health.
-    cenarion_ward                  = { 2, 3, 102351 }, -- Protects a friendly target, healing them when they take damage.
+    yseras_gift                    = { 2, 1, 145108 }, -- 伊瑟拉之赐Heals you for 5% of your maximum health every 5 seconds.
+    renewal                        = { 2, 2, 108238 }, -- 新生Instantly heals you for 30% of your maximum health.
+    cenarion_ward                  = { 2, 3, 102351 }, -- 塞纳里奥结界Protects a friendly target, healing them when they take damage.
 
     -- Tier 3 (Level 45) - Crowd Control
-    faerie_swarm                   = { 3, 1, 102355 }, -- Reduces the target's movement speed and prevents stealth.
-    mass_entanglement              = { 3, 2, 102359 }, -- Roots all enemies within 12 yards of the target in place for 20 seconds.
-    typhoon                        = { 3, 3, 132469 }, -- Strikes targets in front of you, knocking them back and dazing them.
+    faerie_swarm                   = { 3, 1, 106707 }, -- 精灵虫群Reduces the target's movement speed and prevents stealth.
+    mass_entanglement              = { 3, 2, 102359 }, -- 群体缠绕Roots all enemies within 12 yards of the target in place for 20 seconds.
+    typhoon                        = { 3, 3, 132469 }, -- 台风Strikes targets in front of you, knocking them back and dazing them.
 
     -- Tier 4 (Level 60) - Specialization Enhancement
-    soul_of_the_forest             = { 4, 1, 102543 }, -- Finishing moves grant 4 Energy per combo point spent and increase damage.
-    incarnation_king_of_the_jungle = { 4, 2, 114107 }, -- Improved Cat Form for 30 sec, allowing all abilities and reducing energy cost.
-    force_of_nature                = { 4, 3, 106737 }, -- Summons treants to attack your enemy.
+    soul_of_the_forest             = { 4, 1, 114107 }, -- 丛林之魂Finishing moves grant 4 Energy per combo point spent and increase damage.
+    incarnation_king_of_the_jungle = { 4, 2, 106731 }, -- 化身Improved Cat Form for 30 sec, allowing all abilities and reducing energy cost.
+    force_of_nature                = { 4, 3, 106737 }, -- 自然之力Summons treants to attack your enemy.
 
     -- Tier 5 (Level 75) - Disruption
-    disorienting_roar              = { 5, 1, 99 },      -- Causes all enemies within 10 yards to become disoriented for 3 seconds.
-    ursols_vortex                  = { 5, 2, 108292 },  -- Creates a vortex that pulls and roots enemies.
-    mighty_bash                    = { 5, 3, 5211 },    -- Stuns the target for 5 seconds.
+    disorienting_roar              = { 5, 1, 99 },      -- 惊魂咆哮Causes all enemies within 10 yards to become disoriented for 3 seconds.
+    ursols_vortex                  = { 5, 2, 102793 },  -- 乌索尔旋风Creates a vortex that pulls and roots enemies.
+    mighty_bash                    = { 5, 3, 5211 },    -- 蛮力冲撞Stuns the target for 5 seconds.
 
     -- Tier 6 (Level 90) - Major Enhancement
-    heart_of_the_wild              = { 6, 1, 102793 }, -- Dramatically improves your ability to tank, heal, or deal spell damage for 45 sec.
-    dream_of_cenarius              = { 6, 2, 108373 }, -- Increases healing or causes your next healing spell to increase damage.
-    natures_vigil                  = { 6, 3, 124974 }, -- Increases all damage and healing done, and causes all single-target healing and damage spells to also heal a nearby friendly target.
+    heart_of_the_wild              = { 6, 1, 108288 }, -- 野性之心Dramatically improves your ability to tank, heal, or deal spell damage for 45 sec.
+    dream_of_cenarius              = { 6, 2, 108373 }, -- 塞纳留斯的梦境Increases healing or causes your next healing spell to increase damage.
+    natures_vigil                  = { 6, 3, 124974 }, -- 自然的守护Increases all damage and healing done, and causes all single-target healing and damage spells to also heal a nearby friendly target.
 } )
 
+-- 雕文
+spec:RegisterGlyphs( {
+    --大型雕文
+    [127540] = "savagery", --野蛮雕文
+    [114234] = "shred", --撕碎雕文
+
+} )
 
 
 -- Ticks gained on refresh (MoP version).
@@ -350,7 +356,6 @@ spec:RegisterAuras( {
         id = 106951,
         duration = 15,
         max_stack = 1,
-        copy = { 106951, "berserk_cat" },
         multiplier = 1.5,
     },
     enrage = {
@@ -446,8 +451,8 @@ spec:RegisterAuras( {
         type = "Magic",
     },
 
-    incarnation_king_of_the_jungle = {
-        id = 114107,
+    incarnation_king_of_the_jungle = { --化身：丛林之王
+        id = 102543,
         duration = 30,
         max_stack = 1,
         copy = { "incarnation" },
@@ -679,15 +684,6 @@ spec:RegisterAuras( {
         duration = 6,
         max_stack = 1
     },
-    thrash = {
-        id = 106830,
-        duration = 15,
-        tick_time = 3,
-        mechanic = "bleed",
-        max_stack = 1,
-        -- Cat-form Thrash only; bear-form Thrash tracked separately as 'thrash_bear'.
-    },
-
     thrash_cat = { --痛击(猫)
         id = 106830,
         duration = 15,
@@ -695,7 +691,6 @@ spec:RegisterAuras( {
         mechanic = "bleed",
         max_stack = 1,
     },
-    -- Bear-form Thrash (separate aura so we can gate bear exit reliably).
     thrash_bear = { --痛击(熊)
         id = 77758,
         duration = 16,
@@ -716,7 +711,6 @@ spec:RegisterAuras( {
     },
     travel_form = {
         id = 783,
-
         duration = 3600,
         type = "Magic",
         max_stack = 1
@@ -929,14 +923,11 @@ spec:RegisterStateTable( "druid", setmetatable( {},{
 
 -- MoP: Bleeding considers Rake, Rip, Thrash (Cat), and Thrash (Bear) for gating decisions.
 spec:RegisterStateExpr( "bleeding", function ()
-    return debuff.rake.up or debuff.rip.up or debuff.thrash.up or ( debuff.thrash_bear and debuff.thrash_bear.up )
+    return debuff.rake.up or debuff.rip.up or debuff.thrash.up or ( debuff.thrash_bear and debuff.thrash_bear.up ) --问题，这个痛击流血可能有问题
 end )
 
 -- MoP: Effective stealth is only Prowl or Incarnation (no Shadowmeld for snapshotting in MoP).
 spec:RegisterStateExpr( "stealthed_all", function ()
-    if buff.stealthed and buff.stealthed.all ~= nil then
-        return buff.stealthed.all
-    end
     return buff.prowl.up or ( buff.incarnation and buff.incarnation.up )
 end )
 
@@ -977,7 +968,6 @@ end )
 -- Calculate floating energy needed for upcoming ability refreshes
 spec:RegisterStateExpr( "floating_energy", function()
     local floatingEnergy = 0
-    local currentTime = query_time or 0
     local regenRate = energy.regen or 10
     
     -- Pooling actions that need energy in the near future
@@ -1188,12 +1178,11 @@ spec:RegisterStateExpr( "tf_energy_threshold", function()
 end )
 
 -- Cat Excess Energy calculation (based on WoWSims APLValueCatExcessEnergy)
-spec:RegisterStateExpr( "cat_excess_energy", function()
+
+spec:RegisterStateExpr( "cat_excess_energy", function() --重要修改 by风雪20251116
     local floatingEnergy = 0
     local simTimeRemain = target.time_to_die or 300
     local regenRate = energy.regen or 10
-    local currentTime = query_time or 0
-    
     -- Create pooling actions array (enhanced version of WoWSims PoolingActions)
     local poolingActions = {}
     
@@ -1225,7 +1214,7 @@ spec:RegisterStateExpr( "cat_excess_energy", function()
     table.sort(poolingActions, function(a, b) return a.refreshTime < b.refreshTime end)
     
     -- Calculate floating energy needed (enhanced algorithm from WoWSims)
-    local previousTime = currentTime
+    local previousTime = 0 --不是currentTime,初始为0,因为是从0开始模拟的
     local tfPending = false
     
     for _, action in ipairs(poolingActions) do
@@ -1404,7 +1393,7 @@ spec:RegisterStateExpr( "rip_refresh_time", function()
     local tickLength = 2
     local standardRefreshTime = currentRemaining - tickLength
     
-    if buff.dream_of_cenarius_damage.up and (rip_damage_increase_pct > 0.001) then
+    if buff.dream_of_cenarius_damage.up and (rip_damage_increase_pct > 0.001) then --梦境后直接刷新，可能有点激进
         return 0
     end
     
@@ -1512,32 +1501,18 @@ spec:RegisterStateExpr( "target_health_pct", function ()
     return target.health.percent or 100
 end )
 
-spec:RegisterStateExpr( "behind_target", function ()
+spec:RegisterStateExpr( "behind_target", function () --根据目标的目标判断是否在目标身后
     return UnitExists("target") and UnitExists("targettarget") and UnitGUID("targettarget") ~= UnitGUID("player")
 end )
 
-
-spec:RegisterStateExpr( "shred_position_ok", function ()
+spec:RegisterStateExpr( "shred_position_ok", function () --可以使用撕碎
+    -- 基础条件：在目标背后
     if behind_target then return true end
-
-    local stealthed = buff.stealthed.up or buff.prowl.up or buff.shadowmeld.up
-    if stealthed then return true end
-
-    local incarnation = buff.incarnation_king_of_the_jungle or buff.incarnation
-    if incarnation and incarnation.up then
+    -- 插入了撕碎雕文且在狂暴或猛虎buff期间
+    if glyph.shred.enabled and (buff.berserk.up or buff.tigers_fury.up) then
         return true
     end
-
-    if debuff.mighty_bash.up or debuff.maim.up or debuff.incapacitating_roar.up or debuff.pulverize.up then
-        return true
-    end
-
     return false
-end )
-
--- Missing state expressions for APL functionality
-spec:RegisterStateExpr( "combo_points_for_rip", function ()
-    return combo_points.current >= 5
 end )
 
 spec:RegisterStateExpr( "rake_stronger", function ()
@@ -1717,7 +1692,6 @@ spec:RegisterAbilities( {
     -- Maintain armor debuff (controlled by maintain_ff toggle)
     faerie_fire= { --精灵之火
         id = 770,
-        cast = 0,
         cooldown = 6,
         gcd = "spell",
         school = "physical",
@@ -1735,7 +1709,9 @@ spec:RegisterAbilities( {
     },
 
     savage_roar = { --野蛮咆哮
-        id = 127538,
+        -- Use dynamic ID so keybinds match action bar (glyphed vs base)
+        id = 52610,
+        copy = { 127538 },
         cast = 0,
         cooldown = 0,
         gcd = "totem",
@@ -1743,14 +1719,11 @@ spec:RegisterAbilities( {
         texture = 236167,
         spend = function() return buff.berserk.up and 12.5 or 25 end,
         spendType = "energy",
-        startsCombat = true,
+        startsCombat = false,
         form = "cat_form",
         handler = function()
             applyBuff("savage_roar")
-            -- Spend combo points only if we actually have some (glyph allows 0 CP pre-pull)
-            if combo_points.current and combo_points.current > 0 then
-                spend(combo_points.current, "combo_points")
-            end
+            spend(combo_points.current, "combo_points")
         end,
     },
     mangle_cat = { --裂伤(豹)
@@ -1763,9 +1736,6 @@ spec:RegisterAbilities( {
         spendType = "energy",
         startsCombat = true,
         form = "cat_form",
-        known = function()
-            return isSpellKnown( { 33876, 33917 } )
-        end,
         handler = function()
             gain(1, "combo_points")
         end,
@@ -1854,7 +1824,7 @@ spec:RegisterAbilities( {
 
     -- Berserk: Reduces the cost of all Cat Form abilities by 50% for 15 sec.
     berserk = { --狂暴(猫)
-        id = 106951,
+        id = 106952, --人形态狂暴
         cast = 0,
         cooldown = 180,
         gcd = "off",
@@ -1865,7 +1835,9 @@ spec:RegisterAbilities( {
             if buff.cat_form.down then shift( "cat_form" ) end
             applyBuff( "berserk" )
         end,
-        copy = { "berserk_cat" }
+
+        copy = { 106951}, --猫形态狂暴
+
     },
 
     -- Cat Form: Shapeshift into Cat Form.
@@ -1930,7 +1902,7 @@ spec:RegisterAbilities( {
     },
 
     -- Faerie Swarm (MoP talent): Reduces target's movement speed and prevents stealth.
-    faerie_swarm = {
+    faerie_swarm = { --精灵虫群 注意猫、熊形态是有cd的，以后修复
         id = 102355,
         cast = 0,
         cooldown = 0,
@@ -1950,8 +1922,13 @@ spec:RegisterAbilities( {
         cooldown = 0,
         gcd = "totem",
         school = "physical",
-        spend = function ()           
-            return (buff.clearcasting.up and 0 or (buff.berserk.up and 12.5 or 25)) + min( 25, energy.current -25 )
+        spend = function ()
+            local baseCost = buff.berserk.up and 12.5 or 25
+            if buff.clearcasting.up then
+                return baseCost
+            else
+                return baseCost + min( 25, energy.current -25 )
+            end
         end,
         spendType = "energy",
         startsCombat = true,
@@ -1977,8 +1954,8 @@ spec:RegisterAbilities( {
     },
 
     -- Incarnation: King of the Jungle (MoP talent): Improved Cat Form for 30 sec.
-    incarnation_king_of_the_jungle = {
-        id = 102543,
+    incarnation_king_of_the_jungle = { --化身：丛林之王
+        id = 106731,
         cast = 0,
         cooldown = 180,
         gcd = "off",
@@ -2058,13 +2035,16 @@ spec:RegisterAbilities( {
     },
 
     -- Prowl: Enter stealth.
-    prowl = {
+    prowl = { --潜行
         id = 5215,
         cast = 0,
-        cooldown = 6,
+        cooldown = 10,
         gcd = "off",
         school = "physical",
         startsCombat = false,
+
+        usable = function () return not in_combat or buff.incarnation_king_of_the_jungle.up end,
+
         nobuff = "prowl",
         handler = function ()
             shift( "cat_form" )
@@ -2073,36 +2053,45 @@ spec:RegisterAbilities( {
     },
 
     -- Rake: Bleed damage and awards 1 combo point.
-    rake = { --斜掠
-        id = 1822,
-        cast = 0,
-        cooldown = 0,
-        gcd = "totem",
-        school = "physical",
-        spend = function() return buff.clearcasting.up and 0 or (buff.berserk.up and 17.5 or 35) end,
-        spendType = "energy",
-        startsCombat = true,
-        form = "cat_form",
-        -- Prevent unnecessary reapplications: only recommend when we're refreshing or have a stronger snapshot.
-        usable = function ()
-            -- If Rake is already up, only allow if it's time to refresh or our new snapshot would be stronger.
-            if debuff.rake.up then
-                -- Allow early clip if the calculated refresh time is now or sooner.
-                if rake_refresh_time <= 0 then return true end
-                -- Allow explicit snapshot clipping (e.g., DoC snapshot logic).
-                if clip_rake_with_snapshot then return true end
-                -- Otherwise, block the reapplication.
-                return false, "rake not ready to refresh"
-            end
-            return true
-        end,
+rake = { --斜掠
+    id = 1822,
+    cast = 0,
+    cooldown = 0,
+    gcd = "totem",
+    school = "physical",
+    spend = function() return buff.clearcasting.up and 0 or (buff.berserk.up and 17.5 or 35) end,
+    spendType = "energy",
+    startsCombat = true,
+    form = "cat_form",
+    
+    usable = function ()
+        if not debuff.rake.up then 
+            return true 
+        end
+        if rake_stronger then 
+            return true 
+        end
 
-        handler = function ()
-            applyDebuff( "target", "rake" )
-            gain( 1, "combo_points" )
-            store_bleed_snapshot( "rake" )
-        end,
-    },
+        if debuff.rake.remains <= 4.5 then 
+            return true 
+        end
+       
+        if buff.dream_of_cenarius_damage.up and rake_damage_increase_pct > 0.05 then 
+            return true 
+        end
+        
+        if rake_refresh_time <= 0 then 
+            return true 
+        end    
+        return false, "rake not ready to refresh"
+    end,
+
+    handler = function ()
+        applyDebuff( "target", "rake" )
+        gain( 1, "combo_points" )
+        store_bleed_snapshot( "rake" )
+    end,
+},
 
     -- Regrowth: Heals a friendly target.
     regrowth = {
@@ -2196,11 +2185,7 @@ spec:RegisterAbilities( {
         startsCombat = true,
         form = "cat_form",
         usable = function ()
-            if shred_position_ok then
-                return true
-            end
-
-            return false, "requires position or control"
+            return shred_position_ok, "requires position or control"
         end,
         handler = function ()
             gain( 1, "combo_points" )
@@ -2208,15 +2193,21 @@ spec:RegisterAbilities( {
     },
 
     -- Ravage: High-damage opener used from stealth or Incarnation.
-    ravage = {
+    ravage = { --毁灭
         id = 6785,
-        copy = { 102545 }, -- Ravage! free-cast variant
+        copy = { 102545 }, --化身后毁灭
         cast = 0,
         cooldown = 0,
         gcd = "totem",
         school = "physical",
-        spend = 60,
+
+        spend = function() return buff.clearcasting.up and 0 or (buff.berserk.up and 22.5 or 45) end,
         spendType = "energy",
+
+        usable = function()
+            return stealthed_all, "cannot use while incombat or (not incarnation)"
+        end,
+
         startsCombat = true,
         form = "cat_form",
         handler = function ()
@@ -2267,7 +2258,7 @@ spec:RegisterAbilities( {
 
     -- Thrash (Cat): Deals damage and applies a bleed to all nearby enemies.
     thrash_cat = { --痛击(猫)
-        id = 106830,
+        id = 106832,
         cast = 0,
         cooldown = 0,
         gcd = "spell",
@@ -2277,15 +2268,19 @@ spec:RegisterAbilities( {
         startsCombat = true,
         form = "cat_form",
         handler = function ()
-            -- Apply the cat-specific Thrash aura so dot.thrash_cat.* tracking works.
             applyDebuff( "target", "thrash_cat" )
             applyDebuff( "target", "weakened_blows" )
             gain( 1, "combo_points" )
             store_bleed_snapshot( "thrash_cat" )
         end,
+
+        copy = { 106830}, --猫形态痛击
+
     },
+
+
     thrash_bear = { --痛击(熊)
-        id = 77758,
+        id = 106832,
         cast = 0,
         cooldown = 6,
         gcd = "spell",
@@ -2302,7 +2297,9 @@ spec:RegisterAbilities( {
             state.last_bear_thrash_time = query_time
             state.bear_thrash_casted = true
         end,
+        copy = { 77758}, --熊形态痛击
     },
+
     -- Tiger's Fury: Instantly restores 60 Energy and increases damage done by 15% for 6 sec.
     tigers_fury = { --猛虎之怒
         id = 5217,
@@ -2313,7 +2310,8 @@ spec:RegisterAbilities( {
         spend = -60,
         spendType = "energy",
         startsCombat = false,
-        
+        form = "cat_form",
+
         usable = function()
             return not buff.berserk.up, "cannot use while Berserk is active"
         end,
@@ -2341,7 +2339,7 @@ spec:RegisterAbilities( {
     },
 
     -- Wild Charge (MoP talent): Movement ability that varies by shapeshift form.
-    wild_charge = {
+    wild_charge = { --人形态，猫和熊形态还没有定义
         id = 102401,
         cast = 0,
         cooldown = 15,
@@ -2369,7 +2367,7 @@ spec:RegisterAbilities( {
     },
 
     -- Typhoon (MoP talent): Knocks back enemies and dazes them.
-    typhoon = {
+    typhoon = { --台风
         id = 132469,
         cast = 0,
         cooldown = 30,
@@ -2398,7 +2396,7 @@ spec:RegisterAbilities( {
     },
 
     -- Renewal (MoP talent): Instantly heals you for 30% of max health.
-    renewal = {
+    renewal = { --新生
         id = 108238,
         cast = 0,
         cooldown = 120,
@@ -2508,13 +2506,13 @@ spec:RegisterAbilities( {
         end,
     },
     -- Maul (Bear): Off-GCD rage dump
-    maul = {
+    maul = { --重殴
         id = 6807,
         cast = 0,
         cooldown = 3,
         gcd = "off",
         school = "physical",
-        spend = 30,
+        spend = function() return buff.clearcasting.up and 0 or 30 end,
         spendType = "rage",
         startsCombat = true,
         form = "bear_form",
@@ -2732,10 +2730,6 @@ spec:RegisterSetting( "lazy_swipe", false, {
     type = "toggle",
     width = "full"
 } )
-
-spec:RegisterVariable( "use_thrash", function()
-    return active_enemies >= 4
-end )
 
 spec:RegisterVariable( "aoe", function()
     return active_enemies >= 3
@@ -2988,13 +2982,25 @@ end )
 -- Prevent bad bleed clipping with weaker snapshots when substantial duration remains.
 -- These are simple, conservative heuristics to support APL flags used by WoWSims imports.
 -- If the new snapshot isn't stronger, and the DoT has more than ~2 ticks left, we avoid clipping.
+-- 修复 clip_rake_with_snapshot 的逻辑
 spec:RegisterStateExpr( "clip_rake_with_snapshot", function()
-    -- If the new Rake would be stronger, don't block.
-    if rake_stronger then return false end
-    local rem = (debuff.rake and debuff.rake.remains) or 0
-    local tick = (debuff.rake and debuff.rake.tick_time) or 3
-    -- Block clipping when plenty of duration remains and we're not gaining a stronger snapshot.
-    return rem > (2 * tick)
+    if rake_stronger then return true end
+    if buff.dream_of_cenarius_damage.up and rake_damage_increase_pct > 0.05 then 
+        return true 
+    end
+    return false
+end )
+spec:RegisterStateExpr( "rake_refresh_time", function()
+    if not debuff.rake.up then return 0 end
+    local currentRemaining = debuff.rake.remains or 0
+    local standardRefreshTime = currentRemaining - 4.5 
+    if rake_stronger then
+        return 0
+    end
+    if buff.dream_of_cenarius_damage.up and rake_damage_increase_pct > 0.05 then
+        return 0
+    end
+    return math.max(0, standardRefreshTime)
 end )
 
 spec:RegisterStateExpr( "clip_rip_with_snapshot", function()
@@ -3174,7 +3180,7 @@ spec:RegisterStateExpr( "auto_pulverize", function()
     end
     return settingEnabled( "bear_weaving_enabled", false )
 end )
-spec:RegisterStateExpr( "should_spend_rage", function()
+spec:RegisterStateExpr( "should_spend_rage", function() --错误，这里似乎没定义，下次修改
     local threshold = getSetting( "rage_dump_threshold", 80 ) or 80
     return rage.current >= threshold
 end )
@@ -3212,10 +3218,6 @@ end )
 spec:RegisterStateExpr( "in_group", function()
     -- Avoid calling globals in the sandbox; treat as solo in emulation
     return false
-end )
-
-spec:RegisterStateExpr( "combo_points_for_rip", function()
-    return combo_points.current >= ( target.health.pct <= 25 and 1 or 5 )
 end )
 
 spec:RegisterStateExpr( "should_bite_emergency", function()
@@ -3256,6 +3258,9 @@ spec:RegisterStateExpr( "should_bite", function()
     return rip_ok and roar_ok
 end )
 
+
+spec:RegisterPack( "野性(哑吡)", 202511161, [[Hekili:TZ1EZXTXr(plsP8sYikWf7lUmfbRk2j5QWRoFUmZ9pxkVyhID2DXrSaBbGv08kwBjNCYw2rYpIFKZ(uDX(o7yhh)qNV6CuKSI)WeUlP(R8v46EgaS4XmyXsszlF1vUSefWm90Dp9JFDpdyl1w)Sw70H4tB9KvkxPUQQAdLYLRvtTsRD8pyiT1odjg7r6b)Gnza8Np4fE5Px9dx(b371o(dFTJF33yfCehy5q6GuYZzKRbmQw7S7itl)FQDRDts(YRddAi1O1tQwUARD6B2PdLpiQNrRDo5RF7JUZhp9LU6j)Y7F0x9Vo5Ax)47(Hp4A3847)zt(T39O7(Y)yI3bpLRZ0)RxCYnERJFXRp56F5r3)w)LR(lATJLPNVhYeDnTSOUWp9KQH)HFRDO2KDTODA94T2Hy4B6ydmURZ(wT2XW10N6AsATZf2Du3UkgeF9UoUdugnCC7sJBFbtBDdNb7s8b68KvWLqaXCjxHPMMrngXyRbqjCQvLo19OCnGR5q(JEA4rJBB2f(F)XT7B67b)jXTd1DCB)(e7XT)7i29SGXqS7mU9(WpSVJ9sWyjdhADa8x4dbIaJhwokmgFhCQWa9jU9O(kXz1Gh1HI88pxTzLkpJIlDaX0gw3n1QHCFTuC)SzVmSgOS6mGAR70v3WIaV7aGcGeoU9Hhg8(DPUEu39y6v8HuBQBpCy9OGaTL242Q1h3EfMsNnbtBdIRnbvj67zA3djoic6)tJqzxPJZ(2Z0IE9Dbgdy06sz0fNOdyAzDd2EVpUj1LmYYpTXvepS3ill9DjE9JZbbwncSexatVO1iCmHwu5swXufSQYsxU3GGnAUJpiuMgXSzhzRZ)zD0XlL57p(zPgJ8rRo6vOUG5OV5aAG5hmlhWQ0eSSaxgtlCDug3(XHrfODdgON5GrwS9jWwg8Ph3EKxirECKBy0I9AKfwL7VCGZi0xyKvh8XOxeA4dgY(usN4K4h25keBdKhJtfGjGH7b)FFQlvHhwrNRcibZGBkm0LgOcd2dKSXc0FKlrzaXDVqtnqA6GXeIzML8LIc0KGKS91oGd2aMdhmmxZrEHBW(elQTVG3hsUOfUpLyH(a(oJm6hfJkJPwsJ50girw)SqG6Uoe3eHhymBSxY8X4HacKK4VCwCNXTRYdgymY1feiMjRJ(qhtBmE4wJBxMVvqCOI2e47AHUSYnDNXQ4JVcvhcmnWKYzH6YmbKMjOlbigvVRPBI0b8GRkSOY20o6e3boUkE(q(vUScd(adiydpyShkpcsA8nKEv4MA69(DJzib5H8Ye5X3SheZxV7i3dy27Ewo(HJD(rQtp7W1AxlhNoShJePrkoQOeHNmcm(rIS(PJtiUgeByhZHPhrc1ukH4z7W0PG(VEyGy5joNTkXwDCj24mjWifullLl744R433fYGHj9sA0WnTcZ2NCDyYtotEdiXEmjkAqm2jTJBukjhhlDxAiQsiuKUn9zXz0AN9jMGkQScZjrvEWYC9d2ip3anMZVe)av5(LfICqQsgzKflLJjm3itnJ054GtVvvkcOhM7fmr17ysdrzjouJ6C8hfRftPM23CinAJTXI4wjePOmkl3H1amAWaHjOEcLJmAk33TiEPjP1gZjoq0UYaYZYvIQIjLFi0lPj4WSFNMKBbwKXZUbukVeBuxhdtNrE67c0mfKV)wkf2bFAt4p666ma(tIfcTyCBNUaSSoJCz)dkhz442UaYAQs6qpa5anJXESXgADdplH5wcRBebJFFLHyLg4lRup)SMItdlX(iEQ8Ca(Kefvs9cuTkau9hHqXqvX42praymaxiWY1Ue8KNcEdajE)(yDqp1obGJ31zKph9k9zhA6stvXw(q8MvefGtfQa3X9aDWSQRVn1lcNOeuKCyeLMfQxejIRXuvQZDELh6Rgg)F(P8LcyrAGy5Hyo3s4U(zoHBZZtutYdTSaOMscbyHfQaytzYCxKqMZdQqvP4eMtw(IJslt274PLt6)(3dfWUpUobb3ehilSxnlf4wBrjyTKQ1FmOysFxhyirDUHv9zGNIsbboKFep2B5Iqueu9oKbeKXwBwuu(Zh0lagGIADHyqoV4Oub0LMijFOhZJhYMIayGSaTshNifqR0WHsNxsaclmGxOshFDcT(wXqMfQ2ZPhFlLmGpM7miXjlXaAWGMoZAU3mJkKmkcXeLaVmriM68H9KFXa8eezu)4otZzPxegrNz(vjNwdM7MU8cjshAuSqNkbn8oUw3MsCVC3rOQpm3XUuqjY0(E(m3(FsOP742poOMwi)3lWuysX)LS8Q4AKsZyOTcCVwjSrPPDYq8BPlVRqa4sjzClt0YddA3hruiq)SVPFFMvR3qQDhoCVrUbqASXgPnG63NhW0YBXuxIKS05BsibpHdWc4pcKzKnRx57330Opxm86ZBkyuGBcNn7HYcIUrPqOOZd)qmO0bhcbYZYZATSmd9nZl4wvLYSn)aRfXua0ILNJtigNmHZugPwS8ihBTOcort7Mk1x4vrEsPfV0XcUK5Kdk)Ak1saAPGR28aUkicHs5fCvqmTHDS8Hs9JvLw)OayNXwA)uDAogSYKJQw8rLcixYroNklIoiUyz(zNyNGAiku8YhTk4vE)qkqFNJK3KL7Mgyq4W()l3TWL7oNA1Y28(txx5ZPHUNBvbNSwV5vXyu6jH5eaDihIy(bwbzUrImuX7HDLZZAQZPDUNHczZTlSnKIIvEQpzjyvZZWjz2PfQ2RCapefwsU5Q0OwSGwsTLLwP2CRn)BGAW5mZcwLTC7aqjwwyTBHc98RCPE5zWX7IXvplLOSqf0NPOMakvEHRKzo1HopUweFjpBzEUcYJxppEqQBU8MuKiPt6kGZmJlH2sBWLI8dBUsR0D)itfHNRU4YjXLys5wzKgPo)zkWROmAJ5ebSEH4uKszu8ckfvk7l7OtsC1is4eVd7nqam4vH1CVe2YH4aIcCzmiddUWx4TcJFNy2JbdLv0DmSOmiumxbIRZiCg8RudHDnCyxghciAXxCLIRSvRuiTDoD6i)ctfTlCP0UsXBlq(3SU8AUNi32ll6uv3kwpVctcuOU(ffmmNtQvkbxtibrvCzL1ddEkRTIZTTHCC4ZRdKmdodlZHdzgumdjlwQvKJIU4H7dpcnUCGzpye21fUqOiSC(INFlrUngVGApF4)h3(NXaoPKSvN5xk)8Jt)OyhpZpkus8Jz6SqX11)FQUGkds1397cAAKsFxOlOYrw9DYUGwvoIQZXUGwDoWHEi0f0QYBx9dHUGwvED3NNDbfEbuQOhoLyFic7tCTbxkan6jF6VBYR9s)1V6DM85F1KR9blXN6stU(V5K37JEWTU6j)UN7O7C1JU7)2jVWhp5L(OJ(6pB6B8N(lx9xmE7JU3hC0D(vtFZRp9F)wt(JFXKB9r8VEb(up6oF6r3)Rp(n(O)6xDJJU)Zp938Ut)VFtCmVYV(O79LtFZBp9MF2K7(6WWM(I)5jx)2ahmEBgaKu(wWt3ontgCXwlcxE8N8jQN8E3aM7r35MtFJpF6nEUJFN)LPV(np6(3A6nEHJU37VK3(KHXvLlXMy2vn6ApxW1D95TU(Sk0wkC8BmNXFftxq1WJDd(5i)kJvjo0cYKNoLZ3I79SRe2dvHdMyZt7wbUO15t(K7)jtV5)XpasY4ydUGSVjaNHyQgEgkef3sIcEVLw9szQHFtTk1ljUfmpw62VSLg26LL4GAoxwI1KSekFRAkeEappSTguRCwmh24CWCyH24lLnn8wvlppZHfAJxYsOWK4knwajolHUC6Qf3QAPLLuM4wzkr8Wdxo983SAjjt)XYm9T0WQlxzLqT13QS3AYzVVzD8M(PVp)trC6Bb27F5XF1DNC7xBYN)NEWvFhyfEWhC7jVoZNG5Cag(tU3Dp5Z(SPF(RC0D(4zFmJ)Y7Z9qNCJRn9x9jZwWFoNrp(f)9azEgGFHbm5v)dhDV7D09FZPFX7n9wVi)ja7hrnGXHvKV0WuME936KRETqcYFS6Zm5xFJGFUcs3t(63E67(hN8CVZKB)8tF5p6KB(QGmm5UVbFiN8FETjV)lm9DFL4KM5fp96V6Kx63Yd6C0DF(grFOMCvnBmSVIma8ewvL7iZoAx8hH)LouvfXs)PCPpnXSZfhVTJRzptBTloYEpBaqj8el6vOwABuE82UedQMVRduG12WFs1i(SZQC7HoES6A02L)pHvI6Hy680iwqTzdoqRr5YRrTbstPy3VW)94T5NDONwFF)H)G1wBKNcGEX3IQyt9xBFN9HzSMpaTDn(aVSbqn8dpZX979p8pEbLYW)PoE7EwhmSVNgVgc3dwl8BJA8243ZQwxucrRKVh2vc8anJ(y2421JBp010Hzlf8HMXo1Zr(odGqbWAIDOXakHIfHaYVZcuyZ(G2Gs4m6tafdanwHTe)0W5Jh1HpDWWG22akLRy2Hg(zWb1LYhtalWxy)(KGPVRdoapZbdJ(ushIldWpaG8vzlfu8OfR(xpqAy1WIHSaIoGsq4ZqPWbtTNJtN4F2EkC(CabKmBh)qAWja)BbCxphlOmuu27B2RpfzpyF2ZCxCn7m0JlU)ek1cBTjLg0quOc3vHP3HGcoVJOdqzNYBnkogUEJDOQG5qNakTte39eUKUHArR9jha)TLJd)8dy9AA0q8lx2lj9hqzfwg9X0MzxgvX4AXwTzFhKrTqHHDg)3GvkmU2)qdd6qKK2o2xg2KhW1NgbPhCSToGrTGNOeH)wRRfXBVvXVsBnVHO5U(UwGQZzGNGrFjT16cBpbdNs0hGfk5AAq1THNBrLmP0FzIRA2v7cSpOrpFxDsptDi1jw7PWzN4McWMQKZGF0WsZ9i(fUcZCdf92yv8lza8Qp4Mg2KHE9z2PqukEH04wNNpb3FeVdg51qVma5jW)a9(DSPkswZG1rNtyHJrawQmMuf9tRLpVf77R9ISpW2lo(m9f2EXWpX2lMocuIVX2inGwASNRIfYRXQ1jUla7bsgmuZhANHpF2Dvcq2LA2Gkgd9QhMBj9lN9HCJDvLPapD33NSKoz7hrMnvl(kLQDxBQvvCzkcO9SlWdJWYV6pBwLjuNJxxNSCtgV)55IxkNBWtPCU9oLwEE3BNnvvQF4HIr9xBfb7)ZcCGmUS2hIAX0tvGRlsILZUfwTCPunRBLdpmlw7n1Qvo7YeRhCi55DldmvQx6c5CJvYqMG1osit1rXmJh8U1bbBWQ4fOrJD)zk8CNDval(uIUxGfEkjVKGsNgy8)q(t7ilRbo1i)CE0lcjv9wKWnl2YNk40cluPdMvrGPC0XxfTBj06TK4tNliu255NtHaPeE8Qjoizn1Oy3jQJ9Wdd3XMBDWzxMehr3QHNQPM68uAY0mLwoL(FlTMLKfndmHQC4HPcjjlQz9v4jqotNB48ua5yxDHLZEabBQPE4HlNsakXh3wGX8kRK1C(7LHRE4CMFNfptrm9z9y(eyIN8Su44P4Nes((LlmPwwKGUz2yfvvkdzefoATYsnJ3SIGe6ZHJeL1TPIGWPfrjLmvtgpQfMO5DUBqg)fMEcDCukhhIDytLp1OSdjGmG2XEFAS2cgYmKdIFDekbXmqcebchc)BbygupEzH0oHqfoRG)JTupmW)hN8psucqmg67Gvbe34CofcWU1(IM4d5YaITsNXkbY6hjnq2Yc4k1MLYl(0wneRxpn1rexMpRqgfD2nAnkOdROnh1sITRQEQmRI56lKSLferadiiOQMZC1lXdtMpwF(mkyPkIp9SyGkN7fBxilwyaKfQCNiyMWmkphSLf04PGG8wGq(fRSYKw6zRlRuAH7WdtnMlPQSXM5Ig50fdD(g7YMYLQSvkE8SXanK4exphoytTuSGq46p6CnVpBAi1ksvrcHvkhLEA12LAiuX9i31zwc(rXTh4B1tox(b7hlkBbUE1fioROovinDT8asFt3cdHwCNxT040Ku67UD148iN35CJnI7FwGY2loo5hDAVrXzQ52HJItQfRjhfNUfUphfNKfOvh8bRX7aqMoj)q6x(2Px(WuifoLHKq(F)LteZ3tNpJlPUYLZKm47lCOBfq5z)MVwb0aHFqszzB2V2Tzw9YDIeeroyJH97(BiOnekMnKc8lNBb8WmEnY8SqekMfLdvsRUcoZCKW47M1URnRNy6xswJUyVkExzeDkc53LMK0AEy1qzlmHHWZSuck7vsVqNQA0zZCboPVGju8Z5lqxxSt5l5KoRDkjoRwWLmzMF8xATaemvX4L48yHoxNW93KlUmmuBKzRDE2qrZugA)0em)AqZmAjWLt5H1SKaWUIqpQMzfI(vOA(LZuG5v8eDzjqUz0Y6yNzTlKbzIPjmHhgPRpL0rJ0Zeu5Uua6kXIhLzvZoARVE9Q1wThDGxWig6AoagqJYLhGLb5Ea(JqXM6QnldJy822uJ908mCCrKK6EqSwlQV(E0dqY1uTEJAR6IiL7r1WShbuz82C4BGQqd7HBha8PEplshte5MNEhxsph7(MDO6Edj8bYiyTQnv58hB91vBeJXGhSk12aIp5RvPm)9LlJFirZ4bCWZ4c8cKkKbGkVPO(g)Lfe1lCTR1iI(G83poDbzdulJ32aV6IA9CPh41Na746Sh0BeGAGrK6nRuvIaK5bQvsisW7TSIwruS4l5(U4nnuOyaBS77sg6HIcXa8jjg8nMA1AOgxwW1jbLJurSO9XfOEwoxH6fkmbwlQmTpShW02reE9qzzvsNoo2AEhGx5nCtfBwHNo7sfAMAPbDjiueqOektS3SlWvm)b3rul)qzQEJuQwCBjI1YiJmTNfT3CTbHXW2bdTdwFJesTAktVM15pTEEMEDPuq(Ga0iMepFxZ9a)uKn4lIAJMnlKHUAnjcwxtSHiQcLn3aGqjTjQwVswdAozQOnekpe8WbdbBcOsgAAZ5t1nufS4G8yVh1xvZLAzAGl1ZoIYMX6BuTsZObur7FgcSXV1249q1Z3XMYgw9kRxB82yasD0eudcucKFxGfyHqX7mz3UbeSw1i1rhOEaUgLsf5SWW1)3qXEVTZObG93bSN0dEcUlqT753hu5ZEigheI4QPQ2uTw8XsgaXo1uR2OAJzpgsZrb9KHFcA4HnNl5JaMH66Bc(c4haIDpTk12i2Rr1FWluR2CJzVGjjHtzD1QXMcZ(k4v1lh7nHgobVRrL6XeewSF0sUP6Shc4uaPg0PreuTrTyS3WRmeYPVp1D2Zhq9j6GbBIehS3GdUYqd9buOein(QilQsUHjyZmpdhoJmhtgaB9qCnW)HEvLQL9gcvMPVX6Bug2r1vR1O56q2sXwuT2bW233XT1oh)7V7jV97C8x8Np(5(FyFyPT(F)]] )
+
 spec:RegisterPack( "野性Simc", 20251106, [[Hekili:TZX2UnoU1VLGc4AJzGRDCCMUaXdWEf7oaDMI6PVAzfj6y1ilzijN0uyi036B93O)zfO)f9qsrXBhsj5jdAFyXUZoju8CHhEUtYDZ8nFEZ64WkYMpE9SRxoF(SVz68BUzXnZ3SU6LJKnRpgg9y4dWpKfEa(V)N)X)8F)3)xRtoer)0lP5HXuuuMFQic(8M13FkjT6xY2CVbEVDZ6Wtv7Zl2SE9Ht7ksECZ69jXXe(ujLac)8(KY6T0)ewVTHW1BZ3b)EuvsEw920KYk4Z7YlQ3(ZKhtstMc8rr(UKuG68zv(Mv)UNclscVpL8wkxV6qyswf8NGD7E7tHPN0gP(dUal)yvW9KWIGNjHprAGuFq)a)Cry1ElOvg1p4LzKhTGwoOFGpvscYkvaKpGFGoqsjelsQmQBWPOVQGqeKS939dY(8QNvGG(RUbioPK(lbL7liXbpVNKfuMNM3aVJV6gD0VgakppN2Gb5a1FOfSPhlir5hUpScqWHWIhdY3fuTheijPXVnz3QRU)0UDtn)Y0thR)WVPE7FSipQE7puqcpWvL)EsgWfNaT47jGEmOGZXE92XFE(T)8eCcVNeMMK9qqv(PO9sQgtXlLSrnyfi7OQWuswfY3G)gw8X4uikSka4NdsKlgHItWuHpZvZWbVm8jWAnOipSqIbLbzYdma5BaaiJf7otL7dNpRq4jJ4yL9fN4JQgLuro82Y08Qv7dZIl7ZeRksYEKunFaZ9AhlOC6yCvSNskoqYkdUhaoG)bvvRO88048Nz6ME5B3t0MV7CUxJp37tZZJd2DQ4f6UbtsxL8aPOKnMM8wdmygKIhbLZbbwhsPwC1GEapNpxfw8aPcq)bW3sEqCc5UvxFlo(tYIclYcf4QXMqzuH1WOEZYnSIJL55ZnFpikn5i1WPXBg4e4pxcM5)uoeIK7d4JHvNOw(0qAckuV95KQ91B)mfR)wW9Wpb4fMceP774iMhguXjSg3TJIEQ5Egd5uUS1GQ1zSW3GXKBLfJXxy6BetWzaWfvrLPZrnwGkpeCG1Sn4bb5Oy3HODIQPelIovmesksib7smebkr8hftyKqzQmYmY0RNn2lF8uAAW9HL75kvm9XOWYkq9hbCjcOHTb45I7YGYNt2vLrklv0nD6VEu7IqghFKqYp1cLtliu2TC1Sg)L2ZaCOJ4FEex9kGKroKqkbBlRLKdfKwMr9dnSXDRwmXsoyfoRtzWynHGmlOZNrKotqxEJh3e(GazMMx8IUaH6)gI6KdB0GE9PIcGFUB5KZNh7wiEzsJjt8OP1iGkso26NXsOeehEawyU46vl7ZU7c7nxGObfKDWYCFa1j7DQb7fmw4JKlMZU7I5mGQDYAv7ladZaaUEXG6u99RUbrBpohc30I2gNrgd2UZEZ0L2A6G(YrYRipP6uHwhclUeuoIi1nnRbzHkJgxUp)uASYquVQHfSFecoK8aORgK)4ePNLM1iDwWImm(flkRmdLa2nCdD9CfyS9KkIEBjqQOQvZTWLA(N2iASjI02gySyvsenlKjJgBRhV48zevOfnH2uvhB3nxozeSnu8WlcL33VAXslU(q4PuCoUGULkbDwZozkmNMag8GomreOoSl4HO4Pu8zzpGq1ShGkDCl37edPHreOouYfc(R4MLTyH6d9QERVc7SwB3xJUDFTVT7B0YMGvJoSoz)TLzLsf8JAytSI6NwstzqjiaRkNQDu2bwNqGcqks(RrqWKaUQ27NVSj2GA6p(Iw0ZsVq9g)(zDH5MOqQaZY(cgN7Be(HgNIiXoSdZn6QysA4lu4z4PANjbBIUWro8lcSJ4)3d6PZgf)6HigM79fEdBBJDmf7bgrzOK0m8bwcCdKbmO3osrEus(jEXAuAkStP1UroaAXKSOx6IT9IMUaM1Gh2(NMPsBLkDjZ55OHypa(8ruQgFpzFswCapB)gAOuiza1rMOsM)YjQNzjVOwWz7GLvq6VWSJvgAFiStCGKYhRPcLdjpSV6fw9gAdhMCq93Pe5yyusviDjlS5B)8XtPpbv683OS1KrxjZK2rhZmC)VA(ORG6MEOixR0VYkzGOg1pFP8H4qZkuyV33Bcmht2LaR67wnFgnIHWHuR2RFh(CTEMtg1KZ)vfGHOa81PC7sEF0YtbF(8JwqXfbBCUgaE5pyH1K4omNyW3rVaQIn7UWI9vCDWPLrga6zvc6ClFtl5GKdUpp7u5GscGtfJSamdfSOjtlvBbUVF7XfMdlCK2G3cyBwZAXLCeEbkyYeowcaiBigzKU62rwgVyydYFPhi7MrOz4y6p5DtV2xcmnBdI6906ZliOGehtoeM(gZtHqSL3CgeZKnm8pX2sQ3sTlR326ZO5GcQ3MFKQknXfzkyG3MjIQphxGefMMgW)ua9O2uo(mjBz0GsWjEk8xjzcgQEBygWKXNkaFr1BlYRyE)CrZVQ5h3NLxBpmhgy067Pm8RCNRggt8LvFsFOGOgZb1xb(oKSIWbUQaljuxyddlLAMGhYZYJyNptpoK3z9do7Z3TNaADYUZuz1kswCE2BKvzJ8PEuZhcuk2AiFTXMc5lDEKwwqq9mJnSDbLkzFJaGDHcoHTfA3w6sTgv593(PF0AxY(kdmZpaO6rZ7gglvblyg0A5p8Pp(PV)B)SBF5CTsma6Z1byE)PKdg8Z)4h)Hp9XEiVN3jmDjY9aMxlxhWzeOE(seiWffCT5EpDfj3M1qI7LWNvVhnpdfuaXhl3S(xoCmVOIMsaWn6xsMP1FyZA2prVFoCkc)0hz34NMqtB(UnRZpUzDjPsC5zac2SOP)eSo3SEoBSakRTzTY(0MkGP(YWM(oifHlgmcNzIqL9wkgVzWyC(svuk22P4APbUeOWCFKl5fiGT7tb)2lbCvTHk4F4BbyBLrfGlsyTixsQLVuVDeKugEjmSVzMfLK)uMo2MUKUnOx27LoqS84u5lnQUqpxz6Qom6mgss2mzK6TNptVPn2noUE7eguUpUdjF2Mld2YNFIguMwHpTsbIrRRQ3A2ACjruheXsOlCp2g38fVJwVlw)aCM9UTE7DRQ3UGdUvRx1(QRAh5tAPGi618wV99umSu1cOQv(AAW21cx9GwAW8mf9oZUmPUrODSlSpqzizoNWQaWMKnPtdZpqxSyxyT90CW8s8LHCXb9qX87giM)cuPSL9uCsH9QlYqLPjIQMETx10R7JA6najq1fbxsqoyxwyZz))DytlektefZi8YcvPoWxUqunsSPeuGbEtp4xOyqFHp4q6MILvHAFtWe19sYWJz7rUQuzggZFH9CrDXagDTTwHBuy1EfW7jptYjs)NQnAbpA(LMxuBFxgwQrYvuxDEr4l6j8(VWfcpz3dgM3afgLccM7Z(WJp5OVmmEZU3mA0LnoLW)(Vuc3)eLSJdOllebP(MlGLmduXcvRH9WCMZN5Z6n2v3MQ4oDyBxEtISxkoOkgQ5l68I3vVfwyZe5zWePy3EmP1KrFBqdQZJLHy)PfX14ASYnZ9CD0AZLtj(NfV6pN)EjmVmRqVsOXYvn(n6Rz3YUBrSuKw2MwX4U2J(YfUI)1BXqA3jYEubGN7rMNLopR8HO5XwcUu8WZjBMsa5KJ9iP(lBTC3R8Abpfs1fdmJEK)FxRgmhH3414g5sByLjEK8K1AsRD6sndB586rzgVERbLY9fNnwt2HTjaG4TU1QG(qiaqtZRe)IN0)eVgcbaT)UNe3eVkcdyUUhQT6Eeu6xq7tPOhAlorcr8Wk8LGeVd8i1YjUumC9e7NortmLBfVSpK(67VMr3pPcPAGR1Mcqyj44vcjQue5fbyj88LQYo93abwA3VApzd0mZKproQ8Y)lZOZarw76tqZKYbBWEPkkCHZxNHgFOxBGZDfnNqwyM7lO5CjEfQs0U44HxTDx9uE4LBBHrTYTRA7sSy9lZ4TPzekKZB6yxHgnuXhSC82vsRNq1Iq1O3nQttyBPpftVCU9Qy67s4DtlkRoYD7fcpZaA0OLwjH42ntVWI(zrY32Ij7cpLEH6TQDf61SzrgMaVYDoY0EWVPYWp(fdRdVTPYuPRFyNxGHjMBgfjwB)WQYPLAIA1pHOn3n(BdvOIz5Gi629dN8GM6OKngsCZUXOJRtOkbCnfSyvDtq5dfwLgkJsrRRmlhwRmBFHVyM62UFrEo4skB(rmRCL4LkvfQNJYGFB5yCk2tixnvaNf2J59Wg9MfZ0(EU5DjbjsN30Uhy4n3PER2rcL39pllgdEuu6(vTTBG)(ZvcKju2CLLoEvmUAOOVQyC1lqFvXyAjpKqZuZVCIFL(wb5R)XnVw76BszcVz)yEoJSgWavb)gLDBXXii5IU7XnAksE1)Pay1StTSNnVjU6DJc)WQe4Wr(kcL1UA1KHvIBZnNTxG1DbfXIwRfCB1zkvO7p3YvvmUoV20GNwiM(G7wzGrVBSKGIB8RKrK36xgF8UPxl8ayE)F1tYeL9ENAYTYEGOLHBLOD)9ZqRVNMGGQIJsOI1MCV04R25e5YgAO1Y0PbWqu9DBa7ubzSuhrA26OpOUmf7N2KxtZXk2mk8HJEy2tgr(W5mS76kw6f1GYfD7PAq9S06(gm6YBE6G5n3LOIfkW)z5CXCSlMZDLVOpFVUcqBwiSvggO4FWy1t3RmBbLwBW6NEG8iCCw7VNGPTHYvFByk8qNVpm85Q)bT3SHYWQVvSgfdS3lM(N4VzmTXWF3yAtr9TJPKiSA6ZU(F8w0PAQ7ds15cCiEtzA6TmKGw3wxDRr)0GCepc92G5wNu((gzSK7qvJBVJBnpkrUn58zCH5vAHn0mB77nusy(BKKK6jm(RQP)pqn1DgeFfllIsy3Pgy)qj9KZ0QUZzs7LyYZIS52)JLkPak)xiQM(9JK)x3T9X6URz0FTl6kAfz0XhAQYhjr0Oqly)6M)l]] )
 
-spec:RegisterPack( "野性(黑科研)", 20251110, [[Hekili:TZZ(ZTXX593IKhdsArDehabiygECMyNKoHDQRhZ0FPDcoSeybWvE4om3Dq0SdhmYjv2Yos(r8Ju7QPXU1o2X1puDN6Oizf)htiaP(P8Vq)(29Ud3JDV7aiLTCNoAej4D7(9A)EV7IMQn)zn3TdXJ28PRuUsnvv1YkLlxTr5nBUR3HdPn3DiP9(KEWhSidGF(Gx8vME1pA5hCVx)Kp61p59EZvWrCOPnPdcjx7roTHr1C39gzy69tTAUxCWxEdyqdPTB(0QLR2C3(gD6q5dI62U5UN(nVZX35tM(Yx90F59p(R)xMCTRFYD)OhCTBEY9)8j)27E8DFLFmX9WNXXE6)1ln5gV9jV01NC9V647FR)8v)fn310W1ZfjIUgMMuh4tpTAWp8AUl1ISNjTtZNS5UK2Eg2waH7yFGzZDB7y4rDmin39c7nQBxL2ep9U2odugnCCRsJBDbdl922d2J4bW5PRGOqaWCixHjMMbngWy4aGeo1QrN6ErhQhXPh1tXZyav3ZwVJbDCRlpUvhBpfhY(ufh6aIHL74wBpUvvgrXrl)TEgT3xVdzaG)XTEIXTwoYmX35QZN)4wxACl1XTwjoW5tFqp2CLmXTdX4aIvptQoiKu6B45J2OIH9P8vthJH8h9SWJg3YOl8FVXTGjb8rFIthQZ4wE9ja0)ByWeqHvNXToa(Wb2wlbJLmCO5HWVWhcabgpi6OWy8SXPcd0xWHs31tSWmt6cYd(cRjL40M46zy1JT4E0r(VzpQJl1z)WhsTOo9oee79OiZRbITAm5wj)jyy1M4yrqguFFaC62D1bcs)FCeYjkDSpWAMmXTVdqsajwtkjo)aD26qt8FGiVlzKPxs1(qAy)rMM67rC7hLc81NfyJmhgfH4iymb66jb7EP44uqf0rsdxUDQGLyUljGPmAhrdCKLo)Z6OlHekJ)4NJ2EKhQdrVc1buUqBoFLjyw2GoMbOFcgZgMiEug36jHr5lD9hORXGrMS1jqZe82mU1i3aG8Ki1eyTmUfscRY1(p0EeQzpYSd(y0MavJbZApkPtuq8d7CfIvBKgJcf02eqn8)(uhQc3HNoxeq8NbxvyOd1xe6VgizH1xxEaXz)avnGB6GERIOMf)LICbMgKDCOKb40AddZXyKBWcShXKA5j49bGleX9Pet0gWZEu7(HEptPQfxzoPcsO2pZ5SUJnXjMJbgXg5LmBmUlaFoj6ld9cVf4fM7mO9ihhGHyQS26dTnS84EPlZxki2urlc8vTatw5QUZiv8XxHQdoMgyq5KqnzQazSa1HY4kM7ulAhDIZaBhfxpiipNTMrmDjWuO6DnCWOAhcop15EBDr(jz4SN8Bn5QWf1m9)ZqONrpWjVE3rohgtbhca1XfaMPTxWFKVNAzaBptB7oShJaP(cceEWiq5hbYglgqWaDwyYem5icOgsbepAhi(H4CvRf4iMbE7bulMDQjyM6HrebemdlrWoIInxmA1NHriOwobiaJCDl6ZHVksabBBti1KGSnpGya0uzfMwPQChEyUnE9DGyGS0xIP2XvodYuioLYKizm5nHudIitcheJCKBlMPDWMzzgOXm(LyhOk3USqGdcvYaJC7jb(IAekJINV6wb5RkkdxEEvjZDuKRg1CShflftiMoWyinCzzUSnfMPOmil3GTnO2IocJb9yIkzWuUTBrSsJdl5gP(z9gSgnG8CCHOQyq5fK6L0aCy0Vfj4MVgz0OBaKYoWgQ6zmKv2c45CM6i8SyAeXuhXKm86RmSTh)LvIOV0L6y32WEKR(EassKg5FnLcAfpRb8JUo2dGFsmnz41UlKQxNroS)GYZ2CClhiBDQs2rnfhBwI(r0OZzg8lVmUMvtdK2iuQUTZH6WQCxplQByABssQJhvV0m)MIarugqvPg3wsUNO1J5mnEwGXxdEgy9zCRFesvOyFCRNYNUG8MH1Z1HIDFQNbEdKs)b9X64EMD9tUFp7rE8SVPp3qdh(cZc5IjUnBChXYDXCUfWDbtoisa3C8SmFznTOX)JL1uQuakkuIL2ugPbmN5nLre8mINMTxMyTWX3RvyhCwBMNRzTMHfRurnrC64ge)TqfThGeNVNjXEHcAfZs(2jMucwCPAThhQU0ZXggsyJzyLJ6ZLklEYffqyKW)Tu3WzNzsE0q6icabKo1NCCfi0gnVKeRkndXK(jYjDi5nxBP4(2Wqs(XJy(aXLsCrDwx1MTCJGrjv8ubPYHoVduCt17XTf0vrH5evGS6ZoTNStLV0SEGgDXg1dAmlEMqp6m7Skz0AWmvXKxgGCxJ5PZEbgZin3S4fUeLAlfmlo0QW7G5kzBULO0Q4bCH3XvTSOeNl3DeQFfGI9OWIktfJ1F1XT(jbgUJB9KaVYCFurUV98edf1brCsobrWTuqlb0MTpM9Jaw5adV(mRi3HuRo8S6g54NnHf2dUbuV(CxRMU(CwY4nXiJNYgGd(rGogzX689b9nA3NtlU95nfm0pnHJREibHPtPuOSOZk)HiPs7V9iinlDVmKJKLLzbSvw(yRQuMP55RQkgcWsD5CSor31mRmX8tYGtfGFevxkAx1qPMmSiRjJ5T0uOAkfJYKbKkakZPytnwejXytAaj5ytQ7jLYIXcMtBqhlFOu)yvP1pkiTZiO2lrNMJKwz8rTE0rLiTX4JmN0jc3IWir(z7LyM1q89McELxJYc2m6KvTKyNu))l3TqL7MtTAjBEFtzv5Mr5AckZLb7y7dBCGNO(25RkUW4lcDQdlh8K)Y2ZiKdB9yRjr7oDonZD(QwoJAPslMYVl0z3N16sZmnRwhjo2OAo9MUAMvVTq9zj0pM8ngsQBU4E5sQ(k3dBEzKYH4Cw)U8fjGdJS5w5xD)zPk(m6r95zv8PQFXhsLN7IwMNcuqWhaJUO7qrvIKrTL5jceXKZF41ZwrHsnZL3MJyrUswvBQzGNuiLn5Cr2omxPzY(NKrvENdM4YbXLyC52P4gPg)PkAROeA9C8awRqukcPuc(Sk1nj5Vq7TOgVbhfG(ZONdzxLMi(6sjvoZK7IBxVl7nGFp4vbLWVe2SHOP24BX3Mm0)GKHN2m(PZzFwYRSA4JKbllziMbmXXEeod(H7HWoqqSJfebi8Oixj7YmNVg2LBd54jZLxV9y8ABtJHdz8cJhmzbdqjC4zP7a4riFzdZEWiS1d84vk5fXp7ZH4YZz7ad98NXEflfGRjeGOcBzLncIuiQe9c0VrrrsIffHjNrs1JGNiYFgllkfHLNNTanUF6hf7Iz22PXZFmv3ckEqS)pvNnx8uQEuVZMjZu67OoBMOCiznVkzovfa8pk3tZQjZLQa8Z83tZQjteQay5m2tZQlqZNx8EAwDbAn8c0tty(qvAUiKJCHhoG4ybkTqEON(z)UjV(l)x(63DYx81tU2hUeFQln56)MtF)p(b36QN(7E(JVZvp(U)RN(IFYKx(Jp(B(8PV5F8pF1FX4Do(EF4X35xn9TU(0)TBn5p8LtU1hZVLe8PE8D(SJV)3CYB(X)LV(ghF)xy6V59M(F)w4yE1F9X37RM(w3E6n)8j39nGHn9L(ttU(Tbky8oSq7j2Va4P7KKi9pMQfHkp5t)u1tF)BaZ947CZPV5xm9gp)jV7)8034MhF)Bn9gV4X37dwY9aYWOs8LytmnwdpeZfeVBKhE9y1MTuW43mNXFfdhq0WD9cMZi9kJuj20csKlMW57W1E2b86HkZbtSXIUuGiTgFYNE)pD6n)3)bq4fBlWeKDc)ThIbz4XMWu2wsKp6T1Qvkv17BPvPwjX935Xt2BNT1W(6Sep9HZfuSMeuO8DQQqW218WwBqTYzrDyZZb1H5AHVu6OTBxTCEQdZ1cVeuOW44k1NdoonGUCY6W2UAPLLua22Pk(6OJwo583QAjjt)Xtn9T1W62wzLaP13PK3AYjVVDn8M(zFa)kpo9Tb99V6KV(UtU9Rp5l(Jp4QVlGHh8H3EYBWSjyghGI)K7D3t)8pF6x8QhFNpz2LM8xEFUf6KBCTP)QpDgc)h4e6jV0VhaZphOxyatET)ZJV39o((V10V89NERxI)eG8dHgq4ag5OgMY0R)2NE1Rfaq(Jv)5t(13W)Zvq4E638otFV)WKN)DNC7xy6R8XNEZxd4Hj39n5d50)JRn5dEXPV3Rgf0mR4Px)1M8Y)wUtNJV7lup8cHYf1SXa5VncQKXP5UN87V7PVZ7EYx(No55)Fy3umiLkSujNrgD0U4pc)LouQeXu)zCOplXOZfhVJTJrpdlTloYAFliBs4jM0Rqn12S84DCiTPAEo2qvt7a)KQr8y7h5odTDz15OTh)pbmrDXm9C1iMqbxdouRE5YRrTaqtPyFLW)E8o8nK0vRVN3WFWARnYvbYPXZKQyr9w7a7dGzSMhKx7A8bE52a0WlxMTZJ9393FbLYW)uhVtpZdh23vJxaHZHRfC)NgVdEBA16ICiQ78yyJjWn9l8cRX12h3AOJHntdZ)YKX2zWrE2daheaoXgq1gkDK53aI6ZCFyXU0AqjDT7tabdKxScdf)0G5J79GhDWq)UsbcLRy0HgCv3GIn5JXNe4i2RpXF67zJdW1yWWWl)5qena9aPPVkdvqXKMSIADbUHvyk6ida6akbtQgQV1FQ9ST7e9Q5PWPZbeGZSS9cGbha8773EU2MqzPiV33OxFksEW6SRXEio7m0LZU)ek1eBAiL63QrOI3vHP3HGmoVxJdqENYB6iogUCJTHXG6qhFiTBi19uoKUbsrZdihc)202MVFcS2nnAiEVPDJd)buwvLHx)1uRYOigXfdBZURJHTWGLrn(3GwkmUw)W2TPdrqAzBDzyrEaxE22pOHTL5HmO5)eLWSY16AsC3Fv8oIR5oev313ZeeD2dCfm6lPTwxy5XF4uI(aS8jhJ2uDl45Mujtk5TpCvJUAxGmYHO465Ot6zOdbuXcpfo7y7MoBQs2y)rdlL75gqigMzgk6Trk3xYa41KWvnSidD7Z0tbVu8QOXLoxpcU(iEfm0QHEziriF7d0632IQibN(4rNdyHJrqgwPuPk61NLpV57o0Er2LO9IJpt3I2lgCnAVyspqXUhTHsaTKzKUkwEVgRcOOMaShizWqLGOEg(8zNhjiFVeZgeXORx9GyljF5SlRn2LvMaCXo)nPbD8EkIeBI2pwkrVU2sRQ4Ixea7zhshgGLF8E2QkJPohpslPPMuw)5zIxkJJfuPmosqLwoVdd0wQk1o6iX1cS(kcw)N54ajCz9oeLIjNQatxeelNEjSA5sj6u3khDu6mW3sB9YPrtKgWHGN3QmqvPwjUpwXhr(uGXh3HmzI2jMA8G1ToWydwfpknAStstHN7SJ7xXNs4z)RWtj(bbu60aL)hY3wJ0KgyuJ0Z5rhkKulCrC3mFOpHZP5MPs6mRIav5WTZkC1sO2BjX7wNVRSZZ7HHaUeE8QX2yzn1qF3XQU9OJcwXYT640Oj2wKTAWMMQPMNqtMKP0YjK)BR1OKmVzGkuLJokHljzEnRTcpaYzAF7YtaKHE1fwo9UdSLM6rhTCcgOeFCBdkZRSsA15hlfv9WzJ8olwMIi6Z62(jqfp(gXWZNIV)izBxo3GAzrm6wP9vuvPmeru4O1klvnERkccONdfjkQBdfbUtlIqkEOMuwuZnqZAt3Gi(Zn8eA4OuoAk2bTAEHZYoaaYs0oY7tMRTGHmlZbXVomlbXeqSmceoe(59FwQE8YcPDcsv4SM8Feu9Wi))OG)rIsaIqqFpSkGOkN5uia7gjiAIpKldicMoJvcK2osQJSLfqvQnkLL)PTRlwUUi1reLNpRPmkAhD0QxqdwrloQLeRxvDHuRIy6leSLf4raDiiOQMZC1lrDtMDU(8zuWsveVNArsQm3trUqsSWjqwOYDctZeMr5CYTSGkpfmjV5WLFXkRmUME66YkLK5o6OeJ5sQkBUvMzJSy(qZxzx2uUuLTtqJNncOUeJ4AzqbBPLGeeMU(JohG6ZMesTIurKW0kLNLEsX2LQluW9i3P1ws(JIBpW3P7NU8T7pIx2cCcRlGFwrDQqA4A5oK(2Ufgc14oVAPXIeu67VD148iM35CJnIAFwGY2lEEYp60EJItu52HJIdQ5RjhfhUfUphfhKfOvh8bRX7aqQoj)q6Rl7KOpiesHdziXL)tSCmF(bF9HFj1vUCQGbpHWHUTpKf(TmUaYM9vRntRxUrKapY(lmSVFVbN2GRy2qkWxa3cOHz0AO6zHauenkBQKwD5VN5iGX3nRDxBvl20VKSgDXEv0UYiAxeYUlnXHvE5QH8wqadH7zPKSSxjjIwOA0zZCo2Pp)ju895ZxwxSD5l(KoRDkjkPwqugpYp(9KlKcMQ48L40yH2xNG134ixwouBMAPnpDOWzklB)Kam7AqtnAjPlNWcRrjbj7kk7r1uyi8Rj1SlNPaZR4b6sdGmJOL2WofUlKczSPjmGh6PRpL0rJ0Zae5oui1vIj3lZQgD02yJAvxF1E0bU(JyOJXaya1lxEawgKZH4hHIn1vBuggX4DSOT3xZTTTdMjPUl4R1K6PVp9qeCnuRvF9vDWmL7r1WOh(qz8o803arHg2d3oqYN69mjDmWm3C174q6zB13Odv3DiHpqgaxVAdvo9XWVUA9ieg8GvPwTb)tEAvkZFF5Y4TiAgnGdEgvGhGuHeau5nfL34xiqu3aCVE9q4d8F)OWf4nqSmEN24rxuRNd9q3(eyfxN9GEJGSgyaPwJkvLWaPEGALySe8EtZqmISfhLh4GN0qHSbSWEGdzOlYkK2GnjPnFHz91RRgLxq8edYHIiM3(Omupt7RqDdygFTfvM0hwdys7qaVraVSkPthBln3dXJ8gUOInRWvNDOcnsGAqwcmfbykH8e7n7bufZEWze10lGNQvpHOfxwcjTu8it6zs7LRoimg2kyGEWgBgJRvtO61Og)P1Ys1RlLc8h4GgZjX1ZXyFWofjdosuR3OrHu0vxxcJ11aBiIQqEZXprO46evRvjTcnhmv0gcLhcw4GIGfbejdnS40P6MQcqoWpw7t9u1COMgTru9CJOSzSXMvR0iCav0(NahB8tTnEouD9STOSHvRYgRpEh0bPoQcQbokbWVhqcmxO4zMSBxFaUE1qXrhOEaUeLsfzSWYR)VII9EB3rda9VdzpPh8eCvGA1ZRpiYN9q0pi4XvtvTH66rhlza47utTA9Q1N9yimhfKtT9IbdxS5CXFeqmuhpdWwaVwiw90QS(MrEnk(9FHA1gBo7fmojykBOwnYuy6x(VQw5iVjqXX)D1RulcJW89JAYnuN9qipfGRbzAiavRVEeYB4vgcX0pG6m75dOEeDqHnwGd2BWbxzyB9buOeinowK5vjt3eSzMLIdNqYrLbYTEiId8p0RQuTS7qOYm9n3yZYWkQU661BSbeTuSgf7IL28)n]] )
+spec:RegisterPack( "野性(黑科研)", 20251107, [[Hekili:TZ1EZrUXX9pl3Pslj1XdCX(IlDrWQSKTtzMkkQeD(NKYl2H7o7UielakaShftXARt25KojFNLS1dhPCvSuSKJSIEfLkYNVtN1hgZDj1F5VcP7zaWIhZGf7sEwNsLsLUJhWm90Dp9JFDpdyl1w)Ow71L4tB90vkxPUQA5TuuRvtTsTw75FKdT1EoKohq6d)Gfzi8NQQQ4ZoY0M0fNRN9i3oWZBT3(Jmm9)HwT2pfbBQuPsTQLbc65q706PvlxT1Edm62LYhl1RtR9o7RERtU7ho9LV(z)0hCYx(Vm5g38079F81342N(GpzYV(ENCVF(3N4D0Z4Ap9)6LMCR380x6MtU5xCYdUZF66)Kw7zA457H8spdttQl8tpTA4F43ApQfzFtA3wpzR9iD8nSTa(31(qZw71X1WN6AqAT3L2FuVEkDi(69SDhQmYzC7sJBFjdl9o2d3N4d05PRGlHaI5sUgt)mJAmIXwdGs4uRMAQZgQpXTp1xX3yiv33wVRbDC7RoUDxBFfxYbufx6qIHL3427mUDvgtXxw(B9n6CGExYqy9h3(jg3E1yZeFNNoF(JBFLXTvh3ETKeNp9H9zZvYe3jAfhsS6Bs1bLKYad)GLnUA4akF301WH)ONfE042g9G)3FCBysGCmG42L6oUT)acq9)ggnHLWQ742hc)WH2wRaJL44yEe8x4dbIaJhuDuym(24uHbgO4qTBnPAxqFW2lShsT0T7P3XKaV7iqRcC942hFCW73N66rDpGTVJpKArD7JdRpfvbAGYRot7vkycgwDiUweum1pWWQpsCGT0)hhHYJsx7dTMPz8g4cmgWO1LYOlorNTB0c)pqX3JmY0pTXFepCWitt99jEdIZbbw1c8uwaxJO1iCmHw85swXufSuYsxU3QGnAEejqOm6eZoCKLo)N1XadPmj)(phTZiF0sIEnQlyIHEEbMuWSSblndWkfCPnmX1rzC7NegvG2nyGEgdhzY2Na7tiMZ42J8cjYtICtOpZ42ilSo3h4i7rO99iZU4Jrpd0ygCU9PKUXjX3T71iwDqEmovqpuyPH)Fa1LQWd7PZvbKGzWnfCCPbQWG9ajBSa9h5sa)A3dcn1aPPlgZkMzwYxkkqycsY2x7coydzoCWWCng5fUb7tmPw(cEFi5Iw4buIj6d4BpQZGOyOzm1sAmN2ajY6NfIw31M4Mi8aJzJ9sMpgpeqGKe)LrXI3gIfZdg0zKRliqmtwBDhBdlFES6Y8TcInv0MaFxl0LvUP7mwfF81O6qGPHguoluxMjG0mv9iaXO69mCtKUQlLjQSiTw0U6e3H2UkE(qIFUScd(OoqWgEmxpuEYnP2dv9QWn1C27H8mD9Ye5X3OpeZxV3i3Jy27EM2(HJD(rQtp7W1AFtB7UShJePXsseEYiW4hjYMlhriUDiwiKcMEejutPeINTdu)qEUQ1ddelpX5Svj2QJlXwlhVgiWifullzx0X22eWKeI2e891TOphoJw7DiXa4PYkmRsv5b8qeo(dCHCGmqmjm74gNH4fsYPmnsotElaAqmDs0GySJ8GL56hSvEUbAmNFj(bQY9lle5GuLmYiZFIJZl3itnJ0yjXWUDigwrOE5OSehQrDo(JI1IPuthA4qJ2wwiFtHifLrz5oSDaBymqycQNq5iJMY9DlIxAsAj3jna1B4UYqYZXvIQIjLFi0lPj4WSFltYTalY4z3akLlYdMXMHdR4fiY5mdq4zjSisyaIGm8hO4GfdGVSsm7LEux7og2J803hwKuWi)RPuWQ4znG)ONR9q4pjMMS11Uha1R7ix2)GYrBoUTlGwNQKFwtXPHLyFepvEULanpexZQPbGnc1TB7EKoSl3Z3I6fbBtcOoEw9sZIBkIeXfavL6CFj5rIQLiyAsuGj3dEgy)zC7VhYvOAFC7NkGVaCTW(znOK3N6zG3aq6pCawh3ZSxa4(9Th5ZrFtFohdx(gZsfIjPpBYaXYdXCHLWDjbhelHB6ilNlutlB()eOMYabOOujbSPCGbSG4MYjdEo5tZpktIg5ee1kQpoBmlY1Sg0WYoQOMkpDshI)wOI2drMliYK4OqHnKzLa)etkblUuT(Jdvx67AddjQ9mSYrdKsLLhCrbugPIFlnmSiKjfNhYMrayGSqFMtOajDtkFqIvLIqmDCIuaTsdhkDspbiSWiSHwxzAt4ocAayo9TBLKbmX8Cbj5ybwr7d0szwd7MzdHKrriMOeW3jcH4NpSN8HYxAwNqJVzJ2bnNLptyeDMFwLCAnyUMyYldqEOX5zZEjMWifBwYcxIZTLcNfNAv4DWCT8D3svNvYeUW74wbwuI7v7ncnfcxI9PWMkZAWZNf15he64oU9tcYkZqOI8y7Ztnu0aejz5umb3OgnArF2bi6hbIYHg(dyg8EouRUCuDJCdqtyH9GBi1Fap0QPxGKLoFtc24PSb6G)iWhJSy9)(WbgDgW5fVb8McgfNMWxR(idHWPukek68WpedkDWHKG8S8mBRkZqF78cLwvPmZalWIumfGD0YZXjeJkNWzkJulwEwSJzbDFAQuFHxf5PFw8shl4skpH0CQPulrINcUAZd4QGOqkLxWvbX0g2XYhk1pwvA9JcGDgBP9t1P5yWktoQAXhvkyJjh5CGteDqHXY8ZorXCRH4Bnf8kVgLc035iElz5UYbg8)xUBbl3Do1QLT59lxx5ZPAUlSQGxSA9IspjmNaSPXHiMFGvqMBKyNlEpSLD8llvn15uX15OyKC7cBdPOyZRntItWQMNHtYStcQ0BP6jtump5MRsdjMmIyABz5rJNh6vofxWA9LVjbsy8eUZTtaNNk(ZPF2xKv8NPwNakvEHlWzrkMbjFin6HHofv1so1HopvGiHCXtfF(kGuQBU8wIKilx6kGZmd8UfPSfxkYpS5ATs3RLCQi8cWfxojUctk3jJ0i15ptbEfLrBmNiG1leNIukJIpVYItZ(l15qQXBgsb4)C6pr(L6jsUUsAJZCLUK(17XEde3dEvy5(RGnMiomOap(oeNGREgE)043KNdyaDz17hdTld4eZbM4ApcNb)IaryxEi2viIamE8fxryjPZG4pVM7T43mWvxWU(ffznNtQvkb3qibrdIYkBgfjwsBfNBBd54yNxhizBDDmnCCyBnSTetwUnKJIUmHhcpc3MSHzpCe21fUqOiSC(c0BsrzssKfHXyOQ0NG3HYFedfLYCkLF(XPFuSJN57NMe)yoDwyEXx()uDbD5Hu9OExqtJu6BdDbvoYQVv2f0QYruDb2f0Qlrn3NZUGwnNdI9IVlOvLx39fzxqHxa1Q5Htj87LytLkLvRwHDX2CTahmau6zF8VDYV4L)ZF5Bp5t)Yj349xHtHvMCZF1zV7h81356N9BF(tU71p5E)RN9IF4Kx(do5R(KPV(F4pD9FY4Dp5(V)j39Nn9nU50)T7m53)5tUZhW)il4t9K7(XN8GV60x)d(ZF5To5bVW0F17m9)(nWX8k)YtU)xm9n(SP3(tMCVxdg20x6po5MFgWbJ3LHdjLlg80DtZKb3V1IWLN(rFK6zV7TG5EYDV90x)tNERN)03(FE6RD7tEWDMERx8K7)ER4DiXjUgDf2eZUQr3(5cUUBoV11NvO2kHJFR5m(Rz4cQgECyWDh5xzSkXMwqMC5uoFdU3ZUzypufoyInx2TcCrRZN8zp4JME7)9VdKRX2c8ezFAa2oyghEIke)2kIIHVJw9szkLFBTk1ljUzppE6g9SJg2KNv4yjUqwInKSekFJAkeEoppSTguRCEmh26cWCyH24lLnB8ovlppZHfAJxYsOWK4knwajolHUA6Ig3PAPvLuT4ozQu84Jxn983UAjjt)XZm9D0WImxBTqT13OS3gYzV)Y64n9JFp(xm503eS3)It)Y7n5Z(ft(0)WxF93gwHV(9)SjVgZNG5Cag(tU)9o7t(KPF6RCYD)WzFZL)0hW9qNCRBm9N9rZwW)boJE6l97aY8Jb(fgWKx9)8K7F)tEWBm9ZF3P35L4pby)iQbmoSI8LgMY0B(MND9Besq(Jv)Xt(L3k4NRG09SV6TM(o)(jp)Bp5ZEHP)8p4SB)QGmm5EVoFiN9BUXK37fN(oVsCsZ8INEZxDYl)R5bDo5EVqJOVNuUQMng2htgaEcRqYDKrxTl)9W)shQqIyQ)mU0NLy09YJ3121OVHL2LhzDGfGReEIj9AutTTkpExxshQMVRnuS0UWFs1i(SJSCxhBpw5nA7Z)NWkr9qODEAetOoRHhP1OC5nOwaPPuSDs4)E8U8ZS0tBGVVZ3zJng5PaOx8nPkwu)no0(qygB4diC3GpWR2bOg(9Nz7(y)D)9xsPm8FQJ3TV5rod804Ls4E0gHFIuJ3f)SB16HsiAL8yy)iWZfm6BAJBxpUTJRHnZwk47nJD4HJ8ThcHcG1eButhOskweci)olqHf77AdQKRZacOyaeYkSL4hgoF8ih8PdDc6EdOuUMrxA4xdhuJjFmbSaFH9hqcM((24a8mg6e9vI6GldWpaU81zlfudPjRwwpqAy1JIHSaIoKsq4ZqzTbtTVTD34F9EkC(CibKmlB)qAWja)tcCFpBtOAuu2hy0FafzpyF2ZyFCn764Xf3FaLAI9kKsd6WiuO76W07sqbN3IXHOSt59AehdxVXoBvWCOBaL2lI7EkxsVqTO5HKJG)202MFmcSUmnYb)oR9ss)Huw9LrFNSz2LrvmUwSvB2NdzuNlyyNX)nyLcJR93TthQdsslBRRcBYd56ZobPhSTmpIrTGNOeH)wRNjX7G1XVICnph0CxFFtq1zp0tWOVI2g9GTNGHtj6dX6LCn6q1TGNBsLmP0FGIRB0t7sSVRrpFxDsFdDi1jwcQWzN4a3ztvYz)pYP0CVAbcxHzUHIEBSc)LmaE1hCtdlIJ3aMDkeLIxpnU155tW9hX7GrEn0RcqEc8pqVFBlQIK1myD05ew4yeGLkJjvr)cB5ZBX(mBVm77S9YJpxFOTxo8lT9YPJaL4tTnsdOLg756y98ASADI7cWEGKbd18H2z4ZNDLLaKDPMnOIXqV6H5ws)YzFp3yZvzkWL7k6KL0jBLiYSP66yPuD9ABTQIltraTNDpEyew(naA7QmH6c8wVKLBY49ppx8s5CZHkLZTgQ0QZ7(cTTQs9JpwmQ)ARjy)FwGdKXL1frulMEQcCDrsSA2TWQLlLQNDRD8XzXAVTwTYzxMyTIdjpVPzGPs9sxkNlUsgYeS2rczQglMz8G3ToiydxhVhnASRrtHN7SBeyXNs01dSWtj5Dfu60aJ)hYFqhzznWPg5NlIEriPQ3IeUzXw(ubNwyHkDWSkcmLJofRODlHwVLeFiDbHYUi)QkeiLWJxpX5jRPgf7orDShFC4o2CRdo7YK4KXwp8Ss1uNNstMMP0QP0)7O1SKSOzGjuLJpovijzrnRVgpbY5646MNcih7QlTA2ZjyBn1JpE1ucqj(42bmMxBTSMZpwgU6HZ53DE8mfX0N3t7tGjEYJuHJNIFsi57xUWKAvrc62zJvuvPmKru4O1kl1mE7kcsOphosuw3MkccNweLuYunz8OwyIM3XVbz8xy6j0XrPCCi2HnvEPrzhsazaTJ9(0yTfmKzihe)6iucIzGeiceoe(NeWmOE8YcPDdHkCEb)hBPEyG)po5FKOeGym03cRciUX5CkeGD59fnXhYLbeBLoNvcK1psAGSvfWvQnlLx8PDAiwVUm1rexMpVqgfD2nAnkOdROnh1sITRQUuMvXC9fs2YcIiGbeeuvZ5U6L4HjZhRpFgfSufXNEwmqLZ9YJlKflmaYcvUtemtygLNd2YcA8uqqElqi)Ivwzsl9S1LvkTWD8XPgZvuv2A7CrJSCXqNVXUSPCLk7KIhpFmqdjoX1ZHd2wlflieU(Jo3B6ZNgsTIuvKqyLYrPNwTDLgcvCpYDRMLGFuC7b(g9KZLFW(XIYwGlwDbIZkQtfstxlpG0FPBHHqlUlQwASmjL(2BxnUiY5Db3yJ4(NfOS9IJt(rN2BuCMAUD4O4KAXAYrXPBH7ZrXjzbA1bFWA8oaKPtYpK(9QD6LpmfsHtzijK)tSAIy(H)Eg)kQRD1mjdEcHdDNakl8xh5cyB2V9Tzw9YDIeeroyJH9RaCiOnekMnKc87OBb8WmEnY8SqekMfLnvsRUcoZCKW47M1URTRNy6xrwJUyVkExzeDkc53LMK0AEy1qzlmHHWZSuck71sVqlvn6SzUaN0xWek(58fORl2P8LCsN3oLeNvl4sMmZp(RsxacMQy8sCESqNRt4(BYfxggQTYS1opBOOzkdTFAcMFnOzgTe4YP8WAwsayxrOhvZScr)Mun)YzkW8kEIUSei3mAzDSZS2fYGmX0eMWdJ0nGs6Qr6BaQCxkaDLyYJYSUrxTn3SE1AR3No0lyeoUgdHb0OC5HyzqUhH)iuSPUAZYWigVRfTZbAEDSDrKK6EqSwtQV(b0JqY1uTEJAR7IiL7t1WShbuz8UC4BGQqd7HBxa8PEFtsxde5MNExxsFBRbgDP6Eoe(azeSw1MQC(JT(6QnIXyWdwNA1bIp5RvPm)9LlJFprZ4bCWZ4c8cKkKbGkVPO(g)Dge1lCTR1iI(G8pioDbzdulJ3TdE1f167spYBab2X1zpO)ia1aJi1BwPQebiZduRKqKG3BAgTIOyXxYdDXBAOqXa2yp0L44HIcPd4ts6W3yQvRHACzbxNeuosfXI2hxG6BAFnQxOWeyTOY0(WEatBhr4ndLL1jD7ABP5DeEL3WnvSzfE6SlvOrQLg0LGqraHsOmXEZ(axX8hChrn9dLP6nsPAXTLiwlJmY0EM0(Z1gegdBhm0oyZTsi1QPm9AwN)065z61Jsb5dcqJys88Dnoa8tr2GViQnA2Sqg6Q1Kiy9mWgIOku2CdacL0MOA9kznO5KPIMduEi4HdgcweqL4yyX5t1TufS4G8yDa1xvZLAA0bxQNBeLnJn3QALMrdOI2)eeyJFRTX7HQNVTfLnS6v2S24DXaK6OjOgeOei)(alWcHI3zYE9ciyTQrQJUq9aCnkLkYzHHR)VII9EBVrdb7VJypPp8eCxGA13FaOYN9qmoieXvtvTPAT4JLmeIDQPwTr1gZEmKMJc6Po(jOHh2CUKpcygQRVb4lGFaiw91QuBRyVgv)bVqTAZTM9cMKeoLnvRgBkm7RGxvVCS3eA4e8UgvQhtqyX(rl5MQZEiGtbKAqNgrq1g1IXEoxZbYPFi1D2Zhs9j6GbBIehS3GdUIth9HuOein(QilQsUHjyZmpdhoJmhtgaBTdUg4)qVQs1YEoqLz6BT5wLHDuD1AnAUjKTuSfvR9aS9dSDBT3P)U7D2B92N(5)XtF()h23xAR)3]] )

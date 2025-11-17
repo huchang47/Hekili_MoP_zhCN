@@ -1067,7 +1067,6 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 0,
         gcd = "off",
-        toggle = "cooldowns",
         startsCombat = false,
         texture = 236297,
 
@@ -1156,10 +1155,10 @@ spec:RegisterAbilities( {
         cooldown = 120,
         gcd = "off",
 
-        toggle = "cooldowns",
-
         startsCombat = false,
         texture = 463284,
+
+        toggle = "cooldowns",
 
         
 
@@ -1192,8 +1191,6 @@ spec:RegisterAbilities( {
         cooldown = 600,
         gcd = "spell",
         
-        toggle = "cooldowns",
-        
         spend = 0.02,
         spendType = "mana",
         
@@ -1210,8 +1207,6 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 600,
         gcd = "spell",
-        
-        toggle = "cooldowns",
         
         spend = 0.02,
         spendType = "mana",
@@ -1231,8 +1226,6 @@ spec:RegisterAbilities( {
         cooldown = 180,
         gcd = "off",
         
-        toggle = "defensives",
-        
         startsCombat = false,
         texture = 538038,
         
@@ -1247,10 +1240,10 @@ spec:RegisterAbilities( {
         cooldown = 180,
         gcd = "off",
         
-        toggle = "defensives",
-        
         startsCombat = false,
         texture = 136150,
+
+        toggle = "defensives",
         
         handler = function()
             applyBuff( "unending_resolve" )
@@ -1297,6 +1290,8 @@ spec:RegisterAbilities( {
         
         startsCombat = true,
         texture = 607510,
+
+        toggle = "interrupts",
         
         handler = function()
             -- Fear all enemies in 10 yards
@@ -1358,8 +1353,6 @@ spec:RegisterAbilities( {
         cast = 0,
         cooldown = 600,
         gcd = "spell",
-
-        toggle = "cooldowns",
 
         spend = 1,
         spendType = "burning_embers",

@@ -140,6 +140,37 @@ local strformat = string.format
 
     -- Auras
 spec:RegisterAuras( {
+        -- Added missing global/CD related buffs for proper toggle gating & script references.
+        aspect_of_the_pack = {
+            id = 13159,
+            duration = 3600,
+            max_stack = 1
+        },
+        beast_cleave = {
+            id = 118455,
+            duration = 4,
+            max_stack = 1
+        },
+        bestial_wrath = {
+            id = 19574,
+            duration = 10,
+            max_stack = 1
+        },
+        frenzy = {
+            id = 19623, -- Pet Frenzy (MoP)
+            duration = 30,
+            max_stack = 5
+        },
+        master_marksman = {
+            id = 82926, -- Using talent ID for placeholder if separate aura differs
+            duration = 20,
+            max_stack = 5
+        },
+        dire_beast = {
+            id = 120679,
+            duration = 8,
+            max_stack = 1
+        },
         aspect_of_the_hawk = {
             id = 13165,
             duration = 3600,
@@ -611,11 +642,8 @@ spec:RegisterAuras( {
             cooldown = 300,
             gcd = "off",
 
-            startsCombat = false,
             toggle = "cooldowns",
-
-            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
-            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
+            startsCombat = false,
 
             handler = function ()
                 applyBuff( "rapid_fire" )
@@ -687,11 +715,8 @@ spec:RegisterAuras( {
             cooldown = 300,
             gcd = "off",
 
-            startsCombat = true,
             toggle = "cooldowns",
-
-            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
-            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
+            startsCombat = true,
 
             handler = function ()
                 applyBuff( "stampede" )
@@ -707,7 +732,7 @@ spec:RegisterAuras( {
 
             startsCombat = true,
 
-            toggle = "interrupts",
+            
 
             usable = function ()
                 if buff.dispellable_magic.up or buff.dispellable_enrage.up then return true end
@@ -726,8 +751,9 @@ spec:RegisterAuras( {
             gcd = "spell",
             school = "physical",
 
-            startsCombat = true,
             toggle = "interrupts",
+            startsCombat = true,
+            
 
             debuff = "casting",
             readyTime = state.timeToInterrupt,
@@ -746,8 +772,9 @@ spec:RegisterAuras( {
             school = "physical",
 
             talent = "silencing_shot",
-            startsCombat = true,
             toggle = "interrupts",
+            startsCombat = true,
+            
 
             debuff = "casting",
             readyTime = state.timeToInterrupt,
@@ -861,6 +888,7 @@ spec:RegisterAuras( {
             cooldown = 90,
             gcd = "off",
             
+            toggle = "defensives",
             startsCombat = false,
             texture = 132369,
 
@@ -1090,8 +1118,9 @@ spec:RegisterAuras( {
             spend = 60,
             spendType = "focus",
 
+            toggle = "cooldowns",
             startsCombat = true,
-           
+
             handler = function ()
                 applyDebuff( "target", "a_murder_of_crows" )
             end,
@@ -1103,11 +1132,8 @@ spec:RegisterAuras( {
             cooldown = 90,
             gcd = "spell",
 
-            startsCombat = true,
             toggle = "cooldowns",
-
-            -- Extra guard: do not recommend if the Cooldowns toggle is off (Primary/Auto cleanliness).
-            usable = function() return state.toggle and state.toggle.cooldowns, "cooldowns off" end,
+            startsCombat = true,
 
             handler = function ()
                 applyDebuff( "target", "lynx_rush" )
@@ -1119,6 +1145,7 @@ spec:RegisterAuras( {
             cast = 0,
             cooldown = 15,
             gcd = "spell",
+            toggle = "cooldowns",
 
             spend = 15,
             spendType = "focus",
@@ -1135,6 +1162,7 @@ spec:RegisterAuras( {
             cast = 3,
             cooldown = 45,
             gcd = "spell",
+            toggle = "cooldowns",
             
             spend = 15,
             spendType = "focus",
@@ -1152,6 +1180,7 @@ spec:RegisterAuras( {
             channeled = true,
             cooldown = 20,
             gcd = "spell",
+            toggle = "cooldowns",
 
             spend = 40,
             spendType = "focus",
@@ -1168,6 +1197,7 @@ spec:RegisterAuras( {
             cast = 0,
             cooldown = 20,
             gcd = "spell",
+            toggle = "cooldowns",
 
             startsCombat = true,
 
@@ -1281,8 +1311,9 @@ spec:RegisterAuras( {
             cooldown = 120,
             gcd = "off",
             
-            startsCombat = false,
             toggle = "defensives",
+            startsCombat = false,
+            
 
             handler = function ()
                 -- Self-heal ability
@@ -1296,8 +1327,9 @@ spec:RegisterAuras( {
             cooldown = 30,
             gcd = "off",
             
+            toggle = "cooldowns",
             startsCombat = false,
-            
+
             handler = function ()
                 applyBuff( "fervor" )
             end,
@@ -1309,10 +1341,11 @@ spec:RegisterAuras( {
             cooldown = 45,
             gcd = "spell",
             
+            toggle = "cooldowns",
             startsCombat = true,
-           
+
             handler = function ()
-                applyBuff( "dire_beast" )
+                -- Dire Beast summons a beast and increases focus regen; no player buff required here.
             end,
         },
 

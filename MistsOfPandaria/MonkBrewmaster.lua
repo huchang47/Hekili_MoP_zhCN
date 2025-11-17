@@ -373,8 +373,8 @@ local function RegisterBrewmasterSpec()
             cast = 0,
             cooldown = 10,
             gcd = "off",
-            toggle = "interrupts",
             startsCombat = true,
+            toggle = "interrupts",
             debuff = "casting",
             readyTime = state.timeToInterrupt,
             handler = function() interrupt() end
@@ -384,7 +384,6 @@ local function RegisterBrewmasterSpec()
             cast = 0,
             cooldown = 0,
             gcd = "spell",
-            toggle = "buffs",
             startsCombat = false,
             handler = function() applyBuff("legacy_of_the_emperor", 3600) end,
             generate = function(t) end
@@ -417,8 +416,8 @@ local function RegisterBrewmasterSpec()
             cooldown = 180,
             gcd = "off",
             talent = "invoke_xuen",
-            toggle = "cooldowns",
             startsCombat = true,
+            toggle = "cooldowns",
             handler = function() end,
             generate = function(t) end
         },
@@ -428,8 +427,8 @@ local function RegisterBrewmasterSpec()
             cooldown = 90,
             gcd = "off",
             talent = "dampen_harm",
-            toggle = "defensives",
             startsCombat = false,
+            toggle = "defensives",
             handler = function() applyBuff("dampen_harm", 10) end,
             generate = function(t) end
         },
@@ -460,6 +459,7 @@ local function RegisterBrewmasterSpec()
             cooldown = 0,
             gcd = "off",
             startsCombat = false,
+            toggle = "defensives",
             handler = function()
                 applyBuff("elusive_brew", 6)
             end,
@@ -544,6 +544,7 @@ local function RegisterBrewmasterSpec()
             spend = 2,
             spendType = "chi",
             startsCombat = false,
+            toggle = "defensives",
             handler = function()
                 applyBuff("guard", 30)
             end,
@@ -582,8 +583,8 @@ local function RegisterBrewmasterSpec()
             cast = 0,
             cooldown = 180,
             gcd = "off",
-            toggle = "defensives",
             startsCombat = false,
+            toggle = "defensives",
             handler = function()
                 applyBuff("fortifying_brew", 15)
             end,
@@ -597,6 +598,7 @@ local function RegisterBrewmasterSpec()
             gcd = "off",
             talent = "chi_brew",
             startsCombat = false,
+            toggle = "cooldowns",
             handler = function()
                 gain(2, "chi") -- This is the correct function call
             end,

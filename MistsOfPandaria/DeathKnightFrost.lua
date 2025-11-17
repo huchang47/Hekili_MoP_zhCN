@@ -1629,6 +1629,7 @@ spec:RegisterAbilities( {
         gcd = "spell",
         
         startsCombat = false,
+
         toggle = "cooldowns",
         
         handler = function ()
