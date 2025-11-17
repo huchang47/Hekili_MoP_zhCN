@@ -66,6 +66,11 @@ end)
 
 discCombatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 
+-- 安全短路：暴露 last_rapture_proc，避免早期仿真发出未定义键警告。
+spec:RegisterStateExpr( "last_rapture_proc", function()
+    return rawget( state, "last_rapture_proc" ) or 0
+end )
+
 -- Power Word: Shield absorption tracking for Rapture
 RegisterDISCCombatLogEvent("SPELL_ABSORBED", function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool, amount)
     if spellID == 17 then -- Power Word: Shield absorption
@@ -91,6 +96,16 @@ end)
 RegisterDISCCombatLogEvent("SPELL_HEAL", function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool)
     if spellID == 94472 then -- Atonement healing
         -- Track Atonement healing efficiency
+    end
+end)
+
+-- Rapture 回蓝（记录内置冷却时间戳）
+RegisterDISCCombatLogEvent("SPELL_ENERGIZE", function(timestamp, subevent, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool, amount, powerType)
+    -- MoP 中 Rapture 的回蓝事件为 spellID 47755。
+    if spellID == 47755 and sourceGUID == UnitGUID("player") then
+        state.last_rapture_proc = state.query_time
+        -- 强制刷新，使依赖 rapture_ready 的 APL 逻辑立刻反映新的时间戳。
+        Hekili:ForceUpdate("RAPTURE")
     end
 end)
 

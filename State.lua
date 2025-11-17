@@ -4908,10 +4908,12 @@ do
 				end
 
 				return rawget(t, k)
-			elseif k == "up" or k == "ticking" then
-				return t.remains > 0
-			elseif k == "down" then
-				return t.remains == 0
+            elseif k == "up" or k == "ticking" then
+                return t.remains > 0
+            elseif k == "upd" then -- 兼容某些APL/脚本误用的属性名：将 upd 视为 up
+                return t.remains > 0
+            elseif k == "down" then
+                return t.remains == 0
 			elseif k == "remains" then
 				-- if state.IsCycling( t.key ) then return 0 end
 				return t.applied <= state.query_time and max(0, t.expires - state.query_time) or 0

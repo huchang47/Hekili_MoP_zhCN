@@ -1,5 +1,5 @@
-## Interface: 50501
-## Version: v5.5.2
+## Interface: 50502
+## Version: v5.5.2-1.0.0q1-CN
 ## Title: Hekili
 ## Title-zhCN: Hekili MoP黑科研修复版
 ## Author: Hekili, modified to mop by Smufrik, 汉化 by 胡里胡涂, 修复 By EasyPlay、风雪飘摇、哑呲、九月

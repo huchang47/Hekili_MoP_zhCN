@@ -38,6 +38,26 @@ end
 
 local spec = Hekili:NewSpecialization( 258 ) -- Shadow spec ID for MoP
 
+-- 登录兜底：若暗影专精未激活任何包，则默认选择“暗影(黑科研)”，否则回退到“暗影Simc”。
+-- 放在文件顶部，确保在进入世界事件触发时已注册逻辑，不覆盖用户主动选择。
+if spec and spec.RegisterEvent then
+    spec:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+        local specID = 258
+        local profSpecs = Hekili and Hekili.DB and Hekili.DB.profile and Hekili.DB.profile.specs
+        local packs     = Hekili and Hekili.DB and Hekili.DB.profile and Hekili.DB.profile.packs
+        if profSpecs and profSpecs[ specID ] then
+            local cur = profSpecs[ specID ].package
+            if not cur or cur == "(none)" then
+                if packs and packs[ "暗影(黑科研)" ] then
+                    profSpecs[ specID ].package = "暗影(黑科研)"
+                elseif packs and packs[ "暗影Simc" ] then
+                    profSpecs[ specID ].package = "暗影Simc"
+                end
+            end
+        end
+    end)
+end
+
 -- Shadow-specific combat log event tracking
 local shadowCombatLogFrame = CreateFrame("Frame")
 local shadowCombatLogEvents = {}
@@ -1936,3 +1956,6 @@ spec:RegisterAbilities( {
 
 -- Register default pack for MoP Shadow Priest
 spec:RegisterPack( "暗影Simc", 20250729, [[Hekili:nN1sVnUnq4FmfWWbBQQLFSjPWYhAV0nhwuaTa9MKOLOJzTEbkQKAad9BVdjLLOOOKCs3fOhsII4Wz(M3Za5z79np3ied791LlwUzXtlFYY(b712R9CzNZXEU5OWtOxGhsrjWVDpIIYEJ)6ZXzOi(1lYkPH8Jij)ofDGvfSz9J)8JEU7ljXSVK6T3SiwbxnhhcVEdq8rsuewslUi0Z9Bhjfvb8Fqvb1GOki7a8)HmswAvqmPGbhFiJwf8h4tKyIfGlA2bsmGMFQk4pPeCb7xRcKGU6z4DAGS65QNL8RWkNIdZs2JyFY5xYZEdt9FlJg5d8NryLr47jhC2xE4GLPdTabKAMxK0uG8deAlhAF1i3RqGAqcjn3R9vJCV8m(7UN7VC(Bue2VatZXPmF5bMVucjnYViNCcZnjn08(Gbq9ROKCcLe6Jt2trHcv(igfZoALhY26SEHk1LfyFcdNCFrCgZ5iknQGFHWSSyoJTkoNIYbAkYPK0xkSOyu0zJmqOTmGQtyM9KuSuLIjSxnA9(4SSO4YcghgHSlxyi6lyMfJKG9zz(reSU(vBOi40OUsKharspuwulagkgKOv3dSWPO9X4oxvac)dL0oMH9yka6tGns9TiAikLdnkfyEFCjdHJWi2rnxRYj(uCbM534skZNX5ZRyFCkobsW26SrL1r4xH6bas8ZJrVukcaQzAgDFHZQzr4EskhrsbRAc8NIDnu0elXYkdpQC(8g0icB3hJeof5XoF(YfZNdXo3Pc12d5GCuTsq6Hy0zoL1WtxtHaHWtf(sCS1XE2q0bMWA)DrwmKJ4dX9GtVaLsyNV60Vp8iWgh7VtUn(Vg3XP7pUp8Cyme9icYlCSVpb9p(DF3grORIw7yF5YqU3bRui8U3Q0gn0yBi4l955JFIJkXtnas7k6W5JQ(ZFp6)DZ6xZyN9I)7ML5FxTl3amNonVt2GDVKjrVgJ5DZK2Vsab(zh8Jq0tP4IcRWSYuMtNs3hrXzkLp5)718NRQqemLakneknVAH(725y)Gk7aZuis2OVMJ1VPHPZ7I2DG)EEpMUCZm4rMvcy1X0Z(uedmuBT3SyXI7AABOq)J31hTRnH2oMXiYReO8oCivbXkVDmuBcGRaaAajlxpSZBaxLOb54LBK8bZXEkacAzodcVBE2xRYYw7(Xk7Cwnqn6H44G9fuAz0Ru6vk(4Pyd1QB7lHrtwFpj7vT(6D7Bj7Xi96apjVCSEaLz9V5ThY0pk4rd8B6egtX195tVIVg1BGj5WGoW)55(A9dYDkEy5tEUVHOP8Pe9C)ssomxom4uWsT1fSQE2Zv8KyXh8buzmdE8RIfHQbT3V55gsHHgPeeFlM(t865k5kSbtZbEmamdYL2zGRc26ufSErlp0NzMZPvAC6kTIzKvz84ZkdaeMS(61a(UwJVYT6Uo4CRCAEdCNnJDNL9UZs(D(8a4xotDp7R2S1vbxUuf0VjuRTtIbdJRZf(dCHR5H4ZGRIiGShh0Bn644QkJ65Cw(KQKBNvxtW2l6qwZW76KzRsw3P51jD4iVBB(WY8QGzYKL2cSsZ9gDBPcBeYwpwTv2kteufaSALqituvSkyNgLMl5Qq38QGrwjaieK9NLbvd2cOk4UwfvF8gHEQN70QNty2AfLGp65tDiJ3adynF4FpxBvHClRDifTTQXZW6hIJNEfeby1tKFVbwI5S)WHwpmGPsp2bWL6qX865U9gv2ZDtNK8o2nPzJhHm2a8cqPx3OxDCry6hbsteVVfcFVoMrvWNaF41rn6GCdt0lW9t)anMZLG59ApHKU6GX(L6HSBOqjVR6IFyg85twJ5JBZVnDB4bpmx8ulBh4Z4vTwoCNbJzKcHm2gycSSuRQLyHaH4gUzGHL0uTpxhruIJvlmFgVsouvqzEO4mHChU4S5jtV23q3iSRjUD(aIFP0gzydkP)GVMNW3RmdJghEul2ORUVEmDxXDxRrc1xVNsp13Wq(tBcgsh5BkoQkaUJ2OYwjlG6uDumVn5T0drluCOMhnRE65QUDy3ocBThlvH7kwPCDERAUi1Bn0L))pC9tJtF0tT07C0AyKBPnrB8v6fW1C5M2Ev4V15E3bPwnCTZjc6nhZ(OrzQf(UA46PJuOzS8CDbQKwVA4QPJz4fnX5xFT6ceQRpRU8aJ)vZQ)sqEgwf(69n9zVKFTokjxsI(xCt)ZT1ZZp4Nste2nEuJ2hrRfOThimc3YaStUzV59MnT)PI9s8xw9c0gksP5gahbQKDmdQl9xhX44cX78(3p]] )
+
+spec:RegisterPack( "暗影(黑科研)", 20251117, [[Hekili:1I1wVnXru4FmvQkiuT8LyWuLYdTVuqQiqBFRQ76X7o2EQ3BA2ztQLIwfr5sicstkTQiaXLsOrqbIAfkLMqc)yQxVUpXFHE2zxVE3XETHOwbYo7oN5C(oN5B(oZy5sYFPSKgIHLpx5ILRwQuPAfkwSAPILLLyDTXYs2i1oOwWFyImGp7F7F2)GFFU)z)nd2EZGh8Jhl0IU6wiTqp5y5svbRKLA4s0zNXuUHG7pjyKnwfEUAnzP2ennCKryhvW7pFREV(w(xE1G922)(71BV1)CChIoXR(xyD(Ky27nVWFRBeCTv9xD3EhC3)ELl6DwVZ(vrJ7V2DatcEYU9V2kFT)n30FJhcqKA1KOda7d8QpUzV91xV)T2P3Rwj4WT6F3Rf9(G)4WGhFp)F46(RELE79BrpgC7lfS(t8FXUb7FP(RUb8im3bx9LG3aSo4WB6F196FNxc5qW2RaJgH(O3NKyHozF4)xLdCar()6f7FV727Gh4VZFjrmC1rmIL5NrrnzaC6T3vgS9JG4aJg5p)dFAW670)s33)YVCWUHd1)z)YG3SU)ApW)YpU)QB2B)NbV8cxaYN3(6BxQ48vlxPsTAf5rBWo)z)VFJEhEN(R9t(BCJG12fSbs(EV6Pd(Ud836(9F(JcE4lg8Mng8WRNKdjOhaTS0IyQdaX0RQlHOMeZwoYsNXW2IYWAE1l7vhPgMlE11jomNcENvwc5YABrLLgU2WhHtdXnrU6m4pphNwInrn0XAYFQSKkLWWuckKx1SzbN2inRLAArnkaFBc(KhfGALmGmdaxUEPngPZAxWwL5vFHpXR(8fh5Jfrg2ekrvbB0GIa2m4PkP9uJ0Es1YspedfC6AISDWko20WYqbkgP1DKxBJm1GAJJUfB4dGFNxaHr7XyGh6GzLgn7K3aZP60Mt5XMt5W5CcH5m0gBROVfQVn0TS00DDyHzrynA5L9QZq0wywbgXaRWSu0i4r1Uim8nini)XuBSjtj21qWpzyWfwHiytT0icmRwURwmKo4Xc2wlHPkeZMUHCVcdnnvYKE8qxEQ0rMNuknDPDfcCPIzmdO2yAhynu0S3jsPYswunfnmI1wHIDWmLegIRTx9pmAhXIyfSj2GGDIQHvflqPCdp25tLJT3I2a8f4Qk8GOHhdt2iIjSEAaFbwEAblty9mlx12tWU58QNKjgetnLg6iobzOHqSpretzY2bBh8QFSrjQgErOBbuNvS1rTC57Zkvj38CgLTrHI7hXnwzmRPoc4aQTbGllvkDqIlgIqdi9QDCuIY1OqxkDXBm7JxQJjUow6GoIcSPhyNoitcR7q2BUmc(22sI71FFPCHFC0jD5PAiYQaC1vvhuf4keoHY3sgOVvj7BLQMzpDMkAubnK7KhXLRZhcQtMdOYsGpkqAg7ewai2a9sjua0R(XHvxifIFkfYfMEcUfL3(VSyoxeyEFRNW2XyA64k7W(Eqxme4N6)Tc(CZu95OxZFNYTYfFpLvf0ba)mD9SY53ZyI7i5bjAbZfWTIvtfneTJj2XPGQLRjJJLYc6zo2KorHl)2eXsrTr6wz0EIRpAWHWqMQXT0RuCYJfQXhEwVrhQr3Ih38LTJJlSkQcNoitONBCzPtNWBNlNWxoQgbVIvWaOgyAxfkCEzZwrRhvlwSiFTp1rwe8qnbUr2CF(PL7PwUJZiE6l2TzS0xJSiXeoBe4139sqE5yLQXPyEPaGNrSYrrMd1z1rzmAx8jaNDpebQyEnpImddWrIycHM6AZuinZ2ryHsPgvOh9yfSqclpK51Aivt)SonlaY9yllV8Ot5l2OCOftviBHerSJNiGLmL8oJ2cTu1MLGb)ucLZ)KZgwlYpi7u7ZxwuHxGtetHairA1MLIqi69SNbRs(IRZyxXKj11Mymf43vYxWDkkrttiqmGP23xjF52Pv45D5dNUOQ5OCYXo(c2t5oRvdBHXc)TnWQwgnqt8IZdDz0DJ4HhUDmJWCHuG)JUqj2rMCEkqRyFSxDjowHVjg8FdciuZx7JQngVys(m58o5xA4ZLyAcZTjHIfUb)ObKfV39r(3byY3YEs3wnv9I)9WRBpbnUmxoC4)K)3]] )
+

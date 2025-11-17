@@ -9863,7 +9863,7 @@ do
 
     do
         local Options = {
-            name = "Hekili " .. Hekili.Version,
+            name = "Hekili " .. Hekili.Version .. "黑科研修复版",
             type = "group",
             handler = Hekili,
             get = 'GetOption',
